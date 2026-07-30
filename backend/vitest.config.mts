@@ -10,6 +10,7 @@ export default defineConfig({
       "test/rm005-schema.integration.test.ts",
       "test/rm006-schema.integration.test.ts",
       "test/rm007-schema.integration.test.ts",
+      "test/rm008-bootstrap.integration.test.ts",
       "node_modules/**",
       "dist/**",
       "coverage/**"

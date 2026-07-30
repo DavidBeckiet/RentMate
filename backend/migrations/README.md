@@ -62,8 +62,9 @@ The five `idx_listings_approved_*` indexes have the single predicate `status = '
 application index, covering `INCLUDE` index, text/trigram index, geospatial extension or index, active-user index, or
 duplicate index already served by a primary key or unique constraint.
 
-The current schema has exactly two RentMate enum types and all eight frozen product tables, with no migration
-bookkeeping table. RM-008 application authentication and authorization are not implemented by these migrations.
+The final Phase 1 schema has exactly two RentMate enum types, all eight frozen product tables, 52 named constraints,
+ten approved explicit non-constraint indexes, five property types, and twelve amenities, with no migration bookkeeping
+table. RM-008 does not add migration `0013` and does not implement application authentication or authorization.
 Existing migration files are immutable, and normal backend startup does not discover or execute migrations.
 
 ## File convention and discovery
@@ -114,6 +115,44 @@ plan succeeds when the manifest already references the latest repository migrati
 The runner never creates, queries, or updates a database migration bookkeeping table. The deployment operator updates
 the external manifest only after every selected migration succeeds and post-migration verification passes.
 
+After applying selected migrations to an existing deployment, run `npm.cmd run db:verify`, then run
+`npm.cmd run admin:provision` only if a controlled admin is required. Advance the external deployment record only after
+verification succeeds. The commands do not update the external manifest.
+
+### Empty-database Phase 1 bootstrap
+
+`npm.cmd run db:bootstrap` is a separate explicit command for an empty PostgreSQL database only. It:
+
+1. Validates the database and protected admin inputs.
+2. Rejects a nonempty public schema without dropping or repairing anything.
+3. Applies immutable migrations `0001` through `0012` through the existing clean runner.
+4. Runs the read-only final-schema verifier.
+5. Provisions the controlled admin.
+6. Runs the verifier again.
+
+It must not be used for an existing deployment. It creates no migration bookkeeping table and does not run during
+normal application startup.
+
+Admin secrets are accepted only through an uncommitted local `.env` or protected deployment environment:
+
+```powershell
+$env:RENTMATE_ADMIN_EMAIL = "<admin-email>"
+$env:RENTMATE_ADMIN_PASSWORD = "<admin-password-from-secret-store>"
+$env:RENTMATE_ADMIN_PHONE_E164 = "<optional-e164-phone>"
+$env:BCRYPT_COST = "12"
+```
+
+Email is trimmed, lowercased, and syntax-validated. Passwords must contain at least eight characters and at most 72
+UTF-8 bytes; they are stored only as bcrypt hashes. The phone is optional, and `BCRYPT_COST` defaults to `12`.
+Passwords and hashes are never printed.
+
+`npm.cmd run admin:provision` creates the first active admin. Repeating it for the same active admin is a no-op and
+does not rotate credentials or update the row. It rejects an existing tenant or landlord without promotion and rejects
+an inactive admin without reactivation. There is no public admin-registration or provisioning HTTP endpoint.
+
+`npm.cmd run db:verify` performs read-only catalog checks for the exact Phase 1 inventory. It permits a deliberately
+retired lookup row to remain `is_active = false` while still requiring the exact stable lookup codes and labels.
+
 ## Transactions, failures, and recovery
 
 - Planning, filename validation, duplicate detection, and manifest validation finish before a database pool is
@@ -157,6 +196,15 @@ $env:TEST_DATABASE_URL = "postgresql://rentmate:rentmate_dev_password@localhost:
 npm.cmd run test:rm007:database
 ```
 
+Run the focused RM-008 unit and isolated PostgreSQL checks:
+
+```powershell
+npm.cmd run test:rm008
+
+$env:TEST_DATABASE_URL = "<postgresql-url-for-rentmate_test>"
+npm.cmd run test:rm008:database
+```
+
 Database integration tests require an explicit `TEST_DATABASE_URL` targeting `rentmate_test` or
 `rentmate_test_*`:
 
@@ -166,8 +214,10 @@ npm.cmd run test:migrations:database
 ```
 
 The safety guard rejects missing or unsafe targets before connecting. Integration fixtures use only the explicitly
-owned `rm004_*`, `rm005_*`, `rm006_*`, and `rm007_*` test objects plus the known RentMate tables and enum types. They clean only
-those objects and never create, drop, truncate, or mutate the development database.
+owned `rm004_*`, `rm005_*`, `rm006_*`, `rm007_*`, and `rm008_*` test objects plus the known RentMate tables and enum
+types. They clean only those objects and never create, drop, truncate, or mutate the development database. RM-008 also
+re-runs seed migrations `0005` and `0006` to prove stable identities, exact counts, and preservation of retired
+`is_active = false` rows.
 
 To execute all twelve migrations, explicitly point the migration command at a clean isolated database:
 

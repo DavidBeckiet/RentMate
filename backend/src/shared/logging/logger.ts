@@ -17,7 +17,7 @@ const logLevelPriority: Readonly<Record<LogLevel, number>> = {
   error: 40
 };
 
-const sensitiveContextKey = /(authorization|cookie|credential|password|secret|token)/i;
+const sensitiveContextKey = /(authorization|cookie|credential|password|secret|token|database.?url|connection.?string)/i;
 const maximumContextStringLength = 512;
 
 function sanitizeContext(context: LogContext | undefined): Record<string, LogContextValue> {

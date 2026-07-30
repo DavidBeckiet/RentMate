@@ -1,8 +1,9 @@
 # RentMate
 
 RentMate is a map-based room rental platform. The repository currently contains the project skeleton, runtime
-foundation, migration runner, and the RM-007 eight-table database schema. Product endpoints and application
-workflows have not been implemented.
+foundation, migration runner, the complete Phase 1 database schema, and the RM-008 controlled database bootstrap,
+verification, and admin-provisioning commands. Product endpoints, authentication endpoints, and application workflows
+have not been implemented.
 
 ## Prerequisites
 
@@ -139,8 +140,12 @@ The five `idx_listings_approved_*` indexes use only `WHERE status = 'APPROVED'`;
 application query rule. RM-007 adds no unique application index, covering `INCLUDE` index, text-search index, trigram,
 geospatial extension/index, active-user index, or duplicate index for a primary-key/unique-constraint prefix.
 
-The database now has exactly two RentMate enum types and all eight frozen product tables, with no migration
-bookkeeping table. RM-008 application authentication and authorization are not implemented by RM-007.
+The final Phase 1 inventory is exactly two RentMate enum types, eight frozen product tables, 52 named constraints, ten
+approved explicit non-constraint indexes, five property types, and twelve amenities, with no migration bookkeeping
+table.
+
+RM-008 does not add or modify a schema migration: the migration inventory ends at immutable migration `0012`.
+Authentication and authorization endpoints remain unimplemented.
 
 Preview a clean-database plan:
 
@@ -184,6 +189,15 @@ $env:TEST_DATABASE_URL = "postgresql://rentmate:rentmate_dev_password@localhost:
 npm.cmd run test:rm007:database
 ```
 
+Run the focused RM-008 provisioning, final-inventory, isolation, and clean-bootstrap checks with:
+
+```powershell
+npm.cmd run test:rm008
+
+$env:TEST_DATABASE_URL = "<postgresql-url-for-rentmate_test>"
+npm.cmd run test:rm008:database
+```
+
 To apply all twelve migrations to an explicitly selected clean isolated database:
 
 ```powershell
@@ -200,6 +214,59 @@ Use this only when `rentmate_test` is clean. Never point a clean migration comma
 
 See [backend/migrations/README.md](backend/migrations/README.md) for external manifest ownership, mismatch handling,
 partial-failure recovery, migration immutability, and forward-fix policy.
+
+## Phase 1 database bootstrap and admin provisioning
+
+`db:bootstrap` is an explicit, one-time command for an empty PostgreSQL database only. It validates that the public
+schema is empty, applies migrations `0001` through `0012` using the existing clean migration runner, verifies the
+complete frozen inventory, provisions one admin, and verifies the inventory again. It never drops, truncates, resets,
+or silently repairs a database.
+
+Provide database configuration and admin secrets through an uncommitted local `.env` or a protected deployment
+environment, never through command-line password arguments:
+
+```powershell
+$env:DB_HOST = "<database-host>"
+$env:DB_PORT = "<database-port>"
+$env:DB_NAME = "<empty-database-name>"
+$env:DB_USER = "<database-user>"
+$env:DB_PASSWORD = "<database-password>"
+$env:RENTMATE_ADMIN_EMAIL = "<admin-email>"
+$env:RENTMATE_ADMIN_PASSWORD = "<admin-password-from-secret-store>"
+$env:RENTMATE_ADMIN_PHONE_E164 = "<optional-e164-phone>"
+$env:BCRYPT_COST = "12"
+npm.cmd run db:bootstrap
+```
+
+`RENTMATE_ADMIN_EMAIL` and `RENTMATE_ADMIN_PASSWORD` are required.
+`RENTMATE_ADMIN_PHONE_E164` is optional and blank means no phone. The email is trimmed, lowercased, and validated.
+The password is preserved exactly, must contain at least eight characters and at most 72 UTF-8 bytes, and is stored
+only as a bcrypt hash. `BCRYPT_COST` defaults to `12`.
+
+The standalone controlled commands are:
+
+```powershell
+npm.cmd run admin:provision
+npm.cmd run db:verify
+```
+
+First-time provisioning creates one active `ADMIN`. Re-running it for the same active admin is a no-op: it does not
+rotate the password, update the phone, or change timestamps. An inactive admin causes a failure and is not reactivated.
+An existing tenant or landlord causes a conflict and is never promoted. The command reports only a sanitized outcome
+and user ID; plaintext passwords, hashes, database URLs, and credentials are never printed.
+
+Admin creation has no public HTTP route and none is registered by RM-008. Bootstrap, verification, provisioning, and
+migrations are explicit operator commands and never run during normal backend or frontend startup.
+
+Existing deployments must not use `db:bootstrap`. Their separate workflow is:
+
+1. Select migrations newer than the externally recorded version and run `migrate:existing`.
+2. Run `db:verify`.
+3. Run `admin:provision` only when a controlled admin must be created.
+4. Advance the external deployment record only after verification succeeds.
+
+The commands never create a migration-history table or edit the external deployment manifest. RM-009 has not been
+implemented.
 
 ## Health endpoint
 

@@ -29,8 +29,13 @@
     "test:rm006:database": "npm --prefix backend run test:rm006:database",
     "test:rm007": "npm --prefix backend run test:rm007",
     "test:rm007:database": "npm --prefix backend run test:rm007:database",
+    "test:rm008": "npm --prefix backend run test:rm008",
+    "test:rm008:database": "npm --prefix backend run test:rm008:database",
     "migrate:clean": "npm --prefix backend run migrate:clean --",
     "migrate:existing": "npm --prefix backend run migrate:existing --",
+    "admin:provision": "npm --prefix backend run admin:provision",
+    "db:verify": "npm --prefix backend run db:verify",
+    "db:bootstrap": "npm --prefix backend run db:bootstrap",
     "format": "prettier --write .",
     "format:check": "prettier --check ."
   },

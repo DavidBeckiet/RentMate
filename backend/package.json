@@ -23,12 +23,18 @@
     "test:rm006:database": "vitest run --config vitest.database.config.mts test/rm006-schema.integration.test.ts",
     "test:rm007": "vitest run --config vitest.config.mts test/migrations/rm007-inventory.test.ts",
     "test:rm007:database": "vitest run --config vitest.database.config.mts test/rm007-schema.integration.test.ts",
+    "test:rm008": "vitest run --config vitest.config.mts test/rm008-admin-input.test.ts test/rm008-schema-expectations.test.ts test/rm008-application-isolation.test.ts",
+    "test:rm008:database": "vitest run --config vitest.database.config.mts test/rm008-bootstrap.integration.test.ts",
     "migrate:clean": "tsx src/db/migrations/cli.ts clean",
     "migrate:existing": "tsx src/db/migrations/cli.ts existing",
+    "admin:provision": "tsx src/db/admin-provisioning/cli.ts",
+    "db:verify": "tsx src/db/schema-verification/cli.ts",
+    "db:bootstrap": "tsx src/db/bootstrap/cli.ts",
     "format": "prettier --config ../.prettierrc.json --ignore-path ../.prettierignore --write .",
     "format:check": "prettier --config ../.prettierrc.json --ignore-path ../.prettierignore --check ."
   },
   "dependencies": {
+    "bcrypt": "6.0.0",
     "cors": "2.8.5",
     "dotenv": "16.5.0",
     "express": "5.1.0",
@@ -36,6 +42,7 @@
   },
   "devDependencies": {
     "@eslint/js": "9.39.4",
+    "@types/bcrypt": "6.0.0",
     "@types/cors": "2.8.17",
     "@types/express": "5.0.3",
     "@types/node": "22.15.30",
