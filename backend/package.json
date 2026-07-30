@@ -21,6 +21,8 @@
     "test:rm005:database": "vitest run --config vitest.database.config.mts test/rm005-schema.integration.test.ts",
     "test:rm006": "vitest run --config vitest.config.mts test/migrations/rm006-inventory.test.ts",
     "test:rm006:database": "vitest run --config vitest.database.config.mts test/rm006-schema.integration.test.ts",
+    "test:rm007": "vitest run --config vitest.config.mts test/migrations/rm007-inventory.test.ts",
+    "test:rm007:database": "vitest run --config vitest.database.config.mts test/rm007-schema.integration.test.ts",
     "migrate:clean": "tsx src/db/migrations/cli.ts clean",
     "migrate:existing": "tsx src/db/migrations/cli.ts existing",
     "format": "prettier --config ../.prettierrc.json --ignore-path ../.prettierignore --write .",

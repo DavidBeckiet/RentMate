@@ -59,7 +59,7 @@ async function cleanDatabase(): Promise<void> {
 }
 
 async function migrateClean(): Promise<void> {
-  const migrations = await discoverMigrations(migrationDirectory);
+  const migrations = (await discoverMigrations(migrationDirectory)).filter(({ version }) => version <= 9);
   await executeMigrationPlan(pool, createMigrationPlan("clean", migrations));
 }
 

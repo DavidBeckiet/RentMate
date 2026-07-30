@@ -7,7 +7,8 @@ export default defineConfig({
       "test/database-connectivity.test.ts",
       "test/migrations.integration.test.ts",
       "test/rm005-schema.integration.test.ts",
-      "test/rm006-schema.integration.test.ts"
+      "test/rm006-schema.integration.test.ts",
+      "test/rm007-schema.integration.test.ts"
     ],
     exclude: ["node_modules/**", "dist/**", "coverage/**"],
     clearMocks: true,

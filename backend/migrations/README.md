@@ -1,7 +1,7 @@
 # RentMate migration policy
 
-This directory contains ordered RentMate SQL migrations. RM-004 established the runner and policy; RM-005 adds the
-first product-schema migrations.
+This directory contains ordered RentMate SQL migrations. RM-004 established the runner and policy; RM-005 through
+RM-007 define the frozen eight-table product schema.
 
 ## RM-005 inventory
 
@@ -38,10 +38,33 @@ RM-006 adds exactly:
 
 Listing deletion cascades database image metadata and listing-amenity relationships. The user and property-type
 parents of a listing remain delete-restricted, and referenced amenities remain delete-restricted. RM-006 adds no
-explicit application index; those indexes belong to RM-007. `favorites` and `moderation_history` are not implemented.
+explicit application index; those indexes belong to RM-007.
 
-The current schema has exactly two RentMate enum types and six of the final eight product tables. Existing migration
-files are immutable, and normal backend startup does not discover or execute migrations.
+## RM-007 inventory
+
+RM-007 adds exactly:
+
+10. `0010_create_favorites.sql` creates `favorites` with composite primary key `(tenant_id, listing_id)`. Deleting a
+    referenced user or listing cascades its favorite rows, while parent-key updates are restricted. Listing status and
+    account activity do not cause favorite deletion.
+11. `0011_create_moderation_history.sql` creates `moderation_history`. Its allowed facts are
+    `PENDING -> APPROVED`, `PENDING -> REJECTED`, `APPROVED -> HIDDEN`, and `HIDDEN -> APPROVED`; rejection and hiding
+    require a nonblank reason. Restrictive listing and administrator references preserve history during ordinary
+    parent deletion and key-update attempts.
+12. `0012_create_explicit_indexes.sql` creates exactly:
+    `idx_listings_status_updated_at`, `idx_listings_landlord_updated_at`,
+    `idx_listings_approved_monthly_rent`, `idx_listings_approved_property_type`,
+    `idx_listings_approved_room_area`, `idx_listings_approved_latitude`,
+    `idx_listings_approved_longitude`, `idx_listing_amenities_amenity_listing`,
+    `idx_favorites_tenant_created_at`, and `idx_moderation_history_listing_created_at`.
+
+The five `idx_listings_approved_*` indexes have the single predicate `status = 'APPROVED'`. RM-007 creates no unique
+application index, covering `INCLUDE` index, text/trigram index, geospatial extension or index, active-user index, or
+duplicate index already served by a primary key or unique constraint.
+
+The current schema has exactly two RentMate enum types and all eight frozen product tables, with no migration
+bookkeeping table. RM-008 application authentication and authorization are not implemented by these migrations.
+Existing migration files are immutable, and normal backend startup does not discover or execute migrations.
 
 ## File convention and discovery
 
@@ -125,6 +148,15 @@ $env:TEST_DATABASE_URL = "postgresql://rentmate:rentmate_dev_password@localhost:
 npm.cmd run test:rm006:database
 ```
 
+Run the focused RM-007 inventory and PostgreSQL schema checks:
+
+```powershell
+npm.cmd run test:rm007
+
+$env:TEST_DATABASE_URL = "postgresql://rentmate:rentmate_dev_password@localhost:5432/rentmate_test"
+npm.cmd run test:rm007:database
+```
+
 Database integration tests require an explicit `TEST_DATABASE_URL` targeting `rentmate_test` or
 `rentmate_test_*`:
 
@@ -134,10 +166,10 @@ npm.cmd run test:migrations:database
 ```
 
 The safety guard rejects missing or unsafe targets before connecting. Integration fixtures use only the explicitly
-owned `rm004_*`, `rm005_*`, and `rm006_*` test objects plus the known RentMate tables and enum types. They clean only
+owned `rm004_*`, `rm005_*`, `rm006_*`, and `rm007_*` test objects plus the known RentMate tables and enum types. They clean only
 those objects and never create, drop, truncate, or mutate the development database.
 
-To execute all nine migrations, explicitly point the migration command at a clean isolated database:
+To execute all twelve migrations, explicitly point the migration command at a clean isolated database:
 
 ```powershell
 $env:NODE_ENV = "test"

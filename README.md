@@ -1,7 +1,7 @@
 # RentMate
 
 RentMate is a map-based room rental platform. The repository currently contains the project skeleton, runtime
-foundation, migration runner, and the RM-006 six-table database schema. Product endpoints and application
+foundation, migration runner, and the RM-007 eight-table database schema. Product endpoints and application
 workflows have not been implemented.
 
 ## Prerequisites
@@ -119,11 +119,28 @@ RM-006 adds:
 - `0009_create_listing_amenities.sql`: the listing-to-amenity junction.
 
 Deleting a listing cascades its image metadata and amenity relationships. Deleting referenced users, property types,
-and amenities remains restricted where specified. RM-006 creates no explicit application index; the approved indexes
-belong to RM-007.
+and amenities remains restricted where specified.
 
-The database now has exactly two RentMate enum types and six of the final eight product tables. `favorites` and
-`moderation_history` are not implemented yet.
+RM-007 completes the frozen eight-table product schema:
+
+- `0010_create_favorites.sql`: composite `(tenant_id, listing_id)` favorites with delete cascades from either parent.
+  Favorite rows are not removed merely because a listing status changes or a referenced account becomes inactive.
+- `0011_create_moderation_history.sql`: append-only moderation facts for `PENDING -> APPROVED`,
+  `PENDING -> REJECTED`, `APPROVED -> HIDDEN`, and `HIDDEN -> APPROVED`. Rejection and hiding require a nonblank
+  reason; referenced listings and administrators are delete- and key-update-restricted.
+- `0012_create_explicit_indexes.sql`: exactly the ten approved non-constraint B-tree indexes:
+  `idx_listings_status_updated_at`, `idx_listings_landlord_updated_at`,
+  `idx_listings_approved_monthly_rent`, `idx_listings_approved_property_type`,
+  `idx_listings_approved_room_area`, `idx_listings_approved_latitude`,
+  `idx_listings_approved_longitude`, `idx_listing_amenities_amenity_listing`,
+  `idx_favorites_tenant_created_at`, and `idx_moderation_history_listing_created_at`.
+
+The five `idx_listings_approved_*` indexes use only `WHERE status = 'APPROVED'`; active-landlord visibility remains an
+application query rule. RM-007 adds no unique application index, covering `INCLUDE` index, text-search index, trigram,
+geospatial extension/index, active-user index, or duplicate index for a primary-key/unique-constraint prefix.
+
+The database now has exactly two RentMate enum types and all eight frozen product tables, with no migration
+bookkeeping table. RM-008 application authentication and authorization are not implemented by RM-007.
 
 Preview a clean-database plan:
 
@@ -158,7 +175,16 @@ $env:TEST_DATABASE_URL = "postgresql://rentmate:rentmate_dev_password@localhost:
 npm.cmd run test:rm006:database
 ```
 
-To apply all nine migrations to an explicitly selected clean isolated database:
+Run the focused RM-007 inventory and schema checks with:
+
+```powershell
+npm.cmd run test:rm007
+
+$env:TEST_DATABASE_URL = "postgresql://rentmate:rentmate_dev_password@localhost:5432/rentmate_test"
+npm.cmd run test:rm007:database
+```
+
+To apply all twelve migrations to an explicitly selected clean isolated database:
 
 ```powershell
 $env:NODE_ENV = "test"

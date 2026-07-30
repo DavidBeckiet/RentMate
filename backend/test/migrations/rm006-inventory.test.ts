@@ -32,7 +32,7 @@ function normalizedSha256(contents: string): string {
 
 describe("RM-006 migration inventory", () => {
   it("contains unique sequential versions 0001 through 0009", async () => {
-    const migrations = await discoverMigrations(migrationDirectory);
+    const migrations = (await discoverMigrations(migrationDirectory)).filter(({ version }) => version <= 9);
 
     expect(migrations.map(({ filename }) => filename)).toStrictEqual(expectedFilenames);
     expect(migrations.map(({ version }) => version)).toStrictEqual([1, 2, 3, 4, 5, 6, 7, 8, 9]);
@@ -43,7 +43,7 @@ describe("RM-006 migration inventory", () => {
   });
 
   it("selects the exact clean and existing-deployment plans", async () => {
-    const migrations = await discoverMigrations(migrationDirectory);
+    const migrations = (await discoverMigrations(migrationDirectory)).filter(({ version }) => version <= 9);
 
     expect(createMigrationPlan("clean", migrations).migrations.map(({ version }) => version)).toStrictEqual([
       1, 2, 3, 4, 5, 6, 7, 8, 9
@@ -77,7 +77,7 @@ describe("RM-006 migration inventory", () => {
     const rm006Sql = (
       await Promise.all(
         migrations
-          .filter(({ version }) => version >= 7)
+          .filter(({ version }) => version >= 7 && version <= 9)
           .map(({ path: migrationPath }) => readFile(migrationPath, "utf8"))
       )
     ).join("\n");

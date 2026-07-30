@@ -27,6 +27,8 @@
     "test:rm005:database": "npm --prefix backend run test:rm005:database",
     "test:rm006": "npm --prefix backend run test:rm006",
     "test:rm006:database": "npm --prefix backend run test:rm006:database",
+    "test:rm007": "npm --prefix backend run test:rm007",
+    "test:rm007:database": "npm --prefix backend run test:rm007:database",
     "migrate:clean": "npm --prefix backend run migrate:clean --",
     "migrate:existing": "npm --prefix backend run migrate:existing --",
     "format": "prettier --write .",
