@@ -91,6 +91,38 @@ The database test command rejects missing configuration, the development databas
 `rentmate_test*` namespace. It performs only a read-only connectivity query; it does not create, drop, migrate, seed,
 or clean any database. Never point `TEST_DATABASE_URL` at development or production data.
 
+## Database migrations
+
+Migration files live in `backend/migrations` and use the fixed `0001_descriptive_name.sql` convention. RM-004 adds the
+runner and policy only; the directory intentionally has no product SQL until RM-005.
+
+Preview a clean-database plan:
+
+```powershell
+npm.cmd run migrate:clean -- --plan-only
+```
+
+Existing deployments require an external JSON version record and select only newer repository migrations:
+
+```powershell
+npm.cmd run migrate:existing -- --manifest .\deployment-version.json --plan-only
+```
+
+Remove `--plan-only` to execute the validated plan. The runner uses one transaction per migration file, stops after
+the first failure, and never creates a database bookkeeping table. Normal backend startup does not run migrations.
+
+Run migration unit and isolated PostgreSQL integration tests with:
+
+```powershell
+npm.cmd run test:migrations
+
+$env:TEST_DATABASE_URL = "postgresql://rentmate:rentmate_dev_password@localhost:5432/rentmate_test"
+npm.cmd run test:migrations:database
+```
+
+See [backend/migrations/README.md](backend/migrations/README.md) for external manifest ownership, mismatch handling,
+partial-failure recovery, migration immutability, and forward-fix policy.
+
 ## Health endpoint
 
 `GET http://localhost:4000/api/health`
