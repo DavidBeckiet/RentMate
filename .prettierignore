@@ -1,0 +1,23 @@
+# Dependencies and generated output
+node_modules/
+frontend/node_modules/
+backend/node_modules/
+.next/
+frontend/.next/
+backend/dist/
+dist/
+coverage/
+*.tsbuildinfo
+
+# Environment secrets, uploaded assets, external data, and temporary files
+.env
+.env.*
+!.env.example
+uploads/
+public/uploads/
+data/
+tmp/
+
+# Frozen specifications and repository policy are not formatting targets
+docs/
+AGENTS.md

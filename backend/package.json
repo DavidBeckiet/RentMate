@@ -2,11 +2,19 @@
   "name": "rentmate-backend",
   "version": "0.1.0",
   "private": true,
+  "engines": {
+    "node": ">=22.15.1 <23",
+    "npm": ">=10.9.2 <11"
+  },
+  "packageManager": "npm@10.9.2",
   "scripts": {
     "dev": "tsx watch src/server.ts",
     "build": "tsc",
     "start": "node dist/server.js",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint src eslint.config.mjs --max-warnings=0",
+    "format": "prettier --config ../.prettierrc.json --ignore-path ../.prettierignore --write .",
+    "format:check": "prettier --config ../.prettierrc.json --ignore-path ../.prettierignore --check ."
   },
   "dependencies": {
     "cors": "2.8.5",
@@ -15,11 +23,14 @@
     "pg": "8.16.0"
   },
   "devDependencies": {
+    "@eslint/js": "9.39.4",
     "@types/cors": "2.8.17",
     "@types/express": "5.0.3",
     "@types/node": "22.15.30",
     "@types/pg": "8.15.4",
+    "eslint": "9.39.4",
     "tsx": "4.19.4",
-    "typescript": "5.8.3"
+    "typescript": "5.8.3",
+    "typescript-eslint": "8.65.0"
   }
 }

@@ -7,9 +7,7 @@ export const metadata: Metadata = {
   description: "RentMate project skeleton"
 };
 
-export default function RootLayout({
-  children
-}: Readonly<{ children: ReactNode }>) {
+export default function RootLayout({ children }: Readonly<{ children: ReactNode }>) {
   return (
     <html lang="en">
       <body>{children}</body>
