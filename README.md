@@ -1,7 +1,7 @@
 # RentMate
 
 RentMate is a map-based room rental platform. The repository currently contains the project skeleton, runtime
-foundation, migration runner, and the RM-005 foundational database schema. Product endpoints and application
+foundation, migration runner, and the RM-006 six-table database schema. Product endpoints and application
 workflows have not been implemented.
 
 ## Prerequisites
@@ -91,7 +91,8 @@ npm.cmd --prefix backend run test:database
 
 The database test command rejects missing configuration, the development database name, and names outside the
 `rentmate_test*` namespace. The suite includes both a read-only connectivity check and isolated migration tests that
-create, verify, and clean RM-005 objects. Never point `TEST_DATABASE_URL` at development or production data.
+create, verify, and clean known RentMate test objects. Never point `TEST_DATABASE_URL` at development or production
+data.
 
 ## Database migrations
 
@@ -110,8 +111,19 @@ The two seed migrations are repeat-safe: they reconcile the frozen label for an 
 identity or changing `is_active`. A retired lookup row with `is_active = false` therefore remains retired when seeds
 run again.
 
-RM-005 is an intermediate schema milestone with exactly two RentMate enum types and three product tables. It is not
-the complete frozen eight-table schema; the remaining five tables belong to later roadmap tasks.
+RM-006 adds:
+
+- `0007_create_listings.sql`: progressive listing drafts and scalar completeness outside `DRAFT`.
+- `0008_create_listing_images.sql`: Cloudinary metadata with unique slots `1` through `8`; listing/order uniqueness
+  is deferrable and initially immediate.
+- `0009_create_listing_amenities.sql`: the listing-to-amenity junction.
+
+Deleting a listing cascades its image metadata and amenity relationships. Deleting referenced users, property types,
+and amenities remains restricted where specified. RM-006 creates no explicit application index; the approved indexes
+belong to RM-007.
+
+The database now has exactly two RentMate enum types and six of the final eight product tables. `favorites` and
+`moderation_history` are not implemented yet.
 
 Preview a clean-database plan:
 
@@ -136,6 +148,29 @@ npm.cmd run test:migrations
 $env:TEST_DATABASE_URL = "postgresql://rentmate:rentmate_dev_password@localhost:5432/rentmate_test"
 npm.cmd run test:migrations:database
 ```
+
+Run the focused RM-006 checks with:
+
+```powershell
+npm.cmd run test:rm006
+
+$env:TEST_DATABASE_URL = "postgresql://rentmate:rentmate_dev_password@localhost:5432/rentmate_test"
+npm.cmd run test:rm006:database
+```
+
+To apply all nine migrations to an explicitly selected clean isolated database:
+
+```powershell
+$env:NODE_ENV = "test"
+$env:DB_HOST = "localhost"
+$env:DB_PORT = "5432"
+$env:DB_NAME = "rentmate_test"
+$env:DB_USER = "rentmate"
+$env:DB_PASSWORD = "rentmate_dev_password"
+npm.cmd run migrate:clean
+```
+
+Use this only when `rentmate_test` is clean. Never point a clean migration command at development or production data.
 
 See [backend/migrations/README.md](backend/migrations/README.md) for external manifest ownership, mismatch handling,
 partial-failure recovery, migration immutability, and forward-fix policy.

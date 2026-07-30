@@ -26,6 +26,23 @@ retirement state.
 RM-005 currently creates exactly two RentMate enum types and three product tables. This is not the complete frozen
 eight-table schema: the remaining product tables are owned by later roadmap tasks.
 
+## RM-006 inventory
+
+RM-006 adds exactly:
+
+7. `0007_create_listings.sql` creates `listings`. Drafts may be incomplete, while
+   `ck_listings_non_draft_complete` requires every frozen scalar field outside `DRAFT`.
+8. `0008_create_listing_images.sql` creates `listing_images`. Display slots are limited to `1` through `8`, and
+   unique `(listing_id, display_order)` is `DEFERRABLE INITIALLY IMMEDIATE`.
+9. `0009_create_listing_amenities.sql` creates the two-column `listing_amenities` junction.
+
+Listing deletion cascades database image metadata and listing-amenity relationships. The user and property-type
+parents of a listing remain delete-restricted, and referenced amenities remain delete-restricted. RM-006 adds no
+explicit application index; those indexes belong to RM-007. `favorites` and `moderation_history` are not implemented.
+
+The current schema has exactly two RentMate enum types and six of the final eight product tables. Existing migration
+files are immutable, and normal backend startup does not discover or execute migrations.
+
 ## File convention and discovery
 
 - Migration filenames use exactly four numeric version digits, a lowercase snake-case description, and `.sql`, for
@@ -99,6 +116,15 @@ Run pure discovery, planning, CLI, and execution tests:
 npm.cmd run test:migrations
 ```
 
+Run the focused RM-006 inventory and PostgreSQL schema checks:
+
+```powershell
+npm.cmd run test:rm006
+
+$env:TEST_DATABASE_URL = "postgresql://rentmate:rentmate_dev_password@localhost:5432/rentmate_test"
+npm.cmd run test:rm006:database
+```
+
 Database integration tests require an explicit `TEST_DATABASE_URL` targeting `rentmate_test` or
 `rentmate_test_*`:
 
@@ -108,5 +134,19 @@ npm.cmd run test:migrations:database
 ```
 
 The safety guard rejects missing or unsafe targets before connecting. Integration fixtures use only the explicitly
-owned `rm004_*` and `rm005_*` test objects plus the three RM-005 product tables and two enum types. They clean only
+owned `rm004_*`, `rm005_*`, and `rm006_*` test objects plus the known RentMate tables and enum types. They clean only
 those objects and never create, drop, truncate, or mutate the development database.
+
+To execute all nine migrations, explicitly point the migration command at a clean isolated database:
+
+```powershell
+$env:NODE_ENV = "test"
+$env:DB_HOST = "localhost"
+$env:DB_PORT = "5432"
+$env:DB_NAME = "rentmate_test"
+$env:DB_USER = "rentmate"
+$env:DB_PASSWORD = "rentmate_dev_password"
+npm.cmd run migrate:clean
+```
+
+Never use the clean command against development or production data.

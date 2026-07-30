@@ -57,7 +57,7 @@ async function cleanDatabase(): Promise<void> {
 }
 
 async function createRepositoryPlan(appliedVersion?: number): Promise<MigrationPlan> {
-  const migrations = await discoverMigrations(migrationDirectory);
+  const migrations = (await discoverMigrations(migrationDirectory)).filter(({ version }) => version <= 6);
   return appliedVersion === undefined
     ? createMigrationPlan("clean", migrations)
     : createMigrationPlan("existing", migrations, { appliedVersion });

@@ -16,7 +16,7 @@ const expectedFilenames = [
 
 describe("RM-005 migration inventory", () => {
   it("contains exactly the six ordered RM-005 migration files", async () => {
-    const migrations = await discoverMigrations(migrationDirectory);
+    const migrations = (await discoverMigrations(migrationDirectory)).filter(({ version }) => version <= 6);
 
     expect(migrations.map(({ filename }) => filename)).toStrictEqual(expectedFilenames);
     expect(migrations.map(({ version }) => version)).toStrictEqual([1, 2, 3, 4, 5, 6]);
@@ -28,7 +28,7 @@ describe("RM-005 migration inventory", () => {
   });
 
   it("does not add bookkeeping, idempotent DDL, indexes, or later-task schema", async () => {
-    const migrations = await discoverMigrations(migrationDirectory);
+    const migrations = (await discoverMigrations(migrationDirectory)).filter(({ version }) => version <= 6);
     const sql = (await Promise.all(migrations.map((migration) => readFile(migration.path, "utf8")))).join("\n");
 
     expect(sql).not.toMatch(/\bIF\s+NOT\s+EXISTS\b/i);
