@@ -1,13 +1,16 @@
-import type { Server } from "node:http";
 import type { Logger } from "./shared/logging/logger.js";
 
+export interface HttpServerCloser {
+  close(callback: (error?: Error) => void): void;
+}
+
 export interface ShutdownDependencies {
-  readonly server: Server;
+  readonly server: HttpServerCloser;
   readonly closeDatabase: () => Promise<void>;
   readonly logger: Logger;
 }
 
-function closeHttpServer(server: Server): Promise<void> {
+function closeHttpServer(server: HttpServerCloser): Promise<void> {
   return new Promise((resolve, reject) => {
     server.close((error) => {
       if (error) {

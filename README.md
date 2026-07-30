@@ -57,6 +57,40 @@ policy blocks the `npm.ps1` shim; in other shells, use the equivalent `npm` comm
 
 Open http://localhost:3000. The page calls the backend health endpoint and reports the API and database status.
 
+## Tests
+
+Run the deterministic backend and frontend test suites from the repository root:
+
+```powershell
+npm.cmd run test
+```
+
+Run either suite separately:
+
+```powershell
+npm.cmd run test:backend
+npm.cmd run test:frontend
+```
+
+Backend database connectivity tests require a separate disposable database whose name starts with `rentmate_test`.
+Create it once in the local PostgreSQL container:
+
+```powershell
+docker compose exec -T postgres createdb -U rentmate rentmate_test
+```
+
+Set `TEST_DATABASE_URL` to that database, either in the repository-root `.env` copied from `.env.example` or in the
+current shell, then run:
+
+```powershell
+$env:TEST_DATABASE_URL = "postgresql://rentmate:rentmate_dev_password@localhost:5432/rentmate_test"
+npm.cmd --prefix backend run test:database
+```
+
+The database test command rejects missing configuration, the development database name, and names outside the
+`rentmate_test*` namespace. It performs only a read-only connectivity query; it does not create, drop, migrate, seed,
+or clean any database. Never point `TEST_DATABASE_URL` at development or production data.
+
 ## Health endpoint
 
 `GET http://localhost:4000/api/health`

@@ -13,6 +13,7 @@
     "start": "next start",
     "typecheck": "tsc --noEmit",
     "lint": "eslint . --max-warnings=0",
+    "test": "vitest run --config vitest.config.mts",
     "format": "prettier --config ../.prettierrc.json --ignore-path ../.prettierignore --write .",
     "format:check": "prettier --config ../.prettierrc.json --ignore-path ../.prettierignore --check ."
   },
@@ -23,14 +24,20 @@
   },
   "devDependencies": {
     "@eslint/eslintrc": "3.3.6",
+    "@testing-library/dom": "10.4.1",
+    "@testing-library/jest-dom": "7.0.0",
+    "@testing-library/react": "16.3.2",
     "@types/node": "22.15.30",
     "@types/react": "19.1.6",
     "@types/react-dom": "19.1.5",
+    "@vitejs/plugin-react": "5.2.0",
     "autoprefixer": "10.4.21",
     "eslint": "9.39.4",
     "eslint-config-next": "15.5.9",
+    "jsdom": "29.1.1",
     "postcss": "8.5.5",
     "tailwindcss": "3.4.17",
-    "typescript": "5.8.3"
+    "typescript": "5.8.3",
+    "vitest": "4.1.10"
   }
 }

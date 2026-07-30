@@ -11,8 +11,10 @@
     "dev": "tsx watch src/server.ts",
     "build": "tsc",
     "start": "node dist/server.js",
-    "typecheck": "tsc --noEmit",
-    "lint": "eslint src eslint.config.mjs --max-warnings=0",
+    "typecheck": "tsc --noEmit && tsc --noEmit -p tsconfig.test.json",
+    "lint": "eslint src test vitest.config.mts vitest.database.config.mts eslint.config.mjs --max-warnings=0",
+    "test": "vitest run --config vitest.config.mts",
+    "test:database": "vitest run --config vitest.database.config.mts",
     "format": "prettier --config ../.prettierrc.json --ignore-path ../.prettierignore --write .",
     "format:check": "prettier --config ../.prettierrc.json --ignore-path ../.prettierignore --check ."
   },
@@ -28,9 +30,12 @@
     "@types/express": "5.0.3",
     "@types/node": "22.15.30",
     "@types/pg": "8.15.4",
+    "@types/supertest": "7.2.1",
     "eslint": "9.39.4",
+    "supertest": "7.2.2",
     "tsx": "4.19.4",
     "typescript": "5.8.3",
-    "typescript-eslint": "8.65.0"
+    "typescript-eslint": "8.65.0",
+    "vitest": "4.1.10"
   }
 }
