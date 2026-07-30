@@ -470,15 +470,17 @@ The backend uses centralized Express error middleware and a consistent JSON enve
 Expected status categories are:
 
 - `400` for malformed requests
-- `401` for missing, invalid, or expired authentication
-- `403` for role, ownership, Origin, or protected-field denial
-- `404` for missing resources
+- `401` for missing, invalid, expired, or inactive authentication on a protected route
+- `403` for an authenticated user with the wrong role, Origin denial, or protected-field denial
+- `404` for missing resources, public detail requests for non-public listings, and non-owner landlords requesting another landlord's owner-scoped listing or nested image
 - `409` for invalid state transitions or duplicate relationships
 - `422` for business-data validation failures
 - `429` for rate limiting
 - `502` for Nominatim or Cloudinary failures
 - `503` for database or service unavailability
 - `500` for unexpected internal failures
+
+The owner-scoped `404` rule intentionally prevents disclosure of another landlord's private resource existence. It does not replace role authorization: an authenticated caller with the wrong role still receives `403` before an owner-scoped resource lookup.
 
 Provider response formats, SQL errors, stack traces, secrets, passwords, hashes, cookies, and JWTs must not appear in client responses.
 

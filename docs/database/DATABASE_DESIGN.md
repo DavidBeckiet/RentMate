@@ -471,6 +471,8 @@ Property types and amenities use lookup tables because they are selectable catal
 
 The service must reject newly selecting an inactive property type or amenity. Existing listings may continue to reference retired values so historical and current listing data remain interpretable.
 
+Submission is not a new lookup selection. For both `DRAFT -> PENDING` and `HIDDEN -> PENDING`, existing property-type and amenity references must resolve to known lookup rows, but references validly selected before retirement remain acceptable. Unknown or broken references are invalid. The active-value requirement continues to apply whenever listing create or PATCH newly selects a property type or amenity.
+
 ## 18. Listing lifecycle implications
 
 The schema stores only the current listing status and content. Legal transitions are:
@@ -537,8 +539,8 @@ Image minimum is intentionally not part of scalar completeness because a row che
 
 - A draft may have zero through eight images.
 - A listing cannot have more than eight image rows because display slots are restricted to 1 through 8 and unique per listing.
-- Submission from `DRAFT` to `PENDING` requires at least one persisted image.
-- The minimum-one-image rule is checked by the service in the submission transaction.
+- Both submission transitions—`DRAFT -> PENDING` and `HIDDEN -> PENDING`—require at least one persisted image.
+- The minimum-one-image rule is checked by the service while holding the listing lock in the submission transaction. A normal intact `HIDDEN` listing already satisfies the non-draft minimum-image invariant, but submission still verifies it.
 - Images must not exceed 5 MiB (`5242880` bytes).
 - Uploads accept only `image/jpeg`, `image/png`, and `image/webp`.
 - Width and height must be positive.
@@ -765,12 +767,14 @@ Submission must:
 
 1. Begin a transaction.
 2. Lock the listing with `SELECT ... FOR UPDATE`.
-3. Verify owner, active landlord role, and expected `DRAFT` status.
-4. Verify scalar completeness and controlled-value activity.
+3. Verify owner, active landlord role, and that the current status is either `DRAFT` or `HIDDEN`.
+4. Verify scalar completeness and that existing property-type and amenity references resolve to known lookup rows. Submission is not a new selection, so known references validly selected before retirement remain acceptable; unknown or broken references are invalid.
 5. Count persisted image rows and require at least one.
 6. Update status to `PENDING` with an expected-status predicate.
 7. Update `updated_at`.
 8. Commit.
+
+The transaction permits only `DRAFT -> PENDING` and `HIDDEN -> PENDING`. Newly selecting an inactive lookup value remains forbidden during listing create or PATCH.
 
 ### Draft deletion
 
