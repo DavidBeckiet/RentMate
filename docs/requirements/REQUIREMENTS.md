@@ -36,8 +36,8 @@ The system shall allow a tenant to:
 
 - Register as a tenant.
 - Log in and log out securely.
-- Browse only listings with `APPROVED` status.
-- Search listings by title, address, or area.
+- Browse only publicly visible listings: listings with `APPROVED` status whose owning landlord account is active.
+- Search listings by title or public-safe approximate area.
 - View listings in both list and interactive map formats.
 - View listing markers on the map.
 - Search for listings within a selected radius of a chosen map point or the user’s current location.
@@ -55,9 +55,9 @@ The system shall allow a tenant to:
   - Room area
   - Amenities
   - Images
-- View the landlord’s phone number and/or email address on an approved listing detail page when authenticated as a tenant.
+- View the landlord’s phone number and email address on a publicly visible approved listing detail page when authenticated as a tenant.
 - Not view landlord contact information when not authenticated.
-- Add approved listings to favorites.
+- Add publicly visible approved listings to favorites.
 - Remove listings from favorites.
 - View their saved favorite listings.
 
@@ -67,7 +67,7 @@ The system shall allow a landlord to:
 
 - Register as a landlord.
 - Log in and log out securely.
-- Provide and confirm a phone number and/or email address for tenant contact.
+- Provide the required login email and required phone number for tenant contact; phone is not an authentication identifier and has no SMS-verification workflow.
 - Create rental listings.
 - Save a listing as a draft before submitting it.
 - Enter required listing information:
@@ -103,7 +103,7 @@ The system shall allow an admin to:
 - Hide an approved listing that is inappropriate, fraudulent, or no longer suitable for public display.
 - View listing moderation history.
 - View user accounts.
-- Deactivate or reactivate user accounts when necessary.
+- Deactivate or reactivate `TENANT` and `LANDLORD` accounts when necessary; the MVP API shall not deactivate or reactivate `ADMIN` accounts.
 
 ## 4. Shared system functions
 
@@ -124,7 +124,7 @@ Each listing shall have one of the following statuses:
 
 - `DRAFT`: Created by a landlord but not submitted for review.
 - `PENDING`: Submitted and awaiting admin review.
-- `APPROVED`: Approved by an admin and visible to tenants.
+- `APPROVED`: Approved by an admin and eligible for tenant visibility while the owning landlord account is active.
 - `REJECTED`: Rejected by an admin and not visible publicly.
 - `HIDDEN`: Removed from public visibility by an admin.
 - `INACTIVE`: Marked unavailable by the landlord.
@@ -136,10 +136,14 @@ The system shall enforce valid listing state transitions.
 - An admin may move an `APPROVED` listing to `HIDDEN`.
 - A landlord may mark their own listing as `INACTIVE`.
 - Significant changes to an approved listing should return it to `PENDING` for re-moderation.
+- A landlord may permanently delete an owned listing only when it is `DRAFT` and has never produced a moderation-history entry. A previously moderated listing cannot be hard-deleted even if a later edit returns it to `DRAFT`.
+- A landlord may explicitly submit a `HIDDEN` listing for review, changing it to `PENDING`. The MVP does not require proof of a content difference before this submission.
 
 ### 4.3 Moderation history
 
 The system shall record a moderation history entry when an admin changes a listing’s moderation status.
+
+Moderation history is authoritative and must not be deleted to make a previously moderated listing eligible for hard deletion.
 
 Each entry shall include:
 
@@ -152,15 +156,15 @@ Each entry shall include:
 
 ### 4.4 Contact information visibility
 
-The system shall store a landlord’s phone number and/or email address as account contact information.
+The system shall store a landlord’s required phone number and required login email as account contact information.
 
 The system shall:
 
-- Display landlord contact information only on approved listing detail pages.
+- Display landlord contact information only on detail pages for publicly visible approved listings.
 - Display contact information only to authenticated users with the tenant role.
 - Not include landlord phone numbers or email addresses in responses intended for anonymous users.
 - Not expose contact information on public listing cards, search results, or map markers.
-- Allow landlords to provide or update their own contact information.
+- Allow landlords to update their mutable contact information, specifically their required phone number; the login email remains immutable in the MVP.
 - Allow admins to view landlord contact information for moderation and account-management purposes.
 
 The MVP shall provide direct contact-information display only. It shall not include in-app messaging, chat, contact requests, or communication tracking.
@@ -169,7 +173,7 @@ The MVP shall provide direct contact-information display only. It shall not incl
 
 The system shall:
 
-- Return only approved and active listings to tenant-facing search endpoints.
+- Return only listings with `APPROVED` status and an active owning landlord to tenant-facing search endpoints.
 - Support filtering by price, room area, property type, and amenities.
 - Support pagination for listing search results.
 - Support map-based search within the current visible map area or a selected search area.
@@ -220,7 +224,7 @@ The system shall:
 
 ### Privacy
 
-- Landlord phone numbers and email addresses shall be visible only to authenticated tenants on approved listing detail pages.
+- Landlord phone numbers and email addresses shall be visible only to authenticated tenants on detail pages for publicly visible approved listings.
 - Anonymous users shall not receive landlord contact information from public APIs or user-interface pages.
 - Contact information shall not appear in listing cards, search results, map markers, or public metadata.
 - Exact location display should be considered carefully to protect landlord and tenant privacy.
@@ -228,7 +232,7 @@ The system shall:
 ### Maintainability
 
 - The application shall use a modular-monolith architecture.
-- Backend modules should separate concerns such as authentication, users, listings, search, favorites, moderation, uploads, geocoding, and contact-information access.
+- The backend shall separate concerns across the four main business modules: `auth`, `users`, `listings`, and `favorites`. Search, moderation, and listing-image workflows remain concerns of the `listings` module, while Nominatim and Cloudinary remain infrastructure integration clients rather than additional business modules.
 - TypeScript shall be used in both frontend and backend codebases.
 - API endpoints, database models, and major business rules shall be documented.
 
@@ -241,14 +245,14 @@ The MVP shall include:
 - PostgreSQL database.
 - Tenant and landlord registration and login.
 - JWT authentication and role-based access control.
-- Landlord contact-information provision and update.
-- Direct display of landlord phone number and/or email only to authenticated tenants on approved listing detail pages.
+- Landlord provision and update of the required phone number, with immutable login email.
+- Direct display of landlord phone number and email only to authenticated tenants on detail pages for publicly visible approved listings.
 - Landlord listing draft, submission, editing, status viewing, and deactivation.
 - Cloudinary image upload with basic validation and limits.
 - Nominatim address geocoding.
 - Map-pin confirmation or adjustment before listing submission.
 - Admin listing approval, rejection with reason, hiding, and moderation history.
-- Public browsing of approved listings.
+- Public browsing of listings that are approved and owned by active landlords.
 - Leaflet/OpenStreetMap listing map.
 - Search and filters for price, room area, property type, and amenities.
 - Map-area and radius-based listing search.
@@ -321,7 +325,7 @@ Because geocoding can return inaccurate or ambiguous results, the landlord shall
 
 ### Moderation workflow
 
-Only listings with `APPROVED` status shall be visible in tenant-facing search and map views.
+Listings shall be visible in tenant-facing search and map views only when their status is `APPROVED` and their owning landlord account is active.
 
 Moderation actions shall be recorded in listing moderation history.
 
@@ -329,7 +333,7 @@ Moderation actions shall be recorded in listing moderation history.
 
 The system shall separate public listing data from protected landlord contact data.
 
-The backend shall return landlord contact information only after verifying a valid authenticated tenant session and access to an approved listing detail page.
+The backend shall return landlord contact information only after verifying a valid authenticated tenant session and access to a publicly visible approved listing detail page.
 
 ### Role-based access control
 
@@ -344,7 +348,7 @@ The backend shall enforce permissions based on user roles and listing ownership.
 - The expected number of listings is small enough for PostgreSQL, bounding-box pre-filtering, and Haversine calculations.
 - The primary rental period is monthly.
 - The system will support a limited, predefined set of room types and amenities.
-- Landlords will provide at least one usable contact method: phone number or email address.
+- Every user will provide the immutable login email, and landlords will additionally provide a phone number; tenant phone remains optional.
 - Landlord contact information will be directly displayed only to authenticated tenants; the MVP does not mediate communication between users.
 - Exact location display should be considered carefully to protect landlord and tenant privacy.
 - Internet access is required for map tiles, Nominatim geocoding, and Cloudinary image services.

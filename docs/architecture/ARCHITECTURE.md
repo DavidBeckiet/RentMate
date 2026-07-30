@@ -114,8 +114,8 @@ The backend must not introduce independent deployment boundaries between these m
 | Module or component | Responsibilities |
 |---|---|
 | `auth` | Tenant and landlord registration, login, logout, bcrypt password handling, JWT creation and verification, and public-admin-registration prevention |
-| `users` | User profiles, roles, account activation state, landlord phone and optional email, and authorized contact-information access |
-| `listings` | Listing drafts, ownership, updates, deletion of owned drafts, lifecycle transitions, public details, filtering, map search, radius search, image metadata coordination, moderation, and moderation history |
+| `users` | User profiles, roles, account activation state, required immutable login email, landlord phone, optional tenant phone, and authorized contact-information access |
+| `listings` | Listing drafts, ownership, updates, deletion of eligible owned drafts, lifecycle transitions, public details, filtering, map search, radius search, image metadata coordination, moderation, and moderation history |
 | `favorites` | Adding, removing, and retrieving tenant favorites with tenant and listing-visibility checks |
 | `nominatim.client` | Nominatim request construction, timeout handling, identifying headers, response normalization, and provider-error conversion |
 | `cloudinary.client` | Cloudinary upload and removal operations and provider-error conversion |
@@ -191,7 +191,7 @@ All external calls must use bounded timeouts and convert provider-specific failu
 
 Tenant and landlord registration is public. Admin registration is forbidden. Admin accounts are provisioned manually or through controlled seed data.
 
-During registration, the backend validates the request, hashes the password using bcrypt, and stores the permitted user role. During login, the backend verifies the password and account activation state before issuing a JWT.
+During registration, the backend validates the request, normalizes and stores the required email, hashes the password using bcrypt, and stores the permitted user role. Email is the only login identifier and is immutable through MVP profile APIs. After successful tenant or landlord account creation, registration immediately creates the normal authenticated session by issuing the two-hour JWT and setting the approved host-only HttpOnly cookie. During login, the backend verifies the password and account activation state before issuing the same JWT and cookie.
 
 The JWT contains only the identity and authorization claims required by the MVP, including user identifier, role, issued time, and expiry. The JWT lifetime is two hours. The MVP has no refresh-token system; users log in again after token expiry.
 
@@ -236,17 +236,29 @@ The combination of same-site deployment, `SameSite=Lax`, exact credential-aware 
 
 Landlord contact information belongs to the user profile, not to individual listings.
 
-A landlord must provide at least one valid phone number. Email is optional. Phone validity means server-side format validation; SMS verification is not included in the MVP.
+Every user must provide a valid email, which is the immutable MVP login identifier. A landlord must additionally provide a valid phone number. Phone is optional for a tenant and is never used for authentication. Phone validity means server-side format validation; SMS verification is not included in the MVP.
 
 The API applies the following field-level visibility policy:
 
 - Anonymous search, map, listing-card, and listing-detail responses contain no landlord phone or email.
-- An authenticated tenant viewing the detail of an `APPROVED` listing may receive the landlord phone number and optional email.
-- A landlord may view and update their own contact information.
+- An authenticated tenant viewing the detail of an `APPROVED` listing may receive the landlord phone number and email.
+- A landlord may view their own account contact information and update their required phone number.
+- MVP profile APIs do not allow any user to change their login email.
 - An admin may view landlord contact information for moderation and user management.
 - An authenticated landlord does not receive another landlord's private contact fields merely by viewing a public listing.
 
 Public response objects must be explicitly mapped. Raw database rows containing private contact fields must not be returned directly.
+
+### Public listing visibility
+
+A listing is publicly visible if and only if both of these conditions are true:
+
+- `listings.status = 'APPROVED'`
+- The owning landlord's `users.is_active = true`
+
+The same predicate applies to public listing search, public listing detail, map-bound search, radius search, and tenant favorites retrieval. Public and tenant-facing repository queries must join the owning `users` row and enforce both conditions.
+
+When an admin deactivates a landlord account, the existing statuses of that landlord's listings do not change and no `moderation_history` row is created. The listings disappear from public and tenant-facing results because the owner no longer satisfies the visibility predicate. If the account is later reactivated, listings whose status is still `APPROVED` become publicly visible again; listings in any other state remain non-public.
 
 ## 13. Listing lifecycle and state-transition rules
 
@@ -255,7 +267,7 @@ The approved listing states are `DRAFT`, `PENDING`, `APPROVED`, `REJECTED`, `INA
 | Current state | Action | Next state | Authorized actor |
 |---|---|---|---|
 | `DRAFT` | Submit a complete listing | `PENDING` | Owner landlord |
-| `DRAFT` | Permanently delete | Deleted | Owner landlord |
+| `DRAFT` with no moderation history | Permanently delete | Deleted | Owner landlord |
 | `PENDING` | Approve | `APPROVED` | Admin |
 | `PENDING` | Reject with a reason | `REJECTED` | Admin |
 | `REJECTED` | Edit rejected content | `DRAFT` | Owner landlord |
@@ -264,17 +276,17 @@ The approved listing states are `DRAFT`, `PENDING`, `APPROVED`, `REJECTED`, `INA
 | `APPROVED` | Deactivate | `INACTIVE` | Owner landlord |
 | `APPROVED` | Hide with a reason | `HIDDEN` | Admin |
 | `INACTIVE` | Reactivate without significant changes | `APPROVED` | Owner landlord |
-| `INACTIVE` | Significantly edit and explicitly resubmit | `PENDING` | Owner landlord |
-| `HIDDEN` | Remediate and explicitly resubmit | `PENDING` | Owner landlord |
+| `INACTIVE` | Make a significant content edit | `PENDING` | Owner landlord |
+| `HIDDEN` | Explicitly submit for review | `PENDING` | Owner landlord |
 | `HIDDEN` | Restore | `APPROVED` | Admin |
 
-A `DRAFT` is the only listing state that the owner may permanently delete directly. A rejected listing must be edited, thereby returning to `DRAFT`, before it can be resubmitted or deleted.
+A landlord may permanently delete an owned listing only when its current status is `DRAFT` and no `moderation_history` row exists for it. A newly created, unmoderated draft is therefore deletable. A rejected listing may return to `DRAFT` through a real edit and may later be resubmitted, but it remains non-deletable because its authoritative moderation history must be preserved. An attempted deletion of such a draft returns `409 Conflict` with an application error such as `LISTING_DELETE_NOT_ALLOWED`.
 
 A landlord may edit a `PENDING` listing, and it remains `PENDING`. Admin moderation must always act on the current stored listing data.
 
-A hidden listing remains `HIDDEN` while the landlord performs remediation. It changes to `PENDING` only through explicit resubmission.
+A hidden listing remains `HIDDEN` while the landlord performs remediation. It changes to `PENDING` only through explicit landlord submission. The service does not require proof that content changed before accepting that submission because the MVP stores no revision marker; the listing remains non-public and receives a new admin review.
 
-An unchanged inactive listing may return directly to `APPROVED`. Significant changes to an inactive listing require an explicit submit-for-review action and result in `PENDING`.
+An inactive listing may return directly to `APPROVED` because a listing that is still `INACTIVE` has not received a significant content edit since deactivation. Any significant edit to an `INACTIVE` listing updates the content and changes its status to `PENDING` immediately in the same checked transaction.
 
 Listing revision or version tables are not used. A significant edit updates the listing in place and removes it from public results while it awaits approval.
 
@@ -289,12 +301,13 @@ Significant edits include:
 - Monthly price
 - Property type
 - Room area
-- Public address information
+- Exact/internal address (`address_text`)
+- Public approximate area (`area_name`)
 - Exact latitude or longitude
 - Amenities
 - Adding an image
 - Removing an image
-- Replacing an image
+- A UI-level image replacement, represented by separate image addition and removal operations
 
 The following actions are not significant content edits:
 
@@ -304,6 +317,18 @@ The following actions are not significant content edits:
 - Updating landlord profile contact information
 
 An approved listing that receives a significant edit changes immediately to `PENDING`. Because the MVP does not retain an approved revision, the listing is temporarily removed from tenant-facing results until an admin approves the current content.
+
+The final significant-edit behavior is:
+
+- A `DRAFT` remains `DRAFT`.
+- A `REJECTED` listing changes to `DRAFT`.
+- A `PENDING` listing remains `PENDING`.
+- An `APPROVED` listing changes to `PENDING`.
+- An `INACTIVE` listing changes to `PENDING` immediately in the same checked transaction.
+- A `HIDDEN` listing remains `HIDDEN` during remediation and changes to `PENDING` only through explicit landlord resubmission.
+- An authorized admin may restore a `HIDDEN` listing directly to `APPROVED`.
+
+A request that produces no normalized content change is a no-op and must not cause a status transition. These state rules are enforced explicitly by listing and image services; no database trigger, content marker, or listing revision table is used.
 
 Property types and amenities use predefined controlled values. Their exact approved values are deferred to Database Design.
 
@@ -345,13 +370,13 @@ Leaflet runs in a Client Component. When a user moves or zooms the map, the fron
 
 The user explicitly requests a refresh using an action such as “Search this area.” The frontend does not issue a new request for every map movement.
 
-The backend validates the bounds, applies listing filters, restricts results to publicly visible `APPROVED` listings, and queries exact stored coordinates within the supplied ranges. The response provides rounded coordinates for display.
+The backend validates the bounds, applies listing filters, enforces the public visibility predicate (`listings.status = 'APPROVED'` and active owning landlord), and queries exact stored coordinates within the supplied ranges. The response provides rounded coordinates for display.
 
 The map and listing-card view must use the same search parameters and backend response so they do not show inconsistent result sets. A maximum map-result limit prevents excessive browser markers.
 
 ## 18. Bounding-box + Haversine radius-search architecture
 
-Radius search uses PostgreSQL without PostGIS.
+Radius search uses PostgreSQL without PostGIS. The initial MVP deployment region is Ho Chi Minh City, Vietnam.
 
 The frontend sends:
 
@@ -361,7 +386,7 @@ The frontend sends:
 - Listing filters
 - Pagination parameters
 
-The backend validates coordinate ranges, the supported geographic area, radius limits, filters, and pagination.
+The backend validates coordinate ranges, the supported Ho Chi Minh City deployment scope, filters, pagination, and a configuration-driven maximum radius. The approved maximum is 50 kilometres, represented by backend configuration such as `MAX_SEARCH_RADIUS_KM=50`; it is not hard-coded into database relationships or lookup data.
 
 The listings search service calculates an approximate bounding box in TypeScript:
 
@@ -372,7 +397,7 @@ longitude delta ≈ radiusKm / (111.32 × cos(latitude))
 
 The listings search repository then executes one parameterized PostgreSQL query:
 
-1. A candidate step restricts approved listings using exact latitude and longitude ranges.
+1. A candidate step joins the owning landlord and restricts rows to `listings.status = 'APPROVED'`, `users.is_active = true`, and the exact latitude and longitude ranges.
 2. Haversine distance is calculated in PostgreSQL only for those candidates.
 3. Candidates beyond the exact requested radius are removed.
 4. Remaining results are ordered by distance with a stable listing-identifier tie-breaker.
@@ -413,15 +438,20 @@ The MVP uses backend-mediated Cloudinary uploads.
 Limits are:
 
 - Maximum eight images per listing
-- Maximum five megabytes per image
-- Allowed image types restricted during implementation
+- Maximum 5 MiB (`5242880` bytes) per image
+- Allowed MIME types: `image/jpeg`, `image/png`, and `image/webp`
 - Image ordering supported
 
 Uploads may be held in memory only within the enforced size limit. The backend must not keep permanent local upload files.
 
 If Cloudinary succeeds but database persistence fails, the backend performs best-effort immediate removal of the uploaded asset and logs any cleanup failure. No queue or background cleanup service is introduced.
 
-Adding, removing, or replacing an image is a significant edit. Reordering the same images is not.
+The MVP has no dedicated atomic image-replacement API and no separate provider/database replacement transaction. A UI-level replacement is composed from the existing upload and delete operations:
+
+- With fewer than eight current images, the UI may upload the new image before deleting the old image.
+- With exactly eight current images, the UI may delete the old image first and then upload the new image.
+
+Each upload or delete is authorized, validated, and persisted as its own operation. Non-draft listings must retain at least one image after each completed operation. Adding or deleting an image is a significant edit and follows the state rules above, including immediate `INACTIVE` to `PENDING` transition in the same checked database transaction as the metadata mutation. Reordering the same images is not significant and does not cause a status transition.
 
 ## 21. Error-handling strategy
 
@@ -469,6 +499,7 @@ Backend configuration includes:
 - Cloudinary credentials
 - Nominatim base URL and application identification
 - Image limits
+- Deployment region and `MAX_SEARCH_RADIUS_KM=50`
 - Logging level
 
 Frontend-public configuration uses `NEXT_PUBLIC_` only for values safe to expose to the browser, such as the API base URL. Database credentials, JWT secrets, Cloudinary secrets, and other backend credentials must never use `NEXT_PUBLIC_`.
