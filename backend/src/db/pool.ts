@@ -1,8 +1,32 @@
-import { Pool } from "pg";
-import { env } from "../config/env.js";
+import { Pool, type PoolConfig } from "pg";
+import type { BackendConfig } from "../config/env.js";
+import type { Logger } from "../shared/logging/logger.js";
 
-export const databasePool = new Pool(env.database);
+export function createDatabasePool(config: BackendConfig["database"], logger: Logger): Pool {
+  const poolConfig: PoolConfig = {
+    host: config.host,
+    port: config.port,
+    database: config.database,
+    user: config.user,
+    password: config.password,
+    connectionTimeoutMillis: 5_000
+  };
 
-export async function checkDatabaseConnection(): Promise<void> {
-  await databasePool.query("SELECT 1");
+  const pool = new Pool(poolConfig);
+
+  pool.on("error", (error) => {
+    logger.error("Unexpected idle PostgreSQL pool error", {
+      errorType: error.name
+    });
+  });
+
+  return pool;
+}
+
+export async function checkDatabaseConnection(pool: Pool): Promise<void> {
+  await pool.query("SELECT 1");
+}
+
+export async function closeDatabasePool(pool: Pool): Promise<void> {
+  await pool.end();
 }
