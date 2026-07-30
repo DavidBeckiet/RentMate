@@ -1,6 +1,8 @@
 # RentMate
 
-RentMate is a map-based room rental platform. This repository currently contains the initial project skeleton only; no product features, database tables, or application workflows have been implemented.
+RentMate is a map-based room rental platform. The repository currently contains the project skeleton, runtime
+foundation, migration runner, and the RM-005 foundational database schema. Product endpoints and application
+workflows have not been implemented.
 
 ## Prerequisites
 
@@ -88,13 +90,28 @@ npm.cmd --prefix backend run test:database
 ```
 
 The database test command rejects missing configuration, the development database name, and names outside the
-`rentmate_test*` namespace. It performs only a read-only connectivity query; it does not create, drop, migrate, seed,
-or clean any database. Never point `TEST_DATABASE_URL` at development or production data.
+`rentmate_test*` namespace. The suite includes both a read-only connectivity check and isolated migration tests that
+create, verify, and clean RM-005 objects. Never point `TEST_DATABASE_URL` at development or production data.
 
 ## Database migrations
 
-Migration files live in `backend/migrations` and use the fixed `0001_descriptive_name.sql` convention. RM-004 adds the
-runner and policy only; the directory intentionally has no product SQL until RM-005.
+Migration files live in `backend/migrations` and use the fixed `0001_descriptive_name.sql` convention. RM-005
+currently provides:
+
+- `0001_create_enum_types.sql`: `user_role` and `listing_status`.
+- `0002_create_users.sql`: the foundational `users` table.
+- `0003_create_property_types.sql`: the `property_types` catalog.
+- `0004_create_amenities.sql`: the `amenities` catalog.
+- `0005_seed_property_types.sql`: `ROOM`, `STUDIO`, `APARTMENT`, `HOUSE`, and `DORMITORY`.
+- `0006_seed_amenities.sql`: `AIR_CONDITIONING`, `WIFI`, `FURNISHED`, `PRIVATE_BATHROOM`, `KITCHEN`, `REFRIGERATOR`,
+  `WASHING_MACHINE`, `PARKING`, `ELEVATOR`, `SECURITY`, `BALCONY`, and `PET_FRIENDLY`.
+
+The two seed migrations are repeat-safe: they reconcile the frozen label for an existing code without replacing its
+identity or changing `is_active`. A retired lookup row with `is_active = false` therefore remains retired when seeds
+run again.
+
+RM-005 is an intermediate schema milestone with exactly two RentMate enum types and three product tables. It is not
+the complete frozen eight-table schema; the remaining five tables belong to later roadmap tasks.
 
 Preview a clean-database plan:
 

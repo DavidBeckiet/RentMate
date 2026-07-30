@@ -23,6 +23,8 @@
     "test:frontend": "npm --prefix frontend run test",
     "test:migrations": "npm --prefix backend run test:migrations",
     "test:migrations:database": "npm --prefix backend run test:migrations:database",
+    "test:rm005": "npm --prefix backend run test:rm005",
+    "test:rm005:database": "npm --prefix backend run test:rm005:database",
     "migrate:clean": "npm --prefix backend run migrate:clean --",
     "migrate:existing": "npm --prefix backend run migrate:existing --",
     "format": "prettier --write .",

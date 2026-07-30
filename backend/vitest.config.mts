@@ -7,6 +7,7 @@ export default defineConfig({
     exclude: [
       "test/database-connectivity.test.ts",
       "test/migrations.integration.test.ts",
+      "test/rm005-schema.integration.test.ts",
       "node_modules/**",
       "dist/**",
       "coverage/**"

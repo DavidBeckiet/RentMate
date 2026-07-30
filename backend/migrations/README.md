@@ -1,7 +1,30 @@
 # RentMate migration policy
 
-This directory contains ordered RentMate SQL migrations. RM-004 establishes the runner and policy only, so it
-intentionally contains no SQL migration. RM-005 will add the first product-schema migration.
+This directory contains ordered RentMate SQL migrations. RM-004 established the runner and policy; RM-005 adds the
+first product-schema migrations.
+
+## RM-005 inventory
+
+The current migration inventory is:
+
+1. `0001_create_enum_types.sql` creates `user_role` with `TENANT`, `LANDLORD`, and `ADMIN`, and `listing_status` with
+   `DRAFT`, `PENDING`, `APPROVED`, `REJECTED`, `HIDDEN`, and `INACTIVE`.
+2. `0002_create_users.sql` creates the foundational `users` table.
+3. `0003_create_property_types.sql` creates the `property_types` catalog.
+4. `0004_create_amenities.sql` creates the `amenities` catalog.
+5. `0005_seed_property_types.sql` seeds `ROOM` (`Room`), `STUDIO` (`Studio`), `APARTMENT` (`Apartment`), `HOUSE`
+   (`House`), and `DORMITORY` (`Dormitory`).
+6. `0006_seed_amenities.sql` seeds `AIR_CONDITIONING` (`Air conditioning`), `WIFI` (`Wi-Fi`), `FURNISHED`
+   (`Furnished`), `PRIVATE_BATHROOM` (`Private bathroom`), `KITCHEN` (`Kitchen`), `REFRIGERATOR` (`Refrigerator`),
+   `WASHING_MACHINE` (`Washing machine`), `PARKING` (`Parking`), `ELEVATOR` (`Elevator`), `SECURITY` (`Security`),
+   `BALCONY` (`Balcony`), and `PET_FRIENDLY` (`Pet-friendly`).
+
+Both catalog seeds use the code as their conflict key and update only the frozen label. Repeating the seed files does
+not create duplicate rows or replace identities, and it deliberately preserves an existing `is_active = false`
+retirement state.
+
+RM-005 currently creates exactly two RentMate enum types and three product tables. This is not the complete frozen
+eight-table schema: the remaining product tables are owned by later roadmap tasks.
 
 ## File convention and discovery
 
@@ -84,5 +107,6 @@ $env:TEST_DATABASE_URL = "postgresql://rentmate:rentmate_dev_password@localhost:
 npm.cmd run test:migrations:database
 ```
 
-The safety guard rejects missing or unsafe targets before connecting. Integration fixtures use only `rm004_*`
-test tables, clean only those objects, and never create, drop, truncate, or mutate the development database.
+The safety guard rejects missing or unsafe targets before connecting. Integration fixtures use only the explicitly
+owned `rm004_*` and `rm005_*` test objects plus the three RM-005 product tables and two enum types. They clean only
+those objects and never create, drop, truncate, or mutate the development database.
