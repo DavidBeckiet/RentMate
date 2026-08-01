@@ -5,7 +5,7 @@ import { isUserRole, type UserRole } from "../../shared/types/authentication.js"
 
 const maximumUserId = 2_147_483_647;
 
-export interface CreatedUserRow extends QueryResultRow {
+export interface UserProfileRow extends QueryResultRow {
   readonly id: number;
   readonly role: UserRole;
   readonly email: string;
@@ -15,7 +15,7 @@ export interface CreatedUserRow extends QueryResultRow {
   readonly updated_at: Date | string;
 }
 
-export interface RegisteredUser {
+export interface UserProfile {
   readonly id: number;
   readonly role: UserRole;
   readonly email: string;
@@ -37,7 +37,7 @@ export interface UserProfileDto {
 
 export class UserProfileMappingError extends Error {
   constructor() {
-    super("Created user row is invalid.");
+    super("User profile row is invalid.");
     this.name = "UserProfileMappingError";
   }
 }
@@ -46,7 +46,7 @@ function isValidUserId(value: unknown): value is number {
   return Number.isInteger(value) && (value as number) >= 1 && (value as number) <= maximumUserId;
 }
 
-export function mapCreatedUserRow(row: Readonly<CreatedUserRow>): RegisteredUser {
+export function mapUserProfileRow(row: Readonly<UserProfileRow>): UserProfile {
   if (
     !isValidUserId(row.id) ||
     !isUserRole(row.role) ||
@@ -78,7 +78,7 @@ export function mapCreatedUserRow(row: Readonly<CreatedUserRow>): RegisteredUser
   });
 }
 
-export function mapRegisteredUserToProfile(user: Readonly<RegisteredUser>): UserProfileDto {
+export function mapUserProfileToDto(user: Readonly<UserProfile>): UserProfileDto {
   if (
     !isValidUserId(user.id) ||
     !isUserRole(user.role) ||

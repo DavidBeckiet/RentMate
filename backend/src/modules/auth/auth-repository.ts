@@ -2,7 +2,7 @@ import type { QueryResultRow } from "pg";
 import type { SqlExecutor } from "../../db/sql-executor.js";
 import { queryExactlyOne, queryOptional } from "../../db/repository-primitives.js";
 import type { UserRole } from "../../shared/types/authentication.js";
-import { mapCreatedUserRow, type CreatedUserRow, type RegisteredUser } from "./user-profile.js";
+import { mapUserProfileRow, type UserProfile, type UserProfileRow } from "../users/user-profile.js";
 
 export interface CreateUserRecord {
   readonly role: "TENANT" | "LANDLORD";
@@ -12,7 +12,7 @@ export interface CreateUserRecord {
 }
 
 export interface AuthRepository {
-  createUser(input: CreateUserRecord): Promise<RegisteredUser>;
+  createUser(input: CreateUserRecord): Promise<UserProfile>;
 }
 
 export interface LoginAccount {
@@ -30,7 +30,7 @@ export interface LoginAuthRepository {
   findLoginAccount(email: string): Promise<LoginAccount | null>;
 }
 
-export interface LoginAccountRow extends CreatedUserRow, QueryResultRow {
+export interface LoginAccountRow extends UserProfileRow, QueryResultRow {
   readonly password_hash: string;
 }
 
@@ -67,7 +67,7 @@ export function mapLoginAccountRow(row: Readonly<LoginAccountRow>): LoginAccount
     throw new LoginAccountMappingError();
   }
 
-  const user = mapCreatedUserRow(row);
+  const user = mapUserProfileRow(row);
   return Object.freeze({
     ...user,
     passwordHash: row.password_hash
@@ -76,9 +76,9 @@ export function mapLoginAccountRow(row: Readonly<LoginAccountRow>): LoginAccount
 
 export function createAuthRepository(executor: SqlExecutor): AuthRepository & LoginAuthRepository {
   return Object.freeze({
-    async createUser(input: CreateUserRecord): Promise<RegisteredUser> {
+    async createUser(input: CreateUserRecord): Promise<UserProfile> {
       try {
-        return await queryExactlyOne<CreatedUserRow, RegisteredUser>(
+        return await queryExactlyOne<UserProfileRow, UserProfile>(
           executor,
           {
             text: `
@@ -100,7 +100,7 @@ export function createAuthRepository(executor: SqlExecutor): AuthRepository & Lo
             `,
             values: [input.role as UserRole, input.email, input.phone, input.passwordHash]
           },
-          mapCreatedUserRow
+          mapUserProfileRow
         );
       } catch (error) {
         if (isEmailUniqueViolation(error)) {

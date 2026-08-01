@@ -46,7 +46,7 @@ describe("RM-009 application and roadmap isolation", () => {
     expect(source).not.toMatch(/\b(?:migrate|migration|bootstrap|provision|schema.?verification)\b/i);
   });
 
-  it("adds no migration after 0012 and does not introduce a product module repository", async () => {
+  it("adds no migration after 0012 and does not introduce later product repositories", async () => {
     const migrationFiles = (await readdir(path.resolve(process.cwd(), "migrations")))
       .filter((filename) => filename.endsWith(".sql"))
       .sort();
@@ -54,9 +54,9 @@ describe("RM-009 application and roadmap isolation", () => {
 
     expect(migrationFiles).toHaveLength(12);
     expect(migrationFiles.at(-1)).toBe("0012_create_explicit_indexes.sql");
-    expect(
-      sourceFiles.some((filename) => /src[\\/]+modules[\\/]+(?:users|listings|favorites)[\\/]/.test(filename))
-    ).toBe(false);
+    expect(sourceFiles.some((filename) => /src[\\/]+modules[\\/]+(?:listings|favorites)[\\/]/.test(filename))).toBe(
+      false
+    );
     expect(sourceFiles.some((filename) => /base-?repository/i.test(filename))).toBe(false);
   });
 

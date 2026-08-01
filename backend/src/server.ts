@@ -11,7 +11,11 @@ import { createRegistrationService } from "./modules/auth/registration-service.j
 import { registerAuthRoutes } from "./modules/auth/routes.js";
 import { createSessionCookieService } from "./modules/auth/session-cookie.js";
 import { createSessionTokenService } from "./modules/auth/session-token.js";
+import { registerUsersRoutes } from "./modules/users/routes.js";
+import { createUsersRepository } from "./modules/users/users-repository.js";
+import { createUsersService } from "./modules/users/users-service.js";
 import { createLogger } from "./shared/logging/logger.js";
+import { createProtectedAuthenticationMiddleware } from "./shared/middleware/authentication.js";
 import { InMemoryRateLimitStore } from "./shared/middleware/rate-limit.js";
 import { createShutdownHandler } from "./shutdown.js";
 
@@ -51,7 +55,14 @@ async function startBackend(): Promise<void> {
   const passwordService = createPasswordService({ bcryptCost: config.auth.bcryptCost });
   const sessionTokenService = createSessionTokenService({ secret: config.auth.jwtSecret });
   const sessionCookieService = createSessionCookieService({ secure: config.auth.cookieSecure });
-  const authRepository = createAuthRepository(createSqlExecutor(databasePool));
+  const sqlExecutor = createSqlExecutor(databasePool);
+  const authRepository = createAuthRepository(sqlExecutor);
+  const usersRepository = createUsersRepository(sqlExecutor);
+  const usersService = createUsersService(usersRepository);
+  const requiredAuthentication = createProtectedAuthenticationMiddleware({
+    verifySessionToken: sessionTokenService.verify,
+    loadAuthenticationAccount: usersRepository.findAuthenticationAccountById
+  });
   const registrationService = createRegistrationService({ passwordService, authRepository });
   const missingAccountPasswordHash = await passwordService.hashPassword(randomBytes(32).toString("base64url"));
   const loginService = createLoginService({
@@ -65,7 +76,7 @@ async function startBackend(): Promise<void> {
     frontendOrigin: config.frontendOrigin,
     logger,
     checkDatabaseConnection: () => checkDatabaseConnection(databasePool),
-    registerApiRoutes: (router) =>
+    registerApiRoutes: (router) => {
       registerAuthRoutes(router, {
         registrationService,
         loginService,
@@ -73,7 +84,12 @@ async function startBackend(): Promise<void> {
         sessionCookieService,
         registrationRateLimitStore: authRateLimitStore,
         loginRateLimitStore: authRateLimitStore
-      })
+      });
+      registerUsersRoutes(router, {
+        authenticationMiddleware: requiredAuthentication,
+        usersService
+      });
+    }
   });
   const server = createServer(app);
 

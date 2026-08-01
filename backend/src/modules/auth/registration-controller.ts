@@ -4,7 +4,7 @@ import type { SessionCookieService } from "./session-cookie.js";
 import type { SessionTokenService } from "./session-token.js";
 import { validateRegistrationInput, type RegistrationRole } from "./registration-validation.js";
 import type { RegistrationService } from "./registration-service.js";
-import { mapRegisteredUserToProfile } from "./user-profile.js";
+import { mapUserProfileToDto } from "../users/user-profile.js";
 
 export interface RegistrationControllerDependencies {
   readonly registrationService: RegistrationService;
@@ -26,7 +26,7 @@ export function createRegistrationHandler(
       });
 
       dependencies.sessionCookieService.set(response, token);
-      sendObject(response, mapRegisteredUserToProfile(registeredUser), 201);
+      sendObject(response, mapUserProfileToDto(registeredUser), 201);
     })().catch(next);
   };
 }

@@ -2,10 +2,10 @@ import { ApplicationError } from "../../shared/errors/application-error.js";
 import type { PasswordService } from "./password.js";
 import { RegistrationEmailAlreadyExistsError, type AuthRepository, type CreateUserRecord } from "./auth-repository.js";
 import type { RegistrationInput, RegistrationRole } from "./registration-validation.js";
-import type { RegisteredUser } from "./user-profile.js";
+import type { UserProfile } from "../users/user-profile.js";
 
 export interface RegistrationService {
-  register(role: RegistrationRole, input: RegistrationInput): Promise<RegisteredUser>;
+  register(role: RegistrationRole, input: RegistrationInput): Promise<UserProfile>;
 }
 
 export function createRegistrationService(dependencies: {
@@ -13,7 +13,7 @@ export function createRegistrationService(dependencies: {
   readonly authRepository: AuthRepository;
 }): RegistrationService {
   return Object.freeze({
-    async register(role: RegistrationRole, input: RegistrationInput): Promise<RegisteredUser> {
+    async register(role: RegistrationRole, input: RegistrationInput): Promise<UserProfile> {
       if (role !== "TENANT" && role !== "LANDLORD") {
         throw new Error("Registration role is invalid.");
       }

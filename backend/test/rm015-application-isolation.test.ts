@@ -12,11 +12,11 @@ const silentLogger: Logger = {
 };
 
 describe("RM-015 application isolation", () => {
-  it("keeps all current auth files inside the single auth module", async () => {
+  it("keeps auth files separate from the users-owned profile boundary", async () => {
     const moduleDirectories = await readdir(path.resolve(process.cwd(), "src/modules"));
     const authFiles = (await readdir(path.resolve(process.cwd(), "src/modules/auth"))).sort();
 
-    expect(moduleDirectories).toStrictEqual(["auth"]);
+    expect(moduleDirectories).toStrictEqual(["auth", "users"]);
     expect(authFiles).toEqual([
       "auth-repository.ts",
       "login-controller.ts",
@@ -28,8 +28,7 @@ describe("RM-015 application isolation", () => {
       "registration-validation.ts",
       "routes.ts",
       "session-cookie.ts",
-      "session-token.ts",
-      "user-profile.ts"
+      "session-token.ts"
     ]);
   });
 
@@ -50,10 +49,11 @@ describe("RM-015 application isolation", () => {
       .filter((filename) => filename.endsWith(".sql"))
       .sort();
     const registrationSources = await Promise.all(
-      ["registration-validation.ts", "registration-service.ts", "registration-controller.ts", "user-profile.ts"].map(
-        (filename) => readFile(path.resolve(process.cwd(), "src/modules/auth", filename), "utf8")
+      ["registration-validation.ts", "registration-service.ts", "registration-controller.ts"].map((filename) =>
+        readFile(path.resolve(process.cwd(), "src/modules/auth", filename), "utf8")
       )
     );
+    registrationSources.push(await readFile(path.resolve(process.cwd(), "src/modules/users/user-profile.ts"), "utf8"));
     const routeAndControllerSources = await Promise.all(
       ["routes.ts", "login-controller.ts"].map((filename) =>
         readFile(path.resolve(process.cwd(), "src/modules/auth", filename), "utf8")

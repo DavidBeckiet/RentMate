@@ -4,7 +4,7 @@ import type { SessionCookieService } from "./session-cookie.js";
 import type { SessionTokenService } from "./session-token.js";
 import type { LoginService } from "./login-service.js";
 import { validateLoginInput, validateLogoutBody } from "./login-validation.js";
-import { mapRegisteredUserToProfile } from "./user-profile.js";
+import { mapUserProfileToDto } from "../users/user-profile.js";
 
 export interface LoginControllerDependencies {
   readonly loginService: LoginService;
@@ -24,7 +24,7 @@ export function createLoginHandler(dependencies: LoginControllerDependencies): R
       const token = await dependencies.sessionTokenService.sign({ userId: user.id, role: user.role });
 
       dependencies.sessionCookieService.set(response, token);
-      sendObject(response, mapRegisteredUserToProfile(user));
+      sendObject(response, mapUserProfileToDto(user));
     })().catch(next);
   };
 }

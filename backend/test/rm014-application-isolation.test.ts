@@ -27,7 +27,7 @@ describe("RM-014 application isolation", () => {
     const moduleDirectories = await readdir(path.resolve(process.cwd(), "src/modules"));
     const authFiles = (await readdir(path.resolve(process.cwd(), "src/modules/auth"))).sort();
 
-    expect(moduleDirectories).toStrictEqual(["auth"]);
+    expect(moduleDirectories).toStrictEqual(["auth", "users"]);
     expect(authFiles).toEqual(expect.arrayContaining(["password.ts", "session-cookie.ts", "session-token.ts"]));
   });
 
