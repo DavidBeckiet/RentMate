@@ -305,6 +305,26 @@ $env:TEST_DATABASE_URL = "<postgresql-url-for-rentmate_test>"
 npm.cmd run test:rm009:database
 ```
 
+## Shared HTTP errors and request validation
+
+RM-010 provides the shared HTTP contract used by later versioned handlers without adding a product or authentication
+endpoint. Known application error codes derive their HTTP status from one frozen mapping. General errors use the
+sanitized `{ "error": { "code", "message", "requestId" } }` envelope, while validation errors may add ordered safe
+details. Malformed JSON returns `400`, oversized JSON returns `413`, and unexpected failures return a generic `500`
+without exposing parser content, thrown values, stacks, SQL, credentials, cookies, JWTs, passwords, or hashes. The
+health endpoint remains the separate unwrapped exception documented below.
+
+Shared response helpers emit the exact object, paginated, and bodyless `204` shapes. Pure request helpers reject
+unknown body fields and query parameters, distinguish repeated or structured query values, strictly parse path IDs
+and pagination, and validate the frozen primitive ranges and text limits. They do not define endpoint schemas,
+automatically map DTOs, or implement CORS/Origin, cookies, rate limiting, or authentication middleware.
+
+Run the focused RM-010 suite with:
+
+```powershell
+npm.cmd run test:rm010
+```
+
 ## Health endpoint
 
 `GET http://localhost:4000/api/health`
