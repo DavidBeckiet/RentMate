@@ -8,40 +8,21 @@ export class RepositoryInvariantError extends Error {
   }
 }
 
-type RowMapper<Row extends QueryResultRow, Value> = (row: Row) => Value;
+type RowMapper<Row extends QueryResultRow, Value> = (row: Readonly<Row>) => Value;
 
-function identity<Row extends QueryResultRow>(row: Row): Row {
-  return row;
-}
-
-export function queryMany<Row extends QueryResultRow>(executor: SqlExecutor, query: ParameterizedQuery): Promise<Row[]>;
-export function queryMany<Row extends QueryResultRow, Value>(
+export async function queryMany<Row extends QueryResultRow, Value>(
   executor: SqlExecutor,
   query: ParameterizedQuery,
   mapper: RowMapper<Row, Value>
-): Promise<Value[]>;
-export async function queryMany<Row extends QueryResultRow, Value = Row>(
-  executor: SqlExecutor,
-  query: ParameterizedQuery,
-  mapper: RowMapper<Row, Value> = identity as RowMapper<Row, Value>
 ): Promise<Value[]> {
   const result = await executor.query<Row>(query);
-  return result.rows.map(mapper);
+  return result.rows.map((row) => mapper(row));
 }
 
-export function queryOptional<Row extends QueryResultRow>(
-  executor: SqlExecutor,
-  query: ParameterizedQuery
-): Promise<Row | null>;
-export function queryOptional<Row extends QueryResultRow, Value>(
+export async function queryOptional<Row extends QueryResultRow, Value>(
   executor: SqlExecutor,
   query: ParameterizedQuery,
   mapper: RowMapper<Row, Value>
-): Promise<Value | null>;
-export async function queryOptional<Row extends QueryResultRow, Value = Row>(
-  executor: SqlExecutor,
-  query: ParameterizedQuery,
-  mapper: RowMapper<Row, Value> = identity as RowMapper<Row, Value>
 ): Promise<Value | null> {
   const result = await executor.query<Row>(query);
 
@@ -56,19 +37,10 @@ export async function queryOptional<Row extends QueryResultRow, Value = Row>(
   return mapper(result.rows[0]);
 }
 
-export function queryExactlyOne<Row extends QueryResultRow>(
-  executor: SqlExecutor,
-  query: ParameterizedQuery
-): Promise<Row>;
-export function queryExactlyOne<Row extends QueryResultRow, Value>(
+export async function queryExactlyOne<Row extends QueryResultRow, Value>(
   executor: SqlExecutor,
   query: ParameterizedQuery,
   mapper: RowMapper<Row, Value>
-): Promise<Value>;
-export async function queryExactlyOne<Row extends QueryResultRow, Value = Row>(
-  executor: SqlExecutor,
-  query: ParameterizedQuery,
-  mapper: RowMapper<Row, Value> = identity as RowMapper<Row, Value>
 ): Promise<Value> {
   const result = await executor.query<Row>(query);
 

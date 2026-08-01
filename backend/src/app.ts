@@ -1,4 +1,5 @@
 import express from "express";
+import type { Router } from "express";
 import type { Logger } from "./shared/logging/logger.js";
 import { cookieParserMiddleware } from "./shared/middleware/cookie-parser.js";
 import { createCorsMiddleware } from "./shared/middleware/cors.js";
@@ -11,6 +12,7 @@ export interface AppDependencies {
   readonly frontendOrigin: string;
   readonly logger: Logger;
   readonly checkDatabaseConnection: () => Promise<void>;
+  readonly registerApiRoutes?: (router: Router) => void;
 }
 
 export function createApp(dependencies: AppDependencies): express.Express {
@@ -31,6 +33,10 @@ export function createApp(dependencies: AppDependencies): express.Express {
       response.status(503).json({ status: "error", database: "unavailable" });
     }
   });
+
+  const apiRouter = express.Router();
+  dependencies.registerApiRoutes?.(apiRouter);
+  app.use("/api/v1", apiRouter);
 
   app.use(unexpectedErrorHandler(dependencies.logger));
 

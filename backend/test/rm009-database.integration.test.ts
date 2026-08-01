@@ -203,10 +203,14 @@ describe("RM-009 repository primitive integration", () => {
 
     expect(many).toEqual(["plain", metacharacterValue]);
     await expect(
-      queryOptional<{ value: string }>(executor, {
-        text: "SELECT $1::text AS value WHERE false",
-        values: [metacharacterValue]
-      })
+      queryOptional<{ value: string }, { value: string }>(
+        executor,
+        {
+          text: "SELECT $1::text AS value WHERE false",
+          values: [metacharacterValue]
+        },
+        (row) => ({ value: row.value })
+      )
     ).resolves.toBeNull();
     await expect(
       queryExactlyOne<{ value: string }, string>(
@@ -224,19 +228,26 @@ describe("RM-009 repository primitive integration", () => {
 
 describe("RM-009 PostgreSQL value mapping integration", () => {
   it("keeps numeric values as text until explicit whole and scale-two mapping", async () => {
-    const row = await queryExactlyOne<{
-      rent: string;
-      area: string;
-      unrelated: string;
-    }>(executor, {
-      text: `
-        SELECT
-          999999999999::numeric(12, 0) AS rent,
-          12.34::numeric(8, 2) AS area,
-          123.45::numeric AS unrelated
-      `,
-      values: []
-    });
+    const row = await queryExactlyOne<
+      { rent: string; area: string; unrelated: string },
+      { rent: string; area: string; unrelated: string }
+    >(
+      executor,
+      {
+        text: `
+          SELECT
+            999999999999::numeric(12, 0) AS rent,
+            12.34::numeric(8, 2) AS area,
+            123.45::numeric AS unrelated
+        `,
+        values: []
+      },
+      (databaseRow) => ({
+        rent: databaseRow.rent,
+        area: databaseRow.area,
+        unrelated: databaseRow.unrelated
+      })
+    );
 
     expect(typeof row.rent).toBe("string");
     expect(typeof row.area).toBe("string");
@@ -246,10 +257,14 @@ describe("RM-009 PostgreSQL value mapping integration", () => {
   });
 
   it("maps a known timestamptz to the exact UTC instant", async () => {
-    const row = await queryExactlyOne<{ instant: Date }>(executor, {
-      text: "SELECT $1::timestamptz AS instant",
-      values: ["2026-07-31T15:15:30.123+07:00"]
-    });
+    const row = await queryExactlyOne<{ instant: Date }, { instant: Date }>(
+      executor,
+      {
+        text: "SELECT $1::timestamptz AS instant",
+        values: ["2026-07-31T15:15:30.123+07:00"]
+      },
+      (databaseRow) => ({ instant: new Date(databaseRow.instant.getTime()) })
+    );
     const mapped = mapPgTimestamptz(row.instant, "created_at");
 
     expect(row.instant).toBeInstanceOf(Date);

@@ -365,6 +365,34 @@ Run the focused RM-012 suite with:
 npm.cmd run test:rm012
 ```
 
+## Data boundaries and versioned route composition
+
+RM-013 distinguishes named database rows, application models, and API DTOs. Row-returning repository primitives now
+require an explicit mapper, so PostgreSQL rows cannot leave those helpers merely because a mapper was omitted.
+Repository mappers deliberately convert PostgreSQL values into application values; API projection mappers then build
+new frozen DTOs from a positive field allowlist. They do not spread source objects or remove private fields through a
+blacklist. Public, private, and conditionally enriched responses use separate named projections.
+
+Database timestamps remain parsed by the RM-009 value mappers into validated application `Date` values. At the API
+boundary, RM-013 formats only valid dates as ISO-8601 UTC strings. Contract-nullable fields remain explicit `null`,
+while unauthorized conditional fields are omitted rather than assigned `undefined`.
+
+Test fixtures use deterministic fake defaults, fixed UTC timestamps, explicit overrides, and fresh frozen nested values
+without depending on wall-clock time, environment state, or a database. Future business fixtures stay with their owning
+modules unless repetition later justifies sharing them.
+
+`createApp()` now has an optional route-registration callback and mounts its dedicated router once at `/api/v1`, after
+the global security/body middleware and before centralized error handling. Production startup supplies no callback yet,
+so RM-013 adds no product endpoint. Authentication, role checks, and rate limiting remain route-scoped. Limiter placement
+depends on its key: user-keyed limiting follows authentication (and role checks where disclosure order requires it),
+while IP- or provider-scoped limiting belongs at the relevant route operation.
+
+Run the focused RM-013 suite with:
+
+```powershell
+npm.cmd run test:rm013
+```
+
 ## Health endpoint
 
 `GET http://localhost:4000/api/health`
