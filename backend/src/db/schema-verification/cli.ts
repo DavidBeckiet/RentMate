@@ -1,5 +1,5 @@
 import { EnvironmentConfigurationError, loadEnvironment } from "../../config/env.js";
-import { closeDatabasePool, createDatabasePool } from "../pool.js";
+import { closeDatabasePool, createPostgresPool } from "../pool.js";
 import { createLogger } from "../../shared/logging/logger.js";
 import { SchemaVerificationError, verifyFinalSchema } from "./verify-final-schema.js";
 
@@ -10,7 +10,7 @@ async function runSchemaVerificationCommand(): Promise<void> {
 
   const config = loadEnvironment();
   const logger = createLogger(config.logLevel);
-  const pool = createDatabasePool(config.database, logger);
+  const pool = createPostgresPool(config.database, logger);
 
   try {
     const result = await verifyFinalSchema(pool);

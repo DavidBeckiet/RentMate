@@ -2,7 +2,7 @@ import path from "node:path";
 import { EnvironmentConfigurationError, loadEnvironment } from "../../config/env.js";
 import { AdminProvisioningInputError, readAdminProvisioningInput } from "../admin-provisioning/input.js";
 import { AdminProvisioningConflictError, AdminProvisioningError } from "../admin-provisioning/provision-admin.js";
-import { closeDatabasePool, createDatabasePool } from "../pool.js";
+import { closeDatabasePool, createPostgresPool } from "../pool.js";
 import { SchemaVerificationError } from "../schema-verification/verify-final-schema.js";
 import { createLogger } from "../../shared/logging/logger.js";
 import { bootstrapDatabase, DatabaseBootstrapError } from "./bootstrap-database.js";
@@ -17,7 +17,7 @@ async function runDatabaseBootstrapCommand(): Promise<void> {
   const config = loadEnvironment();
   const adminInput = readAdminProvisioningInput();
   const logger = createLogger(config.logLevel);
-  const pool = createDatabasePool(config.database, logger);
+  const pool = createPostgresPool(config.database, logger);
 
   try {
     const result = await bootstrapDatabase({

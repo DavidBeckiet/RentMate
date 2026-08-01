@@ -3,9 +3,18 @@ import path from "node:path";
 
 export const runtimeEnvironments = ["development", "test", "production"] as const;
 export const logLevels = ["debug", "info", "warn", "error"] as const;
+export const deploymentRegions = ["HO_CHI_MINH_CITY_VN"] as const;
+
+export const jwtLifetimeSeconds = 7_200;
+export const maximumImagesPerListing = 8;
+export const maximumImageBytes = 5_242_880;
+export const maximumSearchRadiusKm = 50;
+export const defaultBcryptCost = 12;
 
 export type RuntimeEnvironment = (typeof runtimeEnvironments)[number];
 export type LogLevel = (typeof logLevels)[number];
+export type DeploymentRegion = (typeof deploymentRegions)[number];
+export type EnvironmentSource = Readonly<Record<string, string | undefined>>;
 
 export interface BackendConfig {
   readonly nodeEnv: RuntimeEnvironment;
@@ -18,6 +27,32 @@ export interface BackendConfig {
     readonly database: string;
     readonly user: string;
     readonly password: string;
+    readonly max: number;
+    readonly connectionTimeoutMillis: number;
+    readonly idleTimeoutMillis: number;
+  };
+  readonly auth: {
+    readonly jwtSecret: string;
+    readonly jwtExpiresInSeconds: 7200;
+    readonly bcryptCost: number;
+    readonly cookieSecure: boolean;
+  };
+  readonly cloudinary: {
+    readonly cloudName: string;
+    readonly apiKey: string;
+    readonly apiSecret: string;
+  };
+  readonly nominatim: {
+    readonly baseUrl: string;
+    readonly userAgent: string;
+  };
+  readonly images: {
+    readonly maximumCount: 8;
+    readonly maximumBytes: 5242880;
+  };
+  readonly deployment: {
+    readonly region: DeploymentRegion;
+    readonly maximumSearchRadiusKm: 50;
   };
 }
 
@@ -30,6 +65,11 @@ export class EnvironmentConfigurationError extends Error {
 
 const rootEnvironmentPath = path.resolve(__dirname, "../../..", ".env");
 const developmentDatabasePassword = "rentmate_dev_password";
+const developmentJwtSecret = "rentmate_local_jwt_secret_not_for_production";
+const defaultNominatimBaseUrl = "https://nominatim.openstreetmap.org";
+const defaultNominatimUserAgent = "RentMate local development";
+const minimumBcryptCost = 4;
+const maximumBcryptCost = 31;
 
 let cachedConfig: BackendConfig | undefined;
 let environmentFileLoaded = false;
@@ -48,112 +88,324 @@ function loadEnvironmentFile(): void {
 }
 
 function readEnum<T extends string>(
-  source: NodeJS.ProcessEnv,
+  source: EnvironmentSource,
   key: string,
   allowedValues: readonly T[],
   fallback: T,
+  required: boolean,
   issues: string[]
 ): T {
-  const value = source[key]?.trim() || fallback;
+  const rawValue = source[key]?.trim();
+  if (!rawValue) {
+    if (required) {
+      issues.push(`${key} is required in production`);
+    }
 
-  if (!allowedValues.includes(value as T)) {
+    return fallback;
+  }
+
+  if (!allowedValues.includes(rawValue as T)) {
     issues.push(`${key} must be one of: ${allowedValues.join(", ")}`);
     return fallback;
   }
 
-  return value as T;
+  return rawValue as T;
 }
 
-function readPort(
-  source: NodeJS.ProcessEnv,
+function readInteger(
+  source: EnvironmentSource,
   key: string,
   fallback: number,
   required: boolean,
+  minimum: number,
+  maximum: number,
   issues: string[]
 ): number {
   const rawValue = source[key]?.trim();
 
   if (!rawValue) {
     if (required) {
-      issues.push(`${key} is required`);
+      issues.push(`${key} is required in production`);
     }
 
     return fallback;
   }
 
   const parsed = Number(rawValue);
-  if (!Number.isInteger(parsed) || parsed < 1 || parsed > 65_535) {
-    issues.push(`${key} must be an integer between 1 and 65535`);
+  if (!Number.isInteger(parsed) || parsed < minimum || parsed > maximum) {
+    issues.push(`${key} must be an integer between ${minimum} and ${maximum}`);
     return fallback;
   }
 
   return parsed;
 }
 
+function isDocumentedPlaceholder(value: string): boolean {
+  const normalized = value.trim().toLowerCase();
+
+  return (
+    (normalized.startsWith("<") && normalized.endsWith(">")) ||
+    normalized === "placeholder" ||
+    normalized === "changeme" ||
+    normalized === "change_me" ||
+    normalized === "replace_me" ||
+    normalized === "replace-me" ||
+    normalized.startsWith("your_") ||
+    normalized.startsWith("your-")
+  );
+}
+
 function readString(
-  source: NodeJS.ProcessEnv,
+  source: EnvironmentSource,
   key: string,
   fallback: string,
   required: boolean,
   issues: string[],
-  trim = true
+  options: {
+    readonly trim?: boolean;
+    readonly rejectPlaceholder?: boolean;
+  } = {}
 ): string {
   const rawValue = source[key];
-  const value = trim ? rawValue?.trim() : rawValue;
+  const value = options.trim === false ? rawValue : rawValue?.trim();
 
-  if (!value) {
+  if (!value || value.trim().length === 0) {
     if (required) {
-      issues.push(`${key} is required`);
+      issues.push(`${key} is required in production`);
     }
 
+    return fallback;
+  }
+
+  if (options.rejectPlaceholder && isDocumentedPlaceholder(value)) {
+    issues.push(`${key} must not use a documented placeholder in production`);
     return fallback;
   }
 
   return value;
 }
 
-function readFrontendOrigin(source: NodeJS.ProcessEnv, nodeEnv: RuntimeEnvironment, issues: string[]): string {
+function readBoolean(
+  source: EnvironmentSource,
+  key: string,
+  fallback: boolean,
+  required: boolean,
+  issues: string[]
+): boolean {
+  const rawValue = source[key]?.trim().toLowerCase();
+
+  if (!rawValue) {
+    if (required) {
+      issues.push(`${key} is required in production`);
+    }
+
+    return fallback;
+  }
+
+  if (rawValue !== "true" && rawValue !== "false") {
+    issues.push(`${key} must be either true or false`);
+    return fallback;
+  }
+
+  return rawValue === "true";
+}
+
+function readFrontendOrigin(source: EnvironmentSource, nodeEnv: RuntimeEnvironment, issues: string[]): string {
   const fallback = "http://localhost:3000";
   const value = readString(source, "FRONTEND_ORIGIN", fallback, nodeEnv === "production", issues);
 
   try {
     const parsed = new URL(value);
     const isHttpOrigin = parsed.protocol === "http:" || parsed.protocol === "https:";
-    const isExactOrigin = value === parsed.origin;
+    const hasOnlyOriginPath = parsed.pathname === "/";
+    const hasCredentials = parsed.username.length > 0 || parsed.password.length > 0;
 
-    if (!isHttpOrigin || !isExactOrigin) {
-      issues.push("FRONTEND_ORIGIN must be an exact HTTP or HTTPS origin");
+    if (
+      !isHttpOrigin ||
+      !parsed.hostname ||
+      !hasOnlyOriginPath ||
+      parsed.search.length > 0 ||
+      parsed.hash.length > 0 ||
+      parsed.hostname.includes("*") ||
+      hasCredentials
+    ) {
+      issues.push("FRONTEND_ORIGIN must contain only an exact HTTP or HTTPS origin");
     } else if (nodeEnv === "production" && parsed.protocol !== "https:") {
       issues.push("FRONTEND_ORIGIN must use HTTPS in production");
+    } else {
+      return parsed.origin;
     }
   } catch {
     issues.push("FRONTEND_ORIGIN must be a valid URL origin");
   }
 
+  return fallback;
+}
+
+function readDatabaseHost(source: EnvironmentSource, production: boolean, issues: string[]): string {
+  const fallback = "localhost";
+  const value = readString(source, "DB_HOST", fallback, production, issues, {
+    rejectPlaceholder: production
+  });
+
+  if (/[\s/@?#]/.test(value) || value.includes("://")) {
+    issues.push("DB_HOST must be a hostname or IP address without credentials or URL components");
+    return fallback;
+  }
+
   return value;
 }
 
-function parseEnvironment(source: NodeJS.ProcessEnv): BackendConfig {
-  const issues: string[] = [];
-  const nodeEnv = readEnum(source, "NODE_ENV", runtimeEnvironments, "development", issues);
-  const production = nodeEnv === "production";
-  const password = readString(source, "DB_PASSWORD", developmentDatabasePassword, production, issues, false);
+function readNominatimBaseUrl(source: EnvironmentSource, production: boolean, issues: string[]): string {
+  const value = readString(source, "NOMINATIM_BASE_URL", defaultNominatimBaseUrl, production, issues, {
+    rejectPlaceholder: production
+  });
 
-  if (production && password === developmentDatabasePassword) {
+  try {
+    const parsed = new URL(value);
+    const hasCredentials = parsed.username.length > 0 || parsed.password.length > 0;
+
+    if (
+      (parsed.protocol !== "http:" && parsed.protocol !== "https:") ||
+      !parsed.hostname ||
+      parsed.search.length > 0 ||
+      parsed.hash.length > 0 ||
+      parsed.hostname.includes("*") ||
+      hasCredentials
+    ) {
+      issues.push("NOMINATIM_BASE_URL must be an absolute HTTP or HTTPS base URL without credentials");
+    } else if (production && parsed.protocol !== "https:") {
+      issues.push("NOMINATIM_BASE_URL must use HTTPS in production");
+    } else {
+      return parsed.href.replace(/\/$/, "");
+    }
+  } catch {
+    issues.push("NOMINATIM_BASE_URL must be a valid URL");
+  }
+
+  return defaultNominatimBaseUrl;
+}
+
+function requireExactValue(
+  source: EnvironmentSource,
+  key: string,
+  expected: number,
+  production: boolean,
+  issues: string[]
+): number {
+  const value = readInteger(source, key, expected, production, 1, Number.MAX_SAFE_INTEGER, issues);
+
+  if (value !== expected) {
+    issues.push(`${key} must equal the frozen value ${expected}`);
+    return expected;
+  }
+
+  return value;
+}
+
+export function parseEnvironment(source: EnvironmentSource): BackendConfig {
+  const issues: string[] = [];
+  const nodeEnv = readEnum(source, "NODE_ENV", runtimeEnvironments, "development", false, issues);
+  const production = nodeEnv === "production";
+  const password = readString(source, "DB_PASSWORD", developmentDatabasePassword, production, issues, {
+    trim: false,
+    rejectPlaceholder: production
+  });
+  const jwtSecret = readString(source, "JWT_SECRET", developmentJwtSecret, production, issues, {
+    trim: false,
+    rejectPlaceholder: production
+  });
+  const cookieSecure = readBoolean(source, "COOKIE_SECURE", false, production, issues);
+
+  if (production && source.DB_PASSWORD?.trim() === developmentDatabasePassword) {
     issues.push("DB_PASSWORD must not use the development default in production");
+  }
+
+  if (production && source.JWT_SECRET?.trim() === developmentJwtSecret) {
+    issues.push("JWT_SECRET must not use the development default in production");
+  }
+
+  if (production && !cookieSecure) {
+    issues.push("COOKIE_SECURE must be true in production");
   }
 
   const config: BackendConfig = {
     nodeEnv,
-    port: readPort(source, "PORT", 4000, production, issues),
+    port: readInteger(source, "PORT", 4000, production, 1, 65_535, issues),
     frontendOrigin: readFrontendOrigin(source, nodeEnv, issues),
-    logLevel: readEnum(source, "LOG_LEVEL", logLevels, "info", issues),
+    logLevel: readEnum(source, "LOG_LEVEL", logLevels, "info", production, issues),
     database: {
-      host: readString(source, "DB_HOST", "localhost", production, issues),
-      port: readPort(source, "DB_PORT", 5432, production, issues),
-      database: readString(source, "DB_NAME", "rentmate", production, issues),
-      user: readString(source, "DB_USER", "rentmate", production, issues),
-      password
+      host: readDatabaseHost(source, production, issues),
+      port: readInteger(source, "DB_PORT", 5432, production, 1, 65_535, issues),
+      database: readString(source, "DB_NAME", "rentmate", production, issues, {
+        rejectPlaceholder: production
+      }),
+      user: readString(source, "DB_USER", "rentmate", production, issues, {
+        rejectPlaceholder: production
+      }),
+      password,
+      max: readInteger(source, "DB_POOL_MAX", 10, production, 1, 100, issues),
+      connectionTimeoutMillis: readInteger(source, "DB_CONNECTION_TIMEOUT_MS", 5_000, production, 1, 60_000, issues),
+      idleTimeoutMillis: readInteger(source, "DB_IDLE_TIMEOUT_MS", 30_000, production, 1_000, 600_000, issues)
+    },
+    auth: {
+      jwtSecret,
+      jwtExpiresInSeconds: requireExactValue(
+        source,
+        "JWT_EXPIRES_IN_SECONDS",
+        jwtLifetimeSeconds,
+        production,
+        issues
+      ) as 7200,
+      bcryptCost: readInteger(
+        source,
+        "BCRYPT_COST",
+        defaultBcryptCost,
+        production,
+        minimumBcryptCost,
+        maximumBcryptCost,
+        issues
+      ),
+      cookieSecure
+    },
+    cloudinary: {
+      cloudName: readString(source, "CLOUDINARY_CLOUD_NAME", "", production, issues, {
+        rejectPlaceholder: production
+      }),
+      apiKey: readString(source, "CLOUDINARY_API_KEY", "", production, issues, {
+        trim: false,
+        rejectPlaceholder: production
+      }),
+      apiSecret: readString(source, "CLOUDINARY_API_SECRET", "", production, issues, {
+        trim: false,
+        rejectPlaceholder: production
+      })
+    },
+    nominatim: {
+      baseUrl: readNominatimBaseUrl(source, production, issues),
+      userAgent: readString(source, "NOMINATIM_USER_AGENT", defaultNominatimUserAgent, production, issues, {
+        rejectPlaceholder: production
+      })
+    },
+    images: {
+      maximumCount: requireExactValue(
+        source,
+        "MAX_IMAGES_PER_LISTING",
+        maximumImagesPerListing,
+        production,
+        issues
+      ) as 8,
+      maximumBytes: requireExactValue(source, "MAX_IMAGE_BYTES", maximumImageBytes, production, issues) as 5242880
+    },
+    deployment: {
+      region: readEnum(source, "DEPLOYMENT_REGION", deploymentRegions, "HO_CHI_MINH_CITY_VN", production, issues),
+      maximumSearchRadiusKm: requireExactValue(
+        source,
+        "MAX_SEARCH_RADIUS_KM",
+        maximumSearchRadiusKm,
+        production,
+        issues
+      ) as 50
     }
   };
 

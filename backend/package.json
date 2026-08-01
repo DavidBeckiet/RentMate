@@ -25,6 +25,8 @@
     "test:rm007:database": "vitest run --config vitest.database.config.mts test/rm007-schema.integration.test.ts",
     "test:rm008": "vitest run --config vitest.config.mts test/rm008-admin-input.test.ts test/rm008-schema-expectations.test.ts test/rm008-application-isolation.test.ts",
     "test:rm008:database": "vitest run --config vitest.database.config.mts test/rm008-bootstrap.integration.test.ts",
+    "test:rm009": "vitest run --config vitest.config.mts test/rm009-config.test.ts test/rm009-pool.test.ts test/rm009-repository-primitives.test.ts test/rm009-transaction.test.ts test/rm009-value-mappers.test.ts test/rm009-application-isolation.test.ts",
+    "test:rm009:database": "vitest run --config vitest.database.config.mts test/rm009-database.integration.test.ts",
     "migrate:clean": "tsx src/db/migrations/cli.ts clean",
     "migrate:existing": "tsx src/db/migrations/cli.ts existing",
     "admin:provision": "tsx src/db/admin-provisioning/cli.ts",

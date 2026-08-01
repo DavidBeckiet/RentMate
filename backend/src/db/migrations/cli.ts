@@ -1,6 +1,6 @@
 import path from "node:path";
 import { EnvironmentConfigurationError, loadEnvironment } from "../../config/env.js";
-import { closeDatabasePool, createDatabasePool } from "../pool.js";
+import { closeDatabasePool, createPostgresPool } from "../pool.js";
 import { createLogger } from "../../shared/logging/logger.js";
 import { parseMigrationCommandArguments, readDeploymentVersionRecord } from "./command.js";
 import { discoverMigrations } from "./discovery.js";
@@ -55,7 +55,7 @@ async function runMigrationCommand(): Promise<void> {
 
   const config = loadEnvironment();
   const logger = createLogger(config.logLevel);
-  const pool = createDatabasePool(config.database, logger);
+  const pool = createPostgresPool(config.database, logger);
 
   try {
     const result = await executeMigrationPlan(pool, plan);

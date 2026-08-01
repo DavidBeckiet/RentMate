@@ -2,8 +2,8 @@
 
 RentMate is a map-based room rental platform. The repository currently contains the project skeleton, runtime
 foundation, migration runner, the complete Phase 1 database schema, and the RM-008 controlled database bootstrap,
-verification, and admin-provisioning commands. Product endpoints, authentication endpoints, and application workflows
-have not been implemented.
+verification, and admin-provisioning commands. RM-009 adds production configuration validation and shared PostgreSQL
+access foundations. Product endpoints, authentication endpoints, and application workflows have not been implemented.
 
 ## Prerequisites
 
@@ -265,8 +265,45 @@ Existing deployments must not use `db:bootstrap`. Their separate workflow is:
 3. Run `admin:provision` only when a controlled admin must be created.
 4. Advance the external deployment record only after verification succeeds.
 
-The commands never create a migration-history table or edit the external deployment manifest. RM-009 has not been
-implemented.
+The commands never create a migration-history table or edit the external deployment manifest. RM-009 retains those
+boundaries and does not change their provisioning semantics.
+
+## Backend configuration and PostgreSQL access
+
+The backend parses and validates its typed configuration once at startup, before it creates the runtime pool or opens
+the HTTP listener. In production, every required setting must be explicit and valid; a missing, blank, malformed,
+placeholder, or prohibited local-development value causes a sanitized startup failure. Secret values belong only in
+an uncommitted local `.env` or protected deployment environment and are never included in configuration errors.
+
+`FRONTEND_ORIGIN` is one exact origin, not a wildcard or URL path. Production requires HTTPS. Production also requires
+the PostgreSQL settings, `JWT_SECRET`, `COOKIE_SECURE=true`, Cloudinary credentials, an HTTPS Nominatim base URL and
+application-identifying user agent, the frozen image limits, deployment region, 50 km search radius, and an allowed
+log level. RM-009 validates these future integration settings but does not instantiate authentication, cookies, CORS,
+Cloudinary, or Nominatim behavior.
+
+PostgreSQL pools have explicit maximum size, connection timeout, idle timeout, and application name. Every normal
+pool connection starts with the PostgreSQL session timezone set to UTC. Normal backend runtime reuses one lazily
+created pool, while migrations and RM-008 operator commands own and close independent pools.
+
+Use the normal pool executor for a single non-transactional statement. Every multi-write workflow must use the shared
+transaction helper, which checks out one client and uses it for `BEGIN`, all callback queries, and `COMMIT` or
+`ROLLBACK`, then releases it. The callback receives only a parameterized SQL executor and cannot release the client or
+use the global pool accidentally.
+
+Shared repository primitives require query objects with both `text` and `values`, including `values: []` for a query
+without parameters. PostgreSQL `numeric` values are mapped explicitly at repository boundaries: `monthly_rent`
+becomes a checked safe JavaScript integer, and `room_area_sqm` is deliberately converted from PostgreSQL numeric text
+without silent rounding. A `timestamptz` becomes a validated, cloned application `Date` that preserves the exact
+instant. API DTO serialization remains a later explicit mapping concern.
+
+RM-009 adds no endpoint, business repository, migration, or schema object. Run its focused checks with:
+
+```powershell
+npm.cmd run test:rm009
+
+$env:TEST_DATABASE_URL = "<postgresql-url-for-rentmate_test>"
+npm.cmd run test:rm009:database
+```
 
 ## Health endpoint
 

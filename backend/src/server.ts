@@ -1,7 +1,7 @@
 import { createServer, type Server } from "node:http";
 import { createApp } from "./app.js";
 import { EnvironmentConfigurationError, loadEnvironment } from "./config/env.js";
-import { checkDatabaseConnection, closeDatabasePool, createDatabasePool } from "./db/pool.js";
+import { checkDatabaseConnection, closeRuntimePool, getRuntimePool } from "./db/pool.js";
 import { createLogger } from "./shared/logging/logger.js";
 import { createShutdownHandler } from "./shutdown.js";
 
@@ -37,7 +37,7 @@ async function startBackend(): Promise<void> {
   }
 
   const logger = createLogger(config.logLevel);
-  const databasePool = createDatabasePool(config.database, logger);
+  const databasePool = getRuntimePool(config.database, logger);
   const app = createApp({
     frontendOrigin: config.frontendOrigin,
     logger,
@@ -53,7 +53,7 @@ async function startBackend(): Promise<void> {
     });
 
     try {
-      await closeDatabasePool(databasePool);
+      await closeRuntimePool();
     } catch {
       logger.error("PostgreSQL pool cleanup failed after startup error");
     }
@@ -69,7 +69,7 @@ async function startBackend(): Promise<void> {
 
   const shutdown = createShutdownHandler({
     server,
-    closeDatabase: () => closeDatabasePool(databasePool),
+    closeDatabase: closeRuntimePool,
     logger
   });
   const handleSignal = (signal: NodeJS.Signals) => {

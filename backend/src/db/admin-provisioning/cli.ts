@@ -1,5 +1,5 @@
 import { EnvironmentConfigurationError, loadEnvironment } from "../../config/env.js";
-import { closeDatabasePool, createDatabasePool } from "../pool.js";
+import { closeDatabasePool, createPostgresPool } from "../pool.js";
 import { createLogger } from "../../shared/logging/logger.js";
 import { AdminProvisioningInputError, readAdminProvisioningInput } from "./input.js";
 import { AdminProvisioningConflictError, AdminProvisioningError, provisionAdmin } from "./provision-admin.js";
@@ -12,7 +12,7 @@ async function runAdminProvisioningCommand(): Promise<void> {
   const config = loadEnvironment();
   const input = readAdminProvisioningInput();
   const logger = createLogger(config.logLevel);
-  const pool = createDatabasePool(config.database, logger);
+  const pool = createPostgresPool(config.database, logger);
 
   try {
     const result = await provisionAdmin(pool, input);
