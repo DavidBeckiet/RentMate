@@ -54,7 +54,9 @@ describe("RM-009 application and roadmap isolation", () => {
 
     expect(migrationFiles).toHaveLength(12);
     expect(migrationFiles.at(-1)).toBe("0012_create_explicit_indexes.sql");
-    expect(sourceFiles.some((filename) => /src[\\/]+modules[\\/]/.test(filename))).toBe(false);
+    expect(
+      sourceFiles.some((filename) => /src[\\/]+modules[\\/]+(?:users|listings|favorites)[\\/]/.test(filename))
+    ).toBe(false);
     expect(sourceFiles.some((filename) => /base-?repository/i.test(filename))).toBe(false);
   });
 

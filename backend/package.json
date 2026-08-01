@@ -31,6 +31,7 @@
     "test:rm011": "vitest run --config vitest.config.mts test/rm011-security.integration.test.ts test/rm011-application-isolation.test.ts",
     "test:rm012": "vitest run --config vitest.config.mts test/rm012-authentication.integration.test.ts test/rm012-rate-limit.test.ts test/rm012-application-isolation.test.ts",
     "test:rm013": "vitest run --config vitest.config.mts test/rm013-data-boundaries.test.ts test/rm013-middleware-order.integration.test.ts test/rm013-application-isolation.test.ts",
+    "test:rm014": "vitest run --config vitest.config.mts test/rm014-password.test.ts test/rm014-session-token.test.ts test/rm014-session-cookie.test.ts test/rm014-application-isolation.test.ts test/rm009-application-isolation.test.ts test/rm011-application-isolation.test.ts test/rm012-application-isolation.test.ts test/rm013-application-isolation.test.ts",
     "migrate:clean": "tsx src/db/migrations/cli.ts clean",
     "migrate:existing": "tsx src/db/migrations/cli.ts existing",
     "admin:provision": "tsx src/db/admin-provisioning/cli.ts",
@@ -44,6 +45,7 @@
     "cors": "2.8.5",
     "dotenv": "16.5.0",
     "express": "5.1.0",
+    "jose": "6.2.6",
     "pg": "8.16.0"
   },
   "devDependencies": {

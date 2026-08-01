@@ -1,4 +1,5 @@
 export const userRoles = ["TENANT", "LANDLORD", "ADMIN"] as const;
+export const sessionCookieName = "rentmate_session" as const;
 
 export type UserRole = (typeof userRoles)[number];
 

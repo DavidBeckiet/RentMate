@@ -40,15 +40,12 @@ describe("RM-012 scope and application isolation", () => {
     expect(source).not.toMatch(/createRateLimitMiddleware|InMemoryRateLimitStore/);
   });
 
-  it("keeps migrations at 0012 and adds no user or product module", async () => {
+  it("keeps migrations at 0012", async () => {
     const migrations = (await readdir(path.resolve(process.cwd(), "migrations")))
       .filter((filename) => filename.endsWith(".sql"))
       .sort();
-    const sourceEntries = await readdir(path.resolve(process.cwd(), "src"));
-
     expect(migrations).toHaveLength(12);
     expect(migrations.at(-1)).toBe("0012_create_explicit_indexes.sql");
-    expect(sourceEntries).not.toContain("modules");
   });
 
   it("adds only the expected route-scoped shared middleware foundations", async () => {
@@ -57,15 +54,13 @@ describe("RM-012 scope and application isolation", () => {
     expect(middlewareFiles).toEqual(expect.arrayContaining(["authentication.ts", "role.ts", "rate-limit.ts"]));
   });
 
-  it("adds no JWT, password, cookie-issuance, or rate-limit dependency", async () => {
+  it("adds no external rate-limit dependency", async () => {
     const packageJson = JSON.parse(await readFile(path.resolve(process.cwd(), "package.json"), "utf8")) as {
       dependencies?: Record<string, string>;
       devDependencies?: Record<string, string>;
     };
     const installed = { ...packageJson.dependencies, ...packageJson.devDependencies };
 
-    expect(installed.jsonwebtoken).toBeUndefined();
-    expect(installed.jose).toBeUndefined();
     expect(installed["express-rate-limit"]).toBeUndefined();
     expect(installed["rate-limiter-flexible"]).toBeUndefined();
   });

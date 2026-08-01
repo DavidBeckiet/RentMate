@@ -68,7 +68,7 @@ describe("RM-011 scope and application isolation", () => {
     );
   });
 
-  it("uses existing CORS support without adding cookie, JWT, auth, or rate-limit dependencies", async () => {
+  it("uses existing CORS support without adding cookie-parser or rate-limit dependencies", async () => {
     const packageJson = JSON.parse(await readFile(path.resolve(process.cwd(), "package.json"), "utf8")) as {
       dependencies?: Record<string, string>;
       devDependencies?: Record<string, string>;
@@ -79,7 +79,6 @@ describe("RM-011 scope and application isolation", () => {
     expect(installed["@types/cors"]).toBe("2.8.17");
     expect(installed["cookie-parser"]).toBeUndefined();
     expect(installed["@types/cookie-parser"]).toBeUndefined();
-    expect(installed.jsonwebtoken).toBeUndefined();
     expect(installed["express-rate-limit"]).toBeUndefined();
   });
 

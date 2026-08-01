@@ -98,8 +98,7 @@ describe("RM-013 application seam and isolation", () => {
     expect(source.match(/app\.use\("\/api\/v1"/g)).toHaveLength(1);
   });
 
-  it("adds no product module, SQL, migration, dependency, or RM-014 framework", async () => {
-    const sourceEntries = await readdir(path.resolve(process.cwd(), "src"));
+  it("keeps RM-013 sources free of SQL, migrations, and generic DTO frameworks", async () => {
     const migrations = (await readdir(path.resolve(process.cwd(), "migrations")))
       .filter((filename) => filename.endsWith(".sql"))
       .sort();
@@ -115,15 +114,12 @@ describe("RM-013 application seam and isolation", () => {
     );
     const combined = rm013ProductionSources.join("\n");
 
-    expect(sourceEntries).not.toContain("modules");
     expect(migrations).toHaveLength(12);
     expect(migrations.at(-1)).toBe("0012_create_explicit_indexes.sql");
     expect(combined).not.toMatch(/\b(?:SELECT|INSERT|UPDATE|DELETE)\b/);
     expect(combined).not.toMatch(/\b(?:jsonwebtoken|jose|jwtSecret|bcrypt|passwordHash|setCookie|clearCookie)\b/);
     expect(combined).not.toMatch(/\b(?:BaseController|BaseService|BaseRepository|Container|Decorator|Reflection)\b/);
     expect(combined).not.toMatch(/snakeToCamel|serializerRegistry|mapperRegistry|class-transformer|automapper/i);
-    expect(installed.jsonwebtoken).toBeUndefined();
-    expect(installed.jose).toBeUndefined();
     expect(installed["class-transformer"]).toBeUndefined();
     expect(installed.automapper).toBeUndefined();
     expect(installed.typia).toBeUndefined();

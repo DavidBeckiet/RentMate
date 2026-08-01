@@ -3,13 +3,12 @@ import { ApplicationError } from "../errors/application-error.js";
 import {
   isUserRole,
   isVerifiedSessionClaims,
+  sessionCookieName,
   type AuthenticatedPrincipal,
   type AuthenticationAccount,
   type LoadAuthenticationAccount,
   type VerifySessionToken
 } from "../types/authentication.js";
-
-const sessionCookieName = "rentmate_session";
 
 export const authenticationRequiredMessage = "Authentication is required to access this resource.";
 
