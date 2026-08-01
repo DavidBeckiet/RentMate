@@ -23,18 +23,15 @@ function appDependencies() {
 }
 
 describe("RM-014 application isolation", () => {
-  it("introduces only the three bounded auth primitive sources", async () => {
+  it("keeps the RM-014 primitives inside the auth module", async () => {
     const moduleDirectories = await readdir(path.resolve(process.cwd(), "src/modules"));
     const authFiles = (await readdir(path.resolve(process.cwd(), "src/modules/auth"))).sort();
 
     expect(moduleDirectories).toStrictEqual(["auth"]);
-    expect(authFiles).toStrictEqual(["password.ts", "session-cookie.ts", "session-token.ts"]);
-    expect(authFiles).not.toEqual(
-      expect.arrayContaining(["controller.ts", "repository.ts", "service.ts", "routes.ts"])
-    );
+    expect(authFiles).toEqual(expect.arrayContaining(["password.ts", "session-cookie.ts", "session-token.ts"]));
   });
 
-  it("adds no endpoint or production app/server wiring and preserves health", async () => {
+  it("preserves health and leaves later authentication endpoints absent", async () => {
     const app = createApp(appDependencies());
     const unavailable = createApp({
       ...appDependencies(),
@@ -45,16 +42,11 @@ describe("RM-014 application isolation", () => {
 
     await request(app).get("/api/health").expect(200, { status: "ok", database: "connected" });
     await request(unavailable).get("/api/health").expect(503, { status: "error", database: "unavailable" });
-    await request(app).post("/api/v1/auth/register/tenant").set("Origin", "http://localhost:3000").send({}).expect(404);
     await request(app).post("/api/v1/auth/login").set("Origin", "http://localhost:3000").send({}).expect(404);
     await request(app).post("/api/v1/auth/logout").set("Origin", "http://localhost:3000").expect(404);
-
-    const appSource = await readFile(path.resolve(process.cwd(), "src/app.ts"), "utf8");
-    const serverSource = await readFile(path.resolve(process.cwd(), "src/server.ts"), "utf8");
-    expect(`${appSource}\n${serverSource}`).not.toMatch(/create(?:Password|SessionToken|SessionCookie)Service|jose/);
   });
 
-  it("adds no SQL, repository, migration, refresh/session storage, or adjacent auth behavior", async () => {
+  it("keeps RM-014 primitive sources free of SQL and adjacent auth behavior", async () => {
     const authSources = await Promise.all(
       ["password.ts", "session-cookie.ts", "session-token.ts"].map((filename) =>
         readFile(path.resolve(process.cwd(), "src/modules/auth", filename), "utf8")

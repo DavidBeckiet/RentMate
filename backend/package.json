@@ -32,6 +32,8 @@
     "test:rm012": "vitest run --config vitest.config.mts test/rm012-authentication.integration.test.ts test/rm012-rate-limit.test.ts test/rm012-application-isolation.test.ts",
     "test:rm013": "vitest run --config vitest.config.mts test/rm013-data-boundaries.test.ts test/rm013-middleware-order.integration.test.ts test/rm013-application-isolation.test.ts",
     "test:rm014": "vitest run --config vitest.config.mts test/rm014-password.test.ts test/rm014-session-token.test.ts test/rm014-session-cookie.test.ts test/rm014-application-isolation.test.ts test/rm009-application-isolation.test.ts test/rm011-application-isolation.test.ts test/rm012-application-isolation.test.ts test/rm013-application-isolation.test.ts",
+    "test:rm015": "vitest run --config vitest.config.mts test/rm015-registration-validation.test.ts test/rm015-auth-repository.test.ts test/rm015-registration-service.test.ts test/rm015-registration-http.integration.test.ts test/rm015-application-isolation.test.ts test/rm013-application-isolation.test.ts test/rm014-application-isolation.test.ts",
+    "test:rm015:database": "vitest run --config vitest.database.config.mts test/rm015-registration.database.integration.test.ts",
     "migrate:clean": "tsx src/db/migrations/cli.ts clean",
     "migrate:existing": "tsx src/db/migrations/cli.ts existing",
     "admin:provision": "tsx src/db/admin-provisioning/cli.ts",

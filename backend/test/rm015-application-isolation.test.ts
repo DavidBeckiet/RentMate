@@ -1,0 +1,79 @@
+import { readdir, readFile } from "node:fs/promises";
+import path from "node:path";
+import { describe, expect, it } from "vitest";
+import { createApp } from "../src/app.js";
+import type { Logger } from "../src/shared/logging/logger.js";
+
+const silentLogger: Logger = {
+  debug: () => undefined,
+  info: () => undefined,
+  warn: () => undefined,
+  error: () => undefined
+};
+
+describe("RM-015 application isolation", () => {
+  it("keeps all current auth files inside the single auth module", async () => {
+    const moduleDirectories = await readdir(path.resolve(process.cwd(), "src/modules"));
+    const authFiles = (await readdir(path.resolve(process.cwd(), "src/modules/auth"))).sort();
+
+    expect(moduleDirectories).toStrictEqual(["auth"]);
+    expect(authFiles).toEqual([
+      "auth-repository.ts",
+      "password.ts",
+      "registration-controller.ts",
+      "registration-service.ts",
+      "registration-validation.ts",
+      "routes.ts",
+      "session-cookie.ts",
+      "session-token.ts",
+      "user-profile.ts"
+    ]);
+  });
+
+  it("does not alter the global app composition seam or frozen environment", async () => {
+    const appSource = await readFile(path.resolve(process.cwd(), "src/app.ts"), "utf8");
+    const envSource = await readFile(path.resolve(process.cwd(), "src/config/env.ts"), "utf8");
+    const serverSource = await readFile(path.resolve(process.cwd(), "src/server.ts"), "utf8");
+
+    expect(appSource).not.toMatch(/modules\/auth|registerAuthRoutes|createRegistrationService/);
+    expect(envSource).not.toMatch(/registration|rate.?limit/i);
+    expect(serverSource).toContain("registerAuthRoutes");
+    expect(serverSource).toContain("registerApiRoutes");
+    expect(serverSource).not.toMatch(/express\.json|createOriginGuard|createCorsMiddleware/);
+  });
+
+  it("keeps the schema and repository boundaries frozen", async () => {
+    const migrations = (await readdir(path.resolve(process.cwd(), "migrations")))
+      .filter((filename) => filename.endsWith(".sql"))
+      .sort();
+    const authSources = await Promise.all(
+      [
+        "registration-validation.ts",
+        "registration-service.ts",
+        "registration-controller.ts",
+        "routes.ts",
+        "user-profile.ts"
+      ].map((filename) => readFile(path.resolve(process.cwd(), "src/modules/auth", filename), "utf8"))
+    );
+    const combined = authSources.join("\n");
+
+    expect(migrations).toHaveLength(12);
+    expect(migrations.at(-1)).toBe("0012_create_explicit_indexes.sql");
+    expect(migrations).not.toContain("0013_create_sessions.sql");
+    expect(combined).not.toMatch(/\b(?:SELECT|INSERT|UPDATE|DELETE|pool\.query|queryExactlyOne)\b/);
+    expect(combined).not.toMatch(/refresh.?token|password.?reset|login|logout|admin.?provision/i);
+    expect(combined).not.toMatch(/console\.|logger\.|response\.json/);
+    expect(combined).not.toMatch(/password_hash|jwtSecret|cookieValue|secretValue/);
+  });
+
+  it("keeps production app health available without manufacturing unrelated routes", async () => {
+    const app = createApp({
+      frontendOrigin: "http://localhost:3000",
+      logger: silentLogger,
+      checkDatabaseConnection: async () => undefined
+    });
+
+    const response = await (await import("supertest")).default(app).get("/api/health").expect(200);
+    expect(response.body).toStrictEqual({ status: "ok", database: "connected" });
+  });
+});

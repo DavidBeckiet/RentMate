@@ -45,10 +45,13 @@ export function readTestDatabaseUrl(source: NodeJS.ProcessEnv = process.env): st
   return value;
 }
 
-export function createTestDatabasePool(source: NodeJS.ProcessEnv = process.env): Pool {
+export function createTestDatabasePool(
+  source: NodeJS.ProcessEnv = process.env,
+  options: Readonly<{ max?: number }> = {}
+): Pool {
   return new Pool({
     connectionString: readTestDatabaseUrl(source),
     connectionTimeoutMillis: 5_000,
-    max: 1
+    max: options.max ?? 1
   });
 }

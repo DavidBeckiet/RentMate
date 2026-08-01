@@ -10,7 +10,8 @@ export default defineConfig({
       "test/rm006-schema.integration.test.ts",
       "test/rm007-schema.integration.test.ts",
       "test/rm008-bootstrap.integration.test.ts",
-      "test/rm009-database.integration.test.ts"
+      "test/rm009-database.integration.test.ts",
+      "test/rm015-registration.database.integration.test.ts"
     ],
     exclude: ["node_modules/**", "dist/**", "coverage/**"],
     clearMocks: true,

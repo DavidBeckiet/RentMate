@@ -125,10 +125,11 @@ describe("RM-013 application seam and isolation", () => {
     expect(installed.typia).toBeUndefined();
   });
 
-  it("keeps normal server startup unaware of the optional test/future route callback", async () => {
+  it("composes production auth routes through the callback without synthetic routes", async () => {
     const serverSource = await readFile(path.resolve(process.cwd(), "src/server.ts"), "utf8");
 
-    expect(serverSource).not.toContain("registerApiRoutes");
+    expect(serverSource).toContain("registerApiRoutes");
+    expect(serverSource).toContain("registerAuthRoutes");
     expect(serverSource).not.toContain("synthetic");
   });
 });

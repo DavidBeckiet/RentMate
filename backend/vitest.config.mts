@@ -12,6 +12,7 @@ export default defineConfig({
       "test/rm007-schema.integration.test.ts",
       "test/rm008-bootstrap.integration.test.ts",
       "test/rm009-database.integration.test.ts",
+      "test/rm015-registration.database.integration.test.ts",
       "node_modules/**",
       "dist/**",
       "coverage/**"
