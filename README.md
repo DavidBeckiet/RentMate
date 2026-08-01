@@ -343,6 +343,28 @@ Run the focused RM-011 suite with:
 npm.cmd run test:rm011
 ```
 
+## Authentication and rate-limit middleware foundations
+
+RM-012 provides route-scoped protected authentication, optional authentication, role checks, and fixed-window rate
+limiting without adding an authentication endpoint. Authentication uses injected token-verification and current-account
+loading boundaries. A session is accepted only after its application claims match an existing active account; the
+attached frozen principal contains only the current account's `userId` and role. Protected invalid, unknown, inactive,
+or inconsistent sessions use one sanitized `401` response. Optional authentication treats those normal invalid-session
+outcomes as anonymous, but verifier or account-loader infrastructure failures remain errors rather than being hidden.
+Only a valid active tenant principal may later unlock explicitly documented tenant enrichment.
+
+Role middleware runs before private resource lookup and supports an explicit non-empty allowlist. Rate limiting is also
+attached explicitly by later routes through an injected key resolver, clock, and atomic store operation. The included
+fixed-window store is process-local for the single-process MVP: it does not coordinate multiple Node processes and is
+not a distributed limiter. RM-012 does not implement concrete JWT verification, password behavior, or cookie issuance;
+those remain later authentication work.
+
+Run the focused RM-012 suite with:
+
+```powershell
+npm.cmd run test:rm012
+```
+
 ## Health endpoint
 
 `GET http://localhost:4000/api/health`

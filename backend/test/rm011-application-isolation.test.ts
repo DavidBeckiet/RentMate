@@ -48,7 +48,7 @@ describe("RM-011 scope and application isolation", () => {
     await request(app).post("/api/v1/rate-limit").set("Origin", configuredOrigin).send({}).expect(404);
   });
 
-  it("keeps migrations at 0012 and creates only the three RM-011 middleware files", async () => {
+  it("keeps migrations at 0012 and preserves every RM-011 middleware file", async () => {
     const migrations = (await readdir(path.resolve(process.cwd(), "migrations")))
       .filter((filename) => filename.endsWith(".sql"))
       .sort();
@@ -56,14 +56,16 @@ describe("RM-011 scope and application isolation", () => {
 
     expect(migrations).toHaveLength(12);
     expect(migrations.at(-1)).toBe("0012_create_explicit_indexes.sql");
-    expect(middlewareFiles).toStrictEqual([
-      "cookie-parser.ts",
-      "cors.ts",
-      "error-handler.ts",
-      "origin-guard.ts",
-      "request-id.ts",
-      "request-logger.ts"
-    ]);
+    expect(middlewareFiles).toEqual(
+      expect.arrayContaining([
+        "cookie-parser.ts",
+        "cors.ts",
+        "error-handler.ts",
+        "origin-guard.ts",
+        "request-id.ts",
+        "request-logger.ts"
+      ])
+    );
   });
 
   it("uses existing CORS support without adding cookie, JWT, auth, or rate-limit dependencies", async () => {

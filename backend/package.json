@@ -29,6 +29,7 @@
     "test:rm009:database": "vitest run --config vitest.database.config.mts test/rm009-database.integration.test.ts",
     "test:rm010": "vitest run --config vitest.config.mts test/rm010-errors-http.test.ts test/rm010-request-validation.test.ts test/rm010-normalization-primitives.test.ts test/rm010-middleware.integration.test.ts test/rm010-application-isolation.test.ts",
     "test:rm011": "vitest run --config vitest.config.mts test/rm011-security.integration.test.ts test/rm011-application-isolation.test.ts",
+    "test:rm012": "vitest run --config vitest.config.mts test/rm012-authentication.integration.test.ts test/rm012-rate-limit.test.ts test/rm012-application-isolation.test.ts",
     "migrate:clean": "tsx src/db/migrations/cli.ts clean",
     "migrate:existing": "tsx src/db/migrations/cli.ts existing",
     "admin:provision": "tsx src/db/admin-provisioning/cli.ts",
