@@ -26,7 +26,7 @@ describe("RM-009 application and roadmap isolation", () => {
     });
     await request(app).get("/api/v1/config").expect(404);
     await request(app).get("/api/v1/listings").expect(404);
-    await request(app).post("/api/v1/auth/login").send({}).expect(404);
+    await request(app).post("/api/v1/auth/login").set("Origin", "http://localhost:3000").send({}).expect(404);
   });
 
   it("validates configuration before pool creation and before opening the listener", async () => {

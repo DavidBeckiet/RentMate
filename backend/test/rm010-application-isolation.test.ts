@@ -40,11 +40,11 @@ describe("RM-010 scope and application isolation", () => {
       "/api/v1/users/me",
       "/api/v1/favorites"
     ]) {
-      await request(app).post(endpoint).send({}).expect(404);
+      await request(app).post(endpoint).set("Origin", "http://localhost:3000").send({}).expect(404);
     }
   });
 
-  it("keeps the migration inventory at 0012 and introduces no RM-011 middleware files", async () => {
+  it("keeps the migration inventory at 0012 and preserves every RM-010 middleware file", async () => {
     const migrations = (await readdir(path.resolve(process.cwd(), "migrations")))
       .filter((filename) => filename.endsWith(".sql"))
       .sort();
@@ -52,26 +52,16 @@ describe("RM-010 scope and application isolation", () => {
 
     expect(migrations).toHaveLength(12);
     expect(migrations.at(-1)).toBe("0012_create_explicit_indexes.sql");
-    expect(middlewareFiles).toEqual(["error-handler.ts", "request-id.ts", "request-logger.ts"]);
+    expect(middlewareFiles).toEqual(expect.arrayContaining(["error-handler.ts", "request-id.ts", "request-logger.ts"]));
   });
 
-  it("adds no validation, error, HTTP, CORS, cookie, rate-limit, auth, or DTO package", async () => {
+  it("keeps RM-010 validation repository-native without an external validation package", async () => {
     const packageJson = JSON.parse(await readFile(path.resolve(process.cwd(), "package.json"), "utf8")) as {
       dependencies?: Record<string, string>;
       devDependencies?: Record<string, string>;
     };
     const installed = Object.keys({ ...packageJson.dependencies, ...packageJson.devDependencies });
 
-    expect(installed).not.toEqual(
-      expect.arrayContaining([
-        "zod",
-        "joi",
-        "yup",
-        "express-validator",
-        "cookie-parser",
-        "express-rate-limit",
-        "jsonwebtoken"
-      ])
-    );
+    expect(installed).not.toEqual(expect.arrayContaining(["zod", "joi", "yup", "express-validator"]));
   });
 });

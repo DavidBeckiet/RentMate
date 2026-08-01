@@ -1,7 +1,9 @@
-import cors from "cors";
 import express from "express";
 import type { Logger } from "./shared/logging/logger.js";
+import { cookieParserMiddleware } from "./shared/middleware/cookie-parser.js";
+import { createCorsMiddleware } from "./shared/middleware/cors.js";
 import { unexpectedErrorHandler } from "./shared/middleware/error-handler.js";
+import { createOriginGuard } from "./shared/middleware/origin-guard.js";
 import { requestIdMiddleware } from "./shared/middleware/request-id.js";
 import { requestLoggerMiddleware } from "./shared/middleware/request-logger.js";
 
@@ -16,11 +18,9 @@ export function createApp(dependencies: AppDependencies): express.Express {
 
   app.use(requestIdMiddleware);
   app.use(requestLoggerMiddleware(dependencies.logger));
-  app.use(
-    cors({
-      origin: dependencies.frontendOrigin
-    })
-  );
+  app.use(createCorsMiddleware(dependencies.frontendOrigin));
+  app.use(createOriginGuard(dependencies.frontendOrigin));
+  app.use(cookieParserMiddleware);
   app.use(express.json());
 
   app.get("/api/health", async (_request, response) => {

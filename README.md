@@ -325,6 +325,24 @@ Run the focused RM-010 suite with:
 npm.cmd run test:rm010
 ```
 
+## Browser request security foundation
+
+RM-011 allows credential-aware cross-origin browser requests only from the exact `FRONTEND_ORIGIN` configured for the
+backend. Allowed responses use that configured origin and `Access-Control-Allow-Credentials: true`; wildcard origins
+are never used. Safe `GET`, `HEAD`, and `OPTIONS` requests remain usable without an Origin header. Every `POST`, `PUT`,
+`PATCH`, and `DELETE` request separately requires an Origin header that exactly matches `FRONTEND_ORIGIN`, otherwise it
+receives the shared `403 FORBIDDEN` error envelope with a request ID. CORS is a browser response policy and is not
+treated as CSRF protection; the unsafe-method Origin guard is the separate request control.
+
+Incoming cookies are parsed into passive, read-only string values for later middleware. RM-011 does not create or clear
+cookies, authenticate a request, verify or decode a JWT, trust `rentmate_session`, or add any authentication endpoint.
+
+Run the focused RM-011 suite with:
+
+```powershell
+npm.cmd run test:rm011
+```
+
 ## Health endpoint
 
 `GET http://localhost:4000/api/health`
