@@ -19,6 +19,9 @@ describe("RM-015 application isolation", () => {
     expect(moduleDirectories).toStrictEqual(["auth"]);
     expect(authFiles).toEqual([
       "auth-repository.ts",
+      "login-controller.ts",
+      "login-service.ts",
+      "login-validation.ts",
       "password.ts",
       "registration-controller.ts",
       "registration-service.ts",
@@ -46,22 +49,23 @@ describe("RM-015 application isolation", () => {
     const migrations = (await readdir(path.resolve(process.cwd(), "migrations")))
       .filter((filename) => filename.endsWith(".sql"))
       .sort();
-    const authSources = await Promise.all(
-      [
-        "registration-validation.ts",
-        "registration-service.ts",
-        "registration-controller.ts",
-        "routes.ts",
-        "user-profile.ts"
-      ].map((filename) => readFile(path.resolve(process.cwd(), "src/modules/auth", filename), "utf8"))
+    const registrationSources = await Promise.all(
+      ["registration-validation.ts", "registration-service.ts", "registration-controller.ts", "user-profile.ts"].map(
+        (filename) => readFile(path.resolve(process.cwd(), "src/modules/auth", filename), "utf8")
+      )
     );
-    const combined = authSources.join("\n");
+    const routeAndControllerSources = await Promise.all(
+      ["routes.ts", "login-controller.ts"].map((filename) =>
+        readFile(path.resolve(process.cwd(), "src/modules/auth", filename), "utf8")
+      )
+    );
+    const combined = [...registrationSources, ...routeAndControllerSources].join("\n");
 
     expect(migrations).toHaveLength(12);
     expect(migrations.at(-1)).toBe("0012_create_explicit_indexes.sql");
     expect(migrations).not.toContain("0013_create_sessions.sql");
     expect(combined).not.toMatch(/\b(?:SELECT|INSERT|UPDATE|DELETE|pool\.query|queryExactlyOne)\b/);
-    expect(combined).not.toMatch(/refresh.?token|password.?reset|login|logout|admin.?provision/i);
+    expect(registrationSources.join("\n")).not.toMatch(/refresh.?token|password.?reset|login|logout|admin.?provision/i);
     expect(combined).not.toMatch(/console\.|logger\.|response\.json/);
     expect(combined).not.toMatch(/password_hash|jwtSecret|cookieValue|secretValue/);
   });

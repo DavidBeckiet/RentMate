@@ -1,9 +1,11 @@
 import { createServer, type Server } from "node:http";
+import { randomBytes } from "node:crypto";
 import { createApp } from "./app.js";
 import { EnvironmentConfigurationError, loadEnvironment } from "./config/env.js";
 import { checkDatabaseConnection, closeRuntimePool, getRuntimePool } from "./db/pool.js";
 import { createSqlExecutor } from "./db/sql-executor.js";
 import { createAuthRepository } from "./modules/auth/auth-repository.js";
+import { createLoginService } from "./modules/auth/login-service.js";
 import { createPasswordService } from "./modules/auth/password.js";
 import { createRegistrationService } from "./modules/auth/registration-service.js";
 import { registerAuthRoutes } from "./modules/auth/routes.js";
@@ -51,7 +53,13 @@ async function startBackend(): Promise<void> {
   const sessionCookieService = createSessionCookieService({ secure: config.auth.cookieSecure });
   const authRepository = createAuthRepository(createSqlExecutor(databasePool));
   const registrationService = createRegistrationService({ passwordService, authRepository });
-  const registrationRateLimitStore = new InMemoryRateLimitStore();
+  const missingAccountPasswordHash = await passwordService.hashPassword(randomBytes(32).toString("base64url"));
+  const loginService = createLoginService({
+    findLoginAccount: authRepository.findLoginAccount,
+    verifyPassword: passwordService.verifyPassword,
+    missingAccountPasswordHash
+  });
+  const authRateLimitStore = new InMemoryRateLimitStore();
 
   const app = createApp({
     frontendOrigin: config.frontendOrigin,
@@ -60,9 +68,11 @@ async function startBackend(): Promise<void> {
     registerApiRoutes: (router) =>
       registerAuthRoutes(router, {
         registrationService,
+        loginService,
         sessionTokenService,
         sessionCookieService,
-        registrationRateLimitStore
+        registrationRateLimitStore: authRateLimitStore,
+        loginRateLimitStore: authRateLimitStore
       })
   });
   const server = createServer(app);

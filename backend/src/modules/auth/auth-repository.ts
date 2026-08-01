@@ -1,5 +1,6 @@
+import type { QueryResultRow } from "pg";
 import type { SqlExecutor } from "../../db/sql-executor.js";
-import { queryExactlyOne } from "../../db/repository-primitives.js";
+import { queryExactlyOne, queryOptional } from "../../db/repository-primitives.js";
 import type { UserRole } from "../../shared/types/authentication.js";
 import { mapCreatedUserRow, type CreatedUserRow, type RegisteredUser } from "./user-profile.js";
 
@@ -12,6 +13,32 @@ export interface CreateUserRecord {
 
 export interface AuthRepository {
   createUser(input: CreateUserRecord): Promise<RegisteredUser>;
+}
+
+export interface LoginAccount {
+  readonly id: number;
+  readonly role: UserRole;
+  readonly email: string;
+  readonly phone: string | null;
+  readonly passwordHash: string;
+  readonly isActive: boolean;
+  readonly createdAt: Date;
+  readonly updatedAt: Date;
+}
+
+export interface LoginAuthRepository {
+  findLoginAccount(email: string): Promise<LoginAccount | null>;
+}
+
+export interface LoginAccountRow extends CreatedUserRow, QueryResultRow {
+  readonly password_hash: string;
+}
+
+export class LoginAccountMappingError extends Error {
+  constructor() {
+    super("Login account row is invalid.");
+    this.name = "LoginAccountMappingError";
+  }
 }
 
 export class RegistrationEmailAlreadyExistsError extends Error {
@@ -35,7 +62,19 @@ function isEmailUniqueViolation(error: unknown): error is PostgresConstraintErro
   return candidate.code === "23505" && candidate.constraint === "uq_users_email";
 }
 
-export function createAuthRepository(executor: SqlExecutor): AuthRepository {
+export function mapLoginAccountRow(row: Readonly<LoginAccountRow>): LoginAccount {
+  if (typeof row.password_hash !== "string" || row.password_hash.length === 0) {
+    throw new LoginAccountMappingError();
+  }
+
+  const user = mapCreatedUserRow(row);
+  return Object.freeze({
+    ...user,
+    passwordHash: row.password_hash
+  });
+}
+
+export function createAuthRepository(executor: SqlExecutor): AuthRepository & LoginAuthRepository {
   return Object.freeze({
     async createUser(input: CreateUserRecord): Promise<RegisteredUser> {
       try {
@@ -70,6 +109,30 @@ export function createAuthRepository(executor: SqlExecutor): AuthRepository {
 
         throw error;
       }
+    },
+
+    async findLoginAccount(email: string): Promise<LoginAccount | null> {
+      return queryOptional<LoginAccountRow, LoginAccount>(
+        executor,
+        {
+          text: `
+            SELECT
+              id,
+              role,
+              email,
+              phone_e164,
+              password_hash,
+              is_active,
+              created_at,
+              updated_at
+            FROM users
+            WHERE email = $1
+            LIMIT 1
+          `,
+          values: [email]
+        },
+        mapLoginAccountRow
+      );
     }
   });
 }

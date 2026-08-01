@@ -5,6 +5,7 @@ import { ApplicationError } from "../src/shared/errors/application-error.js";
 import { InMemoryRateLimitStore, type RateLimitStore } from "../src/shared/middleware/rate-limit.js";
 import { createSessionCookieService, type SessionCookieService } from "../src/modules/auth/session-cookie.js";
 import { registerAuthRoutes } from "../src/modules/auth/routes.js";
+import type { LoginService } from "../src/modules/auth/login-service.js";
 import type { RegistrationService } from "../src/modules/auth/registration-service.js";
 import type { SessionTokenService } from "../src/modules/auth/session-token.js";
 import type { Logger } from "../src/shared/logging/logger.js";
@@ -32,6 +33,7 @@ const silentLogger: Logger = {
 function makeHarness(
   options: {
     readonly service?: RegistrationService;
+    readonly loginService?: LoginService;
     readonly token?: SessionTokenService;
     readonly cookie?: SessionCookieService;
     readonly store?: RateLimitStore;
@@ -46,6 +48,9 @@ function makeHarness(
     verify: vi.fn()
   };
   const cookie = options.cookie ?? createSessionCookieService({ secure: false });
+  const loginService = options.loginService ?? {
+    login: vi.fn().mockRejectedValue(new Error("Unexpected login call."))
+  };
 
   const app = createApp({
     frontendOrigin: origin,
@@ -54,6 +59,7 @@ function makeHarness(
     registerApiRoutes: (router) =>
       registerAuthRoutes(router, {
         registrationService: service,
+        loginService,
         sessionTokenService: token,
         sessionCookieService: cookie,
         registrationRateLimitStore: options.store,
@@ -188,12 +194,7 @@ describe("RM-015 registration HTTP contract", () => {
 
   it("does not create aliases for later authentication or account endpoints", async () => {
     const { app } = makeHarness();
-    for (const route of [
-      "/api/v1/auth/login",
-      "/api/v1/auth/logout",
-      "/api/v1/users/me",
-      "/api/v1/auth/register/admin"
-    ]) {
+    for (const route of ["/api/v1/users/me", "/api/v1/auth/register/admin"]) {
       await request(app).post(route).set("Origin", origin).send({}).expect(404);
     }
   });

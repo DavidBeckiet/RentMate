@@ -16,7 +16,7 @@ describe("RM-010 scope and application isolation", () => {
   it("keeps request ID before JSON parsing and the centralized handler after routes", async () => {
     const source = await readFile(path.resolve(process.cwd(), "src/app.ts"), "utf8");
     const requestIdIndex = source.indexOf("app.use(requestIdMiddleware)");
-    const jsonIndex = source.indexOf("app.use(express.json())");
+    const jsonIndex = source.indexOf("app.use(express.json({ strict: false }))");
     const healthIndex = source.indexOf('app.get("/api/health"');
     const errorIndex = source.indexOf("app.use(unexpectedErrorHandler");
 

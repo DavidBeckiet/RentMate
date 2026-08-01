@@ -23,7 +23,7 @@ export function createApp(dependencies: AppDependencies): express.Express {
   app.use(createCorsMiddleware(dependencies.frontendOrigin));
   app.use(createOriginGuard(dependencies.frontendOrigin));
   app.use(cookieParserMiddleware);
-  app.use(express.json());
+  app.use(express.json({ strict: false }));
 
   app.get("/api/health", async (_request, response) => {
     try {

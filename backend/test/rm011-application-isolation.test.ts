@@ -21,7 +21,7 @@ describe("RM-011 scope and application isolation", () => {
     const corsIndex = source.indexOf("app.use(createCorsMiddleware");
     const originIndex = source.indexOf("app.use(createOriginGuard");
     const cookieIndex = source.indexOf("app.use(cookieParserMiddleware)");
-    const jsonIndex = source.indexOf("app.use(express.json())");
+    const jsonIndex = source.indexOf("app.use(express.json({ strict: false }))");
     const healthIndex = source.indexOf('app.get("/api/health"');
     const errorIndex = source.indexOf("app.use(unexpectedErrorHandler");
 
