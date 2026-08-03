@@ -40,6 +40,8 @@
     "test:rm017:database": "vitest run --config vitest.database.config.mts test/rm017-users.database.integration.test.ts",
     "test:rm018": "vitest run --config vitest.config.mts test/rm018-auth-users-contract.integration.test.ts test/rm013-application-isolation.test.ts test/rm015-application-isolation.test.ts test/rm016-application-isolation.test.ts test/rm017-application-isolation.test.ts",
     "test:rm018:database": "vitest run --config vitest.database.config.mts test/rm018-auth-users.database.integration.test.ts",
+    "test:rm019": "vitest run --config vitest.config.mts test/rm019-lookup-mapper.test.ts test/rm019-lookup-repository.test.ts test/rm019-lookups-http.integration.test.ts test/rm019-application-isolation.test.ts test/rm009-application-isolation.test.ts test/rm014-application-isolation.test.ts test/rm015-application-isolation.test.ts test/rm017-application-isolation.test.ts",
+    "test:rm019:database": "vitest run --config vitest.database.config.mts test/rm019-lookups.database.integration.test.ts",
     "migrate:clean": "tsx src/db/migrations/cli.ts clean",
     "migrate:existing": "tsx src/db/migrations/cli.ts existing",
     "admin:provision": "tsx src/db/admin-provisioning/cli.ts",

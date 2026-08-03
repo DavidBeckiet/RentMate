@@ -24,10 +24,10 @@ function appDependencies() {
 
 describe("RM-014 application isolation", () => {
   it("keeps the RM-014 primitives inside the auth module", async () => {
-    const moduleDirectories = await readdir(path.resolve(process.cwd(), "src/modules"));
+    const moduleDirectories = (await readdir(path.resolve(process.cwd(), "src/modules"))).sort();
     const authFiles = (await readdir(path.resolve(process.cwd(), "src/modules/auth"))).sort();
 
-    expect(moduleDirectories).toStrictEqual(["auth", "users"]);
+    expect(moduleDirectories).toStrictEqual(["auth", "listings", "users"]);
     expect(authFiles).toEqual(expect.arrayContaining(["password.ts", "session-cookie.ts", "session-token.ts"]));
   });
 

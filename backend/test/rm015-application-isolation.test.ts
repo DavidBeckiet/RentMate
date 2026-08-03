@@ -13,10 +13,10 @@ const silentLogger: Logger = {
 
 describe("RM-015 application isolation", () => {
   it("keeps auth files separate from the users-owned profile boundary", async () => {
-    const moduleDirectories = await readdir(path.resolve(process.cwd(), "src/modules"));
+    const moduleDirectories = (await readdir(path.resolve(process.cwd(), "src/modules"))).sort();
     const authFiles = (await readdir(path.resolve(process.cwd(), "src/modules/auth"))).sort();
 
-    expect(moduleDirectories).toStrictEqual(["auth", "users"]);
+    expect(moduleDirectories).toStrictEqual(["auth", "listings", "users"]);
     expect(authFiles).toEqual([
       "auth-repository.ts",
       "login-controller.ts",

@@ -16,6 +16,7 @@ export default defineConfig({
       "test/rm016-login.database.integration.test.ts",
       "test/rm017-users.database.integration.test.ts",
       "test/rm018-auth-users.database.integration.test.ts",
+      "test/rm019-lookups.database.integration.test.ts",
       "node_modules/**",
       "dist/**",
       "coverage/**"

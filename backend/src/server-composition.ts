@@ -9,6 +9,8 @@ import { createRegistrationService } from "./modules/auth/registration-service.j
 import { registerAuthRoutes } from "./modules/auth/routes.js";
 import { createSessionCookieService, type SessionCookieService } from "./modules/auth/session-cookie.js";
 import { createSessionTokenService, type SessionTokenService } from "./modules/auth/session-token.js";
+import { createLookupRepository } from "./modules/listings/lookup-repository.js";
+import { registerListingsRoutes } from "./modules/listings/routes.js";
 import { registerUsersRoutes } from "./modules/users/routes.js";
 import { createUsersRepository } from "./modules/users/users-repository.js";
 import { createUsersService } from "./modules/users/users-service.js";
@@ -48,6 +50,7 @@ export async function createBackendApp(options: BackendAppCompositionOptions): P
     missingAccountPasswordHash
   });
   const usersService = createUsersService(usersRepository);
+  const lookupRepository = createLookupRepository(options.sqlExecutor);
   const requiredAuthentication = createProtectedAuthenticationMiddleware({
     verifySessionToken: sessionTokenService.verify,
     loadAuthenticationAccount: usersRepository.findAuthenticationAccountById
@@ -73,6 +76,7 @@ export async function createBackendApp(options: BackendAppCompositionOptions): P
         authenticationMiddleware: requiredAuthentication,
         usersService
       });
+      registerListingsRoutes(router, { lookupRepository });
     }
   });
 }
