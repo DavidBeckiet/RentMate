@@ -1,5 +1,6 @@
 import type { RequestHandler } from "express";
 import { sendObject } from "../../shared/http/responses.js";
+import { validateQueryKeys } from "../../shared/validation/request.js";
 import type { SessionCookieService } from "./session-cookie.js";
 import type { SessionTokenService } from "./session-token.js";
 import { validateRegistrationInput, type RegistrationRole } from "./registration-validation.js";
@@ -18,6 +19,7 @@ export function createRegistrationHandler(
 ): RequestHandler {
   return (request, response, next): void => {
     void (async () => {
+      validateQueryKeys(request.query, []);
       const input = validateRegistrationInput(request.body, role);
       const registeredUser = await dependencies.registrationService.register(role, input);
       const token = await dependencies.sessionTokenService.sign({

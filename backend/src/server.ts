@@ -1,22 +1,9 @@
 import { createServer, type Server } from "node:http";
-import { randomBytes } from "node:crypto";
-import { createApp } from "./app.js";
 import { EnvironmentConfigurationError, loadEnvironment } from "./config/env.js";
 import { checkDatabaseConnection, closeRuntimePool, getRuntimePool } from "./db/pool.js";
 import { createSqlExecutor } from "./db/sql-executor.js";
-import { createAuthRepository } from "./modules/auth/auth-repository.js";
-import { createLoginService } from "./modules/auth/login-service.js";
-import { createPasswordService } from "./modules/auth/password.js";
-import { createRegistrationService } from "./modules/auth/registration-service.js";
-import { registerAuthRoutes } from "./modules/auth/routes.js";
-import { createSessionCookieService } from "./modules/auth/session-cookie.js";
-import { createSessionTokenService } from "./modules/auth/session-token.js";
-import { registerUsersRoutes } from "./modules/users/routes.js";
-import { createUsersRepository } from "./modules/users/users-repository.js";
-import { createUsersService } from "./modules/users/users-service.js";
+import { createBackendApp } from "./server-composition.js";
 import { createLogger } from "./shared/logging/logger.js";
-import { createProtectedAuthenticationMiddleware } from "./shared/middleware/authentication.js";
-import { InMemoryRateLimitStore } from "./shared/middleware/rate-limit.js";
 import { createShutdownHandler } from "./shutdown.js";
 
 function listen(server: Server, port: number): Promise<void> {
@@ -52,44 +39,15 @@ async function startBackend(): Promise<void> {
 
   const logger = createLogger(config.logLevel);
   const databasePool = getRuntimePool(config.database, logger);
-  const passwordService = createPasswordService({ bcryptCost: config.auth.bcryptCost });
-  const sessionTokenService = createSessionTokenService({ secret: config.auth.jwtSecret });
-  const sessionCookieService = createSessionCookieService({ secure: config.auth.cookieSecure });
   const sqlExecutor = createSqlExecutor(databasePool);
-  const authRepository = createAuthRepository(sqlExecutor);
-  const usersRepository = createUsersRepository(sqlExecutor);
-  const usersService = createUsersService(usersRepository);
-  const requiredAuthentication = createProtectedAuthenticationMiddleware({
-    verifySessionToken: sessionTokenService.verify,
-    loadAuthenticationAccount: usersRepository.findAuthenticationAccountById
-  });
-  const registrationService = createRegistrationService({ passwordService, authRepository });
-  const missingAccountPasswordHash = await passwordService.hashPassword(randomBytes(32).toString("base64url"));
-  const loginService = createLoginService({
-    findLoginAccount: authRepository.findLoginAccount,
-    verifyPassword: passwordService.verifyPassword,
-    missingAccountPasswordHash
-  });
-  const authRateLimitStore = new InMemoryRateLimitStore();
-
-  const app = createApp({
+  const app = await createBackendApp({
     frontendOrigin: config.frontendOrigin,
     logger,
     checkDatabaseConnection: () => checkDatabaseConnection(databasePool),
-    registerApiRoutes: (router) => {
-      registerAuthRoutes(router, {
-        registrationService,
-        loginService,
-        sessionTokenService,
-        sessionCookieService,
-        registrationRateLimitStore: authRateLimitStore,
-        loginRateLimitStore: authRateLimitStore
-      });
-      registerUsersRoutes(router, {
-        authenticationMiddleware: requiredAuthentication,
-        usersService
-      });
-    }
+    sqlExecutor,
+    jwtSecret: config.auth.jwtSecret,
+    bcryptCost: config.auth.bcryptCost,
+    cookieSecure: config.auth.cookieSecure
   });
   const server = createServer(app);
 

@@ -43,9 +43,10 @@ describe("RM-016 application isolation", () => {
     const logoutRoute = routes.match(/router\.post\("\/auth\/logout"[^;]+;/)?.[0] ?? "";
 
     expect(logoutHandler).toContain("validateLogoutBody(request.body)");
+    expect(logoutHandler).toContain("validateQueryKeys(request.query, [])");
     expect(logoutHandler).toContain("sessionCookieService.clear(response)");
     expect(logoutHandler).toContain("sendNoContent(response)");
-    expect(logoutHandler).not.toMatch(/verify|loginService|repository|query|authenticate/i);
+    expect(logoutHandler).not.toMatch(/verify|loginService|repository|pool\.query|SqlExecutor|authenticate/i);
     expect(logoutRoute).toBe('router.post("/auth/logout", createLogoutHandler(dependencies));');
     expect(logoutRoute).not.toMatch(/rateLimit|authentication|optional|role/i);
   });

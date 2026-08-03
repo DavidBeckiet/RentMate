@@ -30,6 +30,7 @@ export function createPatchCurrentUserHandler(usersService: UsersService): Reque
   return (request, response, next): void => {
     void (async () => {
       const principal = requirePrincipal(request);
+      validateQueryKeys(request.query, []);
       const input = validateUpdateCurrentUserInput(request.body, principal.role);
       const profile = await usersService.updateCurrentUserPhone(principal, input);
       sendObject(response, mapUserProfileToDto(profile));

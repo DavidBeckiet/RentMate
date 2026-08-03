@@ -36,11 +36,12 @@ describe("RM-015 application isolation", () => {
     const appSource = await readFile(path.resolve(process.cwd(), "src/app.ts"), "utf8");
     const envSource = await readFile(path.resolve(process.cwd(), "src/config/env.ts"), "utf8");
     const serverSource = await readFile(path.resolve(process.cwd(), "src/server.ts"), "utf8");
+    const compositionSource = await readFile(path.resolve(process.cwd(), "src/server-composition.ts"), "utf8");
 
     expect(appSource).not.toMatch(/modules\/auth|registerAuthRoutes|createRegistrationService/);
     expect(envSource).not.toMatch(/registration|rate.?limit/i);
-    expect(serverSource).toContain("registerAuthRoutes");
-    expect(serverSource).toContain("registerApiRoutes");
+    expect(compositionSource).toContain("registerAuthRoutes");
+    expect(compositionSource).toContain("registerApiRoutes");
     expect(serverSource).not.toMatch(/express\.json|createOriginGuard|createCorsMiddleware/);
   });
 

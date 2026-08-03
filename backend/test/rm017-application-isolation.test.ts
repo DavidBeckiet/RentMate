@@ -124,16 +124,18 @@ describe("RM-017 application isolation", () => {
 
   it("keeps current-user authentication route-scoped and health exact", async () => {
     const serverSource = await readFile(path.resolve(backendRoot, "src/server.ts"), "utf8");
+    const compositionSource = await readFile(path.resolve(backendRoot, "src/server-composition.ts"), "utf8");
     const app = createApp({
       frontendOrigin: "http://localhost:3000",
       logger: silentLogger,
       checkDatabaseConnection: async () => undefined
     });
 
-    expect(serverSource).toContain("registerAuthRoutes");
-    expect(serverSource).toContain("registerUsersRoutes");
-    expect(serverSource).toContain("createProtectedAuthenticationMiddleware");
-    expect(serverSource).not.toMatch(/app\.use\([^)]*authentication|createRoleMiddleware/);
+    expect(serverSource).toContain("createBackendApp");
+    expect(compositionSource).toContain("registerAuthRoutes");
+    expect(compositionSource).toContain("registerUsersRoutes");
+    expect(compositionSource).toContain("createProtectedAuthenticationMiddleware");
+    expect(compositionSource).not.toMatch(/app\.use\([^)]*authentication|createRoleMiddleware/);
     await request(app).get("/api/health").expect(200, { status: "ok", database: "connected" });
     await request(app).get("/api/v1/users/me").expect(404);
     await request(app).post("/api/v1/auth/login").set("Origin", "http://localhost:3000").send({}).expect(404);

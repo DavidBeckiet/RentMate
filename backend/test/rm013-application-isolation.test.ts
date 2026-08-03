@@ -126,10 +126,10 @@ describe("RM-013 application seam and isolation", () => {
   });
 
   it("composes production auth routes through the callback without synthetic routes", async () => {
-    const serverSource = await readFile(path.resolve(process.cwd(), "src/server.ts"), "utf8");
+    const compositionSource = await readFile(path.resolve(process.cwd(), "src/server-composition.ts"), "utf8");
 
-    expect(serverSource).toContain("registerApiRoutes");
-    expect(serverSource).toContain("registerAuthRoutes");
-    expect(serverSource).not.toContain("synthetic");
+    expect(compositionSource).toContain("registerApiRoutes");
+    expect(compositionSource).toContain("registerAuthRoutes");
+    expect(compositionSource).not.toContain("synthetic");
   });
 });
