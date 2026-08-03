@@ -328,7 +328,7 @@ describe("RM-020 listing-create HTTP contract", () => {
     expect(response.body).not.toHaveProperty("data");
   });
 
-  it("keeps RM-019 lookups anonymous and registers no RM-021 owner read", async () => {
+  it("keeps RM-019 lookups anonymous and RM-021 owner reads protected", async () => {
     const app = await makeApp(applicationExecutor, transactionExecutor);
     await request(app)
       .get("/api/v1/lookups/property-types")
@@ -340,7 +340,7 @@ describe("RM-020 listing-create HTTP contract", () => {
       .expect(200, {
         data: [{ code: "WIFI", label: "Wi-Fi" }]
       });
-    await request(app).get("/api/v1/landlord/listings").expect(404);
+    await request(app).get("/api/v1/landlord/listings").expect(401);
     expect(applicationExecutor.queries).toHaveLength(2);
     expect(transactionExecutor.queries).toHaveLength(0);
   });

@@ -14,13 +14,14 @@ function gitDiff(...paths: string[]): string {
   }).trim();
 }
 
-describe("RM-020 application isolation", () => {
-  it("contains only the RM-019 lookup, RM-020 create, and RM-021 read files", async () => {
-    const modules = (await readdir(path.resolve(backendRoot, "src/modules"))).sort();
-    const listingsFiles = (await readdir(listingsRoot)).sort();
-
-    expect(modules).toStrictEqual(["auth", "listings", "users"]);
-    expect(listingsFiles).toStrictEqual([
+describe("RM-021 application isolation", () => {
+  it("contains only the RM-019, RM-020, and RM-021 listings production files", async () => {
+    expect((await readdir(path.resolve(backendRoot, "src/modules"))).sort()).toStrictEqual([
+      "auth",
+      "listings",
+      "users"
+    ]);
+    expect((await readdir(listingsRoot)).sort()).toStrictEqual([
       "listing-create-controller.ts",
       "listing-create-repository.ts",
       "listing-create-service.ts",
@@ -39,7 +40,7 @@ describe("RM-020 application isolation", () => {
     ]);
   });
 
-  it("registers exactly two public lookups, one protected create, and two protected owner reads", async () => {
+  it("registers exactly two public lookups, one owner create, and two owner reads", async () => {
     const routes = await readFile(path.join(listingsRoot, "routes.ts"), "utf8");
     const routeMatches = [...routes.matchAll(/router\.(get|post|patch|put|delete)\(\s*"([^"]+)"/g)].map((match) => [
       match[1],
@@ -54,44 +55,40 @@ describe("RM-020 application isolation", () => {
       ["get", "/landlord/listings/:listingId"]
     ]);
     expect(routes).toMatch(
-      /router\.post\([\s\S]*"\/landlord\/listings"[\s\S]*authenticationMiddleware[\s\S]*landlordRoleMiddleware[\s\S]*createListingDraftHandler/
+      /router\.get\([\s\S]*"\/landlord\/listings"[\s\S]*dependencies\.authenticationMiddleware[\s\S]*dependencies\.landlordRoleMiddleware[\s\S]*createListOwnerListingsHandler/
     );
-    const lookupRegistrations = [...routes.matchAll(/router\.get\([\s\S]*?\);/g)].map((match) => match[0]);
-    expect(lookupRegistrations.slice(0, 2)).toHaveLength(2);
-    expect(lookupRegistrations.slice(0, 2).join("\n")).not.toMatch(/authenticationMiddleware|landlordRoleMiddleware/);
+    expect(routes).toMatch(
+      /router\.get\([\s\S]*"\/landlord\/listings\/:listingId"[\s\S]*dependencies\.authenticationMiddleware[\s\S]*dependencies\.landlordRoleMiddleware[\s\S]*createGetOwnerListingDetailHandler/
+    );
+    const lookupRegistrations = routeMatches.filter(([, route]) => route?.startsWith("/lookups/"));
+    expect(lookupRegistrations).toHaveLength(2);
     expect(routes).not.toMatch(/router\.(?:patch|put|delete)|submit|deactivate|reactivate|geocod|admin/i);
+    expect(routes).not.toMatch(/"\/listings(?:\/|"|\?)/);
   });
 
-  it("limits writes to one DRAFT listing insert and one set-based amenity insert", async () => {
-    const repository = await readFile(path.join(listingsRoot, "listing-create-repository.ts"), "utf8");
-    const sources = await Promise.all(
-      (await readdir(listingsRoot)).map((filename) => readFile(path.join(listingsRoot, filename), "utf8"))
-    );
+  it("keeps RM-021 reads free of writes, locks, total counts, provider IDs, and N+1 loops", async () => {
+    const readFiles = [
+      "owner-image-mapper.ts",
+      "owner-listing-read-controller.ts",
+      "owner-listing-read-repository.ts",
+      "owner-listing-read-service.ts",
+      "owner-listing-read-validation.ts",
+      "owner-listing-summary-mapper.ts"
+    ];
+    const sources = await Promise.all(readFiles.map((filename) => readFile(path.join(listingsRoot, filename), "utf8")));
     const combined = sources.join("\n");
-    const inserts = [...combined.matchAll(/INSERT INTO\s+([a-z_]+)/gi)].map((match) => match[1]);
+    const repository = sources[2]!;
 
-    expect(inserts.sort()).toStrictEqual(["listing_amenities", "listings"]);
-    expect(repository).toContain("VALUES ($1, $2, 'DRAFT'");
-    expect(repository).toContain("UNNEST($2::smallint[])");
-    expect(combined).not.toMatch(/\b(?:UPDATE|DELETE|FOR UPDATE)\s+(?:listings|listing_amenities)\b/i);
-    expect(combined).not.toMatch(/nominatim|upload|public.?search|favorite/i);
-    const createCombined = (
-      await Promise.all(
-        [
-          "listing-create-controller.ts",
-          "listing-create-repository.ts",
-          "listing-create-service.ts",
-          "listing-create-validation.ts"
-        ].map((filename) => readFile(path.join(listingsRoot, filename), "utf8"))
-      )
-    ).join("\n");
-    expect(createCombined).not.toMatch(/cloudinary|moderation_history/i);
-    expect(combined).not.toMatch(
-      /BaseRepository|GenericRepository|Container|Decorator|route.?discovery|auto.?discover/i
-    );
+    expect(combined).not.toMatch(/\b(?:INSERT|UPDATE|DELETE|BEGIN|COMMIT|ROLLBACK|FOR UPDATE)\b/i);
+    expect(repository).not.toMatch(/count\s*\(|SELECT\s+\*/i);
+    expect(repository).not.toMatch(/cloudinary_public_id|is_active|public.?visibility/i);
+    expect(combined).not.toMatch(/cloudinaryPublicId|cloudinary_public_id/);
+    expect(repository).not.toMatch(/for\s*\([^)]*\)\s*\{[\s\S]*executor\.query/i);
+    expect(combined).not.toMatch(/nominatim|geocod|favorite|lifecycle|upload|reorder/i);
+    expect(combined).not.toMatch(/BaseRepository|GenericRepository|Container|Decorator|route.?discovery/i);
   });
 
-  it("keeps schema, dependencies, lockfiles, frontend, and frozen documents unchanged", async () => {
+  it("keeps schema, dependencies, locks, frontend, and frozen documents unchanged", async () => {
     const migrations = (await readdir(path.resolve(backendRoot, "migrations")))
       .filter((filename) => filename.endsWith(".sql"))
       .sort();
@@ -114,17 +111,18 @@ describe("RM-020 application isolation", () => {
     expect(gitDiff("backend/migrations", "frontend", "docs", "AGENTS.md")).toBe("");
   });
 
-  it("changes only the narrow production composition seam outside listings", async () => {
+  it("changes only composition outside the listings module production boundary", async () => {
     const composition = await readFile(path.resolve(backendRoot, "src/server-composition.ts"), "utf8");
     const server = await readFile(path.resolve(backendRoot, "src/server.ts"), "utf8");
 
-    expect(composition).toContain("readonly transactionRunner?: TransactionRunner");
-    expect(composition).toContain("options.transactionRunner ?? unavailableTransactionRunner");
+    expect(composition).toContain("createOwnerListingReadRepository(options.sqlExecutor)");
+    expect(composition).toContain("createOwnerListingReadService(ownerListingReadRepository)");
     expect(composition.match(/registerListingsRoutes\(/g)).toHaveLength(1);
     expect(server).toContain("withTransaction(databasePool, logger, operation)");
     expect(
       gitDiff(
         "backend/src/app.ts",
+        "backend/src/server.ts",
         "backend/src/config/env.ts",
         ".env.example",
         "backend/src/modules/auth",

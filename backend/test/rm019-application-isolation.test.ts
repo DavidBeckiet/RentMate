@@ -15,7 +15,7 @@ function gitDiff(...paths: string[]): string {
 }
 
 describe("RM-019 application isolation", () => {
-  it("preserves the focused lookup boundary while allowing only the RM-020 create files", async () => {
+  it("preserves the focused lookup boundary while allowing only RM-020 create and RM-021 read files", async () => {
     const modules = (await readdir(path.resolve(backendRoot, "src/modules"))).sort();
     const listingsFiles = (await readdir(listingsRoot)).sort();
 
@@ -28,12 +28,18 @@ describe("RM-019 application isolation", () => {
       "lookup-controller.ts",
       "lookup-mapper.ts",
       "lookup-repository.ts",
+      "owner-image-mapper.ts",
       "owner-listing-mapper.ts",
+      "owner-listing-read-controller.ts",
+      "owner-listing-read-repository.ts",
+      "owner-listing-read-service.ts",
+      "owner-listing-read-validation.ts",
+      "owner-listing-summary-mapper.ts",
       "routes.ts"
     ]);
   });
 
-  it("preserves exactly two public GET lookups and permits only the RM-020 protected POST", async () => {
+  it("preserves exactly two public GET lookups and permits only the owner create and read routes", async () => {
     const routes = await readFile(path.join(listingsRoot, "routes.ts"), "utf8");
     const routeMatches = [...routes.matchAll(/router\.(get|post|patch|put|delete)\(\s*"([^"]+)"/g)].map((match) => [
       match[1],
@@ -43,13 +49,15 @@ describe("RM-019 application isolation", () => {
     expect(routeMatches).toStrictEqual([
       ["get", "/lookups/property-types"],
       ["get", "/lookups/amenities"],
-      ["post", "/landlord/listings"]
+      ["post", "/landlord/listings"],
+      ["get", "/landlord/listings"],
+      ["get", "/landlord/listings/:listingId"]
     ]);
     const lookupRegistrations = [...routes.matchAll(/router\.get\([\s\S]*?\);/g)].map((match) => match[0]);
-    expect(lookupRegistrations).toHaveLength(2);
-    expect(lookupRegistrations.join("\n")).not.toMatch(/authenticationMiddleware|landlordRoleMiddleware/);
+    expect(lookupRegistrations.slice(0, 2)).toHaveLength(2);
+    expect(lookupRegistrations.slice(0, 2).join("\n")).not.toMatch(/authenticationMiddleware|landlordRoleMiddleware/);
     expect(routes).toMatch(/router\.post\([\s\S]*authenticationMiddleware[\s\S]*landlordRoleMiddleware/);
-    expect(routes).not.toMatch(/optional|rate.?limit|cache|admin|listings\/:|router\.(?:patch|put|delete)/i);
+    expect(routes).not.toMatch(/optional|rate.?limit|cache|admin|router\.(?:patch|put|delete)/i);
   });
 
   it("keeps RM-019 lookup sources read-only and isolates the only allowed RM-020 writes", async () => {

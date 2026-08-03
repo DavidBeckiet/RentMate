@@ -1,8 +1,10 @@
 import type { QueryResultRow } from "pg";
 import { mapNullablePgScaleTwoNumeric, mapNullablePgWholeNumeric, mapPgTimestamptz } from "../../db/value-mappers.js";
 import { formatApiTimestamp } from "../../shared/mapping/api-values.js";
+import { copyOwnerImage, mapOwnerImageToDto, type OwnerImage, type OwnerImageDto } from "./owner-image-mapper.js";
 import {
   mapAmenityToDto,
+  mapLookupValueRow,
   mapPropertyTypeToDto,
   type AmenityDto,
   type LookupValue,
@@ -10,7 +12,17 @@ import {
 } from "./lookup-mapper.js";
 
 const maximumListingId = 2_147_483_647;
-const emptyImages: readonly never[] = Object.freeze([]);
+
+export const listingStatuses = Object.freeze([
+  "DRAFT",
+  "PENDING",
+  "APPROVED",
+  "REJECTED",
+  "HIDDEN",
+  "INACTIVE"
+] as const);
+
+export type ListingStatus = (typeof listingStatuses)[number];
 
 export interface CreatedListingRow extends QueryResultRow {
   readonly id: unknown;
@@ -25,6 +37,11 @@ export interface CreatedListingRow extends QueryResultRow {
   readonly longitude: unknown;
   readonly created_at: unknown;
   readonly updated_at: unknown;
+}
+
+export interface PersistedOwnerListingRow extends CreatedListingRow {
+  readonly property_type_code: unknown;
+  readonly property_type_label: unknown;
 }
 
 export interface CreatedListing {
@@ -42,16 +59,31 @@ export interface CreatedListing {
   readonly updatedAt: Date;
 }
 
-export interface OwnerListing extends CreatedListing {
+export interface OwnerListingDetailBase {
+  readonly id: number;
+  readonly status: ListingStatus;
+  readonly title: string | null;
+  readonly description: string | null;
+  readonly monthlyRent: number | null;
+  readonly roomAreaSqm: number | null;
+  readonly addressText: string | null;
+  readonly areaName: string | null;
+  readonly latitude: number | null;
+  readonly longitude: number | null;
   readonly propertyType: LookupValue | null;
-  readonly amenities: readonly LookupValue[];
-  readonly images: readonly never[];
-  readonly currentModerationReason: null;
+  readonly createdAt: Date;
+  readonly updatedAt: Date;
 }
 
-export interface OwnerListingDto {
+export interface OwnerListingDetail extends OwnerListingDetailBase {
+  readonly amenities: readonly LookupValue[];
+  readonly images: readonly OwnerImage[];
+  readonly currentModerationReason: string | null;
+}
+
+export interface OwnerListingDetailDto {
   readonly id: number;
-  readonly status: "DRAFT";
+  readonly status: ListingStatus;
   readonly title: string | null;
   readonly description: string | null;
   readonly monthlyRent: number | null;
@@ -62,17 +94,24 @@ export interface OwnerListingDto {
   readonly longitude: number | null;
   readonly propertyType: PropertyTypeDto | null;
   readonly amenities: readonly AmenityDto[];
-  readonly images: readonly never[];
-  readonly currentModerationReason: null;
+  readonly images: readonly OwnerImageDto[];
+  readonly currentModerationReason: string | null;
   readonly createdAt: string;
   readonly updatedAt: string;
 }
+
+export type OwnerListing = OwnerListingDetail;
+export type OwnerListingDto = OwnerListingDetailDto;
 
 export class OwnerListingMappingError extends Error {
   constructor() {
     super("Owner listing representation is invalid.");
     this.name = "OwnerListingMappingError";
   }
+}
+
+export function isListingStatus(value: unknown): value is ListingStatus {
+  return typeof value === "string" && listingStatuses.some((status) => status === value);
 }
 
 function isNullableString(value: unknown): value is string | null {
@@ -111,12 +150,44 @@ function compareLookups(left: Readonly<LookupValue>, right: Readonly<LookupValue
   return left.label.localeCompare(right.label) || left.code.localeCompare(right.code);
 }
 
-export function mapCreatedListingRow(row: Readonly<CreatedListingRow>): CreatedListing {
+function compareImages(left: Readonly<OwnerImage>, right: Readonly<OwnerImage>): number {
+  return left.displayOrder - right.displayOrder || left.id - right.id;
+}
+
+function mapPropertyType(code: unknown, label: unknown): LookupValue | null {
+  if (code === null && label === null) {
+    return null;
+  }
+  if (code === null || label === null) {
+    throw new OwnerListingMappingError();
+  }
+  return mapLookupValueRow({ code, label });
+}
+
+export function mapCurrentModerationReason(status: ListingStatus, value: unknown): string | null {
+  if (status === "REJECTED" || status === "HIDDEN") {
+    if (typeof value !== "string" || value.trim().length === 0 || value.length > 1_000) {
+      throw new OwnerListingMappingError();
+    }
+    return value;
+  }
+
+  if (value !== null) {
+    throw new OwnerListingMappingError();
+  }
+  return null;
+}
+
+function mapBaseListingRow(
+  row: Readonly<CreatedListingRow>,
+  expectedStatus?: "DRAFT"
+): Omit<OwnerListingDetailBase, "propertyType"> {
   if (
     !Number.isInteger(row.id) ||
     (row.id as number) < 1 ||
     (row.id as number) > maximumListingId ||
-    row.status !== "DRAFT" ||
+    !isListingStatus(row.status) ||
+    (expectedStatus !== undefined && row.status !== expectedStatus) ||
     !isNullableString(row.title) ||
     !isNullableString(row.description) ||
     !isNullableString(row.address_text) ||
@@ -129,7 +200,7 @@ export function mapCreatedListingRow(row: Readonly<CreatedListingRow>): CreatedL
     const coordinates = mapCoordinatePair(row.latitude, row.longitude);
     return Object.freeze({
       id: row.id as number,
-      status: "DRAFT",
+      status: row.status,
       title: row.title,
       description: row.description,
       monthlyRent: mapNullablePgWholeNumeric(row.monthly_rent, "monthly_rent"),
@@ -145,22 +216,60 @@ export function mapCreatedListingRow(row: Readonly<CreatedListingRow>): CreatedL
     if (error instanceof OwnerListingMappingError) {
       throw error;
     }
-
     throw new OwnerListingMappingError();
   }
 }
 
-export function createOwnerListing(
-  listing: Readonly<CreatedListing>,
-  propertyType: Readonly<LookupValue> | null,
-  amenities: readonly Readonly<LookupValue>[]
-): OwnerListing {
-  try {
-    const mappedPropertyType = propertyType === null ? null : copyLookup(mapPropertyTypeToDto(propertyType));
-    const mappedAmenities = Object.freeze(
-      amenities.map((amenity) => copyLookup(mapAmenityToDto(amenity))).sort(compareLookups)
-    );
+export function mapCreatedListingRow(row: Readonly<CreatedListingRow>): CreatedListing {
+  const mapped = mapBaseListingRow(row, "DRAFT");
+  return Object.freeze({
+    id: mapped.id,
+    status: "DRAFT",
+    title: mapped.title,
+    description: mapped.description,
+    monthlyRent: mapped.monthlyRent,
+    roomAreaSqm: mapped.roomAreaSqm,
+    addressText: mapped.addressText,
+    areaName: mapped.areaName,
+    latitude: mapped.latitude,
+    longitude: mapped.longitude,
+    createdAt: mapped.createdAt,
+    updatedAt: mapped.updatedAt
+  });
+}
 
+export function mapPersistedOwnerListingRow(row: Readonly<PersistedOwnerListingRow>): OwnerListingDetailBase {
+  try {
+    const mapped = mapBaseListingRow(row);
+    return Object.freeze({
+      id: mapped.id,
+      status: mapped.status,
+      title: mapped.title,
+      description: mapped.description,
+      monthlyRent: mapped.monthlyRent,
+      roomAreaSqm: mapped.roomAreaSqm,
+      addressText: mapped.addressText,
+      areaName: mapped.areaName,
+      latitude: mapped.latitude,
+      longitude: mapped.longitude,
+      propertyType: mapPropertyType(row.property_type_code, row.property_type_label),
+      createdAt: mapped.createdAt,
+      updatedAt: mapped.updatedAt
+    });
+  } catch {
+    throw new OwnerListingMappingError();
+  }
+}
+
+export function createOwnerListingDetail(
+  listing: Readonly<OwnerListingDetailBase>,
+  amenities: readonly Readonly<LookupValue>[],
+  images: readonly Readonly<OwnerImage>[],
+  currentModerationReason: unknown
+): OwnerListingDetail {
+  try {
+    const mappedAmenities = Object.freeze(amenities.map(copyLookup).sort(compareLookups));
+    const mappedImages = Object.freeze(images.map(copyOwnerImage).sort(compareImages));
     return Object.freeze({
       id: listing.id,
       status: listing.status,
@@ -172,10 +281,10 @@ export function createOwnerListing(
       areaName: listing.areaName,
       latitude: listing.latitude,
       longitude: listing.longitude,
-      propertyType: mappedPropertyType,
+      propertyType: listing.propertyType === null ? null : copyLookup(listing.propertyType),
       amenities: mappedAmenities,
-      images: emptyImages,
-      currentModerationReason: null,
+      images: mappedImages,
+      currentModerationReason: mapCurrentModerationReason(listing.status, currentModerationReason),
       createdAt: new Date(listing.createdAt.getTime()),
       updatedAt: new Date(listing.updatedAt.getTime())
     });
@@ -184,15 +293,34 @@ export function createOwnerListing(
   }
 }
 
-export function mapOwnerListingToDto(listing: Readonly<OwnerListing>): OwnerListingDto {
-  if (listing.status !== "DRAFT" || listing.images.length !== 0 || listing.currentModerationReason !== null) {
-    throw new OwnerListingMappingError();
-  }
+export function createOwnerListing(
+  listing: Readonly<CreatedListing>,
+  propertyType: Readonly<LookupValue> | null,
+  amenities: readonly Readonly<LookupValue>[]
+): OwnerListingDetail {
+  const base: OwnerListingDetailBase = Object.freeze({
+    id: listing.id,
+    status: "DRAFT",
+    title: listing.title,
+    description: listing.description,
+    monthlyRent: listing.monthlyRent,
+    roomAreaSqm: listing.roomAreaSqm,
+    addressText: listing.addressText,
+    areaName: listing.areaName,
+    latitude: listing.latitude,
+    longitude: listing.longitude,
+    propertyType,
+    createdAt: listing.createdAt,
+    updatedAt: listing.updatedAt
+  });
+  return createOwnerListingDetail(base, amenities, [], null);
+}
 
+export function mapOwnerListingToDto(listing: Readonly<OwnerListingDetail>): OwnerListingDetailDto {
   try {
     return Object.freeze({
       id: listing.id,
-      status: "DRAFT",
+      status: listing.status,
       title: listing.title,
       description: listing.description,
       monthlyRent: listing.monthlyRent,
@@ -203,8 +331,8 @@ export function mapOwnerListingToDto(listing: Readonly<OwnerListing>): OwnerList
       longitude: listing.longitude,
       propertyType: listing.propertyType === null ? null : mapPropertyTypeToDto(listing.propertyType),
       amenities: Object.freeze(listing.amenities.map(mapAmenityToDto)),
-      images: emptyImages,
-      currentModerationReason: null,
+      images: Object.freeze(listing.images.map(mapOwnerImageToDto)),
+      currentModerationReason: mapCurrentModerationReason(listing.status, listing.currentModerationReason),
       createdAt: formatApiTimestamp(listing.createdAt),
       updatedAt: formatApiTimestamp(listing.updatedAt)
     });

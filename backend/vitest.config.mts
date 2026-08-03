@@ -18,6 +18,7 @@ export default defineConfig({
       "test/rm018-auth-users.database.integration.test.ts",
       "test/rm019-lookups.database.integration.test.ts",
       "test/rm020-listing-create.database.integration.test.ts",
+      "test/rm021-owner-listing-read.database.integration.test.ts",
       "node_modules/**",
       "dist/**",
       "coverage/**"
