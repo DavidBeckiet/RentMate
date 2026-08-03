@@ -9,6 +9,7 @@ import { createRegistrationService } from "./modules/auth/registration-service.j
 import { registerAuthRoutes } from "./modules/auth/routes.js";
 import { createSessionCookieService, type SessionCookieService } from "./modules/auth/session-cookie.js";
 import { createSessionTokenService, type SessionTokenService } from "./modules/auth/session-token.js";
+import { createListingCreateService, type TransactionRunner } from "./modules/listings/listing-create-service.js";
 import { createLookupRepository } from "./modules/listings/lookup-repository.js";
 import { registerListingsRoutes } from "./modules/listings/routes.js";
 import { registerUsersRoutes } from "./modules/users/routes.js";
@@ -17,6 +18,11 @@ import { createUsersService } from "./modules/users/users-service.js";
 import type { Logger } from "./shared/logging/logger.js";
 import { createProtectedAuthenticationMiddleware } from "./shared/middleware/authentication.js";
 import { InMemoryRateLimitStore, type Clock, type RateLimitStore } from "./shared/middleware/rate-limit.js";
+import { createRoleMiddleware } from "./shared/middleware/role.js";
+
+const unavailableTransactionRunner: TransactionRunner = async () => {
+  throw new Error("Transactional listing writes are unavailable in this application composition.");
+};
 
 export interface BackendAppCompositionOptions {
   readonly frontendOrigin: string;
@@ -31,6 +37,7 @@ export interface BackendAppCompositionOptions {
   readonly authRateLimitStore?: RateLimitStore;
   readonly sessionTokenService?: SessionTokenService;
   readonly sessionCookieService?: SessionCookieService;
+  readonly transactionRunner?: TransactionRunner;
 }
 
 export async function createBackendApp(options: BackendAppCompositionOptions): Promise<Express> {
@@ -51,10 +58,14 @@ export async function createBackendApp(options: BackendAppCompositionOptions): P
   });
   const usersService = createUsersService(usersRepository);
   const lookupRepository = createLookupRepository(options.sqlExecutor);
+  const listingCreateService = createListingCreateService({
+    transactionRunner: options.transactionRunner ?? unavailableTransactionRunner
+  });
   const requiredAuthentication = createProtectedAuthenticationMiddleware({
     verifySessionToken: sessionTokenService.verify,
     loadAuthenticationAccount: usersRepository.findAuthenticationAccountById
   });
+  const landlordRole = createRoleMiddleware(["LANDLORD"]);
   const authRateLimitStore = options.authRateLimitStore ?? new InMemoryRateLimitStore();
 
   return createApp({
@@ -76,7 +87,12 @@ export async function createBackendApp(options: BackendAppCompositionOptions): P
         authenticationMiddleware: requiredAuthentication,
         usersService
       });
-      registerListingsRoutes(router, { lookupRepository });
+      registerListingsRoutes(router, {
+        lookupRepository,
+        authenticationMiddleware: requiredAuthentication,
+        landlordRoleMiddleware: landlordRole,
+        listingCreateService
+      });
     }
   });
 }

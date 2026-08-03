@@ -15,7 +15,8 @@ export default defineConfig({
       "test/rm016-login.database.integration.test.ts",
       "test/rm017-users.database.integration.test.ts",
       "test/rm018-auth-users.database.integration.test.ts",
-      "test/rm019-lookups.database.integration.test.ts"
+      "test/rm019-lookups.database.integration.test.ts",
+      "test/rm020-listing-create.database.integration.test.ts"
     ],
     exclude: ["node_modules/**", "dist/**", "coverage/**"],
     clearMocks: true,

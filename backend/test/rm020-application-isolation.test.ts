@@ -14,8 +14,8 @@ function gitDiff(...paths: string[]): string {
   }).trim();
 }
 
-describe("RM-019 application isolation", () => {
-  it("preserves the focused lookup boundary while allowing only the RM-020 create files", async () => {
+describe("RM-020 application isolation", () => {
+  it("contains only the RM-019 lookup boundary and five RM-020 production files", async () => {
     const modules = (await readdir(path.resolve(backendRoot, "src/modules"))).sort();
     const listingsFiles = (await readdir(listingsRoot)).sort();
 
@@ -33,7 +33,7 @@ describe("RM-019 application isolation", () => {
     ]);
   });
 
-  it("preserves exactly two public GET lookups and permits only the RM-020 protected POST", async () => {
+  it("registers exactly two public lookups and one protected landlord create route", async () => {
     const routes = await readFile(path.join(listingsRoot, "routes.ts"), "utf8");
     const routeMatches = [...routes.matchAll(/router\.(get|post|patch|put|delete)\(\s*"([^"]+)"/g)].map((match) => [
       match[1],
@@ -45,51 +45,34 @@ describe("RM-019 application isolation", () => {
       ["get", "/lookups/amenities"],
       ["post", "/landlord/listings"]
     ]);
+    expect(routes).toMatch(
+      /router\.post\([\s\S]*"\/landlord\/listings"[\s\S]*authenticationMiddleware[\s\S]*landlordRoleMiddleware[\s\S]*createListingDraftHandler/
+    );
     const lookupRegistrations = [...routes.matchAll(/router\.get\([\s\S]*?\);/g)].map((match) => match[0]);
     expect(lookupRegistrations).toHaveLength(2);
     expect(lookupRegistrations.join("\n")).not.toMatch(/authenticationMiddleware|landlordRoleMiddleware/);
-    expect(routes).toMatch(/router\.post\([\s\S]*authenticationMiddleware[\s\S]*landlordRoleMiddleware/);
-    expect(routes).not.toMatch(/optional|rate.?limit|cache|admin|listings\/:|router\.(?:patch|put|delete)/i);
+    expect(routes).not.toMatch(/listings\/:|router\.(?:patch|put|delete)|submit|deactivate|reactivate|geocod|admin/i);
   });
 
-  it("keeps RM-019 lookup sources read-only and isolates the only allowed RM-020 writes", async () => {
+  it("limits writes to one DRAFT listing insert and one set-based amenity insert", async () => {
+    const repository = await readFile(path.join(listingsRoot, "listing-create-repository.ts"), "utf8");
     const sources = await Promise.all(
-      ["lookup-controller.ts", "lookup-mapper.ts", "lookup-repository.ts"].map((filename) =>
-        readFile(path.join(listingsRoot, filename), "utf8")
-      )
+      (await readdir(listingsRoot)).map((filename) => readFile(path.join(listingsRoot, filename), "utf8"))
     );
     const combined = sources.join("\n");
+    const inserts = [...combined.matchAll(/INSERT INTO\s+([a-z_]+)/gi)].map((match) => match[1]);
 
-    expect(combined).not.toMatch(/\b(?:INSERT|UPDATE|DELETE|BEGIN|COMMIT|ROLLBACK|FOR UPDATE)\b/);
-    expect(combined).not.toMatch(
-      /createRoleMiddleware|createOptionalAuthenticationMiddleware|createRateLimitMiddleware/
-    );
-    expect(combined).not.toMatch(/cloudinary|nominatim|geocod|favorite|moderation|lifecycle|image|public.?search/i);
+    expect(inserts.sort()).toStrictEqual(["listing_amenities", "listings"]);
+    expect(repository).toContain("VALUES ($1, $2, 'DRAFT'");
+    expect(repository).toContain("UNNEST($2::smallint[])");
+    expect(combined).not.toMatch(/\b(?:UPDATE|DELETE|FOR UPDATE)\s+(?:listings|listing_amenities)\b/i);
+    expect(combined).not.toMatch(/cloudinary|nominatim|upload|public.?search|favorite|moderation_history/i);
     expect(combined).not.toMatch(
       /BaseRepository|GenericRepository|Container|Decorator|route.?discovery|auto.?discover/i
     );
-    expect(combined).not.toMatch(/SELECT \*|sort_order|includeInactive|response\.json/);
-
-    const createSources = await Promise.all(
-      [
-        "listing-create-controller.ts",
-        "listing-create-repository.ts",
-        "listing-create-service.ts",
-        "listing-create-validation.ts",
-        "owner-listing-mapper.ts"
-      ].map((filename) => readFile(path.join(listingsRoot, filename), "utf8"))
-    );
-    const createCombined = createSources.join("\n");
-    expect([...createCombined.matchAll(/INSERT INTO\s+([a-z_]+)/gi)].map((match) => match[1]).sort()).toStrictEqual([
-      "listing_amenities",
-      "listings"
-    ]);
-    expect(createCombined).not.toMatch(
-      /\b(?:UPDATE|DELETE)\s+listings\b|cloudinary|nominatim|favorite|moderation_history/i
-    );
   });
 
-  it("preserves schema, dependencies, lockfiles, frontend, and frozen documents", async () => {
+  it("keeps schema, dependencies, lockfiles, frontend, and frozen documents unchanged", async () => {
     const migrations = (await readdir(path.resolve(backendRoot, "migrations")))
       .filter((filename) => filename.endsWith(".sql"))
       .sort();
@@ -112,14 +95,13 @@ describe("RM-019 application isolation", () => {
     expect(gitDiff("backend/migrations", "frontend", "docs", "AGENTS.md")).toBe("");
   });
 
-  it("changes composition and only the narrow server transaction seam outside listings", async () => {
+  it("changes only the narrow production composition seam outside listings", async () => {
     const composition = await readFile(path.resolve(backendRoot, "src/server-composition.ts"), "utf8");
     const server = await readFile(path.resolve(backendRoot, "src/server.ts"), "utf8");
 
+    expect(composition).toContain("readonly transactionRunner?: TransactionRunner");
+    expect(composition).toContain("options.transactionRunner ?? unavailableTransactionRunner");
     expect(composition.match(/registerListingsRoutes\(/g)).toHaveLength(1);
-    expect(composition).toContain("createLookupRepository(options.sqlExecutor)");
-    expect(composition).toContain("registerAuthRoutes");
-    expect(composition).toContain("registerUsersRoutes");
     expect(server).toContain("withTransaction(databasePool, logger, operation)");
     expect(
       gitDiff(

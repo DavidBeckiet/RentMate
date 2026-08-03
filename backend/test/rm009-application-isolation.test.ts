@@ -59,9 +59,14 @@ describe("RM-009 application and roadmap isolation", () => {
       .map((filename) => path.basename(filename))
       .sort();
     expect(listingsFiles).toStrictEqual([
+      "listing-create-controller.ts",
+      "listing-create-repository.ts",
+      "listing-create-service.ts",
+      "listing-create-validation.ts",
       "lookup-controller.ts",
       "lookup-mapper.ts",
       "lookup-repository.ts",
+      "owner-listing-mapper.ts",
       "routes.ts"
     ]);
     expect(sourceFiles.some((filename) => /src[\\/]+modules[\\/]+favorites[\\/]/.test(filename))).toBe(false);

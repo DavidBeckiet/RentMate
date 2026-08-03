@@ -2,6 +2,7 @@ import { createServer, type Server } from "node:http";
 import { EnvironmentConfigurationError, loadEnvironment } from "./config/env.js";
 import { checkDatabaseConnection, closeRuntimePool, getRuntimePool } from "./db/pool.js";
 import { createSqlExecutor } from "./db/sql-executor.js";
+import { withTransaction } from "./db/transaction.js";
 import { createBackendApp } from "./server-composition.js";
 import { createLogger } from "./shared/logging/logger.js";
 import { createShutdownHandler } from "./shutdown.js";
@@ -47,7 +48,8 @@ async function startBackend(): Promise<void> {
     sqlExecutor,
     jwtSecret: config.auth.jwtSecret,
     bcryptCost: config.auth.bcryptCost,
-    cookieSecure: config.auth.cookieSecure
+    cookieSecure: config.auth.cookieSecure,
+    transactionRunner: (operation) => withTransaction(databasePool, logger, operation)
   });
   const server = createServer(app);
 

@@ -135,7 +135,8 @@ describe("RM-017 application isolation", () => {
     expect(compositionSource).toContain("registerAuthRoutes");
     expect(compositionSource).toContain("registerUsersRoutes");
     expect(compositionSource).toContain("createProtectedAuthenticationMiddleware");
-    expect(compositionSource).not.toMatch(/app\.use\([^)]*authentication|createRoleMiddleware/);
+    expect(compositionSource).not.toMatch(/app\.use\([^)]*authentication/);
+    expect(compositionSource.match(/createRoleMiddleware\(\["LANDLORD"\]\)/g)).toHaveLength(1);
     await request(app).get("/api/health").expect(200, { status: "ok", database: "connected" });
     await request(app).get("/api/v1/users/me").expect(404);
     await request(app).post("/api/v1/auth/login").set("Origin", "http://localhost:3000").send({}).expect(404);
