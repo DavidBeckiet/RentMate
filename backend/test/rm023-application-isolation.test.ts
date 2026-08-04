@@ -1,0 +1,69 @@
+import { readdir, readFile } from "node:fs/promises";
+import path from "node:path";
+import { describe, expect, it } from "vitest";
+
+const root = process.cwd();
+const listings = path.join(root, "src/modules/listings");
+describe("RM-023 application isolation", () => {
+  it("keeps the exact production inventory and exactly one PATCH route", async () => {
+    expect((await readdir(listings)).sort()).toStrictEqual([
+      "listing-create-controller.ts",
+      "listing-create-repository.ts",
+      "listing-create-service.ts",
+      "listing-create-validation.ts",
+      "listing-update-controller.ts",
+      "listing-update-repository.ts",
+      "listing-update-service.ts",
+      "listing-update-state.ts",
+      "listing-update-validation.ts",
+      "lookup-controller.ts",
+      "lookup-mapper.ts",
+      "lookup-repository.ts",
+      "owner-image-mapper.ts",
+      "owner-listing-mapper.ts",
+      "owner-listing-read-controller.ts",
+      "owner-listing-read-repository.ts",
+      "owner-listing-read-service.ts",
+      "owner-listing-read-validation.ts",
+      "owner-listing-summary-mapper.ts",
+      "routes.ts"
+    ]);
+    const routes = await readFile(path.join(listings, "routes.ts"), "utf8");
+    expect([...routes.matchAll(/router\.patch\(/g)]).toHaveLength(1);
+    expect(routes).toContain('"/landlord/listings/:listingId"');
+    expect(routes).not.toMatch(
+      /router\.(?:put|delete)|submit|deactivate|reactivate|images|geocod|favorite|admin|"\/listings"/i
+    );
+  });
+  it("limits writes to listing content and listing amenities", async () => {
+    const repository = await readFile(path.join(listings, "listing-update-repository.ts"), "utf8");
+    expect(repository).toMatch(/UPDATE listings[\s\S]*updated_at = CURRENT_TIMESTAMP/);
+    expect(repository).toMatch(/DELETE FROM listing_amenities/);
+    expect(repository).toMatch(/INSERT INTO listing_amenities/);
+    expect(repository).not.toMatch(
+      /(?:INSERT|UPDATE|DELETE)[\s\S]{0,30}(?:moderation_history|listing_images|favorites|users)/i
+    );
+  });
+  it("adds no migration, dependency, shared lifecycle framework, or later provider work", async () => {
+    const migrations = (await readdir(path.join(root, "migrations"))).filter((file) => file.endsWith(".sql")).sort();
+    expect(migrations).toHaveLength(12);
+    expect(migrations.at(-1)).toBe("0012_create_explicit_indexes.sql");
+    const packageJson = JSON.parse(await readFile(path.join(root, "package.json"), "utf8")) as {
+      dependencies: Record<string, string>;
+    };
+    expect(packageJson.dependencies).toStrictEqual({
+      bcrypt: "6.0.0",
+      cors: "2.8.5",
+      dotenv: "16.5.0",
+      express: "5.1.0",
+      jose: "6.2.6",
+      pg: "8.16.0"
+    });
+    const combined = (
+      await Promise.all((await readdir(listings)).map((file) => readFile(path.join(listings, file), "utf8")))
+    ).join("\n");
+    expect(combined).not.toMatch(
+      /BaseRepository|GenericRepository|module.?registry|route.?discovery|cloudinary\.client|nominatim\.client/i
+    );
+  });
+});

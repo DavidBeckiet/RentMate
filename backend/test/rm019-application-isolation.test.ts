@@ -25,6 +25,11 @@ describe("RM-019 application isolation", () => {
       "listing-create-repository.ts",
       "listing-create-service.ts",
       "listing-create-validation.ts",
+      "listing-update-controller.ts",
+      "listing-update-repository.ts",
+      "listing-update-service.ts",
+      "listing-update-state.ts",
+      "listing-update-validation.ts",
       "lookup-controller.ts",
       "lookup-mapper.ts",
       "lookup-repository.ts",
@@ -51,13 +56,14 @@ describe("RM-019 application isolation", () => {
       ["get", "/lookups/amenities"],
       ["post", "/landlord/listings"],
       ["get", "/landlord/listings"],
-      ["get", "/landlord/listings/:listingId"]
+      ["get", "/landlord/listings/:listingId"],
+      ["patch", "/landlord/listings/:listingId"]
     ]);
     const lookupRegistrations = [...routes.matchAll(/router\.get\([\s\S]*?\);/g)].map((match) => match[0]);
     expect(lookupRegistrations.slice(0, 2)).toHaveLength(2);
     expect(lookupRegistrations.slice(0, 2).join("\n")).not.toMatch(/authenticationMiddleware|landlordRoleMiddleware/);
     expect(routes).toMatch(/router\.post\([\s\S]*authenticationMiddleware[\s\S]*landlordRoleMiddleware/);
-    expect(routes).not.toMatch(/optional|rate.?limit|cache|admin|router\.(?:patch|put|delete)/i);
+    expect(routes).not.toMatch(/optional|rate.?limit|cache|admin|router\.(?:put|delete)/i);
   });
 
   it("keeps RM-019 lookup sources read-only and isolates the only allowed RM-020 writes", async () => {

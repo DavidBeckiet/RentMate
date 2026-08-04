@@ -76,6 +76,8 @@ const silentLogger: Logger = {
 };
 
 export type Phase4CreateFault = "junction" | "mapping";
+export type Phase4UpdateFault = "conditional-update" | "amenity-delete" | "amenity-insert" | "detail-read";
+export type Phase4Fault = Phase4CreateFault | Phase4UpdateFault;
 export type OwnerReadKind = "collection" | "detail" | "amenities" | "images" | "reason";
 
 export interface Phase4FaultState {
@@ -96,7 +98,7 @@ export interface Phase4DatabaseFixture {
   readonly dropSchema: () => Promise<void>;
   readonly resetData: () => Promise<void>;
   readonly close: () => Promise<void>;
-  readonly createApp: (options?: Readonly<{ fault?: Phase4CreateFault }>) => Promise<Phase4AppFixture>;
+  readonly createApp: (options?: Readonly<{ fault?: Phase4Fault }>) => Promise<Phase4AppFixture>;
   readonly insertUser: (role: "LANDLORD" | "TENANT" | "ADMIN", sequence: number) => Promise<number>;
   readonly signToken: (userId: number, role?: UserRole) => Promise<string>;
   readonly tableCount: (table: Phase4TableName) => Promise<number>;
@@ -143,15 +145,30 @@ function createCountingExecutor(delegate: SqlExecutor, ownerReads: OwnerReadKind
   };
 }
 
-function createFaultingExecutor(delegate: SqlExecutor, fault: Phase4CreateFault, state: Phase4FaultState): SqlExecutor {
+function createFaultingExecutor(
+  delegate: SqlExecutor,
+  fault: Phase4Fault | undefined,
+  state: Phase4FaultState
+): SqlExecutor {
   return {
     async query<Row extends QueryResultRow>(query: ParameterizedQuery): Promise<QueryResult<Row>> {
       state.statements.push(query);
       if (fault === "junction" && query.text.includes("INSERT INTO listing_amenities")) {
         throw new Error("synthetic RM-022 junction failure with private SQL detail");
       }
+      if (fault === "amenity-delete" && query.text.includes("DELETE FROM listing_amenities"))
+        throw new Error("synthetic RM-023 amenity delete failure");
+      if (fault === "amenity-insert" && query.text.includes("INSERT INTO listing_amenities"))
+        throw new Error("synthetic RM-023 amenity insert failure");
+      if (
+        fault === "detail-read" &&
+        query.text.includes("FROM listings AS l") &&
+        !query.text.includes("FOR UPDATE OF l")
+      )
+        throw new Error("synthetic RM-023 final detail failure");
 
       const result = await delegate.query<Row>(query);
+      if (fault === "conditional-update" && query.text.includes("UPDATE listings")) return { ...result, rowCount: 0 };
       if (query.text.includes("INSERT INTO listings")) {
         const id = (result.rows[0] as { id?: unknown } | undefined)?.id;
         if (typeof id === "number") state.attemptedListingId = id;
@@ -221,9 +238,7 @@ export function createPhase4DatabaseFixture(
         operation: (executor: SqlExecutor) => Promise<Value>
       ): Promise<Value> =>
         withTransaction(pool, silentLogger, async (transaction) =>
-          operation(
-            options.fault === undefined ? transaction : createFaultingExecutor(transaction, options.fault, faultState)
-          )
+          operation(createFaultingExecutor(transaction, options.fault, faultState))
         );
       const app = await createBackendApp({
         frontendOrigin: phase4Origin,

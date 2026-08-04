@@ -26,6 +26,11 @@ describe("RM-021 application isolation", () => {
       "listing-create-repository.ts",
       "listing-create-service.ts",
       "listing-create-validation.ts",
+      "listing-update-controller.ts",
+      "listing-update-repository.ts",
+      "listing-update-service.ts",
+      "listing-update-state.ts",
+      "listing-update-validation.ts",
       "lookup-controller.ts",
       "lookup-mapper.ts",
       "lookup-repository.ts",
@@ -52,7 +57,8 @@ describe("RM-021 application isolation", () => {
       ["get", "/lookups/amenities"],
       ["post", "/landlord/listings"],
       ["get", "/landlord/listings"],
-      ["get", "/landlord/listings/:listingId"]
+      ["get", "/landlord/listings/:listingId"],
+      ["patch", "/landlord/listings/:listingId"]
     ]);
     expect(routes).toMatch(
       /router\.get\([\s\S]*"\/landlord\/listings"[\s\S]*dependencies\.authenticationMiddleware[\s\S]*dependencies\.landlordRoleMiddleware[\s\S]*createListOwnerListingsHandler/
@@ -62,7 +68,7 @@ describe("RM-021 application isolation", () => {
     );
     const lookupRegistrations = routeMatches.filter(([, route]) => route?.startsWith("/lookups/"));
     expect(lookupRegistrations).toHaveLength(2);
-    expect(routes).not.toMatch(/router\.(?:patch|put|delete)|submit|deactivate|reactivate|geocod|admin/i);
+    expect(routes).not.toMatch(/router\.(?:put|delete)|submit|deactivate|reactivate|geocod|admin/i);
     expect(routes).not.toMatch(/"\/listings(?:\/|"|\?)/);
   });
 

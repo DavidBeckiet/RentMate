@@ -18,6 +18,11 @@ describe("RM-022 application isolation", () => {
       "listing-create-repository.ts",
       "listing-create-service.ts",
       "listing-create-validation.ts",
+      "listing-update-controller.ts",
+      "listing-update-repository.ts",
+      "listing-update-service.ts",
+      "listing-update-state.ts",
+      "listing-update-validation.ts",
       "lookup-controller.ts",
       "lookup-mapper.ts",
       "lookup-repository.ts",
@@ -41,10 +46,11 @@ describe("RM-022 application isolation", () => {
       ["get", "/lookups/amenities"],
       ["post", "/landlord/listings"],
       ["get", "/landlord/listings"],
-      ["get", "/landlord/listings/:listingId"]
+      ["get", "/landlord/listings/:listingId"],
+      ["patch", "/landlord/listings/:listingId"]
     ]);
     expect(routes).not.toMatch(
-      /router\.(?:patch|put|delete)|submit|deactivate|reactivate|images|geocod|favorite|admin|"\/listings"/i
+      /router\.(?:put|delete)|submit|deactivate|reactivate|images|geocod|favorite|admin|"\/listings"/i
     );
   });
 
@@ -54,7 +60,13 @@ describe("RM-022 application isolation", () => {
         "diff",
         "--name-only",
         "--",
-        "backend/src",
+        "backend/src/app.ts",
+        "backend/src/server.ts",
+        "backend/src/config",
+        "backend/src/modules/auth",
+        "backend/src/modules/users",
+        "backend/src/shared",
+        "backend/src/db",
         "backend/migrations",
         "backend/package-lock.json",
         "package-lock.json",
@@ -64,27 +76,6 @@ describe("RM-022 application isolation", () => {
         ".env.example"
       )
     ).toBe("");
-    expect(
-      git(
-        "diff",
-        "--name-only",
-        "--",
-        "backend/test/rm009-*",
-        "backend/test/rm010-*",
-        "backend/test/rm011-*",
-        "backend/test/rm012-*",
-        "backend/test/rm013-*",
-        "backend/test/rm014-*",
-        "backend/test/rm015-*",
-        "backend/test/rm016-*",
-        "backend/test/rm017-*",
-        "backend/test/rm018-*",
-        "backend/test/rm019-*",
-        "backend/test/rm020-*",
-        "backend/test/rm021-*"
-      )
-    ).toBe("");
-
     const migrations = (await readdir(path.resolve(backendRoot, "migrations")))
       .filter((filename) => filename.endsWith(".sql"))
       .sort();
@@ -105,30 +96,27 @@ describe("RM-022 application isolation", () => {
     });
   });
 
-  it("contains only the eight expected RM-022 paths in the working-tree diff", () => {
-    const changed = execFileSync("git", ["status", "--short", "--untracked-files=all"], {
-      cwd: repositoryRoot,
-      encoding: "utf8"
-    })
-      .trimEnd()
-      .split(/\r?\n/)
-      .filter(Boolean)
-      .map((line) => ({ status: line.slice(0, 2), file: line.slice(3).replaceAll("\\", "/") }))
-      .sort((left, right) => left.file.localeCompare(right.file));
-
-    expect(changed).toStrictEqual(
+  it("keeps the committed RM-022 Phase 4 verification surface", () => {
+    expect(
+      git(
+        "ls-files",
+        "--",
+        "backend/test/helpers/listings-phase4-fixture.ts",
+        "backend/test/rm022-application-isolation.test.ts",
+        "backend/test/rm022-phase4-contract.integration.test.ts",
+        "backend/test/rm022-phase4.database.integration.test.ts"
+      )
+        .split(/\r?\n/)
+        .filter(Boolean)
+        .sort()
+    ).toStrictEqual(
       [
-        { status: " M", file: "backend/package.json" },
-        { status: "??", file: "backend/test/helpers/listings-phase4-fixture.ts" },
-        { status: "??", file: "backend/test/rm022-application-isolation.test.ts" },
-        { status: "??", file: "backend/test/rm022-phase4-contract.integration.test.ts" },
-        { status: "??", file: "backend/test/rm022-phase4.database.integration.test.ts" },
-        { status: " M", file: "backend/vitest.config.mts" },
-        { status: " M", file: "backend/vitest.database.config.mts" },
-        { status: " M", file: "package.json" }
-      ].sort((left, right) => left.file.localeCompare(right.file))
+        "backend/test/helpers/listings-phase4-fixture.ts",
+        "backend/test/rm022-application-isolation.test.ts",
+        "backend/test/rm022-phase4-contract.integration.test.ts",
+        "backend/test/rm022-phase4.database.integration.test.ts"
+      ].sort()
     );
-    expect(git("diff", "--cached", "--name-status")).toBe("");
   });
 
   it("keeps production free of RM-023 behavior and generic frameworks", async () => {
@@ -139,6 +127,6 @@ describe("RM-022 application isolation", () => {
     expect(combined).not.toMatch(
       /BaseRepository|GenericRepository|Container|Decorator|module.?registry|route.?discovery|auto.?discover/i
     );
-    expect(combined).not.toMatch(/cloudinary\.client|nominatim\.client|significant.?edit|amenity.?replacement/i);
+    expect(combined).not.toMatch(/cloudinary\.client|nominatim\.client/i);
   });
 });

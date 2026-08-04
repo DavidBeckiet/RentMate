@@ -368,7 +368,7 @@ describe("RM-021 owner listing read HTTP contract", () => {
       .set("Cookie", `rentmate_session=${await token(17, "LANDLORD")}`)
       .send({})
       .expect(201);
-    await request(app).patch("/api/v1/landlord/listings/42").set("Origin", origin).expect(404);
+    await request(app).patch("/api/v1/landlord/listings/42").set("Origin", origin).expect(401);
     await request(app).delete("/api/v1/landlord/listings/42").set("Origin", origin).expect(404);
     await request(app).get("/api/v1/listings").expect(404);
   });

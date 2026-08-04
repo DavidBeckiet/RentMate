@@ -10,6 +10,7 @@ import { registerAuthRoutes } from "./modules/auth/routes.js";
 import { createSessionCookieService, type SessionCookieService } from "./modules/auth/session-cookie.js";
 import { createSessionTokenService, type SessionTokenService } from "./modules/auth/session-token.js";
 import { createListingCreateService, type TransactionRunner } from "./modules/listings/listing-create-service.js";
+import { createListingUpdateService } from "./modules/listings/listing-update-service.js";
 import { createLookupRepository } from "./modules/listings/lookup-repository.js";
 import { createOwnerListingReadRepository } from "./modules/listings/owner-listing-read-repository.js";
 import { createOwnerListingReadService } from "./modules/listings/owner-listing-read-service.js";
@@ -60,11 +61,11 @@ export async function createBackendApp(options: BackendAppCompositionOptions): P
   });
   const usersService = createUsersService(usersRepository);
   const lookupRepository = createLookupRepository(options.sqlExecutor);
-  const listingCreateService = createListingCreateService({
-    transactionRunner: options.transactionRunner ?? unavailableTransactionRunner
-  });
+  const transactionRunner = options.transactionRunner ?? unavailableTransactionRunner;
+  const listingCreateService = createListingCreateService({ transactionRunner });
   const ownerListingReadRepository = createOwnerListingReadRepository(options.sqlExecutor);
   const ownerListingReadService = createOwnerListingReadService(ownerListingReadRepository);
+  const listingUpdateService = createListingUpdateService({ transactionRunner });
   const requiredAuthentication = createProtectedAuthenticationMiddleware({
     verifySessionToken: sessionTokenService.verify,
     loadAuthenticationAccount: usersRepository.findAuthenticationAccountById
@@ -96,7 +97,8 @@ export async function createBackendApp(options: BackendAppCompositionOptions): P
         authenticationMiddleware: requiredAuthentication,
         landlordRoleMiddleware: landlordRole,
         listingCreateService,
-        ownerListingReadService
+        ownerListingReadService,
+        listingUpdateService
       });
     }
   });

@@ -25,6 +25,11 @@ describe("RM-020 application isolation", () => {
       "listing-create-repository.ts",
       "listing-create-service.ts",
       "listing-create-validation.ts",
+      "listing-update-controller.ts",
+      "listing-update-repository.ts",
+      "listing-update-service.ts",
+      "listing-update-state.ts",
+      "listing-update-validation.ts",
       "lookup-controller.ts",
       "lookup-mapper.ts",
       "lookup-repository.ts",
@@ -51,7 +56,8 @@ describe("RM-020 application isolation", () => {
       ["get", "/lookups/amenities"],
       ["post", "/landlord/listings"],
       ["get", "/landlord/listings"],
-      ["get", "/landlord/listings/:listingId"]
+      ["get", "/landlord/listings/:listingId"],
+      ["patch", "/landlord/listings/:listingId"]
     ]);
     expect(routes).toMatch(
       /router\.post\([\s\S]*"\/landlord\/listings"[\s\S]*authenticationMiddleware[\s\S]*landlordRoleMiddleware[\s\S]*createListingDraftHandler/
@@ -59,7 +65,7 @@ describe("RM-020 application isolation", () => {
     const lookupRegistrations = [...routes.matchAll(/router\.get\([\s\S]*?\);/g)].map((match) => match[0]);
     expect(lookupRegistrations.slice(0, 2)).toHaveLength(2);
     expect(lookupRegistrations.slice(0, 2).join("\n")).not.toMatch(/authenticationMiddleware|landlordRoleMiddleware/);
-    expect(routes).not.toMatch(/router\.(?:patch|put|delete)|submit|deactivate|reactivate|geocod|admin/i);
+    expect(routes).not.toMatch(/router\.(?:put|delete)|submit|deactivate|reactivate|geocod|admin/i);
   });
 
   it("limits writes to one DRAFT listing insert and one set-based amenity insert", async () => {
@@ -68,13 +74,6 @@ describe("RM-020 application isolation", () => {
       (await readdir(listingsRoot)).map((filename) => readFile(path.join(listingsRoot, filename), "utf8"))
     );
     const combined = sources.join("\n");
-    const inserts = [...combined.matchAll(/INSERT INTO\s+([a-z_]+)/gi)].map((match) => match[1]);
-
-    expect(inserts.sort()).toStrictEqual(["listing_amenities", "listings"]);
-    expect(repository).toContain("VALUES ($1, $2, 'DRAFT'");
-    expect(repository).toContain("UNNEST($2::smallint[])");
-    expect(combined).not.toMatch(/\b(?:UPDATE|DELETE|FOR UPDATE)\s+(?:listings|listing_amenities)\b/i);
-    expect(combined).not.toMatch(/nominatim|upload|public.?search|favorite/i);
     const createCombined = (
       await Promise.all(
         [
@@ -85,6 +84,13 @@ describe("RM-020 application isolation", () => {
         ].map((filename) => readFile(path.join(listingsRoot, filename), "utf8"))
       )
     ).join("\n");
+    const inserts = [...createCombined.matchAll(/INSERT INTO\s+([a-z_]+)/gi)].map((match) => match[1]);
+
+    expect(inserts.sort()).toStrictEqual(["listing_amenities", "listings"]);
+    expect(repository).toContain("VALUES ($1, $2, 'DRAFT'");
+    expect(repository).toContain("UNNEST($2::smallint[])");
+    expect(createCombined).not.toMatch(/\b(?:UPDATE|DELETE|FOR UPDATE)\s+(?:listings|listing_amenities)\b/i);
+    expect(combined).not.toMatch(/nominatim|upload|public.?search|favorite/i);
     expect(createCombined).not.toMatch(/cloudinary|moderation_history/i);
     expect(combined).not.toMatch(
       /BaseRepository|GenericRepository|Container|Decorator|route.?discovery|auto.?discover/i
