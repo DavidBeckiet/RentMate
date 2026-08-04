@@ -46,6 +46,8 @@
     "test:rm020:database": "vitest run --config vitest.database.config.mts test/rm020-listing-create.database.integration.test.ts",
     "test:rm021": "vitest run --config vitest.config.mts test/rm021-owner-listing-query-validation.test.ts test/rm021-owner-image-mapper.test.ts test/rm021-owner-listing-summary-mapper.test.ts test/rm021-owner-listing-read-repository.test.ts test/rm021-owner-listing-read-service.test.ts test/rm021-owner-listing-read-http.integration.test.ts test/rm021-application-isolation.test.ts test/rm009-application-isolation.test.ts test/rm019-application-isolation.test.ts test/rm020-application-isolation.test.ts test/rm020-listing-create-http.integration.test.ts",
     "test:rm021:database": "vitest run --config vitest.database.config.mts test/rm021-owner-listing-read.database.integration.test.ts",
+    "test:rm022": "vitest run --config vitest.config.mts test/rm022-phase4-contract.integration.test.ts test/rm022-application-isolation.test.ts",
+    "test:rm022:database": "vitest run --config vitest.database.config.mts test/rm022-phase4.database.integration.test.ts",
     "migrate:clean": "tsx src/db/migrations/cli.ts clean",
     "migrate:existing": "tsx src/db/migrations/cli.ts existing",
     "admin:provision": "tsx src/db/admin-provisioning/cli.ts",
