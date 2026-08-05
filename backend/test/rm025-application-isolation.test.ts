@@ -5,14 +5,17 @@ import { describe, expect, it } from "vitest";
 
 const backendRoot = process.cwd();
 const repositoryRoot = path.resolve(backendRoot, "..");
-const listingsRoot = path.resolve(backendRoot, "src/modules/listings");
+const listingsRoot = path.join(backendRoot, "src/modules/listings");
 
-function git(...arguments_: string[]): string {
-  return execFileSync("git", arguments_, { cwd: repositoryRoot, encoding: "utf8" }).trim();
+function gitDiff(...paths: string[]): string {
+  return execFileSync("git", ["diff", "--name-only", "--", ...paths], {
+    cwd: repositoryRoot,
+    encoding: "utf8"
+  }).trim();
 }
 
-describe("RM-022 application isolation", () => {
-  it("keeps the exact RM-021 production listings inventory and Phase 4 routes", async () => {
+describe("RM-025 application isolation", () => {
+  it("keeps the exact 27-file listings inventory and one explicit submit route", async () => {
     expect((await readdir(listingsRoot)).sort()).toStrictEqual([
       "current-moderation-reason-repository.ts",
       "current-moderation-reason.ts",
@@ -42,7 +45,6 @@ describe("RM-022 application isolation", () => {
       "owner-listing-summary-mapper.ts",
       "routes.ts"
     ]);
-
     const routes = await readFile(path.join(listingsRoot, "routes.ts"), "utf8");
     const registrations = [...routes.matchAll(/router\.(get|post|patch|put|delete)\(\s*"([^"]+)"/g)].map((match) => [
       match[1],
@@ -57,17 +59,37 @@ describe("RM-022 application isolation", () => {
       ["patch", "/landlord/listings/:listingId"],
       ["post", "/landlord/listings/:listingId/submit"]
     ]);
-    expect(routes).not.toMatch(
-      /router\.(?:put|delete)|deactivate|reactivate|images|geocod|favorite|admin|"\/listings"/i
+    expect(routes.match(/"\/landlord\/listings\/:listingId\/submit"/g)).toHaveLength(1);
+    expect(routes).not.toMatch(/deactivate|reactivate|router\.delete|\/images|geocod|favorite|admin|"\/listings"/i);
+  });
+
+  it("keeps submit persistence fixed, transaction-bound, and free of adjacent writes", async () => {
+    const repository = await readFile(path.join(listingsRoot, "listing-submit-repository.ts"), "utf8");
+    const service = await readFile(path.join(listingsRoot, "listing-submit-service.ts"), "utf8");
+    expect(repository).toMatch(/FOR UPDATE OF l/);
+    expect(repository).toMatch(/SELECT NOT EXISTS[\s\S]*LEFT JOIN amenities/);
+    expect(repository).toMatch(/SELECT EXISTS[\s\S]*FROM listing_images/);
+    expect(repository.match(/UPDATE listings/g)).toHaveLength(1);
+    expect(repository).toContain("SET status = 'PENDING', updated_at = CURRENT_TIMESTAMP");
+    expect(repository).not.toMatch(/INSERT INTO|DELETE FROM|moderation_history|cloudinary|nominatim/i);
+    expect(service).toContain("createOwnerListingReadService(ownerReadFactory(executor))");
+    expect(service).not.toMatch(/listing-lifecycle-policy|moderation_history|cloudinary|nominatim/i);
+  });
+
+  it("leaves the significant-edit policy submit-free and adds no framework", async () => {
+    const policy = await readFile(path.join(listingsRoot, "listing-lifecycle-policy.ts"), "utf8");
+    const sources = await Promise.all(
+      (await readdir(listingsRoot)).map((filename) => readFile(path.join(listingsRoot, filename), "utf8"))
+    );
+    expect(policy).not.toMatch(/submit|deactivate|reactivate|admin|moderation|image|transaction|sql/i);
+    expect(sources.join("\n")).not.toMatch(
+      /BaseRepository|GenericRepository|DIContainer|module.?registry|event.?bus|workflow.?engine|route.?discovery/i
     );
   });
 
-  it("adds no production, migration, dependency, lockfile, frontend, or frozen-document change", async () => {
+  it("adds no schema, dependency, lockfile, fixture, frontend, or frozen-document change", async () => {
     expect(
-      git(
-        "diff",
-        "--name-only",
-        "--",
+      gitDiff(
         "backend/src/app.ts",
         "backend/src/server.ts",
         "backend/src/config",
@@ -76,6 +98,7 @@ describe("RM-022 application isolation", () => {
         "backend/src/shared",
         "backend/src/db",
         "backend/migrations",
+        "backend/test/helpers/listings-phase4-fixture.ts",
         "backend/package-lock.json",
         "package-lock.json",
         "frontend",
@@ -84,14 +107,12 @@ describe("RM-022 application isolation", () => {
         ".env.example"
       )
     ).toBe("");
-    const migrations = (await readdir(path.resolve(backendRoot, "migrations")))
+    const migrations = (await readdir(path.join(backendRoot, "migrations")))
       .filter((filename) => filename.endsWith(".sql"))
       .sort();
     expect(migrations).toHaveLength(12);
     expect(migrations.at(-1)).toBe("0012_create_explicit_indexes.sql");
-    expect(migrations.some((filename) => filename.startsWith("0013"))).toBe(false);
-
-    const packageJson = JSON.parse(await readFile(path.resolve(backendRoot, "package.json"), "utf8")) as {
+    const packageJson = JSON.parse(await readFile(path.join(backendRoot, "package.json"), "utf8")) as {
       dependencies: Record<string, string>;
     };
     expect(packageJson.dependencies).toStrictEqual({
@@ -102,39 +123,5 @@ describe("RM-022 application isolation", () => {
       jose: "6.2.6",
       pg: "8.16.0"
     });
-  });
-
-  it("keeps the committed RM-022 Phase 4 verification surface", () => {
-    expect(
-      git(
-        "ls-files",
-        "--",
-        "backend/test/helpers/listings-phase4-fixture.ts",
-        "backend/test/rm022-application-isolation.test.ts",
-        "backend/test/rm022-phase4-contract.integration.test.ts",
-        "backend/test/rm022-phase4.database.integration.test.ts"
-      )
-        .split(/\r?\n/)
-        .filter(Boolean)
-        .sort()
-    ).toStrictEqual(
-      [
-        "backend/test/helpers/listings-phase4-fixture.ts",
-        "backend/test/rm022-application-isolation.test.ts",
-        "backend/test/rm022-phase4-contract.integration.test.ts",
-        "backend/test/rm022-phase4.database.integration.test.ts"
-      ].sort()
-    );
-  });
-
-  it("keeps production free of RM-023 behavior and generic frameworks", async () => {
-    const sources = await Promise.all(
-      (await readdir(listingsRoot)).map((filename) => readFile(path.join(listingsRoot, filename), "utf8"))
-    );
-    const combined = sources.join("\n");
-    expect(combined).not.toMatch(
-      /BaseRepository|GenericRepository|Container|Decorator|module.?registry|route.?discovery|auto.?discover/i
-    );
-    expect(combined).not.toMatch(/cloudinary\.client|nominatim\.client/i);
   });
 });

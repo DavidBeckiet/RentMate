@@ -9,11 +9,15 @@ describe("RM-023 application isolation", () => {
     expect((await readdir(listings)).sort()).toStrictEqual([
       "current-moderation-reason-repository.ts",
       "current-moderation-reason.ts",
+      "listing-completeness.ts",
       "listing-create-controller.ts",
       "listing-create-repository.ts",
       "listing-create-service.ts",
       "listing-create-validation.ts",
       "listing-lifecycle-policy.ts",
+      "listing-submit-controller.ts",
+      "listing-submit-repository.ts",
+      "listing-submit-service.ts",
       "listing-update-controller.ts",
       "listing-update-repository.ts",
       "listing-update-service.ts",
@@ -35,7 +39,7 @@ describe("RM-023 application isolation", () => {
     expect([...routes.matchAll(/router\.patch\(/g)]).toHaveLength(1);
     expect(routes).toContain('"/landlord/listings/:listingId"');
     expect(routes).not.toMatch(
-      /router\.(?:put|delete)|submit|deactivate|reactivate|images|geocod|favorite|admin|"\/listings"/i
+      /router\.(?:put|delete)|deactivate|reactivate|images|geocod|favorite|admin|"\/listings"/i
     );
   });
   it("limits writes to listing content and listing amenities", async () => {

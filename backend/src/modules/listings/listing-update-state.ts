@@ -1,5 +1,6 @@
 import { createValidationError } from "../../shared/errors/application-error.js";
 import { validationDetail } from "../../shared/validation/issues.js";
+import { findMissingListingCompletenessFields } from "./listing-completeness.js";
 import { resolveListingStatusAfterMutation } from "./listing-lifecycle-policy.js";
 import type { ListingStatus } from "./owner-listing-mapper.js";
 import type { ListingUpdateInput } from "./listing-update-validation.js";
@@ -72,18 +73,19 @@ export function resolveListingUpdateState(
     changed ? "SIGNIFICANT_CONTENT_CHANGE" : "NO_STATUS_CHANGE"
   );
 
-  if (
-    status !== "DRAFT" &&
-    (next.propertyTypeCode === null ||
-      next.title === null ||
-      next.description === null ||
-      next.monthlyRent === null ||
-      next.roomAreaSqm === null ||
-      next.addressText === null ||
-      next.areaName === null ||
-      next.latitude === null ||
-      next.longitude === null)
-  ) {
+  const missingFields = findMissingListingCompletenessFields({
+    propertyType: next.propertyTypeCode,
+    title: next.title,
+    description: next.description,
+    monthlyRent: next.monthlyRent,
+    roomAreaSqm: next.roomAreaSqm,
+    addressText: next.addressText,
+    areaName: next.areaName,
+    latitude: next.latitude,
+    longitude: next.longitude
+  });
+
+  if (status !== "DRAFT" && missingFields.length > 0) {
     throw createValidationError([
       validationDetail("body", "INVALID_VALUE", "The resulting non-draft listing must contain all required content.")
     ]);

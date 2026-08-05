@@ -20,7 +20,8 @@ export default defineConfig({
       "test/rm021-owner-listing-read.database.integration.test.ts",
       "test/rm022-phase4.database.integration.test.ts",
       "test/rm023-listing-update.database.integration.test.ts",
-      "test/rm024-current-moderation-reason.database.integration.test.ts"
+      "test/rm024-current-moderation-reason.database.integration.test.ts",
+      "test/rm025-listing-submit.database.integration.test.ts"
     ],
     exclude: ["node_modules/**", "dist/**", "coverage/**"],
     clearMocks: true,

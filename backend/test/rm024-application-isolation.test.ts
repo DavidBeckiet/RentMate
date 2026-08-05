@@ -28,11 +28,15 @@ describe("RM-024 application isolation", () => {
     expect((await readdir(listingsRoot)).sort()).toStrictEqual([
       "current-moderation-reason-repository.ts",
       "current-moderation-reason.ts",
+      "listing-completeness.ts",
       "listing-create-controller.ts",
       "listing-create-repository.ts",
       "listing-create-service.ts",
       "listing-create-validation.ts",
       "listing-lifecycle-policy.ts",
+      "listing-submit-controller.ts",
+      "listing-submit-repository.ts",
+      "listing-submit-service.ts",
       "listing-update-controller.ts",
       "listing-update-repository.ts",
       "listing-update-service.ts",
@@ -61,9 +65,10 @@ describe("RM-024 application isolation", () => {
       ["post", "/landlord/listings"],
       ["get", "/landlord/listings"],
       ["get", "/landlord/listings/:listingId"],
-      ["patch", "/landlord/listings/:listingId"]
+      ["patch", "/landlord/listings/:listingId"],
+      ["post", "/landlord/listings/:listingId/submit"]
     ]);
-    expect(routes).not.toMatch(/submit|deactivate|reactivate|images|geocod|favorite|admin|"\/listings"/i);
+    expect(routes).not.toMatch(/deactivate|reactivate|images|geocod|favorite|admin|"\/listings"/i);
   });
 
   it("contains exactly one focused significant-edit matrix and no PATCH-local copy", async () => {
@@ -111,8 +116,6 @@ describe("RM-024 application isolation", () => {
       gitDiff(
         "backend/src/app.ts",
         "backend/src/server.ts",
-        "backend/src/server-composition.ts",
-        "backend/src/modules/listings/routes.ts",
         "backend/src/shared",
         "backend/src/db",
         "backend/migrations",

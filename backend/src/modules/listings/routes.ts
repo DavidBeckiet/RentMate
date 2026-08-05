@@ -1,6 +1,8 @@
 import type { RequestHandler, Router } from "express";
 import { createListingDraftHandler } from "./listing-create-controller.js";
 import type { ListingCreateService } from "./listing-create-service.js";
+import { createSubmitOwnerListingHandler } from "./listing-submit-controller.js";
+import type { ListingSubmitService } from "./listing-submit-service.js";
 import { createUpdateOwnerListingHandler } from "./listing-update-controller.js";
 import type { ListingUpdateService } from "./listing-update-service.js";
 import { createGetAmenitiesHandler, createGetPropertyTypesHandler } from "./lookup-controller.js";
@@ -15,6 +17,7 @@ export interface ListingsRouteDependencies {
   readonly listingCreateService: ListingCreateService;
   readonly ownerListingReadService: OwnerListingReadService;
   readonly listingUpdateService: ListingUpdateService;
+  readonly listingSubmitService: ListingSubmitService;
 }
 
 export function registerListingsRoutes(router: Router, dependencies: ListingsRouteDependencies): void {
@@ -43,5 +46,11 @@ export function registerListingsRoutes(router: Router, dependencies: ListingsRou
     dependencies.authenticationMiddleware,
     dependencies.landlordRoleMiddleware,
     createUpdateOwnerListingHandler(dependencies.listingUpdateService)
+  );
+  router.post(
+    "/landlord/listings/:listingId/submit",
+    dependencies.authenticationMiddleware,
+    dependencies.landlordRoleMiddleware,
+    createSubmitOwnerListingHandler(dependencies.listingSubmitService)
   );
 }
