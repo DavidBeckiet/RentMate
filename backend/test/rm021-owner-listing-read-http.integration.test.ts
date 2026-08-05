@@ -357,7 +357,7 @@ describe("RM-021 owner listing read HTTP contract", () => {
     expect(JSON.stringify(response.body)).not.toMatch(/private SQL|raw row|stack/i);
   });
 
-  it("preserves RM-019 lookups, RM-020 create, and excludes later listing routes", async () => {
+  it("preserves earlier routes and keeps later protected mutations behind authentication", async () => {
     executor.account = { id: 17, role: "LANDLORD", is_active: true };
     const app = await makeApp(executor);
     await request(app).get("/api/v1/lookups/property-types").expect(200);
@@ -369,7 +369,7 @@ describe("RM-021 owner listing read HTTP contract", () => {
       .send({})
       .expect(201);
     await request(app).patch("/api/v1/landlord/listings/42").set("Origin", origin).expect(401);
-    await request(app).delete("/api/v1/landlord/listings/42").set("Origin", origin).expect(404);
+    await request(app).delete("/api/v1/landlord/listings/42").set("Origin", origin).expect(401);
     await request(app).get("/api/v1/listings").expect(404);
   });
 });

@@ -14,8 +14,8 @@ function gitDiff(...paths: string[]): string {
   }).trim();
 }
 
-describe("RM-025 application isolation", () => {
-  it("keeps the exact 27-file listings inventory and one explicit submit route", async () => {
+describe("RM-027 application isolation", () => {
+  it("keeps the exact 34-file listings inventory and ten explicit routes", async () => {
     expect((await readdir(listingsRoot)).sort()).toStrictEqual([
       "current-moderation-reason-repository.ts",
       "current-moderation-reason.ts",
@@ -69,35 +69,60 @@ describe("RM-025 application isolation", () => {
       ["post", "/landlord/listings/:listingId/reactivate"],
       ["delete", "/landlord/listings/:listingId"]
     ]);
-    expect(routes.match(/"\/landlord\/listings\/:listingId\/submit"/g)).toHaveLength(1);
+    expect(routes.match(/router\.delete/g)).toHaveLength(1);
     expect(routes).not.toMatch(/\/images|geocod|favorite|admin|"\/listings"/i);
   });
 
-  it("keeps submit persistence fixed, transaction-bound, and free of adjacent writes", async () => {
-    const repository = await readFile(path.join(listingsRoot, "listing-submit-repository.ts"), "utf8");
-    const service = await readFile(path.join(listingsRoot, "listing-submit-service.ts"), "utf8");
-    expect(repository).toMatch(/FOR UPDATE OF l/);
-    expect(repository).toMatch(/SELECT NOT EXISTS[\s\S]*LEFT JOIN amenities/);
-    expect(repository).toMatch(/SELECT EXISTS[\s\S]*FROM listing_images/);
-    expect(repository.match(/UPDATE listings/g)).toHaveLength(1);
-    expect(repository).toContain("SET status = 'PENDING', updated_at = CURRENT_TIMESTAMP");
-    expect(repository).not.toMatch(/INSERT INTO|DELETE FROM|moderation_history|cloudinary|nominatim/i);
-    expect(service).toContain("createOwnerListingReadService(ownerReadFactory(executor))");
-    expect(service).not.toMatch(/listing-lifecycle-policy|moderation_history|cloudinary|nominatim/i);
+  it("keeps delete persistence owner-scoped, transaction-safe, and database-cascade-only", async () => {
+    const repository = await readFile(path.join(listingsRoot, "listing-delete-repository.ts"), "utf8");
+    const normalized = repository.replace(/\s+/g, " ");
+    expect(normalized).toContain(
+      "SELECT l.id, l.status FROM listings AS l WHERE l.id = $1 AND l.landlord_id = $2 FOR UPDATE OF l"
+    );
+    expect(normalized).toContain(
+      "SELECT EXISTS (SELECT 1 FROM moderation_history WHERE listing_id = $1) AS has_moderation_history"
+    );
+    expect(normalized).toContain(
+      "SELECT cloudinary_public_id FROM listing_images WHERE listing_id = $1 ORDER BY id ASC"
+    );
+    expect(normalized).toContain("DELETE FROM listings WHERE id = $1 AND landlord_id = $2 AND status = 'DRAFT'");
+    expect(repository.match(/DELETE FROM/g)).toHaveLength(1);
+    expect(repository).not.toMatch(/DELETE FROM (?:listing_images|listing_amenities|favorites|moderation_history)/i);
+    expect(repository).not.toMatch(/UPDATE listings|INSERT INTO|updated_at|CURRENT_TIMESTAMP/i);
   });
 
-  it("leaves the significant-edit policy submit-free and adds no framework", async () => {
-    const policy = await readFile(path.join(listingsRoot, "listing-lifecycle-policy.ts"), "utf8");
-    const sources = await Promise.all(
-      (await readdir(listingsRoot)).map((filename) => readFile(path.join(listingsRoot, filename), "utf8"))
-    );
-    expect(policy).not.toMatch(/submit|deactivate|reactivate|admin|moderation|image|transaction|sql/i);
-    expect(sources.join("\n")).not.toMatch(
-      /BaseRepository|GenericRepository|DIContainer|module.?registry|event.?bus|workflow.?engine|route.?discovery/i
-    );
+  it("hands cleanup off once after the transaction and keeps provider work out of RM-027", async () => {
+    const service = await readFile(path.join(listingsRoot, "listing-delete-service.ts"), "utf8");
+    const cleanup = await readFile(path.join(listingsRoot, "listing-delete-cleanup.ts"), "utf8");
+    const transactionIndex = service.indexOf("await dependencies.transactionRunner");
+    const handoffIndex = service.indexOf("await dependencies.cleanupHandoff.afterCommittedDelete");
+    expect(transactionIndex).toBeGreaterThan(-1);
+    expect(handoffIndex).toBeGreaterThan(transactionIndex);
+    expect(service.match(/afterCommittedDelete/g)).toHaveLength(1);
+    expect(service).toContain("Object.freeze([...(await repository.findCloudinaryPublicIds(listingId))])");
+    expect(service).toContain("Listing delete cleanup handoff failed after database commit.");
+    expect(service).toContain("listingId,");
+    expect(service).toContain("assetCount: cloudinaryPublicIds.length");
+    expect(service).toContain('errorType: error instanceof Error ? error.name : "UnknownError"');
+    expect(service).not.toMatch(/secure_url|password|cookie|jwt|token/i);
+    expect(cleanup).toContain("noOpListingDeleteCleanupHandoff");
+    expect(cleanup).not.toMatch(/fetch|axios|https?:|cloudinary\.v2|destroy\(|upload\(|queue|worker/i);
   });
 
-  it("adds no schema, dependency, lockfile, fixture, frontend, or frozen-document change", async () => {
+  it("preserves controller boundaries and frozen error contracts", async () => {
+    const controller = await readFile(path.join(listingsRoot, "listing-delete-controller.ts"), "utf8");
+    const service = await readFile(path.join(listingsRoot, "listing-delete-service.ts"), "utf8");
+    expect(controller).toContain('parsePathId(value, "listingId")');
+    expect(controller).toContain("validateQueryKeys(request.query, [])");
+    expect(controller).toContain("validateAbsentBody(request.body)");
+    expect(controller).toContain("sendNoContent(response)");
+    expect(service).toContain('new ApplicationError("RESOURCE_NOT_FOUND", resourceNotFoundMessage)');
+    expect(service).toContain('new ApplicationError("LISTING_DELETE_NOT_ALLOWED", deleteNotAllowedMessage)');
+    expect(service).toContain('new ApplicationError("CONCURRENT_MODIFICATION", concurrentModificationMessage)');
+    expect(service).not.toMatch(/refresh|session table|RM-028|RM-029/i);
+  });
+
+  it("adds no schema, dependency, lockfile, fixture, frontend, frozen-document, or adjacent-task change", async () => {
     expect(
       gitDiff(
         "backend/src/app.ts",

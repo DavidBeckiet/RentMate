@@ -1,6 +1,8 @@
 import type { RequestHandler, Router } from "express";
 import { createListingDraftHandler } from "./listing-create-controller.js";
 import type { ListingCreateService } from "./listing-create-service.js";
+import { createDeleteOwnerListingHandler } from "./listing-delete-controller.js";
+import type { ListingDeleteService } from "./listing-delete-service.js";
 import {
   createDeactivateOwnerListingHandler,
   createReactivateOwnerListingHandler
@@ -24,6 +26,7 @@ export interface ListingsRouteDependencies {
   readonly listingUpdateService: ListingUpdateService;
   readonly listingSubmitService: ListingSubmitService;
   readonly listingLifecycleActionService: ListingLifecycleActionService;
+  readonly listingDeleteService: ListingDeleteService;
 }
 
 export function registerListingsRoutes(router: Router, dependencies: ListingsRouteDependencies): void {
@@ -70,5 +73,11 @@ export function registerListingsRoutes(router: Router, dependencies: ListingsRou
     dependencies.authenticationMiddleware,
     dependencies.landlordRoleMiddleware,
     createReactivateOwnerListingHandler(dependencies.listingLifecycleActionService)
+  );
+  router.delete(
+    "/landlord/listings/:listingId",
+    dependencies.authenticationMiddleware,
+    dependencies.landlordRoleMiddleware,
+    createDeleteOwnerListingHandler(dependencies.listingDeleteService)
   );
 }

@@ -24,6 +24,7 @@ export default defineConfig({
       "test/rm024-current-moderation-reason.database.integration.test.ts",
       "test/rm025-listing-submit.database.integration.test.ts",
       "test/rm026-listing-lifecycle-actions.database.integration.test.ts",
+      "test/rm027-listing-delete.database.integration.test.ts",
       "node_modules/**",
       "dist/**",
       "coverage/**"

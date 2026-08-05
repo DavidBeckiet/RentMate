@@ -33,6 +33,10 @@ describe("RM-024 application isolation", () => {
       "listing-create-repository.ts",
       "listing-create-service.ts",
       "listing-create-validation.ts",
+      "listing-delete-cleanup.ts",
+      "listing-delete-controller.ts",
+      "listing-delete-repository.ts",
+      "listing-delete-service.ts",
       "listing-lifecycle-action-controller.ts",
       "listing-lifecycle-action-repository.ts",
       "listing-lifecycle-action-service.ts",
@@ -71,7 +75,8 @@ describe("RM-024 application isolation", () => {
       ["patch", "/landlord/listings/:listingId"],
       ["post", "/landlord/listings/:listingId/submit"],
       ["post", "/landlord/listings/:listingId/deactivate"],
-      ["post", "/landlord/listings/:listingId/reactivate"]
+      ["post", "/landlord/listings/:listingId/reactivate"],
+      ["delete", "/landlord/listings/:listingId"]
     ]);
     expect(routes).not.toMatch(/images|geocod|favorite|admin|"\/listings"/i);
   });

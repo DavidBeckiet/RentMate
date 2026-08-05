@@ -10,6 +10,11 @@ import { registerAuthRoutes } from "./modules/auth/routes.js";
 import { createSessionCookieService, type SessionCookieService } from "./modules/auth/session-cookie.js";
 import { createSessionTokenService, type SessionTokenService } from "./modules/auth/session-token.js";
 import { createListingCreateService, type TransactionRunner } from "./modules/listings/listing-create-service.js";
+import {
+  noOpListingDeleteCleanupHandoff,
+  type ListingDeleteCleanupHandoff
+} from "./modules/listings/listing-delete-cleanup.js";
+import { createListingDeleteService } from "./modules/listings/listing-delete-service.js";
 import { createListingLifecycleActionService } from "./modules/listings/listing-lifecycle-action-service.js";
 import { createListingSubmitService } from "./modules/listings/listing-submit-service.js";
 import { createListingUpdateService } from "./modules/listings/listing-update-service.js";
@@ -43,6 +48,7 @@ export interface BackendAppCompositionOptions {
   readonly sessionTokenService?: SessionTokenService;
   readonly sessionCookieService?: SessionCookieService;
   readonly transactionRunner?: TransactionRunner;
+  readonly listingDeleteCleanupHandoff?: ListingDeleteCleanupHandoff;
 }
 
 export async function createBackendApp(options: BackendAppCompositionOptions): Promise<Express> {
@@ -70,6 +76,11 @@ export async function createBackendApp(options: BackendAppCompositionOptions): P
   const listingUpdateService = createListingUpdateService({ transactionRunner });
   const listingSubmitService = createListingSubmitService({ transactionRunner });
   const listingLifecycleActionService = createListingLifecycleActionService({ transactionRunner });
+  const listingDeleteService = createListingDeleteService({
+    transactionRunner,
+    cleanupHandoff: options.listingDeleteCleanupHandoff ?? noOpListingDeleteCleanupHandoff,
+    logger: options.logger
+  });
   const requiredAuthentication = createProtectedAuthenticationMiddleware({
     verifySessionToken: sessionTokenService.verify,
     loadAuthenticationAccount: usersRepository.findAuthenticationAccountById
@@ -104,7 +115,8 @@ export async function createBackendApp(options: BackendAppCompositionOptions): P
         ownerListingReadService,
         listingUpdateService,
         listingSubmitService,
-        listingLifecycleActionService
+        listingLifecycleActionService,
+        listingDeleteService
       });
     }
   });

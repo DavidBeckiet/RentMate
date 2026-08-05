@@ -24,6 +24,10 @@ describe("RM-026 application isolation", () => {
       "listing-create-repository.ts",
       "listing-create-service.ts",
       "listing-create-validation.ts",
+      "listing-delete-cleanup.ts",
+      "listing-delete-controller.ts",
+      "listing-delete-repository.ts",
+      "listing-delete-service.ts",
       "listing-lifecycle-action-controller.ts",
       "listing-lifecycle-action-repository.ts",
       "listing-lifecycle-action-service.ts",
@@ -62,11 +66,12 @@ describe("RM-026 application isolation", () => {
       ["patch", "/landlord/listings/:listingId"],
       ["post", "/landlord/listings/:listingId/submit"],
       ["post", "/landlord/listings/:listingId/deactivate"],
-      ["post", "/landlord/listings/:listingId/reactivate"]
+      ["post", "/landlord/listings/:listingId/reactivate"],
+      ["delete", "/landlord/listings/:listingId"]
     ]);
     expect(routes.match(/"\/landlord\/listings\/:listingId\/deactivate"/g)).toHaveLength(1);
     expect(routes.match(/"\/landlord\/listings\/:listingId\/reactivate"/g)).toHaveLength(1);
-    expect(routes).not.toMatch(/router\.delete|\/images|geocod|favorite|admin|"\/listings"/i);
+    expect(routes).not.toMatch(/\/images|geocod|favorite|admin|"\/listings"/i);
   });
 
   it("keeps each availability write fixed, conditional, and bounded", async () => {

@@ -255,7 +255,7 @@ describe("RM-025 listing submit HTTP", () => {
     expect(response.body.error.code).toBe(code);
   });
 
-  it("keeps HIDDEN submission explicit and leaves adjacent routes absent", async () => {
+  it("keeps HIDDEN submission explicit and preserves adjacent route boundaries", async () => {
     const executor = new Executor();
     executor.status = "HIDDEN";
     await request(await makeApp(executor))
@@ -267,6 +267,6 @@ describe("RM-025 listing submit HTTP", () => {
     for (const path of ["images"]) {
       await request(app).post(`/api/v1/landlord/listings/7/${path}`).set("Origin", origin).expect(404);
     }
-    await request(app).delete("/api/v1/landlord/listings/7").set("Origin", origin).expect(404);
+    await request(app).delete("/api/v1/landlord/listings/7").set("Origin", origin).expect(401);
   });
 });
