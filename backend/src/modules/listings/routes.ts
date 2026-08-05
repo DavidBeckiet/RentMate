@@ -1,6 +1,11 @@
 import type { RequestHandler, Router } from "express";
 import { createListingDraftHandler } from "./listing-create-controller.js";
 import type { ListingCreateService } from "./listing-create-service.js";
+import {
+  createDeactivateOwnerListingHandler,
+  createReactivateOwnerListingHandler
+} from "./listing-lifecycle-action-controller.js";
+import type { ListingLifecycleActionService } from "./listing-lifecycle-action-service.js";
 import { createSubmitOwnerListingHandler } from "./listing-submit-controller.js";
 import type { ListingSubmitService } from "./listing-submit-service.js";
 import { createUpdateOwnerListingHandler } from "./listing-update-controller.js";
@@ -18,6 +23,7 @@ export interface ListingsRouteDependencies {
   readonly ownerListingReadService: OwnerListingReadService;
   readonly listingUpdateService: ListingUpdateService;
   readonly listingSubmitService: ListingSubmitService;
+  readonly listingLifecycleActionService: ListingLifecycleActionService;
 }
 
 export function registerListingsRoutes(router: Router, dependencies: ListingsRouteDependencies): void {
@@ -52,5 +58,17 @@ export function registerListingsRoutes(router: Router, dependencies: ListingsRou
     dependencies.authenticationMiddleware,
     dependencies.landlordRoleMiddleware,
     createSubmitOwnerListingHandler(dependencies.listingSubmitService)
+  );
+  router.post(
+    "/landlord/listings/:listingId/deactivate",
+    dependencies.authenticationMiddleware,
+    dependencies.landlordRoleMiddleware,
+    createDeactivateOwnerListingHandler(dependencies.listingLifecycleActionService)
+  );
+  router.post(
+    "/landlord/listings/:listingId/reactivate",
+    dependencies.authenticationMiddleware,
+    dependencies.landlordRoleMiddleware,
+    createReactivateOwnerListingHandler(dependencies.listingLifecycleActionService)
   );
 }

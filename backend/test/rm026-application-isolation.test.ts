@@ -14,8 +14,8 @@ function gitDiff(...paths: string[]): string {
   }).trim();
 }
 
-describe("RM-025 application isolation", () => {
-  it("keeps the exact 27-file listings inventory and one explicit submit route", async () => {
+describe("RM-026 application isolation", () => {
+  it("keeps the exact 30-file listings inventory and two explicit availability routes", async () => {
     expect((await readdir(listingsRoot)).sort()).toStrictEqual([
       "current-moderation-reason-repository.ts",
       "current-moderation-reason.ts",
@@ -64,37 +64,41 @@ describe("RM-025 application isolation", () => {
       ["post", "/landlord/listings/:listingId/deactivate"],
       ["post", "/landlord/listings/:listingId/reactivate"]
     ]);
-    expect(routes.match(/"\/landlord\/listings\/:listingId\/submit"/g)).toHaveLength(1);
+    expect(routes.match(/"\/landlord\/listings\/:listingId\/deactivate"/g)).toHaveLength(1);
+    expect(routes.match(/"\/landlord\/listings\/:listingId\/reactivate"/g)).toHaveLength(1);
     expect(routes).not.toMatch(/router\.delete|\/images|geocod|favorite|admin|"\/listings"/i);
   });
 
-  it("keeps submit persistence fixed, transaction-bound, and free of adjacent writes", async () => {
-    const repository = await readFile(path.join(listingsRoot, "listing-submit-repository.ts"), "utf8");
-    const service = await readFile(path.join(listingsRoot, "listing-submit-service.ts"), "utf8");
-    expect(repository).toMatch(/FOR UPDATE OF l/);
-    expect(repository).toMatch(/SELECT NOT EXISTS[\s\S]*LEFT JOIN amenities/);
-    expect(repository).toMatch(/SELECT EXISTS[\s\S]*FROM listing_images/);
+  it("keeps each availability write fixed, conditional, and bounded", async () => {
+    const repository = await readFile(path.join(listingsRoot, "listing-lifecycle-action-repository.ts"), "utf8");
+    expect(repository).toContain("SELECT l.id, l.status FROM listings AS l");
+    expect(repository).toContain("l.id = $1 AND l.landlord_id = $2 FOR UPDATE OF l");
+    expect(repository).toContain("SET status = $1::listing_status, updated_at = CURRENT_TIMESTAMP");
+    expect(repository).toContain("id = $2 AND landlord_id = $3 AND status = $4::listing_status");
     expect(repository.match(/UPDATE listings/g)).toHaveLength(1);
-    expect(repository).toContain("SET status = 'PENDING', updated_at = CURRENT_TIMESTAMP");
-    expect(repository).not.toMatch(/INSERT INTO|DELETE FROM|moderation_history|cloudinary|nominatim/i);
+    expect(repository).not.toMatch(/INSERT INTO|DELETE FROM|moderation_history|listing_images|listing_amenities/i);
+  });
+
+  it("uses one transaction and the existing owner-detail projection without eligibility or reason queries", async () => {
+    const service = await readFile(path.join(listingsRoot, "listing-lifecycle-action-service.ts"), "utf8");
+    const controller = await readFile(path.join(listingsRoot, "listing-lifecycle-action-controller.ts"), "utf8");
+    expect(service).toContain("transactionRunner(async (executor)");
     expect(service).toContain("createOwnerListingReadService(ownerReadFactory(executor))");
-    expect(service).not.toMatch(/listing-lifecycle-policy|moderation_history|cloudinary|nominatim/i);
+    expect(service).toContain('new ApplicationError("CONCURRENT_MODIFICATION"');
+    expect(service).not.toMatch(/listing-completeness|listing-submit|current-moderation-reason|moderation_history/i);
+    expect(controller).toContain("validateAbsentBody(request.body)");
+    expect(controller).not.toMatch(/status|transition|generic/i);
   });
 
-  it("leaves the significant-edit policy submit-free and adds no framework", async () => {
+  it("leaves lifecycle policy, submit implementation, schema, dependencies, fixture, frontend, and frozen documents unchanged", async () => {
     const policy = await readFile(path.join(listingsRoot, "listing-lifecycle-policy.ts"), "utf8");
-    const sources = await Promise.all(
-      (await readdir(listingsRoot)).map((filename) => readFile(path.join(listingsRoot, filename), "utf8"))
-    );
     expect(policy).not.toMatch(/submit|deactivate|reactivate|admin|moderation|image|transaction|sql/i);
-    expect(sources.join("\n")).not.toMatch(
-      /BaseRepository|GenericRepository|DIContainer|module.?registry|event.?bus|workflow.?engine|route.?discovery/i
-    );
-  });
-
-  it("adds no schema, dependency, lockfile, fixture, frontend, or frozen-document change", async () => {
     expect(
       gitDiff(
+        "backend/src/modules/listings/listing-lifecycle-policy.ts",
+        "backend/src/modules/listings/listing-submit-controller.ts",
+        "backend/src/modules/listings/listing-submit-repository.ts",
+        "backend/src/modules/listings/listing-submit-service.ts",
         "backend/src/app.ts",
         "backend/src/server.ts",
         "backend/src/config",

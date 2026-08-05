@@ -33,6 +33,9 @@ describe("RM-024 application isolation", () => {
       "listing-create-repository.ts",
       "listing-create-service.ts",
       "listing-create-validation.ts",
+      "listing-lifecycle-action-controller.ts",
+      "listing-lifecycle-action-repository.ts",
+      "listing-lifecycle-action-service.ts",
       "listing-lifecycle-policy.ts",
       "listing-submit-controller.ts",
       "listing-submit-repository.ts",
@@ -66,9 +69,11 @@ describe("RM-024 application isolation", () => {
       ["get", "/landlord/listings"],
       ["get", "/landlord/listings/:listingId"],
       ["patch", "/landlord/listings/:listingId"],
-      ["post", "/landlord/listings/:listingId/submit"]
+      ["post", "/landlord/listings/:listingId/submit"],
+      ["post", "/landlord/listings/:listingId/deactivate"],
+      ["post", "/landlord/listings/:listingId/reactivate"]
     ]);
-    expect(routes).not.toMatch(/deactivate|reactivate|images|geocod|favorite|admin|"\/listings"/i);
+    expect(routes).not.toMatch(/images|geocod|favorite|admin|"\/listings"/i);
   });
 
   it("contains exactly one focused significant-edit matrix and no PATCH-local copy", async () => {

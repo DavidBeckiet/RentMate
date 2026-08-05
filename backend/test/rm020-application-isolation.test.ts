@@ -28,6 +28,9 @@ describe("RM-020 application isolation", () => {
       "listing-create-repository.ts",
       "listing-create-service.ts",
       "listing-create-validation.ts",
+      "listing-lifecycle-action-controller.ts",
+      "listing-lifecycle-action-repository.ts",
+      "listing-lifecycle-action-service.ts",
       "listing-lifecycle-policy.ts",
       "listing-submit-controller.ts",
       "listing-submit-repository.ts",
@@ -65,7 +68,9 @@ describe("RM-020 application isolation", () => {
       ["get", "/landlord/listings"],
       ["get", "/landlord/listings/:listingId"],
       ["patch", "/landlord/listings/:listingId"],
-      ["post", "/landlord/listings/:listingId/submit"]
+      ["post", "/landlord/listings/:listingId/submit"],
+      ["post", "/landlord/listings/:listingId/deactivate"],
+      ["post", "/landlord/listings/:listingId/reactivate"]
     ]);
     expect(routes).toMatch(
       /router\.post\([\s\S]*"\/landlord\/listings"[\s\S]*authenticationMiddleware[\s\S]*landlordRoleMiddleware[\s\S]*createListingDraftHandler/
@@ -73,7 +78,7 @@ describe("RM-020 application isolation", () => {
     const lookupRegistrations = [...routes.matchAll(/router\.get\([\s\S]*?\);/g)].map((match) => match[0]);
     expect(lookupRegistrations.slice(0, 2)).toHaveLength(2);
     expect(lookupRegistrations.slice(0, 2).join("\n")).not.toMatch(/authenticationMiddleware|landlordRoleMiddleware/);
-    expect(routes).not.toMatch(/router\.(?:put|delete)|deactivate|reactivate|geocod|admin/i);
+    expect(routes).not.toMatch(/router\.(?:put|delete)|geocod|admin/i);
   });
 
   it("limits writes to one DRAFT listing insert and one set-based amenity insert", async () => {

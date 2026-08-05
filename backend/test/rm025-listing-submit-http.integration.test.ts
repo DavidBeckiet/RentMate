@@ -264,7 +264,7 @@ describe("RM-025 listing submit HTTP", () => {
       .set("Cookie", await cookie())
       .expect(200);
     const app = await makeApp(new Executor());
-    for (const path of ["deactivate", "reactivate", "images"]) {
+    for (const path of ["images"]) {
       await request(app).post(`/api/v1/landlord/listings/7/${path}`).set("Origin", origin).expect(404);
     }
     await request(app).delete("/api/v1/landlord/listings/7").set("Origin", origin).expect(404);
