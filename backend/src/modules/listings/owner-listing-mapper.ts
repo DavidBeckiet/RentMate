@@ -1,6 +1,7 @@
 import type { QueryResultRow } from "pg";
 import { mapNullablePgScaleTwoNumeric, mapNullablePgWholeNumeric, mapPgTimestamptz } from "../../db/value-mappers.js";
 import { formatApiTimestamp } from "../../shared/mapping/api-values.js";
+import { resolveCurrentModerationReason } from "./current-moderation-reason.js";
 import { copyOwnerImage, mapOwnerImageToDto, type OwnerImage, type OwnerImageDto } from "./owner-image-mapper.js";
 import {
   mapAmenityToDto,
@@ -164,20 +165,6 @@ function mapPropertyType(code: unknown, label: unknown): LookupValue | null {
   return mapLookupValueRow({ code, label });
 }
 
-export function mapCurrentModerationReason(status: ListingStatus, value: unknown): string | null {
-  if (status === "REJECTED" || status === "HIDDEN") {
-    if (typeof value !== "string" || value.trim().length === 0 || value.length > 1_000) {
-      throw new OwnerListingMappingError();
-    }
-    return value;
-  }
-
-  if (value !== null) {
-    throw new OwnerListingMappingError();
-  }
-  return null;
-}
-
 function mapBaseListingRow(
   row: Readonly<CreatedListingRow>,
   expectedStatus?: "DRAFT"
@@ -284,7 +271,7 @@ export function createOwnerListingDetail(
       propertyType: listing.propertyType === null ? null : copyLookup(listing.propertyType),
       amenities: mappedAmenities,
       images: mappedImages,
-      currentModerationReason: mapCurrentModerationReason(listing.status, currentModerationReason),
+      currentModerationReason: resolveCurrentModerationReason(listing.status, currentModerationReason),
       createdAt: new Date(listing.createdAt.getTime()),
       updatedAt: new Date(listing.updatedAt.getTime())
     });
@@ -332,7 +319,7 @@ export function mapOwnerListingToDto(listing: Readonly<OwnerListingDetail>): Own
       propertyType: listing.propertyType === null ? null : mapPropertyTypeToDto(listing.propertyType),
       amenities: Object.freeze(listing.amenities.map(mapAmenityToDto)),
       images: Object.freeze(listing.images.map(mapOwnerImageToDto)),
-      currentModerationReason: mapCurrentModerationReason(listing.status, listing.currentModerationReason),
+      currentModerationReason: resolveCurrentModerationReason(listing.status, listing.currentModerationReason),
       createdAt: formatApiTimestamp(listing.createdAt),
       updatedAt: formatApiTimestamp(listing.updatedAt)
     });

@@ -14,10 +14,13 @@ function git(...arguments_: string[]): string {
 describe("RM-022 application isolation", () => {
   it("keeps the exact RM-021 production listings inventory and Phase 4 routes", async () => {
     expect((await readdir(listingsRoot)).sort()).toStrictEqual([
+      "current-moderation-reason-repository.ts",
+      "current-moderation-reason.ts",
       "listing-create-controller.ts",
       "listing-create-repository.ts",
       "listing-create-service.ts",
       "listing-create-validation.ts",
+      "listing-lifecycle-policy.ts",
       "listing-update-controller.ts",
       "listing-update-repository.ts",
       "listing-update-service.ts",

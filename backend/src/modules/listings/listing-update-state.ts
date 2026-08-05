@@ -1,5 +1,6 @@
 import { createValidationError } from "../../shared/errors/application-error.js";
 import { validationDetail } from "../../shared/validation/issues.js";
+import { resolveListingStatusAfterMutation } from "./listing-lifecycle-policy.js";
 import type { ListingStatus } from "./owner-listing-mapper.js";
 import type { ListingUpdateInput } from "./listing-update-validation.js";
 
@@ -24,15 +25,6 @@ export interface ListingUpdateState extends ListingContentState {
   readonly addedAmenityCodes: readonly string[];
   readonly removedAmenityCodes: readonly string[];
 }
-
-const changedStatus: Readonly<Record<ListingStatus, ListingStatus>> = Object.freeze({
-  DRAFT: "DRAFT",
-  PENDING: "PENDING",
-  REJECTED: "DRAFT",
-  APPROVED: "PENDING",
-  INACTIVE: "PENDING",
-  HIDDEN: "HIDDEN"
-});
 
 function sameSet(left: readonly string[], right: readonly string[]): boolean {
   if (left.length !== right.length) return false;
@@ -75,7 +67,10 @@ export function resolveListingUpdateState(
     next.longitude !== current.longitude ||
     next.propertyTypeCode !== current.propertyTypeCode;
   const changed = scalarChanged || amenitiesChanged;
-  const status = changed ? changedStatus[current.status] : current.status;
+  const status = resolveListingStatusAfterMutation(
+    current.status,
+    changed ? "SIGNIFICANT_CONTENT_CHANGE" : "NO_STATUS_CHANGE"
+  );
 
   if (
     status !== "DRAFT" &&

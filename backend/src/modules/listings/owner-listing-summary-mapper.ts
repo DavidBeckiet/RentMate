@@ -1,14 +1,10 @@
 import type { QueryResultRow } from "pg";
 import { mapNullablePgWholeNumeric, mapPgTimestamptz } from "../../db/value-mappers.js";
 import { formatApiTimestamp } from "../../shared/mapping/api-values.js";
+import { resolveCurrentModerationReason } from "./current-moderation-reason.js";
 import { mapOwnerImageRow, mapOwnerImageToDto, type OwnerImage, type OwnerImageDto } from "./owner-image-mapper.js";
 import { mapLookupValueRow, mapPropertyTypeToDto, type LookupValue, type PropertyTypeDto } from "./lookup-mapper.js";
-import {
-  isListingStatus,
-  mapCurrentModerationReason,
-  OwnerListingMappingError,
-  type ListingStatus
-} from "./owner-listing-mapper.js";
+import { isListingStatus, type ListingStatus } from "./owner-listing-mapper.js";
 
 const maximumListingId = 2_147_483_647;
 
@@ -126,15 +122,12 @@ export function mapOwnerListingSummaryRow(row: Readonly<OwnerListingSummaryRow>)
       areaName: row.area_name as string | null,
       propertyType: mapPropertyType(row.property_type_code, row.property_type_label),
       coverImage: mapCoverImage(row),
-      currentModerationReason: mapCurrentModerationReason(row.status, row.current_moderation_reason),
+      currentModerationReason: resolveCurrentModerationReason(row.status, row.current_moderation_reason),
       updatedAt: mapPgTimestamptz(row.updated_at, "updated_at")
     });
   } catch (error) {
     if (error instanceof OwnerListingSummaryMappingError) {
       throw error;
-    }
-    if (error instanceof OwnerListingMappingError) {
-      throw new OwnerListingSummaryMappingError();
     }
     throw new OwnerListingSummaryMappingError();
   }
@@ -150,7 +143,7 @@ export function mapOwnerListingSummaryToDto(summary: Readonly<OwnerListingSummar
       areaName: summary.areaName,
       propertyType: summary.propertyType === null ? null : mapPropertyTypeToDto(summary.propertyType),
       coverImage: summary.coverImage === null ? null : mapOwnerImageToDto(summary.coverImage),
-      currentModerationReason: mapCurrentModerationReason(summary.status, summary.currentModerationReason),
+      currentModerationReason: resolveCurrentModerationReason(summary.status, summary.currentModerationReason),
       updatedAt: formatApiTimestamp(summary.updatedAt)
     });
   } catch {

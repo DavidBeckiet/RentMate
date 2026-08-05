@@ -4,6 +4,7 @@ import { forbiddenRoleMessage } from "../../shared/middleware/role.js";
 import type { AuthenticatedPrincipal } from "../../shared/types/authentication.js";
 import { validationDetail } from "../../shared/validation/issues.js";
 import type { TransactionRunner } from "./listing-create-service.js";
+import { requiresCurrentModerationReason } from "./current-moderation-reason.js";
 import {
   createListingUpdateRepository,
   type ListingUpdateRepositoryFactory,
@@ -46,10 +47,9 @@ async function loadOwnerDetail(
   if (listing === null) throw new ApplicationError("RESOURCE_NOT_FOUND", resourceNotFoundMessage);
   const amenities = await repository.findAmenitiesForListing(listingId);
   const images = await repository.findImagesForListing(listingId);
-  const reason =
-    listing.status === "REJECTED" || listing.status === "HIDDEN"
-      ? await repository.findCurrentModerationReason(listingId, listing.status)
-      : null;
+  const reason = requiresCurrentModerationReason(listing.status)
+    ? await repository.findCurrentModerationReason(listingId, listing.status)
+    : null;
   return createOwnerListingDetail(listing, amenities, images, reason);
 }
 

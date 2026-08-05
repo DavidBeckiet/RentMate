@@ -1,6 +1,10 @@
-import type { QueryResultRow } from "pg";
-import { queryMany, queryOptional, RepositoryInvariantError } from "../../db/repository-primitives.js";
+import { queryMany, queryOptional } from "../../db/repository-primitives.js";
 import type { SqlExecutor } from "../../db/sql-executor.js";
+import {
+  createCurrentModerationReasonRepository,
+  type CurrentModerationReasonRepository
+} from "./current-moderation-reason-repository.js";
+import type { CurrentModerationReasonStatus } from "./current-moderation-reason.js";
 import { mapOwnerImageRow, type OwnerImage, type OwnerImageRow } from "./owner-image-mapper.js";
 import { mapLookupValueRow, type LookupValue, type LookupValueRow } from "./lookup-mapper.js";
 import {
@@ -30,21 +34,14 @@ export interface OwnerListingReadRepository {
   ) => Promise<OwnerListingDetailBase | null>;
   readonly findAmenitiesForListing: (listingId: number) => Promise<readonly LookupValue[]>;
   readonly findImagesForListing: (listingId: number) => Promise<readonly OwnerImage[]>;
-  readonly findCurrentModerationReason: (listingId: number, status: "REJECTED" | "HIDDEN") => Promise<string | null>;
-}
-
-interface ModerationReasonRow extends QueryResultRow {
-  readonly reason: unknown;
-}
-
-function mapModerationReasonRow(row: Readonly<ModerationReasonRow>): string {
-  if (typeof row.reason !== "string" || row.reason.trim().length === 0 || row.reason.length > 1_000) {
-    throw new RepositoryInvariantError("Current moderation reason row is invalid.");
-  }
-  return row.reason;
+  readonly findCurrentModerationReason: (
+    listingId: number,
+    status: CurrentModerationReasonStatus
+  ) => Promise<string | null>;
 }
 
 export function createOwnerListingReadRepository(executor: SqlExecutor): OwnerListingReadRepository {
+  const currentReasonRepository: CurrentModerationReasonRepository = createCurrentModerationReasonRepository(executor);
   return Object.freeze({
     async findOwnerListingPage(input: OwnerListingPageInput): Promise<readonly OwnerListingSummary[]> {
       return Object.freeze(
@@ -210,25 +207,11 @@ export function createOwnerListingReadRepository(executor: SqlExecutor): OwnerLi
       );
     },
 
-    async findCurrentModerationReason(listingId: number, status: "REJECTED" | "HIDDEN"): Promise<string | null> {
-      return queryOptional<ModerationReasonRow, string>(
-        executor,
-        {
-          text: `
-            SELECT
-              reason
-            FROM moderation_history
-            WHERE listing_id = $1
-              AND new_status = $2
-            ORDER BY
-              created_at DESC,
-              id DESC
-            LIMIT 1
-          `,
-          values: [listingId, status]
-        },
-        mapModerationReasonRow
-      );
+    async findCurrentModerationReason(
+      listingId: number,
+      status: CurrentModerationReasonStatus
+    ): Promise<string | null> {
+      return currentReasonRepository.findLatestReason(listingId, status);
     }
   });
 }

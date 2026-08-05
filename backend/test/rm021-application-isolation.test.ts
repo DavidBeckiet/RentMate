@@ -22,10 +22,13 @@ describe("RM-021 application isolation", () => {
       "users"
     ]);
     expect((await readdir(listingsRoot)).sort()).toStrictEqual([
+      "current-moderation-reason-repository.ts",
+      "current-moderation-reason.ts",
       "listing-create-controller.ts",
       "listing-create-repository.ts",
       "listing-create-service.ts",
       "listing-create-validation.ts",
+      "listing-lifecycle-policy.ts",
       "listing-update-controller.ts",
       "listing-update-repository.ts",
       "listing-update-service.ts",
@@ -74,6 +77,8 @@ describe("RM-021 application isolation", () => {
 
   it("keeps RM-021 reads free of writes, locks, total counts, provider IDs, and N+1 loops", async () => {
     const readFiles = [
+      "current-moderation-reason-repository.ts",
+      "current-moderation-reason.ts",
       "owner-image-mapper.ts",
       "owner-listing-read-controller.ts",
       "owner-listing-read-repository.ts",
@@ -83,7 +88,7 @@ describe("RM-021 application isolation", () => {
     ];
     const sources = await Promise.all(readFiles.map((filename) => readFile(path.join(listingsRoot, filename), "utf8")));
     const combined = sources.join("\n");
-    const repository = sources[2]!;
+    const repository = sources[4]!;
 
     expect(combined).not.toMatch(/\b(?:INSERT|UPDATE|DELETE|BEGIN|COMMIT|ROLLBACK|FOR UPDATE)\b/i);
     expect(repository).not.toMatch(/count\s*\(|SELECT\s+\*/i);

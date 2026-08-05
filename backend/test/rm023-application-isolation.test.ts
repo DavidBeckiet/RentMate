@@ -7,10 +7,13 @@ const listings = path.join(root, "src/modules/listings");
 describe("RM-023 application isolation", () => {
   it("keeps the exact production inventory and exactly one PATCH route", async () => {
     expect((await readdir(listings)).sort()).toStrictEqual([
+      "current-moderation-reason-repository.ts",
+      "current-moderation-reason.ts",
       "listing-create-controller.ts",
       "listing-create-repository.ts",
       "listing-create-service.ts",
       "listing-create-validation.ts",
+      "listing-lifecycle-policy.ts",
       "listing-update-controller.ts",
       "listing-update-repository.ts",
       "listing-update-service.ts",
@@ -65,5 +68,13 @@ describe("RM-023 application isolation", () => {
     expect(combined).not.toMatch(
       /BaseRepository|GenericRepository|module.?registry|route.?discovery|cloudinary\.client|nominatim\.client/i
     );
+  });
+  it("delegates the PATCH status result to the focused shared lifecycle policy", async () => {
+    const state = await readFile(path.join(listings, "listing-update-state.ts"), "utf8");
+    const policy = await readFile(path.join(listings, "listing-lifecycle-policy.ts"), "utf8");
+    expect(state).toContain("resolveListingStatusAfterMutation(");
+    expect(state).not.toMatch(/Readonly<Record<ListingStatus, ListingStatus>>|REJECTED:\s*"DRAFT"/);
+    expect(policy).toContain('case "SIGNIFICANT_CONTENT_CHANGE"');
+    expect(policy).not.toMatch(/submit|deactivate|reactivate|moderation|image/i);
   });
 });

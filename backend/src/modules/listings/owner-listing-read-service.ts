@@ -1,6 +1,7 @@
 import { ApplicationError } from "../../shared/errors/application-error.js";
 import { forbiddenRoleMessage } from "../../shared/middleware/role.js";
 import type { AuthenticatedPrincipal } from "../../shared/types/authentication.js";
+import { requiresCurrentModerationReason } from "./current-moderation-reason.js";
 import type { OwnerListingReadRepository } from "./owner-listing-read-repository.js";
 import type { OwnerListingCollectionQuery } from "./owner-listing-read-validation.js";
 import { createOwnerListingDetail, type OwnerListingDetail } from "./owner-listing-mapper.js";
@@ -61,10 +62,9 @@ export function createOwnerListingReadService(repository: OwnerListingReadReposi
 
       const amenities = await repository.findAmenitiesForListing(listingId);
       const images = await repository.findImagesForListing(listingId);
-      const currentModerationReason =
-        listing.status === "REJECTED" || listing.status === "HIDDEN"
-          ? await repository.findCurrentModerationReason(listingId, listing.status)
-          : null;
+      const currentModerationReason = requiresCurrentModerationReason(listing.status)
+        ? await repository.findCurrentModerationReason(listingId, listing.status)
+        : null;
 
       return createOwnerListingDetail(listing, amenities, images, currentModerationReason);
     }
