@@ -19,6 +19,7 @@ import { createListingDeleteService } from "./modules/listings/listing-delete-se
 import { createListingDeleteCloudinaryCleanup } from "./modules/listings/listing-delete-cloudinary-cleanup.js";
 import { createListingImageUploadRepository } from "./modules/listings/listing-image-upload-repository.js";
 import { createListingImageUploadService } from "./modules/listings/listing-image-upload-service.js";
+import { createListingImageDeleteService } from "./modules/listings/listing-image-delete-service.js";
 import { createListingLifecycleActionService } from "./modules/listings/listing-lifecycle-action-service.js";
 import { createListingSubmitService } from "./modules/listings/listing-submit-service.js";
 import { createListingUpdateService } from "./modules/listings/listing-update-service.js";
@@ -88,6 +89,11 @@ export async function createBackendApp(options: BackendAppCompositionOptions): P
     cloudinaryClient,
     logger: options.logger
   });
+  const listingImageDeleteService = createListingImageDeleteService({
+    transactionRunner,
+    cloudinaryClient,
+    logger: options.logger
+  });
   const listingDeleteService = createListingDeleteService({
     transactionRunner,
     cleanupHandoff:
@@ -133,7 +139,8 @@ export async function createBackendApp(options: BackendAppCompositionOptions): P
         listingSubmitService,
         listingLifecycleActionService,
         listingDeleteService,
-        listingImageUploadService
+        listingImageUploadService,
+        listingImageDeleteService
       });
     }
   });

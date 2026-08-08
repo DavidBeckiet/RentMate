@@ -15,7 +15,7 @@ function gitDiff(...paths: string[]): string {
 }
 
 describe("RM-027 application isolation", () => {
-  it("keeps the exact 34-file listings inventory and ten explicit routes", async () => {
+  it("keeps the exact 43-file listings inventory and twelve explicit routes", async () => {
     expect((await readdir(listingsRoot)).sort()).toStrictEqual([
       "current-moderation-reason-repository.ts",
       "current-moderation-reason.ts",
@@ -29,6 +29,9 @@ describe("RM-027 application isolation", () => {
       "listing-delete-controller.ts",
       "listing-delete-repository.ts",
       "listing-delete-service.ts",
+      "listing-image-delete-controller.ts",
+      "listing-image-delete-repository.ts",
+      "listing-image-delete-service.ts",
       "listing-image-upload-controller.ts",
       "listing-image-upload-multipart.ts",
       "listing-image-upload-repository.ts",
@@ -74,10 +77,11 @@ describe("RM-027 application isolation", () => {
       ["post", "/landlord/listings/:listingId/deactivate"],
       ["post", "/landlord/listings/:listingId/reactivate"],
       ["delete", "/landlord/listings/:listingId"],
-      ["post", "/landlord/listings/:listingId/images"]
+      ["post", "/landlord/listings/:listingId/images"],
+      ["delete", "/landlord/listings/:listingId/images/:imageId"]
     ]);
-    expect(routes.match(/router\.delete/g)).toHaveLength(1);
-    expect(routes).not.toMatch(/geocod|favorite|admin|"\/listings"|images\/order|images\/:imageId/i);
+    expect(routes.match(/router\.delete/g)).toHaveLength(2);
+    expect(routes).not.toMatch(/geocod|favorite|admin|"\/listings"|images\/order/i);
   });
 
   it("keeps delete persistence owner-scoped, transaction-safe, and database-cascade-only", async () => {

@@ -46,7 +46,7 @@ function git(...arguments_: string[]): string {
 }
 
 describe("RM-028 application isolation and M3 acceptance inventory", () => {
-  it("keeps the exact 34-file production listings inventory and ten routes", async () => {
+  it("keeps the exact 43-file production listings inventory and twelve routes", async () => {
     expect((await readdir(listingsRoot)).sort()).toStrictEqual([
       "current-moderation-reason-repository.ts",
       "current-moderation-reason.ts",
@@ -60,6 +60,9 @@ describe("RM-028 application isolation and M3 acceptance inventory", () => {
       "listing-delete-controller.ts",
       "listing-delete-repository.ts",
       "listing-delete-service.ts",
+      "listing-image-delete-controller.ts",
+      "listing-image-delete-repository.ts",
+      "listing-image-delete-service.ts",
       "listing-image-upload-controller.ts",
       "listing-image-upload-multipart.ts",
       "listing-image-upload-repository.ts",
@@ -105,9 +108,10 @@ describe("RM-028 application isolation and M3 acceptance inventory", () => {
       ["post", "/landlord/listings/:listingId/deactivate"],
       ["post", "/landlord/listings/:listingId/reactivate"],
       ["delete", "/landlord/listings/:listingId"],
-      ["post", "/landlord/listings/:listingId/images"]
+      ["post", "/landlord/listings/:listingId/images"],
+      ["delete", "/landlord/listings/:listingId/images/:imageId"]
     ]);
-    expect(routes).not.toMatch(/geocod|favorite|admin|moderation-actions|"\/listings"|images\/order|images\/:imageId/i);
+    expect(routes).not.toMatch(/geocod|favorite|admin|moderation-actions|"\/listings"|images\/order/i);
   });
 
   it("contains exactly four RM-028 suites and the exact 26-file focused script", async () => {

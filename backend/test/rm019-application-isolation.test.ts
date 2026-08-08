@@ -33,6 +33,9 @@ describe("RM-019 application isolation", () => {
       "listing-delete-controller.ts",
       "listing-delete-repository.ts",
       "listing-delete-service.ts",
+      "listing-image-delete-controller.ts",
+      "listing-image-delete-repository.ts",
+      "listing-image-delete-service.ts",
       "listing-image-upload-controller.ts",
       "listing-image-upload-multipart.ts",
       "listing-image-upload-repository.ts",
@@ -82,7 +85,8 @@ describe("RM-019 application isolation", () => {
       ["post", "/landlord/listings/:listingId/deactivate"],
       ["post", "/landlord/listings/:listingId/reactivate"],
       ["delete", "/landlord/listings/:listingId"],
-      ["post", "/landlord/listings/:listingId/images"]
+      ["post", "/landlord/listings/:listingId/images"],
+      ["delete", "/landlord/listings/:listingId/images/:imageId"]
     ]);
     const lookupRegistrations = [...routes.matchAll(/router\.get\([\s\S]*?\);/g)].map((match) => match[0]);
     expect(lookupRegistrations.slice(0, 2)).toHaveLength(2);

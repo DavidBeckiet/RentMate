@@ -248,12 +248,12 @@ describe("RM-027 listing delete HTTP", () => {
     expect(cleanupHandoff.afterCommittedDelete).toHaveBeenCalledOnce();
   });
 
-  it("keeps existing routes and omits image, admin, bulk, history, and cleanup routes", async () => {
+  it("keeps existing routes, protects image delete, and omits admin, bulk, history, and cleanup routes", async () => {
     const executor = new Executor();
     const { app } = await makeApp(executor);
     await request(app).get("/api/v1/lookups/property-types").expect(200);
     await request(app).delete("/api/v1/landlord/listings").set("Origin", origin).expect(404);
-    await request(app).delete("/api/v1/landlord/listings/7/images/3").set("Origin", origin).expect(404);
+    await request(app).delete("/api/v1/landlord/listings/7/images/3").set("Origin", origin).expect(401);
     await request(app).delete("/api/v1/admin/listings/7").set("Origin", origin).expect(404);
     await request(app).delete("/api/v1/landlord/listings/7/history").set("Origin", origin).expect(404);
     await request(app).post("/api/v1/landlord/listings/7/cleanup").set("Origin", origin).expect(404);

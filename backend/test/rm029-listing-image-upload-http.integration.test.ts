@@ -272,10 +272,10 @@ describe("RM-029 listing image upload HTTP", () => {
     expect(fixture.provider.uploadImage).toHaveBeenCalledOnce();
   });
 
-  it("preserves existing routes and omits V1-20 and V1-21", async () => {
+  it("preserves existing routes, protects V1-20, and omits V1-21", async () => {
     const fixture = await makeApp();
     await request(fixture.app).get("/api/v1/lookups/property-types").expect(200);
-    await request(fixture.app).delete("/api/v1/landlord/listings/7/images/31").set("Origin", origin).expect(404);
+    await request(fixture.app).delete("/api/v1/landlord/listings/7/images/31").set("Origin", origin).expect(401);
     await request(fixture.app).put("/api/v1/landlord/listings/7/images/order").set("Origin", origin).expect(404);
   });
 });
