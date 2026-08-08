@@ -34,9 +34,15 @@ describe("RM-024 application isolation", () => {
       "listing-create-service.ts",
       "listing-create-validation.ts",
       "listing-delete-cleanup.ts",
+      "listing-delete-cloudinary-cleanup.ts",
       "listing-delete-controller.ts",
       "listing-delete-repository.ts",
       "listing-delete-service.ts",
+      "listing-image-upload-controller.ts",
+      "listing-image-upload-multipart.ts",
+      "listing-image-upload-repository.ts",
+      "listing-image-upload-service.ts",
+      "listing-image-upload-validation.ts",
       "listing-lifecycle-action-controller.ts",
       "listing-lifecycle-action-repository.ts",
       "listing-lifecycle-action-service.ts",
@@ -76,9 +82,10 @@ describe("RM-024 application isolation", () => {
       ["post", "/landlord/listings/:listingId/submit"],
       ["post", "/landlord/listings/:listingId/deactivate"],
       ["post", "/landlord/listings/:listingId/reactivate"],
-      ["delete", "/landlord/listings/:listingId"]
+      ["delete", "/landlord/listings/:listingId"],
+      ["post", "/landlord/listings/:listingId/images"]
     ]);
-    expect(routes).not.toMatch(/images|geocod|favorite|admin|"\/listings"/i);
+    expect(routes).not.toMatch(/geocod|favorite|admin|"\/listings"/i);
   });
 
   it("contains exactly one focused significant-edit matrix and no PATCH-local copy", async () => {
@@ -113,7 +120,9 @@ describe("RM-024 application isolation", () => {
     const sources = await productionSources();
     const combined = Object.values(sources).join("\n");
     expect(combined).not.toMatch(/(?:INSERT INTO|UPDATE|DELETE FROM)\s+moderation_history/i);
-    expect(combined).not.toMatch(/cloudinary\.client|nominatim\.client|upload|image.?reorder/i);
+    expect(combined).not.toMatch(
+      /nominatim\.client|image.?reorder|bulk.?upload|image.?replacement|queue|worker|outbox/i
+    );
     expect(combined).not.toMatch(
       /BaseRepository|GenericRepository|DIContainer|module.?registry|event.?bus|workflow.?engine|route.?discovery/i
     );
@@ -125,11 +134,9 @@ describe("RM-024 application isolation", () => {
     expect(
       gitDiff(
         "backend/src/app.ts",
-        "backend/src/server.ts",
         "backend/src/shared",
         "backend/src/db",
         "backend/migrations",
-        "backend/package-lock.json",
         "package-lock.json",
         "frontend",
         "docs",
@@ -142,10 +149,12 @@ describe("RM-024 application isolation", () => {
     };
     expect(packageJson.dependencies).toStrictEqual({
       bcrypt: "6.0.0",
+      cloudinary: "^2.10.0",
       cors: "2.8.5",
       dotenv: "16.5.0",
       express: "5.1.0",
       jose: "6.2.6",
+      multer: "^2.2.0",
       pg: "8.16.0"
     });
     const migrations = (await readdir(path.join(backendRoot, "migrations")))

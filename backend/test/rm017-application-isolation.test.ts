@@ -101,6 +101,7 @@ describe("RM-017 application isolation", () => {
       .sort();
     const backendPackage = JSON.parse(await readFile(path.resolve(backendRoot, "package.json"), "utf8")) as {
       dependencies: Record<string, string>;
+      devDependencies: Record<string, string>;
     };
     const appSource = await readFile(path.resolve(backendRoot, "src/app.ts"), "utf8");
 
@@ -109,13 +110,17 @@ describe("RM-017 application isolation", () => {
     expect(migrations.some((filename) => filename.startsWith("0013"))).toBe(false);
     expect(backendPackage.dependencies).toStrictEqual({
       bcrypt: "6.0.0",
+      cloudinary: "^2.10.0",
       cors: "2.8.5",
       dotenv: "16.5.0",
       express: "5.1.0",
       jose: "6.2.6",
+      multer: "^2.2.0",
       pg: "8.16.0"
     });
-    expect(gitDiff("backend/package-lock.json", "package-lock.json")).toBe("");
+    expect(backendPackage.devDependencies["@types/multer"]).toBe("^2.1.0");
+    expect(backendPackage.dependencies).not.toHaveProperty("@types/multer");
+    expect(gitDiff("package-lock.json")).toBe("");
     expect(gitDiff("backend/src/app.ts", "backend/src/config/env.ts", ".env.example")).toBe("");
     expect(gitDiff("backend/migrations", "frontend", "docs", "AGENTS.md")).toBe("");
     expect(appSource).toContain("app.use(express.json({ strict: false }));");

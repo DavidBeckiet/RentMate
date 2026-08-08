@@ -285,9 +285,11 @@ describe("RM-026 listing lifecycle action HTTP", () => {
   it("keeps existing lookups, protects delete, and omits generic lifecycle, image, public, and admin routes", async () => {
     const app = await makeApp(new Executor());
     await request(app).get("/api/v1/lookups/property-types").expect(200);
-    for (const path of ["lifecycle", "status", "images"]) {
+    for (const path of ["lifecycle", "status"]) {
       await request(app).post(`/api/v1/landlord/listings/7/${path}`).set("Origin", origin).expect(404);
     }
+    await request(app).delete("/api/v1/landlord/listings/7/images/3").set("Origin", origin).expect(404);
+    await request(app).put("/api/v1/landlord/listings/7/images/order").set("Origin", origin).expect(404);
     await request(app).delete("/api/v1/landlord/listings/7").set("Origin", origin).expect(401);
     await request(app).get("/api/v1/listings").expect(404);
     await request(app).get("/api/v1/admin/listings").expect(404);

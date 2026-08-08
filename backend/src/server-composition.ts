@@ -2,6 +2,7 @@ import { randomBytes } from "node:crypto";
 import type { Express } from "express";
 import { createApp } from "./app.js";
 import type { SqlExecutor } from "./db/sql-executor.js";
+import { unavailableCloudinaryClient, type CloudinaryClient } from "./integrations/cloudinary.client.js";
 import { createAuthRepository } from "./modules/auth/auth-repository.js";
 import { createLoginService } from "./modules/auth/login-service.js";
 import { createPasswordService } from "./modules/auth/password.js";
@@ -15,6 +16,9 @@ import {
   type ListingDeleteCleanupHandoff
 } from "./modules/listings/listing-delete-cleanup.js";
 import { createListingDeleteService } from "./modules/listings/listing-delete-service.js";
+import { createListingDeleteCloudinaryCleanup } from "./modules/listings/listing-delete-cloudinary-cleanup.js";
+import { createListingImageUploadRepository } from "./modules/listings/listing-image-upload-repository.js";
+import { createListingImageUploadService } from "./modules/listings/listing-image-upload-service.js";
 import { createListingLifecycleActionService } from "./modules/listings/listing-lifecycle-action-service.js";
 import { createListingSubmitService } from "./modules/listings/listing-submit-service.js";
 import { createListingUpdateService } from "./modules/listings/listing-update-service.js";
@@ -49,6 +53,7 @@ export interface BackendAppCompositionOptions {
   readonly sessionCookieService?: SessionCookieService;
   readonly transactionRunner?: TransactionRunner;
   readonly listingDeleteCleanupHandoff?: ListingDeleteCleanupHandoff;
+  readonly cloudinaryClient?: CloudinaryClient;
 }
 
 export async function createBackendApp(options: BackendAppCompositionOptions): Promise<Express> {
@@ -76,9 +81,20 @@ export async function createBackendApp(options: BackendAppCompositionOptions): P
   const listingUpdateService = createListingUpdateService({ transactionRunner });
   const listingSubmitService = createListingSubmitService({ transactionRunner });
   const listingLifecycleActionService = createListingLifecycleActionService({ transactionRunner });
+  const cloudinaryClient = options.cloudinaryClient ?? unavailableCloudinaryClient;
+  const listingImageUploadService = createListingImageUploadService({
+    preflightRepository: createListingImageUploadRepository(options.sqlExecutor),
+    transactionRunner,
+    cloudinaryClient,
+    logger: options.logger
+  });
   const listingDeleteService = createListingDeleteService({
     transactionRunner,
-    cleanupHandoff: options.listingDeleteCleanupHandoff ?? noOpListingDeleteCleanupHandoff,
+    cleanupHandoff:
+      options.listingDeleteCleanupHandoff ??
+      (options.cloudinaryClient
+        ? createListingDeleteCloudinaryCleanup(options.cloudinaryClient)
+        : noOpListingDeleteCleanupHandoff),
     logger: options.logger
   });
   const requiredAuthentication = createProtectedAuthenticationMiddleware({
@@ -116,7 +132,8 @@ export async function createBackendApp(options: BackendAppCompositionOptions): P
         listingUpdateService,
         listingSubmitService,
         listingLifecycleActionService,
-        listingDeleteService
+        listingDeleteService,
+        listingImageUploadService
       });
     }
   });

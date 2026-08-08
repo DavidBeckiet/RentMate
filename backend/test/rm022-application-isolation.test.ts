@@ -22,9 +22,15 @@ describe("RM-022 application isolation", () => {
       "listing-create-service.ts",
       "listing-create-validation.ts",
       "listing-delete-cleanup.ts",
+      "listing-delete-cloudinary-cleanup.ts",
       "listing-delete-controller.ts",
       "listing-delete-repository.ts",
       "listing-delete-service.ts",
+      "listing-image-upload-controller.ts",
+      "listing-image-upload-multipart.ts",
+      "listing-image-upload-repository.ts",
+      "listing-image-upload-service.ts",
+      "listing-image-upload-validation.ts",
       "listing-lifecycle-action-controller.ts",
       "listing-lifecycle-action-repository.ts",
       "listing-lifecycle-action-service.ts",
@@ -65,9 +71,10 @@ describe("RM-022 application isolation", () => {
       ["post", "/landlord/listings/:listingId/submit"],
       ["post", "/landlord/listings/:listingId/deactivate"],
       ["post", "/landlord/listings/:listingId/reactivate"],
-      ["delete", "/landlord/listings/:listingId"]
+      ["delete", "/landlord/listings/:listingId"],
+      ["post", "/landlord/listings/:listingId/images"]
     ]);
-    expect(routes).not.toMatch(/router\.put|images|geocod|favorite|admin|"\/listings"/i);
+    expect(routes).not.toMatch(/router\.put|geocod|favorite|admin|"\/listings"/i);
   });
 
   it("adds no production, migration, dependency, lockfile, frontend, or frozen-document change", async () => {
@@ -77,14 +84,12 @@ describe("RM-022 application isolation", () => {
         "--name-only",
         "--",
         "backend/src/app.ts",
-        "backend/src/server.ts",
         "backend/src/config",
         "backend/src/modules/auth",
         "backend/src/modules/users",
         "backend/src/shared",
         "backend/src/db",
         "backend/migrations",
-        "backend/package-lock.json",
         "package-lock.json",
         "frontend",
         "docs",
@@ -104,10 +109,12 @@ describe("RM-022 application isolation", () => {
     };
     expect(packageJson.dependencies).toStrictEqual({
       bcrypt: "6.0.0",
+      cloudinary: "^2.10.0",
       cors: "2.8.5",
       dotenv: "16.5.0",
       express: "5.1.0",
       jose: "6.2.6",
+      multer: "^2.2.0",
       pg: "8.16.0"
     });
   });
@@ -143,6 +150,6 @@ describe("RM-022 application isolation", () => {
     expect(combined).not.toMatch(
       /BaseRepository|GenericRepository|Container|Decorator|module.?registry|route.?discovery|auto.?discover/i
     );
-    expect(combined).not.toMatch(/cloudinary\.client|nominatim\.client/i);
+    expect(combined).not.toMatch(/nominatim\.client|bulk.?upload|image.?replacement|queue|worker|outbox/i);
   });
 });

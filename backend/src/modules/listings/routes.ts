@@ -4,6 +4,12 @@ import type { ListingCreateService } from "./listing-create-service.js";
 import { createDeleteOwnerListingHandler } from "./listing-delete-controller.js";
 import type { ListingDeleteService } from "./listing-delete-service.js";
 import {
+  createListingImageUploadHandler,
+  createListingImageUploadPreflightHandler
+} from "./listing-image-upload-controller.js";
+import { listingImageUploadMultipartMiddleware } from "./listing-image-upload-multipart.js";
+import type { ListingImageUploadService } from "./listing-image-upload-service.js";
+import {
   createDeactivateOwnerListingHandler,
   createReactivateOwnerListingHandler
 } from "./listing-lifecycle-action-controller.js";
@@ -27,6 +33,7 @@ export interface ListingsRouteDependencies {
   readonly listingSubmitService: ListingSubmitService;
   readonly listingLifecycleActionService: ListingLifecycleActionService;
   readonly listingDeleteService: ListingDeleteService;
+  readonly listingImageUploadService: ListingImageUploadService;
 }
 
 export function registerListingsRoutes(router: Router, dependencies: ListingsRouteDependencies): void {
@@ -79,5 +86,13 @@ export function registerListingsRoutes(router: Router, dependencies: ListingsRou
     dependencies.authenticationMiddleware,
     dependencies.landlordRoleMiddleware,
     createDeleteOwnerListingHandler(dependencies.listingDeleteService)
+  );
+  router.post(
+    "/landlord/listings/:listingId/images",
+    dependencies.authenticationMiddleware,
+    dependencies.landlordRoleMiddleware,
+    createListingImageUploadPreflightHandler(dependencies.listingImageUploadService),
+    listingImageUploadMultipartMiddleware,
+    createListingImageUploadHandler(dependencies.listingImageUploadService)
   );
 }

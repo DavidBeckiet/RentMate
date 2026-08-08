@@ -29,9 +29,15 @@ describe("RM-020 application isolation", () => {
       "listing-create-service.ts",
       "listing-create-validation.ts",
       "listing-delete-cleanup.ts",
+      "listing-delete-cloudinary-cleanup.ts",
       "listing-delete-controller.ts",
       "listing-delete-repository.ts",
       "listing-delete-service.ts",
+      "listing-image-upload-controller.ts",
+      "listing-image-upload-multipart.ts",
+      "listing-image-upload-repository.ts",
+      "listing-image-upload-service.ts",
+      "listing-image-upload-validation.ts",
       "listing-lifecycle-action-controller.ts",
       "listing-lifecycle-action-repository.ts",
       "listing-lifecycle-action-service.ts",
@@ -75,7 +81,8 @@ describe("RM-020 application isolation", () => {
       ["post", "/landlord/listings/:listingId/submit"],
       ["post", "/landlord/listings/:listingId/deactivate"],
       ["post", "/landlord/listings/:listingId/reactivate"],
-      ["delete", "/landlord/listings/:listingId"]
+      ["delete", "/landlord/listings/:listingId"],
+      ["post", "/landlord/listings/:listingId/images"]
     ]);
     expect(routes).toMatch(
       /router\.post\([\s\S]*"\/landlord\/listings"[\s\S]*authenticationMiddleware[\s\S]*landlordRoleMiddleware[\s\S]*createListingDraftHandler/
@@ -108,7 +115,7 @@ describe("RM-020 application isolation", () => {
     expect(repository).toContain("VALUES ($1, $2, 'DRAFT'");
     expect(repository).toContain("UNNEST($2::smallint[])");
     expect(createCombined).not.toMatch(/\b(?:UPDATE|DELETE|FOR UPDATE)\s+(?:listings|listing_amenities)\b/i);
-    expect(combined).not.toMatch(/nominatim|upload|public.?search|favorite/i);
+    expect(combined).not.toMatch(/nominatim|public.?search|favorite|bulk.?upload|image.?replacement/i);
     expect(createCombined).not.toMatch(/cloudinary|moderation_history/i);
     expect(combined).not.toMatch(
       /BaseRepository|GenericRepository|Container|Decorator|route.?discovery|auto.?discover/i
@@ -128,13 +135,15 @@ describe("RM-020 application isolation", () => {
     expect(migrations.some((filename) => filename.startsWith("0013"))).toBe(false);
     expect(backendPackage.dependencies).toStrictEqual({
       bcrypt: "6.0.0",
+      cloudinary: "^2.10.0",
       cors: "2.8.5",
       dotenv: "16.5.0",
       express: "5.1.0",
       jose: "6.2.6",
+      multer: "^2.2.0",
       pg: "8.16.0"
     });
-    expect(gitDiff("backend/package-lock.json", "package-lock.json")).toBe("");
+    expect(gitDiff("package-lock.json")).toBe("");
     expect(gitDiff("backend/migrations", "frontend", "docs", "AGENTS.md")).toBe("");
   });
 

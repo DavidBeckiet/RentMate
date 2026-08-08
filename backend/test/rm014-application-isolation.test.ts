@@ -66,9 +66,10 @@ describe("RM-014 application isolation", () => {
     expect(combined).not.toMatch(/console\.|logger\.|response\.json/);
   });
 
-  it("adds only jose to backend runtime dependencies", async () => {
+  it("keeps the exact audited backend runtime dependencies", async () => {
     const backendPackage = JSON.parse(await readFile(path.resolve(process.cwd(), "package.json"), "utf8")) as {
       dependencies: Record<string, string>;
+      devDependencies: Record<string, string>;
     };
     const rootPackage = JSON.parse(await readFile(path.resolve(process.cwd(), "../package.json"), "utf8")) as {
       dependencies?: Record<string, string>;
@@ -83,12 +84,16 @@ describe("RM-014 application isolation", () => {
 
     expect(backendPackage.dependencies).toStrictEqual({
       bcrypt: "6.0.0",
+      cloudinary: "^2.10.0",
       cors: "2.8.5",
       dotenv: "16.5.0",
       express: "5.1.0",
       jose: "6.2.6",
+      multer: "^2.2.0",
       pg: "8.16.0"
     });
+    expect(backendPackage.devDependencies["@types/multer"]).toBe("^2.1.0");
+    expect(backendPackage.dependencies).not.toHaveProperty("@types/multer");
     expect({ ...rootPackage.dependencies, ...rootPackage.devDependencies }).not.toHaveProperty("jose");
     expect({ ...frontendPackage.dependencies, ...frontendPackage.devDependencies }).not.toHaveProperty("jose");
     expect(backendPackage.dependencies).not.toHaveProperty("jsonwebtoken");

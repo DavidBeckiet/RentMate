@@ -30,9 +30,15 @@ describe("RM-021 application isolation", () => {
       "listing-create-service.ts",
       "listing-create-validation.ts",
       "listing-delete-cleanup.ts",
+      "listing-delete-cloudinary-cleanup.ts",
       "listing-delete-controller.ts",
       "listing-delete-repository.ts",
       "listing-delete-service.ts",
+      "listing-image-upload-controller.ts",
+      "listing-image-upload-multipart.ts",
+      "listing-image-upload-repository.ts",
+      "listing-image-upload-service.ts",
+      "listing-image-upload-validation.ts",
       "listing-lifecycle-action-controller.ts",
       "listing-lifecycle-action-repository.ts",
       "listing-lifecycle-action-service.ts",
@@ -76,7 +82,8 @@ describe("RM-021 application isolation", () => {
       ["post", "/landlord/listings/:listingId/submit"],
       ["post", "/landlord/listings/:listingId/deactivate"],
       ["post", "/landlord/listings/:listingId/reactivate"],
-      ["delete", "/landlord/listings/:listingId"]
+      ["delete", "/landlord/listings/:listingId"],
+      ["post", "/landlord/listings/:listingId/images"]
     ]);
     expect(routes).toMatch(
       /router\.get\([\s\S]*"\/landlord\/listings"[\s\S]*dependencies\.authenticationMiddleware[\s\S]*dependencies\.landlordRoleMiddleware[\s\S]*createListOwnerListingsHandler/
@@ -127,13 +134,15 @@ describe("RM-021 application isolation", () => {
     expect(migrations.some((filename) => filename.startsWith("0013"))).toBe(false);
     expect(backendPackage.dependencies).toStrictEqual({
       bcrypt: "6.0.0",
+      cloudinary: "^2.10.0",
       cors: "2.8.5",
       dotenv: "16.5.0",
       express: "5.1.0",
       jose: "6.2.6",
+      multer: "^2.2.0",
       pg: "8.16.0"
     });
-    expect(gitDiff("backend/package-lock.json", "package-lock.json")).toBe("");
+    expect(gitDiff("package-lock.json")).toBe("");
     expect(gitDiff("backend/migrations", "frontend", "docs", "AGENTS.md")).toBe("");
   });
 
@@ -148,7 +157,6 @@ describe("RM-021 application isolation", () => {
     expect(
       gitDiff(
         "backend/src/app.ts",
-        "backend/src/server.ts",
         "backend/src/config/env.ts",
         ".env.example",
         "backend/src/modules/auth",

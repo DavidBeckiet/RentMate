@@ -15,9 +15,15 @@ describe("RM-023 application isolation", () => {
       "listing-create-service.ts",
       "listing-create-validation.ts",
       "listing-delete-cleanup.ts",
+      "listing-delete-cloudinary-cleanup.ts",
       "listing-delete-controller.ts",
       "listing-delete-repository.ts",
       "listing-delete-service.ts",
+      "listing-image-upload-controller.ts",
+      "listing-image-upload-multipart.ts",
+      "listing-image-upload-repository.ts",
+      "listing-image-upload-service.ts",
+      "listing-image-upload-validation.ts",
       "listing-lifecycle-action-controller.ts",
       "listing-lifecycle-action-repository.ts",
       "listing-lifecycle-action-service.ts",
@@ -45,7 +51,7 @@ describe("RM-023 application isolation", () => {
     const routes = await readFile(path.join(listings, "routes.ts"), "utf8");
     expect([...routes.matchAll(/router\.patch\(/g)]).toHaveLength(1);
     expect(routes).toContain('"/landlord/listings/:listingId"');
-    expect(routes).not.toMatch(/router\.put|images|geocod|favorite|admin|"\/listings"/i);
+    expect(routes).not.toMatch(/router\.put|geocod|favorite|admin|"\/listings"/i);
   });
   it("limits writes to listing content and listing amenities", async () => {
     const repository = await readFile(path.join(listings, "listing-update-repository.ts"), "utf8");
@@ -65,17 +71,19 @@ describe("RM-023 application isolation", () => {
     };
     expect(packageJson.dependencies).toStrictEqual({
       bcrypt: "6.0.0",
+      cloudinary: "^2.10.0",
       cors: "2.8.5",
       dotenv: "16.5.0",
       express: "5.1.0",
       jose: "6.2.6",
+      multer: "^2.2.0",
       pg: "8.16.0"
     });
     const combined = (
       await Promise.all((await readdir(listings)).map((file) => readFile(path.join(listings, file), "utf8")))
     ).join("\n");
     expect(combined).not.toMatch(
-      /BaseRepository|GenericRepository|module.?registry|route.?discovery|cloudinary\.client|nominatim\.client/i
+      /BaseRepository|GenericRepository|module.?registry|route.?discovery|nominatim\.client|bulk.?upload|image.?replacement/i
     );
   });
   it("delegates the PATCH status result to the focused shared lifecycle policy", async () => {

@@ -60,6 +60,8 @@
     "test:rm027:database": "vitest run --config vitest.database.config.mts test/rm027-listing-delete.database.integration.test.ts",
     "test:rm028": "vitest run --config vitest.config.mts test/rm028-listing-lifecycle-contract.integration.test.ts test/rm028-application-isolation.test.ts test/rm009-transaction.test.ts test/rm023-listing-update-validation.test.ts test/rm023-listing-update-state.test.ts test/rm023-listing-update-repository.test.ts test/rm023-listing-update-service.test.ts test/rm023-listing-update-http.integration.test.ts test/rm023-application-isolation.test.ts test/rm024-listing-lifecycle-policy.test.ts test/rm024-current-moderation-reason.test.ts test/rm024-current-moderation-reason-repository.test.ts test/rm024-application-isolation.test.ts test/rm025-listing-completeness.test.ts test/rm025-listing-submit-repository.test.ts test/rm025-listing-submit-service.test.ts test/rm025-listing-submit-http.integration.test.ts test/rm025-application-isolation.test.ts test/rm026-listing-lifecycle-action-repository.test.ts test/rm026-listing-lifecycle-action-service.test.ts test/rm026-listing-lifecycle-action-http.integration.test.ts test/rm026-application-isolation.test.ts test/rm027-listing-delete-repository.test.ts test/rm027-listing-delete-service.test.ts test/rm027-listing-delete-http.integration.test.ts test/rm027-application-isolation.test.ts",
     "test:rm028:database": "vitest run --config vitest.database.config.mts test/rm028-listing-lifecycle.database.integration.test.ts test/rm028-listing-concurrency.database.integration.test.ts",
+    "test:rm029": "vitest run --config vitest.config.mts test/rm029-cloudinary-client.test.ts test/rm029-listing-image-upload-multipart.test.ts test/rm029-listing-image-upload-repository.test.ts test/rm029-listing-image-upload-service.test.ts test/rm029-listing-image-upload-http.integration.test.ts test/rm029-application-isolation.test.ts test/rm009-application-isolation.test.ts test/rm019-application-isolation.test.ts test/rm020-application-isolation.test.ts test/rm021-application-isolation.test.ts test/rm022-application-isolation.test.ts test/rm023-application-isolation.test.ts test/rm024-application-isolation.test.ts test/rm025-application-isolation.test.ts test/rm026-application-isolation.test.ts test/rm027-application-isolation.test.ts test/rm028-application-isolation.test.ts test/rm027-listing-delete-service.test.ts test/rm027-listing-delete-http.integration.test.ts",
+    "test:rm029:database": "vitest run --config vitest.database.config.mts test/rm029-listing-image-upload.database.integration.test.ts",
     "migrate:clean": "tsx src/db/migrations/cli.ts clean",
     "migrate:existing": "tsx src/db/migrations/cli.ts existing",
     "admin:provision": "tsx src/db/admin-provisioning/cli.ts",
@@ -70,10 +72,12 @@
   },
   "dependencies": {
     "bcrypt": "6.0.0",
+    "cloudinary": "^2.10.0",
     "cors": "2.8.5",
     "dotenv": "16.5.0",
     "express": "5.1.0",
     "jose": "6.2.6",
+    "multer": "^2.2.0",
     "pg": "8.16.0"
   },
   "devDependencies": {
@@ -81,6 +85,7 @@
     "@types/bcrypt": "6.0.0",
     "@types/cors": "2.8.17",
     "@types/express": "5.0.3",
+    "@types/multer": "^2.1.0",
     "@types/node": "22.15.30",
     "@types/pg": "8.15.4",
     "@types/supertest": "7.2.1",
