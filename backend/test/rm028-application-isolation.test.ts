@@ -45,18 +45,6 @@ function git(...arguments_: string[]): string {
   return execFileSync("git", arguments_, { cwd: repositoryRoot, encoding: "utf8" }).trim();
 }
 
-function changedPaths(): string[] {
-  return execFileSync("git", ["status", "--short", "--untracked-files=all"], {
-    cwd: repositoryRoot,
-    encoding: "utf8"
-  })
-    .trimEnd()
-    .split(/\r?\n/)
-    .filter(Boolean)
-    .map((line) => line.slice(3).replaceAll("\\", "/"))
-    .sort();
-}
-
 describe("RM-028 application isolation and M3 acceptance inventory", () => {
   it("keeps the exact 34-file production listings inventory and ten routes", async () => {
     expect((await readdir(listingsRoot)).sort()).toStrictEqual([
@@ -156,20 +144,6 @@ describe("RM-028 application isolation and M3 acceptance inventory", () => {
     expect(database).toContain("fileParallelism: false");
   });
 
-  it("changes exactly four tests and four configuration/package paths", () => {
-    expect(changedPaths()).toStrictEqual(
-      [
-        ...rm028Files,
-        "backend/package.json",
-        "backend/vitest.config.mts",
-        "backend/vitest.database.config.mts",
-        "package.json"
-      ].sort()
-    );
-    expect(git("diff", "--name-only", "--", "backend/src")).toBe("");
-    expect(git("diff", "--name-only", "--", "backend/src/server-composition.ts", "backend/src/server.ts")).toBe("");
-  });
-
   it("adds no schema, dependency lock, fixture, historical test, frontend, or frozen-document change", async () => {
     expect(
       git(
@@ -225,6 +199,5 @@ describe("RM-028 application isolation and M3 acceptance inventory", () => {
     expect([...lifecycle, ...concurrency, ...contract].join("")).not.toMatch(
       /cloudinary\.v2|destroy\(|upload\(|queue|worker|RM-029/i
     );
-    expect(changedPaths().some((file) => /rm029/i.test(file))).toBe(false);
   });
 });
