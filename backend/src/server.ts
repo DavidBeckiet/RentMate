@@ -4,6 +4,7 @@ import { checkDatabaseConnection, closeRuntimePool, getRuntimePool } from "./db/
 import { createSqlExecutor } from "./db/sql-executor.js";
 import { withTransaction } from "./db/transaction.js";
 import { createCloudinaryClient } from "./integrations/cloudinary.client.js";
+import { createNominatimClient, NOMINATIM_TIMEOUT_MS } from "./integrations/nominatim.client.js";
 import { createBackendApp } from "./server-composition.js";
 import { createLogger } from "./shared/logging/logger.js";
 import { createShutdownHandler } from "./shutdown.js";
@@ -51,6 +52,11 @@ async function startBackend(): Promise<void> {
     bcryptCost: config.auth.bcryptCost,
     cookieSecure: config.auth.cookieSecure,
     cloudinaryClient: createCloudinaryClient(config.cloudinary),
+    nominatimClient: createNominatimClient({
+      baseUrl: config.nominatim.baseUrl,
+      userAgent: config.nominatim.userAgent,
+      timeoutMs: NOMINATIM_TIMEOUT_MS
+    }),
     transactionRunner: (operation) => withTransaction(databasePool, logger, operation)
   });
   const server = createServer(app);

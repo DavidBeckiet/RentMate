@@ -23,6 +23,9 @@ describe("RM-019 application isolation", () => {
     expect(listingsFiles).toStrictEqual([
       "current-moderation-reason-repository.ts",
       "current-moderation-reason.ts",
+      "geocoding-controller.ts",
+      "geocoding-service.ts",
+      "geocoding-validation.ts",
       "listing-completeness.ts",
       "listing-create-controller.ts",
       "listing-create-repository.ts",
@@ -91,13 +94,14 @@ describe("RM-019 application isolation", () => {
       ["delete", "/landlord/listings/:listingId"],
       ["post", "/landlord/listings/:listingId/images"],
       ["delete", "/landlord/listings/:listingId/images/:imageId"],
-      ["put", "/landlord/listings/:listingId/images/order"]
+      ["put", "/landlord/listings/:listingId/images/order"],
+      ["post", "/geocoding/forward"]
     ]);
     const lookupRegistrations = [...routes.matchAll(/router\.get\([\s\S]*?\);/g)].map((match) => match[0]);
     expect(lookupRegistrations.slice(0, 2)).toHaveLength(2);
     expect(lookupRegistrations.slice(0, 2).join("\n")).not.toMatch(/authenticationMiddleware|landlordRoleMiddleware/);
     expect(routes).toMatch(/router\.post\([\s\S]*authenticationMiddleware[\s\S]*landlordRoleMiddleware/);
-    expect(routes).not.toMatch(/optional|rate.?limit|cache|admin/i);
+    expect(routes).not.toMatch(/optional|cache|admin/i);
   });
 
   it("keeps RM-019 lookup sources read-only and isolates the only allowed RM-020 writes", async () => {

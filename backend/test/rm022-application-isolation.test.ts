@@ -16,6 +16,9 @@ describe("RM-022 application isolation", () => {
     expect((await readdir(listingsRoot)).sort()).toStrictEqual([
       "current-moderation-reason-repository.ts",
       "current-moderation-reason.ts",
+      "geocoding-controller.ts",
+      "geocoding-service.ts",
+      "geocoding-validation.ts",
       "listing-completeness.ts",
       "listing-create-controller.ts",
       "listing-create-repository.ts",
@@ -81,9 +84,10 @@ describe("RM-022 application isolation", () => {
       ["delete", "/landlord/listings/:listingId"],
       ["post", "/landlord/listings/:listingId/images"],
       ["delete", "/landlord/listings/:listingId/images/:imageId"],
-      ["put", "/landlord/listings/:listingId/images/order"]
+      ["put", "/landlord/listings/:listingId/images/order"],
+      ["post", "/geocoding/forward"]
     ]);
-    expect(routes).not.toMatch(/geocod|favorite|admin|"\/listings"/i);
+    expect(routes).not.toMatch(/favorite|admin|"\/listings"/i);
   });
 
   it("adds no production, migration, dependency, lockfile, frontend, or frozen-document change", async () => {
@@ -159,6 +163,6 @@ describe("RM-022 application isolation", () => {
     expect(combined).not.toMatch(
       /BaseRepository|GenericRepository|Container|Decorator|module.?registry|route.?discovery|auto.?discover/i
     );
-    expect(combined).not.toMatch(/nominatim\.client|bulk.?upload|image.?replacement|queue|worker|outbox/i);
+    expect(combined).not.toMatch(/bulk.?upload|image.?replacement|queue|worker|outbox/i);
   });
 });

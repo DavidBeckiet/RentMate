@@ -9,6 +9,9 @@ describe("RM-023 application isolation", () => {
     expect((await readdir(listings)).sort()).toStrictEqual([
       "current-moderation-reason-repository.ts",
       "current-moderation-reason.ts",
+      "geocoding-controller.ts",
+      "geocoding-service.ts",
+      "geocoding-validation.ts",
       "listing-completeness.ts",
       "listing-create-controller.ts",
       "listing-create-repository.ts",
@@ -61,7 +64,7 @@ describe("RM-023 application isolation", () => {
       ...routes.matchAll(/router\.put\([\s\S]*?"\/landlord\/listings\/:listingId\/images\/order"/g)
     ]).toHaveLength(1);
     expect(routes).toContain('"/landlord/listings/:listingId"');
-    expect(routes).not.toMatch(/geocod|favorite|admin|"\/listings"/i);
+    expect(routes).not.toMatch(/favorite|admin|"\/listings"/i);
   });
   it("limits writes to listing content and listing amenities", async () => {
     const repository = await readFile(path.join(listings, "listing-update-repository.ts"), "utf8");
@@ -93,7 +96,7 @@ describe("RM-023 application isolation", () => {
       await Promise.all((await readdir(listings)).map((file) => readFile(path.join(listings, file), "utf8")))
     ).join("\n");
     expect(combined).not.toMatch(
-      /BaseRepository|GenericRepository|module.?registry|route.?discovery|nominatim\.client|bulk.?upload|image.?replacement/i
+      /BaseRepository|GenericRepository|module.?registry|route.?discovery|bulk.?upload|image.?replacement/i
     );
   });
   it("delegates the PATCH status result to the focused shared lifecycle policy", async () => {

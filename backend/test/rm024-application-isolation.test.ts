@@ -28,6 +28,9 @@ describe("RM-024 application isolation", () => {
     expect((await readdir(listingsRoot)).sort()).toStrictEqual([
       "current-moderation-reason-repository.ts",
       "current-moderation-reason.ts",
+      "geocoding-controller.ts",
+      "geocoding-service.ts",
+      "geocoding-validation.ts",
       "listing-completeness.ts",
       "listing-create-controller.ts",
       "listing-create-repository.ts",
@@ -92,9 +95,10 @@ describe("RM-024 application isolation", () => {
       ["delete", "/landlord/listings/:listingId"],
       ["post", "/landlord/listings/:listingId/images"],
       ["delete", "/landlord/listings/:listingId/images/:imageId"],
-      ["put", "/landlord/listings/:listingId/images/order"]
+      ["put", "/landlord/listings/:listingId/images/order"],
+      ["post", "/geocoding/forward"]
     ]);
-    expect(routes).not.toMatch(/geocod|favorite|admin|"\/listings"/i);
+    expect(routes).not.toMatch(/favorite|admin|"\/listings"/i);
   });
 
   it("contains exactly one focused significant-edit matrix and no PATCH-local copy", async () => {
@@ -129,7 +133,7 @@ describe("RM-024 application isolation", () => {
     const sources = await productionSources();
     const combined = Object.values(sources).join("\n");
     expect(combined).not.toMatch(/(?:INSERT INTO|UPDATE|DELETE FROM)\s+moderation_history/i);
-    expect(combined).not.toMatch(/nominatim\.client|bulk.?upload|image.?replacement|queue|worker|outbox/i);
+    expect(combined).not.toMatch(/bulk.?upload|image.?replacement|queue|worker|outbox/i);
     expect(combined).not.toMatch(
       /BaseRepository|GenericRepository|DIContainer|module.?registry|event.?bus|workflow.?engine|route.?discovery/i
     );

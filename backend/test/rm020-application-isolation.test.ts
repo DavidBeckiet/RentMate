@@ -23,6 +23,9 @@ describe("RM-020 application isolation", () => {
     expect(listingsFiles).toStrictEqual([
       "current-moderation-reason-repository.ts",
       "current-moderation-reason.ts",
+      "geocoding-controller.ts",
+      "geocoding-service.ts",
+      "geocoding-validation.ts",
       "listing-completeness.ts",
       "listing-create-controller.ts",
       "listing-create-repository.ts",
@@ -91,7 +94,8 @@ describe("RM-020 application isolation", () => {
       ["delete", "/landlord/listings/:listingId"],
       ["post", "/landlord/listings/:listingId/images"],
       ["delete", "/landlord/listings/:listingId/images/:imageId"],
-      ["put", "/landlord/listings/:listingId/images/order"]
+      ["put", "/landlord/listings/:listingId/images/order"],
+      ["post", "/geocoding/forward"]
     ]);
     expect(routes).toMatch(
       /router\.post\([\s\S]*"\/landlord\/listings"[\s\S]*authenticationMiddleware[\s\S]*landlordRoleMiddleware[\s\S]*createListingDraftHandler/
@@ -99,7 +103,7 @@ describe("RM-020 application isolation", () => {
     const lookupRegistrations = [...routes.matchAll(/router\.get\([\s\S]*?\);/g)].map((match) => match[0]);
     expect(lookupRegistrations.slice(0, 2)).toHaveLength(2);
     expect(lookupRegistrations.slice(0, 2).join("\n")).not.toMatch(/authenticationMiddleware|landlordRoleMiddleware/);
-    expect(routes).not.toMatch(/geocod|admin/i);
+    expect(routes).not.toMatch(/admin/i);
   });
 
   it("limits writes to one DRAFT listing insert and one set-based amenity insert", async () => {
@@ -124,7 +128,7 @@ describe("RM-020 application isolation", () => {
     expect(repository).toContain("VALUES ($1, $2, 'DRAFT'");
     expect(repository).toContain("UNNEST($2::smallint[])");
     expect(createCombined).not.toMatch(/\b(?:UPDATE|DELETE|FOR UPDATE)\s+(?:listings|listing_amenities)\b/i);
-    expect(combined).not.toMatch(/nominatim|public.?search|favorite|bulk.?upload|image.?replacement/i);
+    expect(createCombined).not.toMatch(/nominatim|public.?search|favorite|bulk.?upload|image.?replacement/i);
     expect(createCombined).not.toMatch(/cloudinary|moderation_history/i);
     expect(combined).not.toMatch(
       /BaseRepository|GenericRepository|Container|Decorator|route.?discovery|auto.?discover/i

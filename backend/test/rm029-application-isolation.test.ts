@@ -19,10 +19,13 @@ async function source(filename: string): Promise<string> {
 }
 
 describe("RM-029 application isolation", () => {
-  it("contains exactly 47 listings files, one integration client, and thirteen routes", async () => {
+  it("contains exactly 50 listings files, two integration clients, and fourteen routes", async () => {
     expect((await readdir(listingsRoot)).sort()).toStrictEqual([
       "current-moderation-reason-repository.ts",
       "current-moderation-reason.ts",
+      "geocoding-controller.ts",
+      "geocoding-service.ts",
+      "geocoding-validation.ts",
       "listing-completeness.ts",
       "listing-create-controller.ts",
       "listing-create-repository.ts",
@@ -69,19 +72,22 @@ describe("RM-029 application isolation", () => {
       "owner-listing-summary-mapper.ts",
       "routes.ts"
     ]);
-    expect((await readdir(path.join(backendRoot, "src/integrations"))).sort()).toStrictEqual(["cloudinary.client.ts"]);
+    expect((await readdir(path.join(backendRoot, "src/integrations"))).sort()).toStrictEqual([
+      "cloudinary.client.ts",
+      "nominatim.client.ts"
+    ]);
     const routes = await source("routes.ts");
     const registrations = [...routes.matchAll(/router\.(get|post|patch|put|delete)\(\s*"([^"]+)"/g)].map((match) => [
       match[1],
       match[2]
     ]);
-    expect(registrations).toHaveLength(13);
+    expect(registrations).toHaveLength(14);
     expect(registrations.filter(([, route]) => route === "/landlord/listings/:listingId/images")).toStrictEqual([
       ["post", "/landlord/listings/:listingId/images"]
     ]);
     expect(registrations).toContainEqual(["delete", "/landlord/listings/:listingId/images/:imageId"]);
     expect(registrations).toContainEqual(["put", "/landlord/listings/:listingId/images/order"]);
-    expect(routes).not.toMatch(/replace|bulk|geocod|favorite|admin/i);
+    expect(routes).not.toMatch(/replace|bulk|favorite|admin/i);
   });
 
   it("keeps Cloudinary and Multer bounded to the integration, upload, and composition seams", async () => {

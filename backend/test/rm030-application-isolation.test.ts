@@ -19,10 +19,13 @@ async function source(filename: string): Promise<string> {
 }
 
 describe("RM-030 application isolation", () => {
-  it("contains exactly 47 listings files and thirteen routes through V1-21", async () => {
+  it("contains exactly 50 listings files and fourteen routes through V1-22", async () => {
     expect((await readdir(listingsRoot)).sort()).toStrictEqual([
       "current-moderation-reason-repository.ts",
       "current-moderation-reason.ts",
+      "geocoding-controller.ts",
+      "geocoding-service.ts",
+      "geocoding-validation.ts",
       "listing-completeness.ts",
       "listing-create-controller.ts",
       "listing-create-repository.ts",
@@ -87,13 +90,14 @@ describe("RM-030 application isolation", () => {
       ["delete", "/landlord/listings/:listingId"],
       ["post", "/landlord/listings/:listingId/images"],
       ["delete", "/landlord/listings/:listingId/images/:imageId"],
-      ["put", "/landlord/listings/:listingId/images/order"]
+      ["put", "/landlord/listings/:listingId/images/order"],
+      ["post", "/geocoding/forward"]
     ]);
     expect(registrations.filter(([, route]) => route === "/landlord/listings/:listingId/images/:imageId")).toHaveLength(
       1
     );
     expect(registrations.filter(([, route]) => route === "/landlord/listings/:listingId/images/order")).toHaveLength(1);
-    expect(routes).not.toMatch(/replace|bulk|geocod|favorite|admin/i);
+    expect(routes).not.toMatch(/replace|bulk|favorite|admin/i);
   });
 
   it("keeps deletion transaction-bound, significant, nested, and free of reorder or history writes", async () => {
@@ -117,7 +121,10 @@ describe("RM-030 application isolation", () => {
   });
 
   it("reuses the existing provider and lifecycle seams without changing RM-029 or RM-027 production", async () => {
-    expect((await readdir(path.join(backendRoot, "src/integrations"))).sort()).toStrictEqual(["cloudinary.client.ts"]);
+    expect((await readdir(path.join(backendRoot, "src/integrations"))).sort()).toStrictEqual([
+      "cloudinary.client.ts",
+      "nominatim.client.ts"
+    ]);
     const composition = await readFile(path.join(backendRoot, "src/server-composition.ts"), "utf8");
     expect(composition).toContain("createListingImageDeleteService");
     expect(composition).toContain("cloudinaryClient");
@@ -159,7 +166,6 @@ describe("RM-030 application isolation", () => {
         "backend/package-lock.json",
         "package-lock.json",
         "backend/src/app.ts",
-        "backend/src/server.ts",
         "backend/src/config/env.ts",
         "backend/src/db",
         "backend/migrations",

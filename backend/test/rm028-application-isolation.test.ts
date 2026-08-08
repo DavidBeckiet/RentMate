@@ -46,10 +46,13 @@ function git(...arguments_: string[]): string {
 }
 
 describe("RM-028 application isolation and M3 acceptance inventory", () => {
-  it("keeps the exact 47-file production listings inventory and thirteen routes", async () => {
+  it("keeps the exact 50-file production listings inventory and fourteen routes", async () => {
     expect((await readdir(listingsRoot)).sort()).toStrictEqual([
       "current-moderation-reason-repository.ts",
       "current-moderation-reason.ts",
+      "geocoding-controller.ts",
+      "geocoding-service.ts",
+      "geocoding-validation.ts",
       "listing-completeness.ts",
       "listing-create-controller.ts",
       "listing-create-repository.ts",
@@ -114,9 +117,10 @@ describe("RM-028 application isolation and M3 acceptance inventory", () => {
       ["delete", "/landlord/listings/:listingId"],
       ["post", "/landlord/listings/:listingId/images"],
       ["delete", "/landlord/listings/:listingId/images/:imageId"],
-      ["put", "/landlord/listings/:listingId/images/order"]
+      ["put", "/landlord/listings/:listingId/images/order"],
+      ["post", "/geocoding/forward"]
     ]);
-    expect(routes).not.toMatch(/geocod|favorite|admin|moderation-actions|"\/listings"/i);
+    expect(routes).not.toMatch(/favorite|admin|moderation-actions|"\/listings"/i);
   });
 
   it("contains exactly four RM-028 suites and the exact 26-file focused script", async () => {

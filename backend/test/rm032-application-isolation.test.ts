@@ -22,15 +22,15 @@ async function recursiveFiles(root: string): Promise<string[]> {
 }
 
 describe("RM-032 application isolation", () => {
-  it("keeps exactly 47 listings production files and thirteen routes through V1-21", async () => {
+  it("keeps exactly 50 listings production files and fourteen routes through V1-22", async () => {
     const files = (await readdir(listingsRoot)).sort();
-    expect(files).toHaveLength(47);
+    expect(files).toHaveLength(50);
     const routes = await listingSource("routes.ts");
     const registrations = [...routes.matchAll(/router\.(get|post|patch|put|delete)\(\s*"([^"]+)"/g)].map((match) => [
       match[1],
       match[2]
     ]);
-    expect(registrations).toHaveLength(13);
+    expect(registrations).toHaveLength(14);
     expect(
       registrations.filter((entry) => entry[0] === "delete" && entry[1] === "/landlord/listings/:listingId")
     ).toHaveLength(1);
@@ -41,7 +41,8 @@ describe("RM-032 application isolation", () => {
       registrations.filter((entry) => entry[0] === "delete" && entry[1]?.endsWith("/images/:imageId"))
     ).toHaveLength(1);
     expect(registrations.filter((entry) => entry[0] === "put" && entry[1]?.endsWith("/images/order"))).toHaveLength(1);
-    expect(routes).not.toMatch(/replace|bulk|geocod|nominatim/i);
+    expect(registrations.filter((entry) => entry[0] === "post" && entry[1] === "/geocoding/forward")).toHaveLength(1);
+    expect(routes).not.toMatch(/replace|bulk/i);
   });
 
   it("keeps replacement composed only from upload and delete without a new endpoint", async () => {
@@ -54,7 +55,10 @@ describe("RM-032 application isolation", () => {
   });
 
   it("preserves the single Cloudinary boundary, centralized lifecycle policy, and listing locks", async () => {
-    expect((await readdir(path.join(backendRoot, "src/integrations"))).sort()).toStrictEqual(["cloudinary.client.ts"]);
+    expect((await readdir(path.join(backendRoot, "src/integrations"))).sort()).toStrictEqual([
+      "cloudinary.client.ts",
+      "nominatim.client.ts"
+    ]);
     const uploadRepository = await listingSource("listing-image-upload-repository.ts");
     const deleteRepository = await listingSource("listing-image-delete-repository.ts");
     const orderRepository = await listingSource("listing-image-order-repository.ts");
@@ -88,7 +92,7 @@ describe("RM-032 application isolation", () => {
     expect(cloudinaryImports).toStrictEqual([path.normalize("src/integrations/cloudinary.client.ts")]);
   });
 
-  it("adds no schema, dependency, RM-033 production, or RM-032 frontend surface", async () => {
+  it("adds no schema, dependency, RM-034/RM-035 production, or RM-032 frontend surface", async () => {
     const migrations = (await readdir(path.join(backendRoot, "migrations")))
       .filter((filename) => filename.endsWith(".sql"))
       .sort();
@@ -108,7 +112,7 @@ describe("RM-032 application isolation", () => {
       pg: "8.16.0"
     });
     expect(await recursiveFiles(path.join(backendRoot, "src"))).not.toEqual(
-      expect.arrayContaining([expect.stringMatching(/nominatim|geocod|rm032/i)])
+      expect.arrayContaining([expect.stringMatching(/rm03[45]/i)])
     );
     expect(await recursiveFiles(path.join(repositoryRoot, "frontend"))).not.toEqual(
       expect.arrayContaining([expect.stringMatching(/rm032/i)])

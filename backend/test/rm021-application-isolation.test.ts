@@ -24,6 +24,9 @@ describe("RM-021 application isolation", () => {
     expect((await readdir(listingsRoot)).sort()).toStrictEqual([
       "current-moderation-reason-repository.ts",
       "current-moderation-reason.ts",
+      "geocoding-controller.ts",
+      "geocoding-service.ts",
+      "geocoding-validation.ts",
       "listing-completeness.ts",
       "listing-create-controller.ts",
       "listing-create-repository.ts",
@@ -92,7 +95,8 @@ describe("RM-021 application isolation", () => {
       ["delete", "/landlord/listings/:listingId"],
       ["post", "/landlord/listings/:listingId/images"],
       ["delete", "/landlord/listings/:listingId/images/:imageId"],
-      ["put", "/landlord/listings/:listingId/images/order"]
+      ["put", "/landlord/listings/:listingId/images/order"],
+      ["post", "/geocoding/forward"]
     ]);
     expect(routes).toMatch(
       /router\.get\([\s\S]*"\/landlord\/listings"[\s\S]*dependencies\.authenticationMiddleware[\s\S]*dependencies\.landlordRoleMiddleware[\s\S]*createListOwnerListingsHandler/
@@ -102,7 +106,7 @@ describe("RM-021 application isolation", () => {
     );
     const lookupRegistrations = routeMatches.filter(([, route]) => route?.startsWith("/lookups/"));
     expect(lookupRegistrations).toHaveLength(2);
-    expect(routes).not.toMatch(/geocod|admin/i);
+    expect(routes).not.toMatch(/admin/i);
     expect(routes).not.toMatch(/"\/listings(?:\/|"|\?)/);
   });
 

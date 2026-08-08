@@ -1,4 +1,16 @@
 import type { RequestHandler, Router } from "express";
+import {
+  createRateLimitMiddleware,
+  InMemoryRateLimitStore,
+  type Clock,
+  type RateLimitPolicy,
+  type RateLimitStore
+} from "../../shared/middleware/rate-limit.js";
+import {
+  createForwardGeocodingHandler,
+  createForwardGeocodingValidationPreflightHandler
+} from "./geocoding-controller.js";
+import type { GeocodingService } from "./geocoding-service.js";
 import { createListingDraftHandler } from "./listing-create-controller.js";
 import type { ListingCreateService } from "./listing-create-service.js";
 import { createDeleteOwnerListingHandler } from "./listing-delete-controller.js";
@@ -40,9 +52,39 @@ export interface ListingsRouteDependencies {
   readonly listingImageUploadService: ListingImageUploadService;
   readonly listingImageDeleteService: ListingImageDeleteService;
   readonly listingImageOrderService: ListingImageOrderService;
+  readonly geocodingService: GeocodingService;
+  readonly geocodingUserRateLimitStore?: RateLimitStore;
+  readonly geocodingUserRateLimitClock?: Clock;
+  readonly nominatimProviderRateLimitStore?: RateLimitStore;
+  readonly nominatimProviderRateLimitClock?: Clock;
 }
 
+export const geocodingUserRateLimitPolicy: RateLimitPolicy = Object.freeze({
+  scope: "geocoding-user",
+  limit: 1,
+  windowMs: 1_000
+});
+
+export const nominatimProviderRateLimitPolicy: RateLimitPolicy = Object.freeze({
+  scope: "nominatim-provider",
+  limit: 1,
+  windowMs: 1_000
+});
+
 export function registerListingsRoutes(router: Router, dependencies: ListingsRouteDependencies): void {
+  const geocodingUserRateLimiter = createRateLimitMiddleware({
+    policy: geocodingUserRateLimitPolicy,
+    resolveKey: (request) => request.auth?.userId.toString() ?? "",
+    store: dependencies.geocodingUserRateLimitStore ?? new InMemoryRateLimitStore(),
+    clock: dependencies.geocodingUserRateLimitClock
+  });
+  const nominatimProviderRateLimiter = createRateLimitMiddleware({
+    policy: nominatimProviderRateLimitPolicy,
+    resolveKey: () => "nominatim",
+    store: dependencies.nominatimProviderRateLimitStore ?? new InMemoryRateLimitStore(),
+    clock: dependencies.nominatimProviderRateLimitClock
+  });
+
   router.get("/lookups/property-types", createGetPropertyTypesHandler(dependencies.lookupRepository));
   router.get("/lookups/amenities", createGetAmenitiesHandler(dependencies.lookupRepository));
   router.post(
@@ -112,5 +154,14 @@ export function registerListingsRoutes(router: Router, dependencies: ListingsRou
     dependencies.authenticationMiddleware,
     dependencies.landlordRoleMiddleware,
     createReorderListingImagesHandler(dependencies.listingImageOrderService)
+  );
+  router.post(
+    "/geocoding/forward",
+    dependencies.authenticationMiddleware,
+    dependencies.landlordRoleMiddleware,
+    createForwardGeocodingValidationPreflightHandler(),
+    geocodingUserRateLimiter,
+    nominatimProviderRateLimiter,
+    createForwardGeocodingHandler(dependencies.geocodingService)
   );
 }

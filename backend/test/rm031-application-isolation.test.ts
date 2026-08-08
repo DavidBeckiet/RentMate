@@ -19,9 +19,9 @@ async function source(filename: string): Promise<string> {
 }
 
 describe("RM-031 application isolation", () => {
-  it("contains exactly 47 listings files and thirteen routes through V1-21", async () => {
+  it("contains exactly 50 listings files and fourteen routes through V1-22", async () => {
     const files = (await readdir(listingsRoot)).sort();
-    expect(files).toHaveLength(47);
+    expect(files).toHaveLength(50);
     expect(files.filter((file) => file.startsWith("listing-image-order-"))).toStrictEqual([
       "listing-image-order-controller.ts",
       "listing-image-order-repository.ts",
@@ -33,13 +33,14 @@ describe("RM-031 application isolation", () => {
       match[1],
       match[2]
     ]);
-    expect(registrations).toHaveLength(13);
+    expect(registrations).toHaveLength(14);
     expect(registrations.filter((entry) => entry[0] === "post" && entry[1]?.endsWith("/images"))).toHaveLength(1);
     expect(
       registrations.filter((entry) => entry[0] === "delete" && entry[1]?.endsWith("/images/:imageId"))
     ).toHaveLength(1);
     expect(registrations.filter((entry) => entry[0] === "put" && entry[1]?.endsWith("/images/order"))).toHaveLength(1);
-    expect(routes).not.toMatch(/geocod|favorite|admin/i);
+    expect(registrations.filter((entry) => entry[0] === "post" && entry[1] === "/geocoding/forward")).toHaveLength(1);
+    expect(routes).not.toMatch(/favorite|admin/i);
   });
 
   it("keeps RM-031 database-only, transaction-bound, lifecycle-neutral, and provider-free", async () => {
@@ -89,7 +90,6 @@ describe("RM-031 application isolation", () => {
         "backend/package-lock.json",
         "package-lock.json",
         "backend/src/app.ts",
-        "backend/src/server.ts",
         "backend/src/config/env.ts",
         "backend/src/integrations/cloudinary.client.ts",
         "backend/src/modules/listings/listing-lifecycle-policy.ts",

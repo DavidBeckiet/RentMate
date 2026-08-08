@@ -3,6 +3,7 @@ import type { Express } from "express";
 import { createApp } from "./app.js";
 import type { SqlExecutor } from "./db/sql-executor.js";
 import { unavailableCloudinaryClient, type CloudinaryClient } from "./integrations/cloudinary.client.js";
+import { unavailableNominatimClient, type NominatimClient } from "./integrations/nominatim.client.js";
 import { createAuthRepository } from "./modules/auth/auth-repository.js";
 import { createLoginService } from "./modules/auth/login-service.js";
 import { createPasswordService } from "./modules/auth/password.js";
@@ -11,6 +12,7 @@ import { registerAuthRoutes } from "./modules/auth/routes.js";
 import { createSessionCookieService, type SessionCookieService } from "./modules/auth/session-cookie.js";
 import { createSessionTokenService, type SessionTokenService } from "./modules/auth/session-token.js";
 import { createListingCreateService, type TransactionRunner } from "./modules/listings/listing-create-service.js";
+import { createGeocodingService } from "./modules/listings/geocoding-service.js";
 import {
   noOpListingDeleteCleanupHandoff,
   type ListingDeleteCleanupHandoff
@@ -56,6 +58,11 @@ export interface BackendAppCompositionOptions {
   readonly transactionRunner?: TransactionRunner;
   readonly listingDeleteCleanupHandoff?: ListingDeleteCleanupHandoff;
   readonly cloudinaryClient?: CloudinaryClient;
+  readonly nominatimClient?: NominatimClient;
+  readonly geocodingUserRateLimitStore?: RateLimitStore;
+  readonly geocodingUserRateLimitClock?: Clock;
+  readonly nominatimProviderRateLimitStore?: RateLimitStore;
+  readonly nominatimProviderRateLimitClock?: Clock;
 }
 
 export async function createBackendApp(options: BackendAppCompositionOptions): Promise<Express> {
@@ -96,6 +103,7 @@ export async function createBackendApp(options: BackendAppCompositionOptions): P
     logger: options.logger
   });
   const listingImageOrderService = createListingImageOrderService({ transactionRunner });
+  const geocodingService = createGeocodingService(options.nominatimClient ?? unavailableNominatimClient);
   const listingDeleteService = createListingDeleteService({
     transactionRunner,
     cleanupHandoff:
@@ -143,7 +151,12 @@ export async function createBackendApp(options: BackendAppCompositionOptions): P
         listingDeleteService,
         listingImageUploadService,
         listingImageDeleteService,
-        listingImageOrderService
+        listingImageOrderService,
+        geocodingService,
+        geocodingUserRateLimitStore: options.geocodingUserRateLimitStore,
+        geocodingUserRateLimitClock: options.geocodingUserRateLimitClock,
+        nominatimProviderRateLimitStore: options.nominatimProviderRateLimitStore,
+        nominatimProviderRateLimitClock: options.nominatimProviderRateLimitClock
       });
     }
   });
