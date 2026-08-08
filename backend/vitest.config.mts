@@ -29,6 +29,7 @@ export default defineConfig({
       "test/rm028-listing-concurrency.database.integration.test.ts",
       "test/rm029-listing-image-upload.database.integration.test.ts",
       "test/rm030-listing-image-delete.database.integration.test.ts",
+      "test/rm031-listing-image-order.database.integration.test.ts",
       "node_modules/**",
       "dist/**",
       "coverage/**"

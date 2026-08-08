@@ -265,7 +265,7 @@ describe("RM-025 listing submit HTTP", () => {
       .expect(200);
     const app = await makeApp(new Executor());
     await request(app).delete("/api/v1/landlord/listings/7/images/3").set("Origin", origin).expect(401);
-    await request(app).put("/api/v1/landlord/listings/7/images/order").set("Origin", origin).expect(404);
+    await request(app).put("/api/v1/landlord/listings/7/images/order").set("Origin", origin).expect(401);
     await request(app).delete("/api/v1/landlord/listings/7").set("Origin", origin).expect(401);
   });
 });

@@ -36,6 +36,10 @@ describe("RM-019 application isolation", () => {
       "listing-image-delete-controller.ts",
       "listing-image-delete-repository.ts",
       "listing-image-delete-service.ts",
+      "listing-image-order-controller.ts",
+      "listing-image-order-repository.ts",
+      "listing-image-order-service.ts",
+      "listing-image-order-validation.ts",
       "listing-image-upload-controller.ts",
       "listing-image-upload-multipart.ts",
       "listing-image-upload-repository.ts",
@@ -86,13 +90,14 @@ describe("RM-019 application isolation", () => {
       ["post", "/landlord/listings/:listingId/reactivate"],
       ["delete", "/landlord/listings/:listingId"],
       ["post", "/landlord/listings/:listingId/images"],
-      ["delete", "/landlord/listings/:listingId/images/:imageId"]
+      ["delete", "/landlord/listings/:listingId/images/:imageId"],
+      ["put", "/landlord/listings/:listingId/images/order"]
     ]);
     const lookupRegistrations = [...routes.matchAll(/router\.get\([\s\S]*?\);/g)].map((match) => match[0]);
     expect(lookupRegistrations.slice(0, 2)).toHaveLength(2);
     expect(lookupRegistrations.slice(0, 2).join("\n")).not.toMatch(/authenticationMiddleware|landlordRoleMiddleware/);
     expect(routes).toMatch(/router\.post\([\s\S]*authenticationMiddleware[\s\S]*landlordRoleMiddleware/);
-    expect(routes).not.toMatch(/optional|rate.?limit|cache|admin|router\.put/i);
+    expect(routes).not.toMatch(/optional|rate.?limit|cache|admin/i);
   });
 
   it("keeps RM-019 lookup sources read-only and isolates the only allowed RM-020 writes", async () => {

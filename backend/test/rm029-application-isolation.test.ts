@@ -19,7 +19,7 @@ async function source(filename: string): Promise<string> {
 }
 
 describe("RM-029 application isolation", () => {
-  it("contains exactly 43 listings files, one integration client, and twelve routes", async () => {
+  it("contains exactly 47 listings files, one integration client, and thirteen routes", async () => {
     expect((await readdir(listingsRoot)).sort()).toStrictEqual([
       "current-moderation-reason-repository.ts",
       "current-moderation-reason.ts",
@@ -36,6 +36,10 @@ describe("RM-029 application isolation", () => {
       "listing-image-delete-controller.ts",
       "listing-image-delete-repository.ts",
       "listing-image-delete-service.ts",
+      "listing-image-order-controller.ts",
+      "listing-image-order-repository.ts",
+      "listing-image-order-service.ts",
+      "listing-image-order-validation.ts",
       "listing-image-upload-controller.ts",
       "listing-image-upload-multipart.ts",
       "listing-image-upload-repository.ts",
@@ -71,12 +75,13 @@ describe("RM-029 application isolation", () => {
       match[1],
       match[2]
     ]);
-    expect(registrations).toHaveLength(12);
+    expect(registrations).toHaveLength(13);
     expect(registrations.filter(([, route]) => route === "/landlord/listings/:listingId/images")).toStrictEqual([
       ["post", "/landlord/listings/:listingId/images"]
     ]);
     expect(registrations).toContainEqual(["delete", "/landlord/listings/:listingId/images/:imageId"]);
-    expect(routes).not.toMatch(/router\.put|images\/order|replace|bulk|geocod|favorite|admin/i);
+    expect(registrations).toContainEqual(["put", "/landlord/listings/:listingId/images/order"]);
+    expect(routes).not.toMatch(/replace|bulk|geocod|favorite|admin/i);
   });
 
   it("keeps Cloudinary and Multer bounded to the integration, upload, and composition seams", async () => {

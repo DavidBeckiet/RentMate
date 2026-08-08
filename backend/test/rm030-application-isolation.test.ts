@@ -19,7 +19,7 @@ async function source(filename: string): Promise<string> {
 }
 
 describe("RM-030 application isolation", () => {
-  it("contains exactly 43 listings files and twelve routes through V1-20", async () => {
+  it("contains exactly 47 listings files and thirteen routes through V1-21", async () => {
     expect((await readdir(listingsRoot)).sort()).toStrictEqual([
       "current-moderation-reason-repository.ts",
       "current-moderation-reason.ts",
@@ -36,6 +36,10 @@ describe("RM-030 application isolation", () => {
       "listing-image-delete-controller.ts",
       "listing-image-delete-repository.ts",
       "listing-image-delete-service.ts",
+      "listing-image-order-controller.ts",
+      "listing-image-order-repository.ts",
+      "listing-image-order-service.ts",
+      "listing-image-order-validation.ts",
       "listing-image-upload-controller.ts",
       "listing-image-upload-multipart.ts",
       "listing-image-upload-repository.ts",
@@ -82,12 +86,14 @@ describe("RM-030 application isolation", () => {
       ["post", "/landlord/listings/:listingId/reactivate"],
       ["delete", "/landlord/listings/:listingId"],
       ["post", "/landlord/listings/:listingId/images"],
-      ["delete", "/landlord/listings/:listingId/images/:imageId"]
+      ["delete", "/landlord/listings/:listingId/images/:imageId"],
+      ["put", "/landlord/listings/:listingId/images/order"]
     ]);
     expect(registrations.filter(([, route]) => route === "/landlord/listings/:listingId/images/:imageId")).toHaveLength(
       1
     );
-    expect(routes).not.toMatch(/router\.put|images\/order|replace|bulk|geocod|favorite|admin/i);
+    expect(registrations.filter(([, route]) => route === "/landlord/listings/:listingId/images/order")).toHaveLength(1);
+    expect(routes).not.toMatch(/replace|bulk|geocod|favorite|admin/i);
   });
 
   it("keeps deletion transaction-bound, significant, nested, and free of reorder or history writes", async () => {

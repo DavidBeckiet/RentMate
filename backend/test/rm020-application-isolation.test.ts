@@ -36,6 +36,10 @@ describe("RM-020 application isolation", () => {
       "listing-image-delete-controller.ts",
       "listing-image-delete-repository.ts",
       "listing-image-delete-service.ts",
+      "listing-image-order-controller.ts",
+      "listing-image-order-repository.ts",
+      "listing-image-order-service.ts",
+      "listing-image-order-validation.ts",
       "listing-image-upload-controller.ts",
       "listing-image-upload-multipart.ts",
       "listing-image-upload-repository.ts",
@@ -86,7 +90,8 @@ describe("RM-020 application isolation", () => {
       ["post", "/landlord/listings/:listingId/reactivate"],
       ["delete", "/landlord/listings/:listingId"],
       ["post", "/landlord/listings/:listingId/images"],
-      ["delete", "/landlord/listings/:listingId/images/:imageId"]
+      ["delete", "/landlord/listings/:listingId/images/:imageId"],
+      ["put", "/landlord/listings/:listingId/images/order"]
     ]);
     expect(routes).toMatch(
       /router\.post\([\s\S]*"\/landlord\/listings"[\s\S]*authenticationMiddleware[\s\S]*landlordRoleMiddleware[\s\S]*createListingDraftHandler/
@@ -94,7 +99,7 @@ describe("RM-020 application isolation", () => {
     const lookupRegistrations = [...routes.matchAll(/router\.get\([\s\S]*?\);/g)].map((match) => match[0]);
     expect(lookupRegistrations.slice(0, 2)).toHaveLength(2);
     expect(lookupRegistrations.slice(0, 2).join("\n")).not.toMatch(/authenticationMiddleware|landlordRoleMiddleware/);
-    expect(routes).not.toMatch(/router\.put|geocod|admin/i);
+    expect(routes).not.toMatch(/geocod|admin/i);
   });
 
   it("limits writes to one DRAFT listing insert and one set-based amenity insert", async () => {

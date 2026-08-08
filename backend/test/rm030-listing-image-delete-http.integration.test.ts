@@ -235,9 +235,9 @@ describe("RM-030 listing image delete HTTP", () => {
     expect(fixture.cloudinaryClient.removeImage).toHaveBeenCalledOnce();
   });
 
-  it("keeps V1-19 present and V1-21 absent", async () => {
+  it("keeps V1-19 and V1-21 present and protected", async () => {
     const fixture = await makeApp();
     await request(fixture.app).post("/api/v1/landlord/listings/7/images").set("Origin", origin).expect(401);
-    await request(fixture.app).put("/api/v1/landlord/listings/7/images/order").set("Origin", origin).expect(404);
+    await request(fixture.app).put("/api/v1/landlord/listings/7/images/order").set("Origin", origin).expect(401);
   });
 });
