@@ -19,7 +19,7 @@ describe("RM-019 application isolation", () => {
     const modules = (await readdir(path.resolve(backendRoot, "src/modules"))).sort();
     const listingsFiles = (await readdir(listingsRoot)).sort();
 
-    expect(modules).toStrictEqual(["auth", "listings", "users"]);
+    expect(modules).toStrictEqual(["auth", "favorites", "listings", "users"]);
     expect(listingsFiles).toStrictEqual([
       "current-moderation-reason-repository.ts",
       "current-moderation-reason.ts",

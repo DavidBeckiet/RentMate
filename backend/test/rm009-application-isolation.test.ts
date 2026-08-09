@@ -120,7 +120,18 @@ describe("RM-009 application and roadmap isolation", () => {
       "public-listing-summary-mapper.ts",
       "routes.ts"
     ]);
-    expect(sourceFiles.some((filename) => /src[\\/]+modules[\\/]+favorites[\\/]/.test(filename))).toBe(false);
+    expect(
+      sourceFiles
+        .filter((filename) => /src[\\/]+modules[\\/]+favorites[\\/]/.test(filename))
+        .map((filename) => path.basename(filename))
+        .sort()
+    ).toStrictEqual([
+      "favorite-controller.ts",
+      "favorite-repository.ts",
+      "favorite-service.ts",
+      "favorite-validation.ts",
+      "routes.ts"
+    ]);
     expect(sourceFiles.some((filename) => /base-?repository/i.test(filename))).toBe(false);
   });
 

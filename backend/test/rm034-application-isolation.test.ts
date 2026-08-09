@@ -40,16 +40,16 @@ function relative(filename: string): string {
 describe("RM-034 permanent production inventory", () => {
   it("keeps the committed RM-033 route and listings inventory unchanged", async () => {
     expect((await readdir(listingsRoot)).sort()).toHaveLength(60);
-    const routeFiles = ["auth", "listings", "users"].map((module) =>
+    const routeFiles = ["auth", "favorites", "listings", "users"].map((module) =>
       path.join(sourceRoot, "modules", module, "routes.ts")
     );
     const routeSources = await Promise.all(routeFiles.map((filename) => readFile(filename, "utf8")));
     const routePattern = /router\.(get|post|patch|put|delete)\(\s*"([^"]+)"/g;
-    const listingsRoutes = [...routeSources[1]!.matchAll(routePattern)].map((match) => [match[1], match[2]]);
+    const listingsRoutes = [...routeSources[2]!.matchAll(routePattern)].map((match) => [match[1], match[2]]);
 
     expect(listingsRoutes).toHaveLength(16);
     expect(listingsRoutes.filter(([method, route]) => method === "get" && route === "/listings")).toHaveLength(1);
-    expect(routeSources.flatMap((source) => [...source.matchAll(routePattern)])).toHaveLength(22);
+    expect(routeSources.flatMap((source) => [...source.matchAll(routePattern)])).toHaveLength(25);
     expect(
       listingsRoutes.filter(([method, route]) => method === "post" && route === "/geocoding/forward")
     ).toHaveLength(1);
@@ -63,7 +63,12 @@ describe("RM-034 permanent production inventory", () => {
       "cloudinary.client.ts",
       "nominatim.client.ts"
     ]);
-    expect((await readdir(path.join(sourceRoot, "modules"))).sort()).toStrictEqual(["auth", "listings", "users"]);
+    expect((await readdir(path.join(sourceRoot, "modules"))).sort()).toStrictEqual([
+      "auth",
+      "favorites",
+      "listings",
+      "users"
+    ]);
     expect(
       (await recursiveFiles(sourceRoot)).filter((filename) => /nominatim\.client\.ts$/.test(filename))
     ).toHaveLength(1);

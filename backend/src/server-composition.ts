@@ -11,6 +11,9 @@ import { createRegistrationService } from "./modules/auth/registration-service.j
 import { registerAuthRoutes } from "./modules/auth/routes.js";
 import { createSessionCookieService, type SessionCookieService } from "./modules/auth/session-cookie.js";
 import { createSessionTokenService, type SessionTokenService } from "./modules/auth/session-token.js";
+import { createFavoriteRepository } from "./modules/favorites/favorite-repository.js";
+import { createFavoriteService } from "./modules/favorites/favorite-service.js";
+import { registerFavoriteRoutes } from "./modules/favorites/routes.js";
 import { createListingCreateService, type TransactionRunner } from "./modules/listings/listing-create-service.js";
 import { createGeocodingService } from "./modules/listings/geocoding-service.js";
 import {
@@ -93,6 +96,7 @@ export async function createBackendApp(options: BackendAppCompositionOptions): P
     missingAccountPasswordHash
   });
   const usersService = createUsersService(usersRepository);
+  const favoriteService = createFavoriteService(createFavoriteRepository(options.sqlExecutor));
   const lookupRepository = createLookupRepository(options.sqlExecutor);
   const transactionRunner = options.transactionRunner ?? unavailableTransactionRunner;
   const listingCreateService = createListingCreateService({ transactionRunner });
@@ -140,6 +144,7 @@ export async function createBackendApp(options: BackendAppCompositionOptions): P
     loadAuthenticationAccount: usersRepository.findAuthenticationAccountById
   });
   const landlordRole = createRoleMiddleware(["LANDLORD"]);
+  const tenantRole = createRoleMiddleware(["TENANT"]);
   const authRateLimitStore = options.authRateLimitStore ?? new InMemoryRateLimitStore();
 
   return createApp({
@@ -160,6 +165,11 @@ export async function createBackendApp(options: BackendAppCompositionOptions): P
       registerUsersRoutes(router, {
         authenticationMiddleware: requiredAuthentication,
         usersService
+      });
+      registerFavoriteRoutes(router, {
+        authenticationMiddleware: requiredAuthentication,
+        tenantRoleMiddleware: tenantRole,
+        favoriteService
       });
       registerListingsRoutes(router, {
         lookupRepository,

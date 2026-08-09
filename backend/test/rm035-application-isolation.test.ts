@@ -39,18 +39,18 @@ function gitDiff(...paths: string[]): string {
 }
 
 describe("RM-035 application isolation", () => {
-  it("keeps exactly 60 listings files, sixteen listings routes, and 22 total API routes", async () => {
+  it("keeps exactly 60 listings files, sixteen listings routes, and 25 total API routes", async () => {
     const files = (await readdir(listingsRoot)).sort();
     expect(files).toHaveLength(60);
     expect(files.filter((filename) => filename.startsWith("public-listing"))).toStrictEqual(rm035Production);
-    const routeFiles = ["auth", "listings", "users"].map((module) =>
+    const routeFiles = ["auth", "favorites", "listings", "users"].map((module) =>
       path.join(sourceRoot, "modules", module, "routes.ts")
     );
     const sources = await Promise.all(routeFiles.map((filename) => readFile(filename, "utf8")));
     const pattern = /router\.(get|post|patch|put|delete)\(\s*"([^"]+)"/g;
-    const listingsRoutes = [...sources[1]!.matchAll(pattern)].map((match) => [match[1], match[2]]);
+    const listingsRoutes = [...sources[2]!.matchAll(pattern)].map((match) => [match[1], match[2]]);
     expect(listingsRoutes).toHaveLength(16);
-    expect(sources.flatMap((source) => [...source.matchAll(pattern)])).toHaveLength(22);
+    expect(sources.flatMap((source) => [...source.matchAll(pattern)])).toHaveLength(25);
     expect(listingsRoutes.filter(([method, route]) => method === "get" && route === "/listings")).toHaveLength(1);
     expect(
       listingsRoutes.filter(([method, route]) => method === "get" && route === "/listings/:listingId")

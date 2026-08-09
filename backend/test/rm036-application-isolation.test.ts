@@ -33,14 +33,14 @@ describe("RM-036 application isolation", () => {
     expect(files).toHaveLength(60);
     expect(files.filter((filename) => filename.startsWith("public-listing"))).toStrictEqual(publicListingProduction);
 
-    const routeFiles = ["auth", "listings", "users"].map((module) =>
+    const routeFiles = ["auth", "favorites", "listings", "users"].map((module) =>
       path.join(sourceRoot, "modules", module, "routes.ts")
     );
     const routeSources = await Promise.all(routeFiles.map((filename) => readFile(filename, "utf8")));
     const pattern = /router\.(get|post|patch|put|delete)\(\s*"([^"]+)"/g;
-    const listingsRoutes = [...routeSources[1]!.matchAll(pattern)].map((match) => [match[1], match[2]]);
+    const listingsRoutes = [...routeSources[2]!.matchAll(pattern)].map((match) => [match[1], match[2]]);
     expect(listingsRoutes).toHaveLength(16);
-    expect(routeSources.flatMap((source) => [...source.matchAll(pattern)])).toHaveLength(22);
+    expect(routeSources.flatMap((source) => [...source.matchAll(pattern)])).toHaveLength(25);
     expect(listingsRoutes.filter(([method, route]) => method === "get" && route === "/listings")).toHaveLength(1);
     expect(listingsRoutes.some(([, route]) => /map|radius|bounds|favorite|admin/.test(route))).toBe(false);
   });

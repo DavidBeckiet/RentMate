@@ -29,7 +29,7 @@ describe("RM-017 application isolation", () => {
     const authFiles = (await readdir(path.resolve(backendRoot, "src/modules/auth"))).sort();
     const usersFiles = (await readdir(path.resolve(backendRoot, "src/modules/users"))).sort();
 
-    expect(moduleDirectories).toStrictEqual(["auth", "listings", "users"]);
+    expect(moduleDirectories).toStrictEqual(["auth", "favorites", "listings", "users"]);
     expect(authFiles).toEqual([
       "auth-repository.ts",
       "login-controller.ts",

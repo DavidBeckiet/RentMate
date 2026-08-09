@@ -16,25 +16,33 @@ function gitDiff(...paths: string[]): string {
 }
 
 describe("RM-038 verification-only application isolation", () => {
-  it("keeps the RM-037 production and route inventories unchanged", async () => {
+  it("keeps the RM-037 listings inventory and current route inventory", async () => {
     expect(await readdir(listingsRoot)).toHaveLength(60);
-    const routeFiles = ["auth", "listings", "users"].map((module) =>
+    const routeFiles = ["auth", "favorites", "listings", "users"].map((module) =>
       path.join(sourceRoot, "modules", module, "routes.ts")
     );
     const routeSources = await Promise.all(routeFiles.map((file) => readFile(file, "utf8")));
     const routePattern = /router\.(get|post|patch|put|delete)\(\s*"([^"]+)"/g;
-    const listingRoutes = [...routeSources[1]!.matchAll(routePattern)];
+    const listingRoutes = [...routeSources[2]!.matchAll(routePattern)];
     const allV1Routes = routeSources.flatMap((source) => [...source.matchAll(routePattern)]);
     expect(listingRoutes).toHaveLength(16);
-    expect(allV1Routes).toHaveLength(22);
+    expect(allV1Routes).toHaveLength(25);
     expect(listingRoutes.filter((match) => match[1] === "get" && match[2] === "/listings")).toHaveLength(1);
     expect(listingRoutes.filter((match) => match[1] === "get" && match[2] === "/listings/:listingId")).toHaveLength(1);
   });
 
-  it("keeps every protected production, schema, frontend, dependency, and frozen-document path unchanged", () => {
+  it("keeps every RM-039-protected production, schema, frontend, dependency, and frozen-document path unchanged", () => {
     expect(
       gitDiff(
-        "backend/src",
+        "backend/src/app.ts",
+        "backend/src/server.ts",
+        "backend/src/config",
+        "backend/src/db",
+        "backend/src/integrations",
+        "backend/src/modules/auth",
+        "backend/src/modules/listings",
+        "backend/src/modules/users",
+        "backend/src/shared",
         "backend/migrations",
         "frontend",
         "docs",
@@ -70,7 +78,12 @@ describe("RM-038 verification-only application isolation", () => {
     expect((await readdir(path.join(backendRoot, "migrations"))).filter((file) => file.endsWith(".sql"))).toHaveLength(
       12
     );
-    expect((await readdir(path.join(sourceRoot, "modules"))).sort()).toStrictEqual(["auth", "listings", "users"]);
+    expect((await readdir(path.join(sourceRoot, "modules"))).sort()).toStrictEqual([
+      "auth",
+      "favorites",
+      "listings",
+      "users"
+    ]);
     const production = (
       await Promise.all((await readdir(listingsRoot)).map((file) => readFile(path.join(listingsRoot, file), "utf8")))
     ).join("\n");

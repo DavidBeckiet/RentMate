@@ -18,6 +18,7 @@ describe("RM-021 application isolation", () => {
   it("contains only the RM-019, RM-020, and RM-021 listings production files", async () => {
     expect((await readdir(path.resolve(backendRoot, "src/modules"))).sort()).toStrictEqual([
       "auth",
+      "favorites",
       "listings",
       "users"
     ]);

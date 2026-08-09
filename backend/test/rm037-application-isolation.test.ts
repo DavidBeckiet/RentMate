@@ -27,14 +27,14 @@ describe("RM-037 application isolation", () => {
     expect(files).toHaveLength(60);
     expect(files.filter((filename) => filename.startsWith("public-listing-detail"))).toStrictEqual(rm037Production);
 
-    const routeFiles = ["auth", "listings", "users"].map((module) =>
+    const routeFiles = ["auth", "favorites", "listings", "users"].map((module) =>
       path.join(sourceRoot, "modules", module, "routes.ts")
     );
     const routeSources = await Promise.all(routeFiles.map((filename) => readFile(filename, "utf8")));
     const pattern = /router\.(get|post|patch|put|delete)\(\s*"([^"]+)"/g;
-    const listingsRoutes = [...routeSources[1]!.matchAll(pattern)].map((match) => [match[1], match[2]]);
+    const listingsRoutes = [...routeSources[2]!.matchAll(pattern)].map((match) => [match[1], match[2]]);
     expect(listingsRoutes).toHaveLength(16);
-    expect(routeSources.flatMap((source) => [...source.matchAll(pattern)])).toHaveLength(22);
+    expect(routeSources.flatMap((source) => [...source.matchAll(pattern)])).toHaveLength(25);
     expect(listingsRoutes.filter(([method, route]) => method === "get" && route === "/listings")).toHaveLength(1);
     expect(
       listingsRoutes.filter(([method, route]) => method === "get" && route === "/listings/:listingId")
@@ -82,7 +82,12 @@ describe("RM-037 application isolation", () => {
     expect((await readdir(path.join(backendRoot, "migrations"))).filter((file) => file.endsWith(".sql"))).toHaveLength(
       12
     );
-    expect((await readdir(path.join(sourceRoot, "modules"))).sort()).toStrictEqual(["auth", "listings", "users"]);
+    expect((await readdir(path.join(sourceRoot, "modules"))).sort()).toStrictEqual([
+      "auth",
+      "favorites",
+      "listings",
+      "users"
+    ]);
     const combined = (
       await Promise.all(rm037Production.map((filename) => readFile(path.join(listingsRoot, filename), "utf8")))
     ).join("\n");

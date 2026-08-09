@@ -22,7 +22,7 @@ async function source(filename: string): Promise<string> {
 }
 
 describe("RM-033 application isolation", () => {
-  it("adds exactly three listings files and one V1-22 route", async () => {
+  it("keeps the geocoding inventory alongside the current route set", async () => {
     const files = (await readdir(listingsRoot)).sort();
     expect(files).toHaveLength(60);
     expect(files.filter((filename) => filename.startsWith("geocoding-"))).toStrictEqual([
@@ -31,16 +31,16 @@ describe("RM-033 application isolation", () => {
       "geocoding-validation.ts"
     ]);
 
-    const moduleRouteFiles = ["auth", "listings", "users"].map((module) =>
+    const moduleRouteFiles = ["auth", "favorites", "listings", "users"].map((module) =>
       path.join(backendRoot, "src/modules", module, "routes.ts")
     );
     const routeSources = await Promise.all(moduleRouteFiles.map((filename) => readFile(filename, "utf8")));
     const routePattern = /router\.(get|post|patch|put|delete)\(\s*"([^"]+)"/g;
-    const listingsRoutes = [...routeSources[1]!.matchAll(routePattern)].map((match) => [match[1], match[2]]);
+    const listingsRoutes = [...routeSources[2]!.matchAll(routePattern)].map((match) => [match[1], match[2]]);
     expect(listingsRoutes).toHaveLength(16);
     expect(listingsRoutes.filter((entry) => entry[0] === "get" && entry[1] === "/listings")).toHaveLength(1);
     expect(listingsRoutes.filter((entry) => entry[0] === "post" && entry[1] === "/geocoding/forward")).toHaveLength(1);
-    expect(routeSources.flatMap((routeSource) => [...routeSource.matchAll(routePattern)])).toHaveLength(22);
+    expect(routeSources.flatMap((routeSource) => [...routeSource.matchAll(routePattern)])).toHaveLength(25);
     for (const route of [
       "/landlord/listings/:listingId/images",
       "/landlord/listings/:listingId/images/:imageId",
@@ -55,7 +55,12 @@ describe("RM-033 application isolation", () => {
       "cloudinary.client.ts",
       "nominatim.client.ts"
     ]);
-    expect((await readdir(path.join(backendRoot, "src/modules"))).sort()).toStrictEqual(["auth", "listings", "users"]);
+    expect((await readdir(path.join(backendRoot, "src/modules"))).sort()).toStrictEqual([
+      "auth",
+      "favorites",
+      "listings",
+      "users"
+    ]);
     const productionFiles = await recursiveFiles(path.join(backendRoot, "src"));
     expect(productionFiles.filter((filename) => /nominatim\.client\.ts$/.test(filename))).toHaveLength(1);
     expect(productionFiles).not.toEqual(expect.arrayContaining([expect.stringMatching(/modules[\\/]geocoding/)]));

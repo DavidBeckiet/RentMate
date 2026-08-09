@@ -167,7 +167,12 @@ describe("RM-029 application isolation", () => {
       .sort();
     expect(migrations).toHaveLength(12);
     expect(migrations.at(-1)).toBe("0012_create_explicit_indexes.sql");
-    expect((await readdir(path.join(backendRoot, "src/modules"))).sort()).toStrictEqual(["auth", "listings", "users"]);
+    expect((await readdir(path.join(backendRoot, "src/modules"))).sort()).toStrictEqual([
+      "auth",
+      "favorites",
+      "listings",
+      "users"
+    ]);
     await expect(access(path.join(backendRoot, "uploads"))).rejects.toBeDefined();
     expect(
       gitDiff(
