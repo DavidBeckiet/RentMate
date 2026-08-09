@@ -21,6 +21,12 @@ async function source(filename: string): Promise<string> {
 describe("RM-029 application isolation", () => {
   it("contains exactly 55 listings files, two integration clients, and fifteen routes", async () => {
     expect((await readdir(listingsRoot)).sort()).toStrictEqual([
+      "admin-listing-detail-mapper.ts",
+      "admin-listing-read-controller.ts",
+      "admin-listing-read-repository.ts",
+      "admin-listing-read-service.ts",
+      "admin-listing-read-validation.ts",
+      "admin-listing-summary-mapper.ts",
       "current-moderation-reason-repository.ts",
       "current-moderation-reason.ts",
       "geocoding-controller.ts",
@@ -63,6 +69,7 @@ describe("RM-029 application isolation", () => {
       "lookup-controller.ts",
       "lookup-mapper.ts",
       "lookup-repository.ts",
+      "moderation-history-mapper.ts",
       "owner-image-mapper.ts",
       "owner-listing-mapper.ts",
       "owner-listing-read-controller.ts",
@@ -91,14 +98,15 @@ describe("RM-029 application isolation", () => {
       match[1],
       match[2]
     ]);
-    expect(registrations).toHaveLength(16);
+    expect(registrations).toHaveLength(19);
     expect(registrations.filter(([, route]) => route === "/listings")).toStrictEqual([["get", "/listings"]]);
     expect(registrations.filter(([, route]) => route === "/landlord/listings/:listingId/images")).toStrictEqual([
       ["post", "/landlord/listings/:listingId/images"]
     ]);
     expect(registrations).toContainEqual(["delete", "/landlord/listings/:listingId/images/:imageId"]);
     expect(registrations).toContainEqual(["put", "/landlord/listings/:listingId/images/order"]);
-    expect(routes).not.toMatch(/replace|bulk|favorite|admin/i);
+    expect(routes).not.toMatch(/replace|bulk|favorite/i);
+    expect(routes).not.toMatch(/router\.post\(\s*"\/admin\/listings\/:listingId\/moderation-actions"|\/admin\/users/i);
   });
 
   it("keeps Cloudinary and Multer bounded to the integration, upload, and composition seams", async () => {

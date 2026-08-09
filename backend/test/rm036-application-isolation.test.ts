@@ -30,7 +30,7 @@ function gitDiff(...paths: string[]): string {
 describe("RM-036 application isolation", () => {
   it("keeps the public collection and detail routes with the exact post-RM-037 listings inventory", async () => {
     const files = (await readdir(listingsRoot)).sort();
-    expect(files).toHaveLength(60);
+    expect(files).toHaveLength(67);
     expect(files.filter((filename) => filename.startsWith("public-listing"))).toStrictEqual(publicListingProduction);
 
     const routeFiles = ["auth", "favorites", "listings", "users"].map((module) =>
@@ -39,10 +39,10 @@ describe("RM-036 application isolation", () => {
     const routeSources = await Promise.all(routeFiles.map((filename) => readFile(filename, "utf8")));
     const pattern = /router\.(get|post|patch|put|delete)\(\s*"([^"]+)"/g;
     const listingsRoutes = [...routeSources[2]!.matchAll(pattern)].map((match) => [match[1], match[2]]);
-    expect(listingsRoutes).toHaveLength(16);
-    expect(routeSources.flatMap((source) => [...source.matchAll(pattern)])).toHaveLength(25);
+    expect(listingsRoutes).toHaveLength(19);
+    expect(routeSources.flatMap((source) => [...source.matchAll(pattern)])).toHaveLength(28);
     expect(listingsRoutes.filter(([method, route]) => method === "get" && route === "/listings")).toHaveLength(1);
-    expect(listingsRoutes.some(([, route]) => /map|radius|bounds|favorite|admin/.test(route))).toBe(false);
+    expect(listingsRoutes.some(([, route]) => /map|radius|bounds|favorite/.test(route))).toBe(false);
   });
 
   it("keeps HCMC scope and radius policy narrowed to the public search seam", async () => {

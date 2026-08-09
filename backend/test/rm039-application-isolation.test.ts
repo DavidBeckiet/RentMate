@@ -39,7 +39,7 @@ describe("RM-039 application isolation", () => {
     );
     const routePattern = /router\.(get|post|patch|put|delete)\(\s*"([^"]+)"/g;
     const routes = sources.flatMap((source) => [...source.matchAll(routePattern)].map((match) => [match[1], match[2]]));
-    expect(routes).toHaveLength(25);
+    expect(routes).toHaveLength(28);
     expect(routes.filter(([method, route]) => method === "get" && route === "/favorites")).toHaveLength(1);
     expect(routes.filter(([method, route]) => method === "put" && route === "/favorites/:listingId")).toHaveLength(1);
     expect(routes.filter(([method, route]) => method === "delete" && route === "/favorites/:listingId")).toHaveLength(
@@ -84,7 +84,7 @@ describe("RM-039 application isolation", () => {
         "backend/package-lock.json",
         "package-lock.json"
       )
-    ).toBe("");
+    ).toBe("backend/src/modules/listings/routes.ts");
   });
 
   it("routes RM-039 suites through the correct serial Vitest configuration", async () => {

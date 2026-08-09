@@ -1,5 +1,11 @@
 import type { RequestHandler, Router } from "express";
 import {
+  createGetAdminListingDetailHandler,
+  createListAdminListingsHandler,
+  createListModerationHistoryHandler
+} from "./admin-listing-read-controller.js";
+import type { AdminListingReadService } from "./admin-listing-read-service.js";
+import {
   createRateLimitMiddleware,
   InMemoryRateLimitStore,
   type Clock,
@@ -48,6 +54,8 @@ export interface ListingsRouteDependencies {
   readonly authenticationMiddleware: RequestHandler;
   readonly optionalAuthenticationMiddleware: RequestHandler;
   readonly landlordRoleMiddleware: RequestHandler;
+  readonly adminRoleMiddleware: RequestHandler;
+  readonly adminListingReadService: AdminListingReadService;
   readonly listingCreateService: ListingCreateService;
   readonly ownerListingReadService: OwnerListingReadService;
   readonly publicListingSearchService: PublicListingSearchService;
@@ -99,6 +107,24 @@ export function registerListingsRoutes(router: Router, dependencies: ListingsRou
     "/listings/:listingId",
     dependencies.optionalAuthenticationMiddleware,
     createPublicListingDetailHandler(dependencies.publicListingDetailService)
+  );
+  router.get(
+    "/admin/listings",
+    dependencies.authenticationMiddleware,
+    dependencies.adminRoleMiddleware,
+    createListAdminListingsHandler(dependencies.adminListingReadService)
+  );
+  router.get(
+    "/admin/listings/:listingId/moderation-actions",
+    dependencies.authenticationMiddleware,
+    dependencies.adminRoleMiddleware,
+    createListModerationHistoryHandler(dependencies.adminListingReadService)
+  );
+  router.get(
+    "/admin/listings/:listingId",
+    dependencies.authenticationMiddleware,
+    dependencies.adminRoleMiddleware,
+    createGetAdminListingDetailHandler(dependencies.adminListingReadService)
   );
   router.post(
     "/landlord/listings",

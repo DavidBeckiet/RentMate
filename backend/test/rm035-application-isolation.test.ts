@@ -41,7 +41,7 @@ function gitDiff(...paths: string[]): string {
 describe("RM-035 application isolation", () => {
   it("keeps exactly 60 listings files, sixteen listings routes, and 25 total API routes", async () => {
     const files = (await readdir(listingsRoot)).sort();
-    expect(files).toHaveLength(60);
+    expect(files).toHaveLength(67);
     expect(files.filter((filename) => filename.startsWith("public-listing"))).toStrictEqual(rm035Production);
     const routeFiles = ["auth", "favorites", "listings", "users"].map((module) =>
       path.join(sourceRoot, "modules", module, "routes.ts")
@@ -49,13 +49,13 @@ describe("RM-035 application isolation", () => {
     const sources = await Promise.all(routeFiles.map((filename) => readFile(filename, "utf8")));
     const pattern = /router\.(get|post|patch|put|delete)\(\s*"([^"]+)"/g;
     const listingsRoutes = [...sources[2]!.matchAll(pattern)].map((match) => [match[1], match[2]]);
-    expect(listingsRoutes).toHaveLength(16);
-    expect(sources.flatMap((source) => [...source.matchAll(pattern)])).toHaveLength(25);
+    expect(listingsRoutes).toHaveLength(19);
+    expect(sources.flatMap((source) => [...source.matchAll(pattern)])).toHaveLength(28);
     expect(listingsRoutes.filter(([method, route]) => method === "get" && route === "/listings")).toHaveLength(1);
     expect(
       listingsRoutes.filter(([method, route]) => method === "get" && route === "/listings/:listingId")
     ).toHaveLength(1);
-    expect(listingsRoutes.some(([, route]) => /map|radius|favorite|admin/.test(route))).toBe(false);
+    expect(listingsRoutes.some(([, route]) => /map|radius|favorite/.test(route))).toBe(false);
   });
 
   it("keeps V1-09 public and limits geographic work to the public search policy", async () => {

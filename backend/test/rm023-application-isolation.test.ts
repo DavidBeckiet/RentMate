@@ -7,6 +7,12 @@ const listings = path.join(root, "src/modules/listings");
 describe("RM-023 application isolation", () => {
   it("keeps the exact production inventory and exactly one PATCH route", async () => {
     expect((await readdir(listings)).sort()).toStrictEqual([
+      "admin-listing-detail-mapper.ts",
+      "admin-listing-read-controller.ts",
+      "admin-listing-read-repository.ts",
+      "admin-listing-read-service.ts",
+      "admin-listing-read-validation.ts",
+      "admin-listing-summary-mapper.ts",
       "current-moderation-reason-repository.ts",
       "current-moderation-reason.ts",
       "geocoding-controller.ts",
@@ -49,6 +55,7 @@ describe("RM-023 application isolation", () => {
       "lookup-controller.ts",
       "lookup-mapper.ts",
       "lookup-repository.ts",
+      "moderation-history-mapper.ts",
       "owner-image-mapper.ts",
       "owner-listing-mapper.ts",
       "owner-listing-read-controller.ts",
@@ -75,7 +82,8 @@ describe("RM-023 application isolation", () => {
     ]).toHaveLength(1);
     expect(routes).toContain('"/landlord/listings/:listingId"');
     expect(routes.match(/router\.get\("\/listings"/g)).toHaveLength(1);
-    expect(routes).not.toMatch(/favorite|admin/i);
+    expect(routes).not.toMatch(/favorite/i);
+    expect(routes).not.toMatch(/router\.post\(\s*"\/admin\/listings\/:listingId\/moderation-actions"|\/admin\/users/i);
   });
   it("limits writes to listing content and listing amenities", async () => {
     const repository = await readFile(path.join(listings, "listing-update-repository.ts"), "utf8");

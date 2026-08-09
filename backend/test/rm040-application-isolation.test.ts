@@ -40,14 +40,18 @@ describe("RM-040 application isolation", () => {
     );
     const routePattern = /router\.(get|post|patch|put|delete)\(\s*"([^"]+)"/g;
     const routes = sources.flatMap((source) => [...source.matchAll(routePattern)].map((match) => [match[1], match[2]]));
-    expect(routes).toHaveLength(25);
+    expect(routes).toHaveLength(28);
     expect(routes.filter(([, route]) => route?.includes("favorites"))).toStrictEqual([
       ["get", "/favorites"],
       ["put", "/favorites/:listingId"],
       ["delete", "/favorites/:listingId"]
     ]);
     expect(routes.filter(([method, route]) => method === "post" && route?.includes("favorites"))).toHaveLength(0);
-    expect(routes.filter(([, route]) => route?.startsWith("/admin"))).toHaveLength(0);
+    expect(routes.filter(([, route]) => route?.startsWith("/admin"))).toStrictEqual([
+      ["get", "/admin/listings"],
+      ["get", "/admin/listings/:listingId/moderation-actions"],
+      ["get", "/admin/listings/:listingId"]
+    ]);
   });
 
   it("proves the frozen SQL shapes without production instrumentation", async () => {
@@ -81,7 +85,7 @@ describe("RM-040 application isolation", () => {
         "backend/package-lock.json",
         "package-lock.json"
       )
-    ).toBe("");
+    ).toBe("backend/src/modules/listings/routes.ts\nbackend/src/server-composition.ts");
   });
 
   it("contains exactly four RM-040 tests and routes database suites through serial Vitest", async () => {

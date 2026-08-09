@@ -14,6 +14,8 @@ import { createSessionTokenService, type SessionTokenService } from "./modules/a
 import { createFavoriteRepository } from "./modules/favorites/favorite-repository.js";
 import { createFavoriteService } from "./modules/favorites/favorite-service.js";
 import { registerFavoriteRoutes } from "./modules/favorites/routes.js";
+import { createAdminListingReadRepository } from "./modules/listings/admin-listing-read-repository.js";
+import { createAdminListingReadService } from "./modules/listings/admin-listing-read-service.js";
 import { createListingCreateService, type TransactionRunner } from "./modules/listings/listing-create-service.js";
 import { createGeocodingService } from "./modules/listings/geocoding-service.js";
 import {
@@ -102,6 +104,7 @@ export async function createBackendApp(options: BackendAppCompositionOptions): P
   const listingCreateService = createListingCreateService({ transactionRunner });
   const ownerListingReadRepository = createOwnerListingReadRepository(options.sqlExecutor);
   const ownerListingReadService = createOwnerListingReadService(ownerListingReadRepository);
+  const adminListingReadService = createAdminListingReadService(createAdminListingReadRepository(options.sqlExecutor));
   const publicListingSearchService = createPublicListingSearchService(
     createPublicListingSearchRepository(options.sqlExecutor),
     options.publicListingSearchConfig
@@ -145,6 +148,7 @@ export async function createBackendApp(options: BackendAppCompositionOptions): P
   });
   const landlordRole = createRoleMiddleware(["LANDLORD"]);
   const tenantRole = createRoleMiddleware(["TENANT"]);
+  const adminRole = createRoleMiddleware(["ADMIN"]);
   const authRateLimitStore = options.authRateLimitStore ?? new InMemoryRateLimitStore();
 
   return createApp({
@@ -176,6 +180,8 @@ export async function createBackendApp(options: BackendAppCompositionOptions): P
         authenticationMiddleware: requiredAuthentication,
         optionalAuthenticationMiddleware: optionalAuthentication,
         landlordRoleMiddleware: landlordRole,
+        adminRoleMiddleware: adminRole,
+        adminListingReadService,
         listingCreateService,
         ownerListingReadService,
         publicListingSearchService,

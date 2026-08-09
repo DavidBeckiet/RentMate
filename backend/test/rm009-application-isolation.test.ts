@@ -59,6 +59,12 @@ describe("RM-009 application and roadmap isolation", () => {
       .map((filename) => path.basename(filename))
       .sort();
     expect(listingsFiles).toStrictEqual([
+      "admin-listing-detail-mapper.ts",
+      "admin-listing-read-controller.ts",
+      "admin-listing-read-repository.ts",
+      "admin-listing-read-service.ts",
+      "admin-listing-read-validation.ts",
+      "admin-listing-summary-mapper.ts",
       "current-moderation-reason-repository.ts",
       "current-moderation-reason.ts",
       "geocoding-controller.ts",
@@ -101,6 +107,7 @@ describe("RM-009 application and roadmap isolation", () => {
       "lookup-controller.ts",
       "lookup-mapper.ts",
       "lookup-repository.ts",
+      "moderation-history-mapper.ts",
       "owner-image-mapper.ts",
       "owner-listing-mapper.ts",
       "owner-listing-read-controller.ts",

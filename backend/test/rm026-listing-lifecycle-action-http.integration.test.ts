@@ -285,7 +285,7 @@ describe("RM-026 listing lifecycle action HTTP", () => {
     });
   });
 
-  it("keeps existing lookups, protects delete, and omits generic lifecycle, image, public, and admin routes", async () => {
+  it("keeps existing routes protected and omits generic lifecycle and future admin routes", async () => {
     const app = await makeApp(new Executor());
     await request(app).get("/api/v1/lookups/property-types").expect(200);
     for (const path of ["lifecycle", "status"]) {
@@ -300,6 +300,9 @@ describe("RM-026 listing lifecycle action HTTP", () => {
         data: [],
         pagination: { page: 1, pageSize: 20, hasNextPage: false }
       });
-    await request(app).get("/api/v1/admin/listings").expect(404);
+    await request(app).get("/api/v1/admin/listings").expect(401);
+    await request(app).post("/api/v1/admin/listings/7/moderation-actions").set("Origin", origin).expect(404);
+    await request(app).get("/api/v1/admin/users").expect(404);
+    await request(app).patch("/api/v1/admin/users/7/activation").set("Origin", origin).expect(404);
   });
 });

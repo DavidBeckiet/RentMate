@@ -23,6 +23,12 @@ describe("RM-021 application isolation", () => {
       "users"
     ]);
     expect((await readdir(listingsRoot)).sort()).toStrictEqual([
+      "admin-listing-detail-mapper.ts",
+      "admin-listing-read-controller.ts",
+      "admin-listing-read-repository.ts",
+      "admin-listing-read-service.ts",
+      "admin-listing-read-validation.ts",
+      "admin-listing-summary-mapper.ts",
       "current-moderation-reason-repository.ts",
       "current-moderation-reason.ts",
       "geocoding-controller.ts",
@@ -65,6 +71,7 @@ describe("RM-021 application isolation", () => {
       "lookup-controller.ts",
       "lookup-mapper.ts",
       "lookup-repository.ts",
+      "moderation-history-mapper.ts",
       "owner-image-mapper.ts",
       "owner-listing-mapper.ts",
       "owner-listing-read-controller.ts",
@@ -98,6 +105,9 @@ describe("RM-021 application isolation", () => {
       ["get", "/lookups/amenities"],
       ["get", "/listings"],
       ["get", "/listings/:listingId"],
+      ["get", "/admin/listings"],
+      ["get", "/admin/listings/:listingId/moderation-actions"],
+      ["get", "/admin/listings/:listingId"],
       ["post", "/landlord/listings"],
       ["get", "/landlord/listings"],
       ["get", "/landlord/listings/:listingId"],
@@ -119,7 +129,7 @@ describe("RM-021 application isolation", () => {
     );
     const lookupRegistrations = routeMatches.filter(([, route]) => route?.startsWith("/lookups/"));
     expect(lookupRegistrations).toHaveLength(2);
-    expect(routes).not.toMatch(/admin/i);
+    expect(routes).not.toMatch(/router\.post\(\s*"\/admin\/listings\/:listingId\/moderation-actions"|\/admin\/users/i);
     expect(routes.match(/router\.get\("\/listings"/g)).toHaveLength(1);
     expect(routes.match(/"\/listings\/:listingId"/g)).toHaveLength(1);
   });

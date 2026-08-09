@@ -17,7 +17,7 @@ function gitDiff(...paths: string[]): string {
 
 describe("RM-038 verification-only application isolation", () => {
   it("keeps the RM-037 listings inventory and current route inventory", async () => {
-    expect(await readdir(listingsRoot)).toHaveLength(60);
+    expect(await readdir(listingsRoot)).toHaveLength(67);
     const routeFiles = ["auth", "favorites", "listings", "users"].map((module) =>
       path.join(sourceRoot, "modules", module, "routes.ts")
     );
@@ -25,8 +25,8 @@ describe("RM-038 verification-only application isolation", () => {
     const routePattern = /router\.(get|post|patch|put|delete)\(\s*"([^"]+)"/g;
     const listingRoutes = [...routeSources[2]!.matchAll(routePattern)];
     const allV1Routes = routeSources.flatMap((source) => [...source.matchAll(routePattern)]);
-    expect(listingRoutes).toHaveLength(16);
-    expect(allV1Routes).toHaveLength(25);
+    expect(listingRoutes).toHaveLength(19);
+    expect(allV1Routes).toHaveLength(28);
     expect(listingRoutes.filter((match) => match[1] === "get" && match[2] === "/listings")).toHaveLength(1);
     expect(listingRoutes.filter((match) => match[1] === "get" && match[2] === "/listings/:listingId")).toHaveLength(1);
   });
@@ -51,7 +51,7 @@ describe("RM-038 verification-only application isolation", () => {
         "backend/package-lock.json",
         "package-lock.json"
       )
-    ).toBe("");
+    ).toBe("backend/src/modules/listings/routes.ts");
   });
 
   it("proves discovery SQL is read-only, count-free, provider-free, narrowly projected, and reuses one distance stage", async () => {

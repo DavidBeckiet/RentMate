@@ -17,6 +17,12 @@ function gitDiff(...paths: string[]): string {
 describe("RM-027 application isolation", () => {
   it("keeps the exact 55-file listings inventory and fifteen explicit routes", async () => {
     expect((await readdir(listingsRoot)).sort()).toStrictEqual([
+      "admin-listing-detail-mapper.ts",
+      "admin-listing-read-controller.ts",
+      "admin-listing-read-repository.ts",
+      "admin-listing-read-service.ts",
+      "admin-listing-read-validation.ts",
+      "admin-listing-summary-mapper.ts",
       "current-moderation-reason-repository.ts",
       "current-moderation-reason.ts",
       "geocoding-controller.ts",
@@ -59,6 +65,7 @@ describe("RM-027 application isolation", () => {
       "lookup-controller.ts",
       "lookup-mapper.ts",
       "lookup-repository.ts",
+      "moderation-history-mapper.ts",
       "owner-image-mapper.ts",
       "owner-listing-mapper.ts",
       "owner-listing-read-controller.ts",
@@ -88,6 +95,9 @@ describe("RM-027 application isolation", () => {
       ["get", "/lookups/amenities"],
       ["get", "/listings"],
       ["get", "/listings/:listingId"],
+      ["get", "/admin/listings"],
+      ["get", "/admin/listings/:listingId/moderation-actions"],
+      ["get", "/admin/listings/:listingId"],
       ["post", "/landlord/listings"],
       ["get", "/landlord/listings"],
       ["get", "/landlord/listings/:listingId"],
@@ -102,7 +112,8 @@ describe("RM-027 application isolation", () => {
       ["post", "/geocoding/forward"]
     ]);
     expect(routes.match(/router\.delete/g)).toHaveLength(2);
-    expect(routes).not.toMatch(/favorite|admin/i);
+    expect(routes).not.toMatch(/favorite/i);
+    expect(routes).not.toMatch(/router\.post\(\s*"\/admin\/listings\/:listingId\/moderation-actions"|\/admin\/users/i);
   });
 
   it("keeps delete persistence owner-scoped, transaction-safe, and database-cascade-only", async () => {

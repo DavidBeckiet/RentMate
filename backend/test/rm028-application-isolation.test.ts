@@ -48,6 +48,12 @@ function git(...arguments_: string[]): string {
 describe("RM-028 application isolation and M3 acceptance inventory", () => {
   it("keeps the exact 55-file production listings inventory and fifteen routes", async () => {
     expect((await readdir(listingsRoot)).sort()).toStrictEqual([
+      "admin-listing-detail-mapper.ts",
+      "admin-listing-read-controller.ts",
+      "admin-listing-read-repository.ts",
+      "admin-listing-read-service.ts",
+      "admin-listing-read-validation.ts",
+      "admin-listing-summary-mapper.ts",
       "current-moderation-reason-repository.ts",
       "current-moderation-reason.ts",
       "geocoding-controller.ts",
@@ -90,6 +96,7 @@ describe("RM-028 application isolation and M3 acceptance inventory", () => {
       "lookup-controller.ts",
       "lookup-mapper.ts",
       "lookup-repository.ts",
+      "moderation-history-mapper.ts",
       "owner-image-mapper.ts",
       "owner-listing-mapper.ts",
       "owner-listing-read-controller.ts",
@@ -119,6 +126,9 @@ describe("RM-028 application isolation and M3 acceptance inventory", () => {
       ["get", "/lookups/amenities"],
       ["get", "/listings"],
       ["get", "/listings/:listingId"],
+      ["get", "/admin/listings"],
+      ["get", "/admin/listings/:listingId/moderation-actions"],
+      ["get", "/admin/listings/:listingId"],
       ["post", "/landlord/listings"],
       ["get", "/landlord/listings"],
       ["get", "/landlord/listings/:listingId"],
@@ -132,7 +142,8 @@ describe("RM-028 application isolation and M3 acceptance inventory", () => {
       ["put", "/landlord/listings/:listingId/images/order"],
       ["post", "/geocoding/forward"]
     ]);
-    expect(routes).not.toMatch(/favorite|admin|moderation-actions/i);
+    expect(routes).not.toMatch(/favorite/i);
+    expect(routes).not.toMatch(/router\.post\(\s*"\/admin\/listings\/:listingId\/moderation-actions"|\/admin\/users/i);
   });
 
   it("contains exactly four RM-028 suites and the exact 26-file focused script", async () => {

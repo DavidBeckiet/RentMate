@@ -39,7 +39,7 @@ function relative(filename: string): string {
 
 describe("RM-034 permanent production inventory", () => {
   it("keeps the committed RM-033 route and listings inventory unchanged", async () => {
-    expect((await readdir(listingsRoot)).sort()).toHaveLength(60);
+    expect((await readdir(listingsRoot)).sort()).toHaveLength(67);
     const routeFiles = ["auth", "favorites", "listings", "users"].map((module) =>
       path.join(sourceRoot, "modules", module, "routes.ts")
     );
@@ -47,9 +47,9 @@ describe("RM-034 permanent production inventory", () => {
     const routePattern = /router\.(get|post|patch|put|delete)\(\s*"([^"]+)"/g;
     const listingsRoutes = [...routeSources[2]!.matchAll(routePattern)].map((match) => [match[1], match[2]]);
 
-    expect(listingsRoutes).toHaveLength(16);
+    expect(listingsRoutes).toHaveLength(19);
     expect(listingsRoutes.filter(([method, route]) => method === "get" && route === "/listings")).toHaveLength(1);
-    expect(routeSources.flatMap((source) => [...source.matchAll(routePattern)])).toHaveLength(25);
+    expect(routeSources.flatMap((source) => [...source.matchAll(routePattern)])).toHaveLength(28);
     expect(
       listingsRoutes.filter(([method, route]) => method === "post" && route === "/geocoding/forward")
     ).toHaveLength(1);
