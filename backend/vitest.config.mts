@@ -38,6 +38,8 @@ export default defineConfig({
       "test/rm037-public-listing-detail.database.integration.test.ts",
       "test/rm038-public-discovery.database.integration.test.ts",
       "test/rm039-favorite.database.integration.test.ts",
+      "test/rm040-favorite.database.integration.test.ts",
+      "test/rm040-favorite-concurrency.database.integration.test.ts",
       "node_modules/**",
       "dist/**",
       "coverage/**"
