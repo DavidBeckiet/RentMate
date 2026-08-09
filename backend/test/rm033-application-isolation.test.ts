@@ -24,7 +24,7 @@ async function source(filename: string): Promise<string> {
 describe("RM-033 application isolation", () => {
   it("adds exactly three listings files and one V1-22 route", async () => {
     const files = (await readdir(listingsRoot)).sort();
-    expect(files).toHaveLength(55);
+    expect(files).toHaveLength(56);
     expect(files.filter((filename) => filename.startsWith("geocoding-"))).toStrictEqual([
       "geocoding-controller.ts",
       "geocoding-service.ts",

@@ -30,7 +30,10 @@ import { createLookupRepository } from "./modules/listings/lookup-repository.js"
 import { createOwnerListingReadRepository } from "./modules/listings/owner-listing-read-repository.js";
 import { createOwnerListingReadService } from "./modules/listings/owner-listing-read-service.js";
 import { createPublicListingSearchRepository } from "./modules/listings/public-listing-search-repository.js";
-import { createPublicListingSearchService } from "./modules/listings/public-listing-search-service.js";
+import {
+  createPublicListingSearchService,
+  type PublicListingSearchConfig
+} from "./modules/listings/public-listing-search-service.js";
 import { registerListingsRoutes } from "./modules/listings/routes.js";
 import { registerUsersRoutes } from "./modules/users/routes.js";
 import { createUsersRepository } from "./modules/users/users-repository.js";
@@ -52,6 +55,7 @@ export interface BackendAppCompositionOptions {
   readonly jwtSecret: string;
   readonly bcryptCost: number;
   readonly cookieSecure: boolean;
+  readonly publicListingSearchConfig?: PublicListingSearchConfig;
   readonly sessionTokenClock?: () => number;
   readonly authRateLimitClock?: Clock;
   readonly authRateLimitStore?: RateLimitStore;
@@ -90,7 +94,8 @@ export async function createBackendApp(options: BackendAppCompositionOptions): P
   const ownerListingReadRepository = createOwnerListingReadRepository(options.sqlExecutor);
   const ownerListingReadService = createOwnerListingReadService(ownerListingReadRepository);
   const publicListingSearchService = createPublicListingSearchService(
-    createPublicListingSearchRepository(options.sqlExecutor)
+    createPublicListingSearchRepository(options.sqlExecutor),
+    options.publicListingSearchConfig
   );
   const listingUpdateService = createListingUpdateService({ transactionRunner });
   const listingSubmitService = createListingSubmitService({ transactionRunner });

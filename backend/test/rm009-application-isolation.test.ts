@@ -108,6 +108,7 @@ describe("RM-009 application and roadmap isolation", () => {
       "owner-listing-read-service.ts",
       "owner-listing-read-validation.ts",
       "owner-listing-summary-mapper.ts",
+      "public-listing-search-bounding-box.ts",
       "public-listing-search-controller.ts",
       "public-listing-search-repository.ts",
       "public-listing-search-service.ts",

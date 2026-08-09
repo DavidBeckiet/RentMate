@@ -144,21 +144,18 @@ describe("RM-035 public listing search HTTP", () => {
     expect(executor.queries).toHaveLength(2);
   });
 
-  it.each(["unknown=x", "north=11&south=10&east=107&west=106", "centerLat=10&centerLng=106&radiusKm=5"])(
-    "returns the existing validation envelope without executing search for %s",
-    async (query) => {
-      const executor = new Executor();
-      const response = await request(await makeApp(executor))
-        .get(`/api/v1/listings?${query}`)
-        .expect(422);
-      expect(response.body.error).toMatchObject({
-        code: "VALIDATION_FAILED",
-        message: "The request contains invalid data."
-      });
-      expect(executor.queries).toHaveLength(0);
-      expect(JSON.stringify(response.body)).not.toMatch(/RM-036|not implemented|future task/i);
-    }
-  );
+  it.each(["unknown=x"])("returns the existing validation envelope without executing search for %s", async (query) => {
+    const executor = new Executor();
+    const response = await request(await makeApp(executor))
+      .get(`/api/v1/listings?${query}`)
+      .expect(422);
+    expect(response.body.error).toMatchObject({
+      code: "VALIDATION_FAILED",
+      message: "The request contains invalid data."
+    });
+    expect(executor.queries).toHaveLength(0);
+    expect(JSON.stringify(response.body)).not.toMatch(/RM-036|not implemented|future task/i);
+  });
 
   it("returns an exact empty page and rejects a GET body", async () => {
     const executor = new Executor();

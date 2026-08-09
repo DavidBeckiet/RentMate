@@ -51,6 +51,10 @@ async function startBackend(): Promise<void> {
     jwtSecret: config.auth.jwtSecret,
     bcryptCost: config.auth.bcryptCost,
     cookieSecure: config.auth.cookieSecure,
+    publicListingSearchConfig: {
+      deploymentRegion: config.deployment.region,
+      maximumSearchRadiusKm: config.deployment.maximumSearchRadiusKm
+    },
     cloudinaryClient: createCloudinaryClient(config.cloudinary),
     nominatimClient: createNominatimClient({
       baseUrl: config.nominatim.baseUrl,

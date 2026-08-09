@@ -21,7 +21,7 @@ async function source(filename: string): Promise<string> {
 describe("RM-031 application isolation", () => {
   it("contains exactly 55 listings files and fifteen routes through V1-22 plus V1-09", async () => {
     const files = (await readdir(listingsRoot)).sort();
-    expect(files).toHaveLength(55);
+    expect(files).toHaveLength(56);
     expect(files.filter((file) => file.startsWith("listing-image-order-"))).toStrictEqual([
       "listing-image-order-controller.ts",
       "listing-image-order-repository.ts",

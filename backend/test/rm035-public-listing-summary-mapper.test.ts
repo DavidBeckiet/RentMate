@@ -1,5 +1,8 @@
 import { describe, expect, it } from "vitest";
-import { mapPublicListingSummaryRow } from "../src/modules/listings/public-listing-summary-mapper.js";
+import {
+  mapPublicListingSummaryRow,
+  mapPublicRadiusListingSummaryRow
+} from "../src/modules/listings/public-listing-summary-mapper.js";
 
 const row = {
   id: 42,
@@ -58,6 +61,13 @@ describe("RM-035 public listing summary mapper", () => {
     expect(JSON.stringify(mapped)).not.toMatch(/address|landlord|contact|cloudinary|provider|moderation|status/i);
   });
 
+  it("adds unrounded finite distance only to a radius summary", () => {
+    const mapped = mapPublicRadiusListingSummaryRow({ ...row, distance_km: 0.024987654321 });
+    expect(mapped.distanceKm).toBe(0.024987654321);
+    expect(Object.keys(mapped)).toContain("distanceKm");
+    expect(mapPublicListingSummaryRow(row)).not.toHaveProperty("distanceKm");
+  });
+
   it.each([
     ["malformed rent", { monthly_rent: "7.5" }],
     ["out-of-domain rent", { monthly_rent: "0" }],
@@ -72,4 +82,11 @@ describe("RM-035 public listing summary mapper", () => {
   ])("rejects %s as an internal invariant", (_name, override) => {
     expect(() => mapPublicListingSummaryRow({ ...row, ...override })).toThrow();
   });
+
+  it.each([null, "0.1", Number.NaN, Number.POSITIVE_INFINITY, Number.NEGATIVE_INFINITY, -0.1])(
+    "rejects invalid radius distance %s as an internal invariant",
+    (distance) => {
+      expect(() => mapPublicRadiusListingSummaryRow({ ...row, distance_km: distance })).toThrow();
+    }
+  );
 });

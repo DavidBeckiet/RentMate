@@ -1,10 +1,21 @@
+import { deploymentRegions, maximumSearchRadiusKm, type DeploymentRegion } from "../../config/env.js";
 import { throwValidationIssue } from "../../shared/validation/issues.js";
+import {
+  calculateRadiusBoundingBox,
+  isWithinDeploymentRegionScope,
+  type RadiusBoundingBox
+} from "./public-listing-search-bounding-box.js";
 import type { PublicListingSearch } from "./public-listing-search-validation.js";
 import type { PublicListingSearchRepository } from "./public-listing-search-repository.js";
-import type { PublicListingSummary } from "./public-listing-summary-mapper.js";
+import type { PublicListingSummary, PublicRadiusListingSummary } from "./public-listing-summary-mapper.js";
+
+export interface PublicListingSearchConfig {
+  readonly deploymentRegion: DeploymentRegion;
+  readonly maximumSearchRadiusKm: number;
+}
 
 export interface PaginatedPublicListingSummaries {
-  readonly summaries: readonly PublicListingSummary[];
+  readonly summaries: readonly (PublicListingSummary | PublicRadiusListingSummary)[];
   readonly page: number;
   readonly pageSize: number;
   readonly hasNextPage: boolean;
@@ -15,12 +26,21 @@ export interface PublicListingSearchService {
 }
 
 export function createPublicListingSearchService(
-  repository: PublicListingSearchRepository
+  repository: PublicListingSearchRepository,
+  config: PublicListingSearchConfig = {
+    deploymentRegion: deploymentRegions[0],
+    maximumSearchRadiusKm
+  }
 ): PublicListingSearchService {
   return Object.freeze({
     async search(query: PublicListingSearch): Promise<PaginatedPublicListingSummaries> {
-      if (query.mode !== "ordinary") {
-        throwValidationIssue("query", "INVALID_VALUE", "The requested geographic search mode is not available.");
+      if (query.mode === "radius") {
+        if (query.radiusKm > config.maximumSearchRadiusKm) {
+          throwValidationIssue("radiusKm", "OUT_OF_RANGE", "radiusKm exceeds the configured maximum.");
+        }
+        if (!isWithinDeploymentRegionScope(config.deploymentRegion, query.centerLat, query.centerLng)) {
+          throwValidationIssue("query", "INVALID_VALUE", "Radius center is outside the supported deployment area.");
+        }
       }
 
       if (query.propertyType !== null || query.amenities.length > 0) {
@@ -37,7 +57,20 @@ export function createPublicListingSearchService(
         }
       }
 
-      const rows = await repository.findOrdinaryPage(query);
+      let rows: readonly (PublicListingSummary | PublicRadiusListingSummary)[];
+      if (query.mode === "ordinary") {
+        rows = await repository.findOrdinaryPage(query);
+      } else if (query.mode === "bounds") {
+        rows = await repository.findBoundsPage(query);
+      } else {
+        const boundingBox: RadiusBoundingBox = calculateRadiusBoundingBox(
+          query.centerLat,
+          query.centerLng,
+          query.radiusKm
+        );
+        rows = await repository.findRadiusPage(query, boundingBox);
+      }
+
       return Object.freeze({
         summaries: Object.freeze(rows.slice(0, query.pageSize)),
         page: query.page,

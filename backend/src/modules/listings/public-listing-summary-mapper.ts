@@ -22,6 +22,10 @@ export interface PublicListingSummaryRow extends QueryResultRow {
   readonly updated_at: unknown;
 }
 
+export interface PublicRadiusListingSummaryRow extends PublicListingSummaryRow {
+  readonly distance_km: unknown;
+}
+
 export interface PublicLookupValue {
   readonly code: string;
   readonly label: string;
@@ -46,6 +50,10 @@ export interface PublicListingSummary {
   readonly coverImage: PublicCoverImage;
   readonly updatedAt: string;
 }
+
+export type PublicRadiusListingSummary = PublicListingSummary & {
+  readonly distanceKm: number;
+};
 
 function invariant(): never {
   throw new RepositoryInvariantError("Public listing summary representation is invalid.");
@@ -86,6 +94,11 @@ function coordinate(value: unknown, minimum: number, maximum: number): number {
   return Math.round(value * 1_000) / 1_000;
 }
 
+function distance(value: unknown): number {
+  if (typeof value !== "number" || !Number.isFinite(value) || value < 0) invariant();
+  return value;
+}
+
 export function mapPublicListingSummaryRow(row: Readonly<PublicListingSummaryRow>): PublicListingSummary {
   const monthlyRent = mapPgWholeNumeric(row.monthly_rent, "public_listing.monthly_rent");
   const roomAreaSqm = mapPgScaleTwoNumeric(row.room_area_sqm, "public_listing.room_area_sqm");
@@ -109,5 +122,14 @@ export function mapPublicListingSummaryRow(row: Readonly<PublicListingSummaryRow
       displayOrder: positiveInteger(row.cover_image_display_order)
     }),
     updatedAt: formatApiTimestamp(mapPgTimestamptz(row.updated_at, "public_listing.updated_at"))
+  });
+}
+
+export function mapPublicRadiusListingSummaryRow(
+  row: Readonly<PublicRadiusListingSummaryRow>
+): PublicRadiusListingSummary {
+  return Object.freeze({
+    ...mapPublicListingSummaryRow(row),
+    distanceKm: distance(row.distance_km)
   });
 }

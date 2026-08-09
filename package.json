@@ -78,6 +78,8 @@
     "test:rm034": "npm --prefix backend run test:rm034",
     "test:rm035": "npm --prefix backend run test:rm035",
     "test:rm035:database": "npm --prefix backend run test:rm035:database",
+    "test:rm036": "npm --prefix backend run test:rm036",
+    "test:rm036:database": "npm --prefix backend run test:rm036:database",
     "migrate:clean": "npm --prefix backend run migrate:clean --",
     "migrate:existing": "npm --prefix backend run migrate:existing --",
     "admin:provision": "npm --prefix backend run admin:provision",

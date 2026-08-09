@@ -7,6 +7,8 @@ function repository(overrides: Partial<PublicListingSearchRepository> = {}): Pub
   return {
     findKnownSearchCodes: vi.fn(async () => ({ propertyTypes: ["STUDIO"], amenities: ["PARKING", "WIFI"] })),
     findOrdinaryPage: vi.fn(async () => []),
+    findBoundsPage: vi.fn(async () => []),
+    findRadiusPage: vi.fn(async () => []),
     ...overrides
   };
 }
@@ -64,26 +66,5 @@ describe("RM-035 public listing search service", () => {
     const page = await createPublicListingSearchService(repo).search(validatePublicListingSearch({ pageSize: "2" }));
     expect(page.summaries.map((item) => item.id)).toStrictEqual([1, 2]);
     expect(page.hasNextPage).toBe(true);
-  });
-
-  it.each([
-    { north: "11", south: "10", east: "107", west: "106" },
-    { centerLat: "10", centerLng: "106", radiusKm: "5" }
-  ])("gates a valid geographic mode before every repository call", async (query) => {
-    const repo = repository();
-    await expect(
-      createPublicListingSearchService(repo).search(validatePublicListingSearch(query))
-    ).rejects.toMatchObject({
-      code: "VALIDATION_FAILED",
-      details: [
-        expect.objectContaining({
-          field: "query",
-          code: "INVALID_VALUE",
-          message: "The requested geographic search mode is not available."
-        })
-      ]
-    });
-    expect(repo.findKnownSearchCodes).not.toHaveBeenCalled();
-    expect(repo.findOrdinaryPage).not.toHaveBeenCalled();
   });
 });

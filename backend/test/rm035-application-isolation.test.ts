@@ -8,6 +8,7 @@ const repositoryRoot = path.resolve(backendRoot, "..");
 const sourceRoot = path.join(backendRoot, "src");
 const listingsRoot = path.join(sourceRoot, "modules/listings");
 const rm035Production = [
+  "public-listing-search-bounding-box.ts",
   "public-listing-search-controller.ts",
   "public-listing-search-repository.ts",
   "public-listing-search-service.ts",
@@ -34,9 +35,9 @@ function gitDiff(...paths: string[]): string {
 }
 
 describe("RM-035 application isolation", () => {
-  it("keeps exactly 55 listings files, fifteen listings routes, and 21 total API routes", async () => {
+  it("keeps exactly 56 listings files, fifteen listings routes, and 21 total API routes", async () => {
     const files = (await readdir(listingsRoot)).sort();
-    expect(files).toHaveLength(55);
+    expect(files).toHaveLength(56);
     expect(files.filter((filename) => filename.startsWith("public-listing"))).toStrictEqual(rm035Production);
     const routeFiles = ["auth", "listings", "users"].map((module) =>
       path.join(sourceRoot, "modules", module, "routes.ts")
@@ -51,7 +52,7 @@ describe("RM-035 application isolation", () => {
     expect(listingsRoutes.some(([, route]) => /map|radius|favorite|admin/.test(route))).toBe(false);
   });
 
-  it("keeps V1-09 public and limits geographic work to grammar plus the temporary service gate", async () => {
+  it("keeps V1-09 public and limits geographic work to the public search policy", async () => {
     const routes = await readFile(path.join(listingsRoot, "routes.ts"), "utf8");
     const publicRegistration = routes.match(/router\.get\("\/listings"[^;]+;/s)?.[0] ?? "";
     expect(publicRegistration).toContain("createPublicListingSearchHandler");
@@ -63,10 +64,11 @@ describe("RM-035 application isolation", () => {
     expect(validator).toMatch(/mode: "bounds"/);
     expect(validator).toMatch(/mode: "radius"/);
     expect(validator).toContain('"distance_asc"');
-    expect(service).toContain("The requested geographic search mode is not available.");
-    expect(repository).not.toMatch(
-      /Haversine|distanceKm|distance_km|radians\(|6371|bounding.?box|\b(?:centerLat|centerLng|radiusKm|north|south|east|west)\b/i
-    );
+    expect(service).toContain("findBoundsPage");
+    expect(service).toContain("findRadiusPage");
+    expect(repository).toContain("distance_candidates AS MATERIALIZED");
+    expect(repository).toContain("6371.0088");
+    expect(repository).toContain("LEAST");
   });
 
   it("keeps the public projection aggregate, narrow, and free of adjacent discovery features", async () => {
@@ -74,7 +76,7 @@ describe("RM-035 application isolation", () => {
       rm035Production.map((filename) => readFile(path.join(listingsRoot, filename), "utf8"))
     );
     const combined = sources.join("\n");
-    const repository = sources[1];
+    const repository = sources[2];
     expect(repository).toMatch(/WITH page_candidates AS/);
     expect(repository).toMatch(/LEFT JOIN LATERAL[\s\S]*jsonb_agg/);
     expect(repository).not.toMatch(/address_text|password_hash|cloudinary_public_id|moderation_history|COUNT\s*\(/i);
@@ -93,7 +95,6 @@ describe("RM-035 application isolation", () => {
         "docs",
         "AGENTS.md",
         ".env.example",
-        "backend/src/server.ts",
         "backend/src/config/env.ts",
         "backend/src/integrations/cloudinary.client.ts",
         "backend/src/integrations/nominatim.client.ts"

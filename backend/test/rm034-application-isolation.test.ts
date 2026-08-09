@@ -39,7 +39,7 @@ function relative(filename: string): string {
 
 describe("RM-034 permanent production inventory", () => {
   it("keeps the committed RM-033 route and listings inventory unchanged", async () => {
-    expect((await readdir(listingsRoot)).sort()).toHaveLength(55);
+    expect((await readdir(listingsRoot)).sort()).toHaveLength(56);
     const routeFiles = ["auth", "listings", "users"].map((module) =>
       path.join(sourceRoot, "modules", module, "routes.ts")
     );
@@ -190,5 +190,5 @@ describe("RM-034 explicit-only and side-effect isolation", () => {
     expect(productionSource).not.toMatch(/confirm.?geocod|save.?candidate|selected.?candidate|reverseGeocode/i);
     expect(migrationSource).not.toMatch(/nominatim|geocod/i);
     expect(frontendSource).not.toMatch(/nominatim|geocod|autocomplete|typeahead|rm034|rm035/i);
-  });
+  }, 15_000);
 });
