@@ -70,6 +70,10 @@ describe("RM-019 application isolation", () => {
       "owner-listing-read-service.ts",
       "owner-listing-read-validation.ts",
       "owner-listing-summary-mapper.ts",
+      "public-listing-detail-controller.ts",
+      "public-listing-detail-mapper.ts",
+      "public-listing-detail-repository.ts",
+      "public-listing-detail-service.ts",
       "public-listing-search-bounding-box.ts",
       "public-listing-search-controller.ts",
       "public-listing-search-repository.ts",
@@ -91,6 +95,7 @@ describe("RM-019 application isolation", () => {
       ["get", "/lookups/property-types"],
       ["get", "/lookups/amenities"],
       ["get", "/listings"],
+      ["get", "/listings/:listingId"],
       ["post", "/landlord/listings"],
       ["get", "/landlord/listings"],
       ["get", "/landlord/listings/:listingId"],
@@ -108,7 +113,10 @@ describe("RM-019 application isolation", () => {
     expect(lookupRegistrations.slice(0, 2)).toHaveLength(2);
     expect(lookupRegistrations.slice(0, 2).join("\n")).not.toMatch(/authenticationMiddleware|landlordRoleMiddleware/);
     expect(routes).toMatch(/router\.post\([\s\S]*authenticationMiddleware[\s\S]*landlordRoleMiddleware/);
-    expect(routes).not.toMatch(/optional|cache|admin/i);
+    expect(routes).toMatch(
+      /router\.get\([\s\S]*?"\/listings\/:listingId"[\s\S]*?dependencies\.optionalAuthenticationMiddleware/
+    );
+    expect(routes).not.toMatch(/cache|admin/i);
   });
 
   it("keeps RM-019 lookup sources read-only and isolates the only allowed RM-020 writes", async () => {

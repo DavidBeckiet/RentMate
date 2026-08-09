@@ -8,6 +8,10 @@ const repositoryRoot = path.resolve(backendRoot, "..");
 const sourceRoot = path.join(backendRoot, "src");
 const listingsRoot = path.join(sourceRoot, "modules/listings");
 const rm035Production = [
+  "public-listing-detail-controller.ts",
+  "public-listing-detail-mapper.ts",
+  "public-listing-detail-repository.ts",
+  "public-listing-detail-service.ts",
   "public-listing-search-bounding-box.ts",
   "public-listing-search-controller.ts",
   "public-listing-search-repository.ts",
@@ -35,9 +39,9 @@ function gitDiff(...paths: string[]): string {
 }
 
 describe("RM-035 application isolation", () => {
-  it("keeps exactly 56 listings files, fifteen listings routes, and 21 total API routes", async () => {
+  it("keeps exactly 60 listings files, sixteen listings routes, and 22 total API routes", async () => {
     const files = (await readdir(listingsRoot)).sort();
-    expect(files).toHaveLength(56);
+    expect(files).toHaveLength(60);
     expect(files.filter((filename) => filename.startsWith("public-listing"))).toStrictEqual(rm035Production);
     const routeFiles = ["auth", "listings", "users"].map((module) =>
       path.join(sourceRoot, "modules", module, "routes.ts")
@@ -45,10 +49,12 @@ describe("RM-035 application isolation", () => {
     const sources = await Promise.all(routeFiles.map((filename) => readFile(filename, "utf8")));
     const pattern = /router\.(get|post|patch|put|delete)\(\s*"([^"]+)"/g;
     const listingsRoutes = [...sources[1]!.matchAll(pattern)].map((match) => [match[1], match[2]]);
-    expect(listingsRoutes).toHaveLength(15);
-    expect(sources.flatMap((source) => [...source.matchAll(pattern)])).toHaveLength(21);
+    expect(listingsRoutes).toHaveLength(16);
+    expect(sources.flatMap((source) => [...source.matchAll(pattern)])).toHaveLength(22);
     expect(listingsRoutes.filter(([method, route]) => method === "get" && route === "/listings")).toHaveLength(1);
-    expect(listingsRoutes.some(([, route]) => route === "/listings/:listingId")).toBe(false);
+    expect(
+      listingsRoutes.filter(([method, route]) => method === "get" && route === "/listings/:listingId")
+    ).toHaveLength(1);
     expect(listingsRoutes.some(([, route]) => /map|radius|favorite|admin/.test(route))).toBe(false);
   });
 
@@ -75,8 +81,9 @@ describe("RM-035 application isolation", () => {
     const sources = await Promise.all(
       rm035Production.map((filename) => readFile(path.join(listingsRoot, filename), "utf8"))
     );
-    const combined = sources.join("\n");
-    const repository = sources[2];
+    const searchSources = sources.slice(4);
+    const combined = searchSources.join("\n");
+    const repository = searchSources[2];
     expect(repository).toMatch(/WITH page_candidates AS/);
     expect(repository).toMatch(/LEFT JOIN LATERAL[\s\S]*jsonb_agg/);
     expect(repository).not.toMatch(/address_text|password_hash|cloudinary_public_id|moderation_history|COUNT\s*\(/i);

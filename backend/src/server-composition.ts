@@ -34,12 +34,17 @@ import {
   createPublicListingSearchService,
   type PublicListingSearchConfig
 } from "./modules/listings/public-listing-search-service.js";
+import { createPublicListingDetailRepository } from "./modules/listings/public-listing-detail-repository.js";
+import { createPublicListingDetailService } from "./modules/listings/public-listing-detail-service.js";
 import { registerListingsRoutes } from "./modules/listings/routes.js";
 import { registerUsersRoutes } from "./modules/users/routes.js";
 import { createUsersRepository } from "./modules/users/users-repository.js";
 import { createUsersService } from "./modules/users/users-service.js";
 import type { Logger } from "./shared/logging/logger.js";
-import { createProtectedAuthenticationMiddleware } from "./shared/middleware/authentication.js";
+import {
+  createOptionalAuthenticationMiddleware,
+  createProtectedAuthenticationMiddleware
+} from "./shared/middleware/authentication.js";
 import { InMemoryRateLimitStore, type Clock, type RateLimitStore } from "./shared/middleware/rate-limit.js";
 import { createRoleMiddleware } from "./shared/middleware/role.js";
 
@@ -97,6 +102,9 @@ export async function createBackendApp(options: BackendAppCompositionOptions): P
     createPublicListingSearchRepository(options.sqlExecutor),
     options.publicListingSearchConfig
   );
+  const publicListingDetailService = createPublicListingDetailService(
+    createPublicListingDetailRepository(options.sqlExecutor)
+  );
   const listingUpdateService = createListingUpdateService({ transactionRunner });
   const listingSubmitService = createListingSubmitService({ transactionRunner });
   const listingLifecycleActionService = createListingLifecycleActionService({ transactionRunner });
@@ -127,6 +135,10 @@ export async function createBackendApp(options: BackendAppCompositionOptions): P
     verifySessionToken: sessionTokenService.verify,
     loadAuthenticationAccount: usersRepository.findAuthenticationAccountById
   });
+  const optionalAuthentication = createOptionalAuthenticationMiddleware({
+    verifySessionToken: sessionTokenService.verify,
+    loadAuthenticationAccount: usersRepository.findAuthenticationAccountById
+  });
   const landlordRole = createRoleMiddleware(["LANDLORD"]);
   const authRateLimitStore = options.authRateLimitStore ?? new InMemoryRateLimitStore();
 
@@ -152,10 +164,12 @@ export async function createBackendApp(options: BackendAppCompositionOptions): P
       registerListingsRoutes(router, {
         lookupRepository,
         authenticationMiddleware: requiredAuthentication,
+        optionalAuthenticationMiddleware: optionalAuthentication,
         landlordRoleMiddleware: landlordRole,
         listingCreateService,
         ownerListingReadService,
         publicListingSearchService,
+        publicListingDetailService,
         listingUpdateService,
         listingSubmitService,
         listingLifecycleActionService,

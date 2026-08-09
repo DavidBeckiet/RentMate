@@ -71,6 +71,10 @@ describe("RM-021 application isolation", () => {
       "owner-listing-read-service.ts",
       "owner-listing-read-validation.ts",
       "owner-listing-summary-mapper.ts",
+      "public-listing-detail-controller.ts",
+      "public-listing-detail-mapper.ts",
+      "public-listing-detail-repository.ts",
+      "public-listing-detail-service.ts",
       "public-listing-search-bounding-box.ts",
       "public-listing-search-controller.ts",
       "public-listing-search-repository.ts",
@@ -92,6 +96,7 @@ describe("RM-021 application isolation", () => {
       ["get", "/lookups/property-types"],
       ["get", "/lookups/amenities"],
       ["get", "/listings"],
+      ["get", "/listings/:listingId"],
       ["post", "/landlord/listings"],
       ["get", "/landlord/listings"],
       ["get", "/landlord/listings/:listingId"],
@@ -115,7 +120,7 @@ describe("RM-021 application isolation", () => {
     expect(lookupRegistrations).toHaveLength(2);
     expect(routes).not.toMatch(/admin/i);
     expect(routes.match(/router\.get\("\/listings"/g)).toHaveLength(1);
-    expect(routes).not.toMatch(/"\/listings\/:listingId"/);
+    expect(routes.match(/"\/listings\/:listingId"/g)).toHaveLength(1);
   });
 
   it("keeps RM-021 reads free of writes, locks, total counts, provider IDs, and N+1 loops", async () => {

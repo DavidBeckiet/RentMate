@@ -70,6 +70,10 @@ describe("RM-029 application isolation", () => {
       "owner-listing-read-service.ts",
       "owner-listing-read-validation.ts",
       "owner-listing-summary-mapper.ts",
+      "public-listing-detail-controller.ts",
+      "public-listing-detail-mapper.ts",
+      "public-listing-detail-repository.ts",
+      "public-listing-detail-service.ts",
       "public-listing-search-bounding-box.ts",
       "public-listing-search-controller.ts",
       "public-listing-search-repository.ts",
@@ -87,7 +91,7 @@ describe("RM-029 application isolation", () => {
       match[1],
       match[2]
     ]);
-    expect(registrations).toHaveLength(15);
+    expect(registrations).toHaveLength(16);
     expect(registrations.filter(([, route]) => route === "/listings")).toStrictEqual([["get", "/listings"]]);
     expect(registrations.filter(([, route]) => route === "/landlord/listings/:listingId/images")).toStrictEqual([
       ["post", "/landlord/listings/:listingId/images"]

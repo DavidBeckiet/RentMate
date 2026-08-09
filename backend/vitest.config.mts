@@ -35,6 +35,7 @@ export default defineConfig({
       "test/rm032-image-provider.database.integration.test.ts",
       "test/rm035-public-search.database.integration.test.ts",
       "test/rm036-public-search.database.integration.test.ts",
+      "test/rm037-public-listing-detail.database.integration.test.ts",
       "node_modules/**",
       "dist/**",
       "coverage/**"

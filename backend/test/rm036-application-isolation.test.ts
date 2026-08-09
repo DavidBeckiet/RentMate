@@ -8,6 +8,10 @@ const repositoryRoot = path.resolve(backendRoot, "..");
 const sourceRoot = path.join(backendRoot, "src");
 const listingsRoot = path.join(sourceRoot, "modules/listings");
 const publicListingProduction = [
+  "public-listing-detail-controller.ts",
+  "public-listing-detail-mapper.ts",
+  "public-listing-detail-repository.ts",
+  "public-listing-detail-service.ts",
   "public-listing-search-bounding-box.ts",
   "public-listing-search-controller.ts",
   "public-listing-search-repository.ts",
@@ -24,9 +28,9 @@ function gitDiff(...paths: string[]): string {
 }
 
 describe("RM-036 application isolation", () => {
-  it("keeps one public collection route and the exact post-RM-036 listings inventory", async () => {
+  it("keeps the public collection and detail routes with the exact post-RM-037 listings inventory", async () => {
     const files = (await readdir(listingsRoot)).sort();
-    expect(files).toHaveLength(56);
+    expect(files).toHaveLength(60);
     expect(files.filter((filename) => filename.startsWith("public-listing"))).toStrictEqual(publicListingProduction);
 
     const routeFiles = ["auth", "listings", "users"].map((module) =>
@@ -35,8 +39,8 @@ describe("RM-036 application isolation", () => {
     const routeSources = await Promise.all(routeFiles.map((filename) => readFile(filename, "utf8")));
     const pattern = /router\.(get|post|patch|put|delete)\(\s*"([^"]+)"/g;
     const listingsRoutes = [...routeSources[1]!.matchAll(pattern)].map((match) => [match[1], match[2]]);
-    expect(listingsRoutes).toHaveLength(15);
-    expect(routeSources.flatMap((source) => [...source.matchAll(pattern)])).toHaveLength(21);
+    expect(listingsRoutes).toHaveLength(16);
+    expect(routeSources.flatMap((source) => [...source.matchAll(pattern)])).toHaveLength(22);
     expect(listingsRoutes.filter(([method, route]) => method === "get" && route === "/listings")).toHaveLength(1);
     expect(listingsRoutes.some(([, route]) => /map|radius|bounds|favorite|admin/.test(route))).toBe(false);
   });
