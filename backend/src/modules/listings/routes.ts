@@ -38,6 +38,8 @@ import { createGetAmenitiesHandler, createGetPropertyTypesHandler } from "./look
 import type { LookupRepository } from "./lookup-repository.js";
 import { createGetOwnerListingDetailHandler, createListOwnerListingsHandler } from "./owner-listing-read-controller.js";
 import type { OwnerListingReadService } from "./owner-listing-read-service.js";
+import { createPublicListingSearchHandler } from "./public-listing-search-controller.js";
+import type { PublicListingSearchService } from "./public-listing-search-service.js";
 
 export interface ListingsRouteDependencies {
   readonly lookupRepository: LookupRepository;
@@ -45,6 +47,7 @@ export interface ListingsRouteDependencies {
   readonly landlordRoleMiddleware: RequestHandler;
   readonly listingCreateService: ListingCreateService;
   readonly ownerListingReadService: OwnerListingReadService;
+  readonly publicListingSearchService: PublicListingSearchService;
   readonly listingUpdateService: ListingUpdateService;
   readonly listingSubmitService: ListingSubmitService;
   readonly listingLifecycleActionService: ListingLifecycleActionService;
@@ -87,6 +90,7 @@ export function registerListingsRoutes(router: Router, dependencies: ListingsRou
 
   router.get("/lookups/property-types", createGetPropertyTypesHandler(dependencies.lookupRepository));
   router.get("/lookups/amenities", createGetAmenitiesHandler(dependencies.lookupRepository));
+  router.get("/listings", createPublicListingSearchHandler(dependencies.publicListingSearchService));
   router.post(
     "/landlord/listings",
     dependencies.authenticationMiddleware,

@@ -19,7 +19,7 @@ async function source(filename: string): Promise<string> {
 }
 
 describe("RM-029 application isolation", () => {
-  it("contains exactly 50 listings files, two integration clients, and fourteen routes", async () => {
+  it("contains exactly 55 listings files, two integration clients, and fifteen routes", async () => {
     expect((await readdir(listingsRoot)).sort()).toStrictEqual([
       "current-moderation-reason-repository.ts",
       "current-moderation-reason.ts",
@@ -70,6 +70,11 @@ describe("RM-029 application isolation", () => {
       "owner-listing-read-service.ts",
       "owner-listing-read-validation.ts",
       "owner-listing-summary-mapper.ts",
+      "public-listing-search-controller.ts",
+      "public-listing-search-repository.ts",
+      "public-listing-search-service.ts",
+      "public-listing-search-validation.ts",
+      "public-listing-summary-mapper.ts",
       "routes.ts"
     ]);
     expect((await readdir(path.join(backendRoot, "src/integrations"))).sort()).toStrictEqual([
@@ -81,7 +86,8 @@ describe("RM-029 application isolation", () => {
       match[1],
       match[2]
     ]);
-    expect(registrations).toHaveLength(14);
+    expect(registrations).toHaveLength(15);
+    expect(registrations.filter(([, route]) => route === "/listings")).toStrictEqual([["get", "/listings"]]);
     expect(registrations.filter(([, route]) => route === "/landlord/listings/:listingId/images")).toStrictEqual([
       ["post", "/landlord/listings/:listingId/images"]
     ]);

@@ -22,15 +22,16 @@ async function recursiveFiles(root: string): Promise<string[]> {
 }
 
 describe("RM-032 application isolation", () => {
-  it("keeps exactly 50 listings production files and fourteen routes through V1-22", async () => {
+  it("keeps exactly 55 listings production files and fifteen routes through V1-22 plus V1-09", async () => {
     const files = (await readdir(listingsRoot)).sort();
-    expect(files).toHaveLength(50);
+    expect(files).toHaveLength(55);
     const routes = await listingSource("routes.ts");
     const registrations = [...routes.matchAll(/router\.(get|post|patch|put|delete)\(\s*"([^"]+)"/g)].map((match) => [
       match[1],
       match[2]
     ]);
-    expect(registrations).toHaveLength(14);
+    expect(registrations).toHaveLength(15);
+    expect(registrations.filter((entry) => entry[0] === "get" && entry[1] === "/listings")).toHaveLength(1);
     expect(
       registrations.filter((entry) => entry[0] === "delete" && entry[1] === "/landlord/listings/:listingId")
     ).toHaveLength(1);
@@ -112,7 +113,7 @@ describe("RM-032 application isolation", () => {
       pg: "8.16.0"
     });
     expect(await recursiveFiles(path.join(backendRoot, "src"))).not.toEqual(
-      expect.arrayContaining([expect.stringMatching(/rm03[45]/i)])
+      expect.arrayContaining([expect.stringMatching(/rm034/i)])
     );
     expect(await recursiveFiles(path.join(repositoryRoot, "frontend"))).not.toEqual(
       expect.arrayContaining([expect.stringMatching(/rm032/i)])

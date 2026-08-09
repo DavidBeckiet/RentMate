@@ -19,9 +19,9 @@ async function source(filename: string): Promise<string> {
 }
 
 describe("RM-031 application isolation", () => {
-  it("contains exactly 50 listings files and fourteen routes through V1-22", async () => {
+  it("contains exactly 55 listings files and fifteen routes through V1-22 plus V1-09", async () => {
     const files = (await readdir(listingsRoot)).sort();
-    expect(files).toHaveLength(50);
+    expect(files).toHaveLength(55);
     expect(files.filter((file) => file.startsWith("listing-image-order-"))).toStrictEqual([
       "listing-image-order-controller.ts",
       "listing-image-order-repository.ts",
@@ -33,7 +33,8 @@ describe("RM-031 application isolation", () => {
       match[1],
       match[2]
     ]);
-    expect(registrations).toHaveLength(14);
+    expect(registrations).toHaveLength(15);
+    expect(registrations.filter(([, route]) => route === "/listings")).toStrictEqual([["get", "/listings"]]);
     expect(registrations.filter((entry) => entry[0] === "post" && entry[1]?.endsWith("/images"))).toHaveLength(1);
     expect(
       registrations.filter((entry) => entry[0] === "delete" && entry[1]?.endsWith("/images/:imageId"))

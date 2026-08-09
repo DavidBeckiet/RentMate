@@ -108,6 +108,11 @@ describe("RM-009 application and roadmap isolation", () => {
       "owner-listing-read-service.ts",
       "owner-listing-read-validation.ts",
       "owner-listing-summary-mapper.ts",
+      "public-listing-search-controller.ts",
+      "public-listing-search-repository.ts",
+      "public-listing-search-service.ts",
+      "public-listing-search-validation.ts",
+      "public-listing-summary-mapper.ts",
       "routes.ts"
     ]);
     expect(sourceFiles.some((filename) => /src[\\/]+modules[\\/]+favorites[\\/]/.test(filename))).toBe(false);

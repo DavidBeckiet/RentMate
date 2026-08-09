@@ -64,6 +64,9 @@ class ReadExecutor implements SqlExecutor {
   async query<Row extends QueryResultRow>(query: ParameterizedQuery): Promise<QueryResult<Row>> {
     this.queries.push(query);
     if (this.failure && query.text.includes("FROM listings AS l")) throw this.failure;
+    if (query.text.includes("WITH page_candidates AS")) {
+      return result([] as Row[]);
+    }
     if (query.text.includes("FROM users")) {
       return result((this.account === null ? [] : [this.account]) as unknown as Row[]);
     }
@@ -370,6 +373,11 @@ describe("RM-021 owner listing read HTTP contract", () => {
       .expect(201);
     await request(app).patch("/api/v1/landlord/listings/42").set("Origin", origin).expect(401);
     await request(app).delete("/api/v1/landlord/listings/42").set("Origin", origin).expect(401);
-    await request(app).get("/api/v1/listings").expect(404);
+    await request(app)
+      .get("/api/v1/listings")
+      .expect(200, {
+        data: [],
+        pagination: { page: 1, pageSize: 20, hasNextPage: false }
+      });
   });
 });

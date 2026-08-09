@@ -39,7 +39,7 @@ function relative(filename: string): string {
 
 describe("RM-034 permanent production inventory", () => {
   it("keeps the committed RM-033 route and listings inventory unchanged", async () => {
-    expect((await readdir(listingsRoot)).sort()).toHaveLength(50);
+    expect((await readdir(listingsRoot)).sort()).toHaveLength(55);
     const routeFiles = ["auth", "listings", "users"].map((module) =>
       path.join(sourceRoot, "modules", module, "routes.ts")
     );
@@ -47,8 +47,9 @@ describe("RM-034 permanent production inventory", () => {
     const routePattern = /router\.(get|post|patch|put|delete)\(\s*"([^"]+)"/g;
     const listingsRoutes = [...routeSources[1]!.matchAll(routePattern)].map((match) => [match[1], match[2]]);
 
-    expect(listingsRoutes).toHaveLength(14);
-    expect(routeSources.flatMap((source) => [...source.matchAll(routePattern)])).toHaveLength(20);
+    expect(listingsRoutes).toHaveLength(15);
+    expect(listingsRoutes.filter(([method, route]) => method === "get" && route === "/listings")).toHaveLength(1);
+    expect(routeSources.flatMap((source) => [...source.matchAll(routePattern)])).toHaveLength(21);
     expect(
       listingsRoutes.filter(([method, route]) => method === "post" && route === "/geocoding/forward")
     ).toHaveLength(1);
@@ -174,7 +175,7 @@ describe("RM-034 explicit-only and side-effect isolation", () => {
     expect(source).not.toMatch(/memoiz|geocod(?:ing)?[_ -]?cache|geocod(?:ing)?[_ -]?history/i);
   });
 
-  it("adds no frontend, migration, schema, RM-035, or automatic coordinate-save surface", async () => {
+  it("adds no frontend, migration, schema, or automatic coordinate-save surface", async () => {
     const productionFiles = await recursiveFiles(sourceRoot);
     const productionSource = await joinedSource(productionFiles);
     const migrations = await recursiveFiles(path.join(backendRoot, "migrations"));
@@ -185,7 +186,7 @@ describe("RM-034 explicit-only and side-effect isolation", () => {
     );
     const frontendSource = await joinedSource(frontendFiles);
 
-    expect(productionFiles).not.toEqual(expect.arrayContaining([expect.stringMatching(/rm03[45]/i)]));
+    expect(productionFiles).not.toEqual(expect.arrayContaining([expect.stringMatching(/rm034/i)]));
     expect(productionSource).not.toMatch(/confirm.?geocod|save.?candidate|selected.?candidate|reverseGeocode/i);
     expect(migrationSource).not.toMatch(/nominatim|geocod/i);
     expect(frontendSource).not.toMatch(/nominatim|geocod|autocomplete|typeahead|rm034|rm035/i);

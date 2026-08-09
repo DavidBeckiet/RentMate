@@ -24,7 +24,7 @@ async function source(filename: string): Promise<string> {
 describe("RM-033 application isolation", () => {
   it("adds exactly three listings files and one V1-22 route", async () => {
     const files = (await readdir(listingsRoot)).sort();
-    expect(files).toHaveLength(50);
+    expect(files).toHaveLength(55);
     expect(files.filter((filename) => filename.startsWith("geocoding-"))).toStrictEqual([
       "geocoding-controller.ts",
       "geocoding-service.ts",
@@ -37,9 +37,10 @@ describe("RM-033 application isolation", () => {
     const routeSources = await Promise.all(moduleRouteFiles.map((filename) => readFile(filename, "utf8")));
     const routePattern = /router\.(get|post|patch|put|delete)\(\s*"([^"]+)"/g;
     const listingsRoutes = [...routeSources[1]!.matchAll(routePattern)].map((match) => [match[1], match[2]]);
-    expect(listingsRoutes).toHaveLength(14);
+    expect(listingsRoutes).toHaveLength(15);
+    expect(listingsRoutes.filter((entry) => entry[0] === "get" && entry[1] === "/listings")).toHaveLength(1);
     expect(listingsRoutes.filter((entry) => entry[0] === "post" && entry[1] === "/geocoding/forward")).toHaveLength(1);
-    expect(routeSources.flatMap((routeSource) => [...routeSource.matchAll(routePattern)])).toHaveLength(20);
+    expect(routeSources.flatMap((routeSource) => [...routeSource.matchAll(routePattern)])).toHaveLength(21);
     for (const route of [
       "/landlord/listings/:listingId/images",
       "/landlord/listings/:listingId/images/:imageId",
@@ -105,7 +106,7 @@ describe("RM-033 application isolation", () => {
     );
     expect(migrations).toHaveLength(12);
     const productionFiles = await recursiveFiles(path.join(backendRoot, "src"));
-    expect(productionFiles).not.toEqual(expect.arrayContaining([expect.stringMatching(/rm03[45]/i)]));
+    expect(productionFiles).not.toEqual(expect.arrayContaining([expect.stringMatching(/rm034/i)]));
     expect(await recursiveFiles(path.join(repositoryRoot, "frontend"))).not.toEqual(
       expect.arrayContaining([expect.stringMatching(/geocod|nominatim|rm033/i)])
     );

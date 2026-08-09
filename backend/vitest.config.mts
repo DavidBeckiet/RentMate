@@ -33,6 +33,7 @@ export default defineConfig({
       "test/rm032-image-lifecycle.database.integration.test.ts",
       "test/rm032-image-concurrency.database.integration.test.ts",
       "test/rm032-image-provider.database.integration.test.ts",
+      "test/rm035-public-search.database.integration.test.ts",
       "node_modules/**",
       "dist/**",
       "coverage/**"

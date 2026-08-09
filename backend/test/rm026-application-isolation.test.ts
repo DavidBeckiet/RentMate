@@ -15,7 +15,7 @@ function gitDiff(...paths: string[]): string {
 }
 
 describe("RM-026 application isolation", () => {
-  it("keeps the exact 50-file listings inventory and two explicit availability routes", async () => {
+  it("keeps the exact 55-file listings inventory and two explicit availability routes", async () => {
     expect((await readdir(listingsRoot)).sort()).toStrictEqual([
       "current-moderation-reason-repository.ts",
       "current-moderation-reason.ts",
@@ -66,6 +66,11 @@ describe("RM-026 application isolation", () => {
       "owner-listing-read-service.ts",
       "owner-listing-read-validation.ts",
       "owner-listing-summary-mapper.ts",
+      "public-listing-search-controller.ts",
+      "public-listing-search-repository.ts",
+      "public-listing-search-service.ts",
+      "public-listing-search-validation.ts",
+      "public-listing-summary-mapper.ts",
       "routes.ts"
     ]);
     const routes = await readFile(path.join(listingsRoot, "routes.ts"), "utf8");
@@ -76,6 +81,7 @@ describe("RM-026 application isolation", () => {
     expect(registrations).toStrictEqual([
       ["get", "/lookups/property-types"],
       ["get", "/lookups/amenities"],
+      ["get", "/listings"],
       ["post", "/landlord/listings"],
       ["get", "/landlord/listings"],
       ["get", "/landlord/listings/:listingId"],
@@ -91,7 +97,7 @@ describe("RM-026 application isolation", () => {
     ]);
     expect(routes.match(/"\/landlord\/listings\/:listingId\/deactivate"/g)).toHaveLength(1);
     expect(routes.match(/"\/landlord\/listings\/:listingId\/reactivate"/g)).toHaveLength(1);
-    expect(routes).not.toMatch(/favorite|admin|"\/listings"/i);
+    expect(routes).not.toMatch(/favorite|admin/i);
   });
 
   it("keeps each availability write fixed, conditional, and bounded", async () => {

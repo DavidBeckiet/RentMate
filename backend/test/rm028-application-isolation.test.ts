@@ -46,7 +46,7 @@ function git(...arguments_: string[]): string {
 }
 
 describe("RM-028 application isolation and M3 acceptance inventory", () => {
-  it("keeps the exact 50-file production listings inventory and fourteen routes", async () => {
+  it("keeps the exact 55-file production listings inventory and fifteen routes", async () => {
     expect((await readdir(listingsRoot)).sort()).toStrictEqual([
       "current-moderation-reason-repository.ts",
       "current-moderation-reason.ts",
@@ -97,6 +97,11 @@ describe("RM-028 application isolation and M3 acceptance inventory", () => {
       "owner-listing-read-service.ts",
       "owner-listing-read-validation.ts",
       "owner-listing-summary-mapper.ts",
+      "public-listing-search-controller.ts",
+      "public-listing-search-repository.ts",
+      "public-listing-search-service.ts",
+      "public-listing-search-validation.ts",
+      "public-listing-summary-mapper.ts",
       "routes.ts"
     ]);
     const routes = await readFile(path.join(listingsRoot, "routes.ts"), "utf8");
@@ -107,6 +112,7 @@ describe("RM-028 application isolation and M3 acceptance inventory", () => {
     expect(registrations).toStrictEqual([
       ["get", "/lookups/property-types"],
       ["get", "/lookups/amenities"],
+      ["get", "/listings"],
       ["post", "/landlord/listings"],
       ["get", "/landlord/listings"],
       ["get", "/landlord/listings/:listingId"],
@@ -120,7 +126,7 @@ describe("RM-028 application isolation and M3 acceptance inventory", () => {
       ["put", "/landlord/listings/:listingId/images/order"],
       ["post", "/geocoding/forward"]
     ]);
-    expect(routes).not.toMatch(/favorite|admin|moderation-actions|"\/listings"/i);
+    expect(routes).not.toMatch(/favorite|admin|moderation-actions/i);
   });
 
   it("contains exactly four RM-028 suites and the exact 26-file focused script", async () => {

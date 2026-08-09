@@ -29,6 +29,8 @@ import { createListingUpdateService } from "./modules/listings/listing-update-se
 import { createLookupRepository } from "./modules/listings/lookup-repository.js";
 import { createOwnerListingReadRepository } from "./modules/listings/owner-listing-read-repository.js";
 import { createOwnerListingReadService } from "./modules/listings/owner-listing-read-service.js";
+import { createPublicListingSearchRepository } from "./modules/listings/public-listing-search-repository.js";
+import { createPublicListingSearchService } from "./modules/listings/public-listing-search-service.js";
 import { registerListingsRoutes } from "./modules/listings/routes.js";
 import { registerUsersRoutes } from "./modules/users/routes.js";
 import { createUsersRepository } from "./modules/users/users-repository.js";
@@ -87,6 +89,9 @@ export async function createBackendApp(options: BackendAppCompositionOptions): P
   const listingCreateService = createListingCreateService({ transactionRunner });
   const ownerListingReadRepository = createOwnerListingReadRepository(options.sqlExecutor);
   const ownerListingReadService = createOwnerListingReadService(ownerListingReadRepository);
+  const publicListingSearchService = createPublicListingSearchService(
+    createPublicListingSearchRepository(options.sqlExecutor)
+  );
   const listingUpdateService = createListingUpdateService({ transactionRunner });
   const listingSubmitService = createListingSubmitService({ transactionRunner });
   const listingLifecycleActionService = createListingLifecycleActionService({ transactionRunner });
@@ -145,6 +150,7 @@ export async function createBackendApp(options: BackendAppCompositionOptions): P
         landlordRoleMiddleware: landlordRole,
         listingCreateService,
         ownerListingReadService,
+        publicListingSearchService,
         listingUpdateService,
         listingSubmitService,
         listingLifecycleActionService,

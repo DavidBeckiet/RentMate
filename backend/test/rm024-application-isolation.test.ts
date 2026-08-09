@@ -75,6 +75,11 @@ describe("RM-024 application isolation", () => {
       "owner-listing-read-service.ts",
       "owner-listing-read-validation.ts",
       "owner-listing-summary-mapper.ts",
+      "public-listing-search-controller.ts",
+      "public-listing-search-repository.ts",
+      "public-listing-search-service.ts",
+      "public-listing-search-validation.ts",
+      "public-listing-summary-mapper.ts",
       "routes.ts"
     ]);
     const routes = await readFile(path.join(listingsRoot, "routes.ts"), "utf8");
@@ -85,6 +90,7 @@ describe("RM-024 application isolation", () => {
     expect(registrations).toStrictEqual([
       ["get", "/lookups/property-types"],
       ["get", "/lookups/amenities"],
+      ["get", "/listings"],
       ["post", "/landlord/listings"],
       ["get", "/landlord/listings"],
       ["get", "/landlord/listings/:listingId"],
@@ -98,7 +104,7 @@ describe("RM-024 application isolation", () => {
       ["put", "/landlord/listings/:listingId/images/order"],
       ["post", "/geocoding/forward"]
     ]);
-    expect(routes).not.toMatch(/favorite|admin|"\/listings"/i);
+    expect(routes).not.toMatch(/favorite|admin/i);
   });
 
   it("contains exactly one focused significant-edit matrix and no PATCH-local copy", async () => {

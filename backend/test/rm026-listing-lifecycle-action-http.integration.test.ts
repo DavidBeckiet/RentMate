@@ -26,6 +26,9 @@ class Executor implements SqlExecutor {
 
   async query<Row extends QueryResultRow>(query: ParameterizedQuery): Promise<QueryResult<Row>> {
     this.queries.push(query);
+    if (query.text.includes("WITH page_candidates AS")) {
+      return result([] as Row[]);
+    }
     if (query.text.includes("FROM users")) {
       return result([{ id: 9, role: this.accountRole, is_active: this.accountActive }] as unknown as Row[]);
     }
@@ -291,7 +294,12 @@ describe("RM-026 listing lifecycle action HTTP", () => {
     await request(app).delete("/api/v1/landlord/listings/7/images/3").set("Origin", origin).expect(401);
     await request(app).put("/api/v1/landlord/listings/7/images/order").set("Origin", origin).expect(401);
     await request(app).delete("/api/v1/landlord/listings/7").set("Origin", origin).expect(401);
-    await request(app).get("/api/v1/listings").expect(404);
+    await request(app)
+      .get("/api/v1/listings")
+      .expect(200, {
+        data: [],
+        pagination: { page: 1, pageSize: 20, hasNextPage: false }
+      });
     await request(app).get("/api/v1/admin/listings").expect(404);
   });
 });

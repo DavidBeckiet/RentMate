@@ -70,6 +70,11 @@ describe("RM-019 application isolation", () => {
       "owner-listing-read-service.ts",
       "owner-listing-read-validation.ts",
       "owner-listing-summary-mapper.ts",
+      "public-listing-search-controller.ts",
+      "public-listing-search-repository.ts",
+      "public-listing-search-service.ts",
+      "public-listing-search-validation.ts",
+      "public-listing-summary-mapper.ts",
       "routes.ts"
     ]);
   });
@@ -84,6 +89,7 @@ describe("RM-019 application isolation", () => {
     expect(routeMatches).toStrictEqual([
       ["get", "/lookups/property-types"],
       ["get", "/lookups/amenities"],
+      ["get", "/listings"],
       ["post", "/landlord/listings"],
       ["get", "/landlord/listings"],
       ["get", "/landlord/listings/:listingId"],
