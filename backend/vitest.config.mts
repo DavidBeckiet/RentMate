@@ -36,6 +36,7 @@ export default defineConfig({
       "test/rm035-public-search.database.integration.test.ts",
       "test/rm036-public-search.database.integration.test.ts",
       "test/rm037-public-listing-detail.database.integration.test.ts",
+      "test/rm038-public-discovery.database.integration.test.ts",
       "node_modules/**",
       "dist/**",
       "coverage/**"
