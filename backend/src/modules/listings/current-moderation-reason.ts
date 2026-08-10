@@ -25,7 +25,7 @@ export function requiresCurrentModerationReason(status: ListingStatus): status i
 
 export function resolveCurrentModerationReason(status: ListingStatus, reason: unknown): string | null {
   if (requiresCurrentModerationReason(status)) {
-    if (typeof reason !== "string" || reason.trim().length === 0 || reason.length > 1_000) {
+    if (typeof reason !== "string" || reason.trim().length === 0 || [...reason].length > 1_000) {
       throw new CurrentModerationReasonInvariantError();
     }
     return reason;

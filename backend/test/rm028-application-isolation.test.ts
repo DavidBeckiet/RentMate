@@ -96,6 +96,10 @@ describe("RM-028 application isolation and M3 acceptance inventory", () => {
       "lookup-controller.ts",
       "lookup-mapper.ts",
       "lookup-repository.ts",
+      "moderation-action-controller.ts",
+      "moderation-action-repository.ts",
+      "moderation-action-service.ts",
+      "moderation-action-validation.ts",
       "moderation-history-mapper.ts",
       "owner-image-mapper.ts",
       "owner-listing-mapper.ts",
@@ -126,6 +130,7 @@ describe("RM-028 application isolation and M3 acceptance inventory", () => {
       ["get", "/lookups/amenities"],
       ["get", "/listings"],
       ["get", "/listings/:listingId"],
+      ["post", "/admin/listings/:listingId/moderation-actions"],
       ["get", "/admin/listings"],
       ["get", "/admin/listings/:listingId/moderation-actions"],
       ["get", "/admin/listings/:listingId"],
@@ -143,7 +148,8 @@ describe("RM-028 application isolation and M3 acceptance inventory", () => {
       ["post", "/geocoding/forward"]
     ]);
     expect(routes).not.toMatch(/favorite/i);
-    expect(routes).not.toMatch(/router\.post\(\s*"\/admin\/listings\/:listingId\/moderation-actions"|\/admin\/users/i);
+    expect(routes.match(/router\.post\(\s*"\/admin\/listings\/:listingId\/moderation-actions"/g)).toHaveLength(1);
+    expect(routes).not.toMatch(/\/admin\/users/i);
   });
 
   it("contains exactly four RM-028 suites and the exact 26-file focused script", async () => {

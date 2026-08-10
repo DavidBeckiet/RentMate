@@ -9,7 +9,7 @@ const listingsRoot = path.join(sourceRoot, "modules", "listings");
 
 describe("RM-038 verification-only application isolation", () => {
   it("keeps the RM-037 listings inventory and current route inventory", async () => {
-    expect(await readdir(listingsRoot)).toHaveLength(67);
+    expect(await readdir(listingsRoot)).toHaveLength(71);
     const routeFiles = ["auth", "favorites", "listings", "users"].map((module) =>
       path.join(sourceRoot, "modules", module, "routes.ts")
     );
@@ -17,8 +17,8 @@ describe("RM-038 verification-only application isolation", () => {
     const routePattern = /router\.(get|post|patch|put|delete)\(\s*"([^"]+)"/g;
     const listingRoutes = [...routeSources[2]!.matchAll(routePattern)];
     const allV1Routes = routeSources.flatMap((source) => [...source.matchAll(routePattern)]);
-    expect(listingRoutes).toHaveLength(19);
-    expect(allV1Routes).toHaveLength(28);
+    expect(listingRoutes).toHaveLength(20);
+    expect(allV1Routes).toHaveLength(29);
     expect(listingRoutes.filter((match) => match[1] === "get" && match[2] === "/listings")).toHaveLength(1);
     expect(listingRoutes.filter((match) => match[1] === "get" && match[2] === "/listings/:listingId")).toHaveLength(1);
   });
@@ -39,7 +39,7 @@ describe("RM-038 verification-only application isolation", () => {
       "cloudinary.client.ts",
       "nominatim.client.ts"
     ]);
-    expect((await readdir(listingsRoot)).sort()).toHaveLength(67);
+    expect((await readdir(listingsRoot)).sort()).toHaveLength(71);
     expect((await readdir(path.join(backendRoot, "migrations"))).filter((file) => file.endsWith(".sql"))).toHaveLength(
       12
     );
@@ -50,6 +50,7 @@ describe("RM-038 verification-only application isolation", () => {
       .map((match) => [match[1], match[2]])
       .filter(([, route]) => route?.startsWith("/admin"));
     expect(adminRoutes).toStrictEqual([
+      ["post", "/admin/listings/:listingId/moderation-actions"],
       ["get", "/admin/listings"],
       ["get", "/admin/listings/:listingId/moderation-actions"],
       ["get", "/admin/listings/:listingId"]

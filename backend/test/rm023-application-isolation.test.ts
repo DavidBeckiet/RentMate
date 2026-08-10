@@ -55,6 +55,10 @@ describe("RM-023 application isolation", () => {
       "lookup-controller.ts",
       "lookup-mapper.ts",
       "lookup-repository.ts",
+      "moderation-action-controller.ts",
+      "moderation-action-repository.ts",
+      "moderation-action-service.ts",
+      "moderation-action-validation.ts",
       "moderation-history-mapper.ts",
       "owner-image-mapper.ts",
       "owner-listing-mapper.ts",
@@ -83,7 +87,8 @@ describe("RM-023 application isolation", () => {
     expect(routes).toContain('"/landlord/listings/:listingId"');
     expect(routes.match(/router\.get\("\/listings"/g)).toHaveLength(1);
     expect(routes).not.toMatch(/favorite/i);
-    expect(routes).not.toMatch(/router\.post\(\s*"\/admin\/listings\/:listingId\/moderation-actions"|\/admin\/users/i);
+    expect(routes.match(/router\.post\(\s*"\/admin\/listings\/:listingId\/moderation-actions"/g)).toHaveLength(1);
+    expect(routes).not.toMatch(/\/admin\/users/i);
   });
   it("limits writes to listing content and listing amenities", async () => {
     const repository = await readFile(path.join(listings, "listing-update-repository.ts"), "utf8");

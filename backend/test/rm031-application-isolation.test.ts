@@ -21,7 +21,7 @@ async function source(filename: string): Promise<string> {
 describe("RM-031 application isolation", () => {
   it("contains exactly 60 listings files and sixteen routes through V1-22 plus public reads", async () => {
     const files = (await readdir(listingsRoot)).sort();
-    expect(files).toHaveLength(67);
+    expect(files).toHaveLength(71);
     expect(files.filter((file) => file.startsWith("listing-image-order-"))).toStrictEqual([
       "listing-image-order-controller.ts",
       "listing-image-order-repository.ts",
@@ -33,7 +33,7 @@ describe("RM-031 application isolation", () => {
       match[1],
       match[2]
     ]);
-    expect(registrations).toHaveLength(19);
+    expect(registrations).toHaveLength(20);
     expect(registrations.filter(([, route]) => route === "/listings")).toStrictEqual([["get", "/listings"]]);
     expect(registrations.filter((entry) => entry[0] === "post" && entry[1]?.endsWith("/images"))).toHaveLength(1);
     expect(
@@ -42,7 +42,8 @@ describe("RM-031 application isolation", () => {
     expect(registrations.filter((entry) => entry[0] === "put" && entry[1]?.endsWith("/images/order"))).toHaveLength(1);
     expect(registrations.filter((entry) => entry[0] === "post" && entry[1] === "/geocoding/forward")).toHaveLength(1);
     expect(routes).not.toMatch(/favorite/i);
-    expect(routes).not.toMatch(/router\.post\(\s*"\/admin\/listings\/:listingId\/moderation-actions"|\/admin\/users/i);
+    expect(routes.match(/router\.post\(\s*"\/admin\/listings\/:listingId\/moderation-actions"/g)).toHaveLength(1);
+    expect(routes).not.toMatch(/\/admin\/users/i);
   });
 
   it("keeps RM-031 database-only, transaction-bound, lifecycle-neutral, and provider-free", async () => {

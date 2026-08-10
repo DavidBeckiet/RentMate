@@ -134,6 +134,32 @@ describe("RM-041 admin listing mappers", () => {
     });
   });
 
+  it("maps 1000 astral reason code points and rejects 1001", () => {
+    const maximum = "😀".repeat(1_000);
+    expect(
+      mapModerationHistoryItemRow({
+        id: 301,
+        listing_id: 42,
+        admin_id: 3,
+        previous_status: "PENDING",
+        new_status: "REJECTED",
+        reason: maximum,
+        created_at: timestamp
+      }).reason
+    ).toBe(maximum);
+    expect(() =>
+      mapModerationHistoryItemRow({
+        id: 302,
+        listing_id: 42,
+        admin_id: 3,
+        previous_status: "PENDING",
+        new_status: "REJECTED",
+        reason: `${maximum}😀`,
+        created_at: timestamp
+      })
+    ).toThrow("Moderation history representation is invalid.");
+  });
+
   it("fails closed for corrupt mandatory landlord/reason data", () => {
     expect(() => mapAdminListingDetailRow({ ...detailRow, landlord_phone: null })).toThrow(
       "Admin listing detail representation is invalid."

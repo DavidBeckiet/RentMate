@@ -5,6 +5,8 @@ import {
   createListModerationHistoryHandler
 } from "./admin-listing-read-controller.js";
 import type { AdminListingReadService } from "./admin-listing-read-service.js";
+import { createModerateListingHandler } from "./moderation-action-controller.js";
+import type { ModerationActionService } from "./moderation-action-service.js";
 import {
   createRateLimitMiddleware,
   InMemoryRateLimitStore,
@@ -56,6 +58,7 @@ export interface ListingsRouteDependencies {
   readonly landlordRoleMiddleware: RequestHandler;
   readonly adminRoleMiddleware: RequestHandler;
   readonly adminListingReadService: AdminListingReadService;
+  readonly moderationActionService: ModerationActionService;
   readonly listingCreateService: ListingCreateService;
   readonly ownerListingReadService: OwnerListingReadService;
   readonly publicListingSearchService: PublicListingSearchService;
@@ -107,6 +110,12 @@ export function registerListingsRoutes(router: Router, dependencies: ListingsRou
     "/listings/:listingId",
     dependencies.optionalAuthenticationMiddleware,
     createPublicListingDetailHandler(dependencies.publicListingDetailService)
+  );
+  router.post(
+    "/admin/listings/:listingId/moderation-actions",
+    dependencies.authenticationMiddleware,
+    dependencies.adminRoleMiddleware,
+    createModerateListingHandler(dependencies.moderationActionService)
   );
   router.get(
     "/admin/listings",

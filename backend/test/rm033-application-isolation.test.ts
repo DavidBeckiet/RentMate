@@ -24,7 +24,7 @@ async function source(filename: string): Promise<string> {
 describe("RM-033 application isolation", () => {
   it("keeps the geocoding inventory alongside the current route set", async () => {
     const files = (await readdir(listingsRoot)).sort();
-    expect(files).toHaveLength(67);
+    expect(files).toHaveLength(71);
     expect(files.filter((filename) => filename.startsWith("geocoding-"))).toStrictEqual([
       "geocoding-controller.ts",
       "geocoding-service.ts",
@@ -37,10 +37,10 @@ describe("RM-033 application isolation", () => {
     const routeSources = await Promise.all(moduleRouteFiles.map((filename) => readFile(filename, "utf8")));
     const routePattern = /router\.(get|post|patch|put|delete)\(\s*"([^"]+)"/g;
     const listingsRoutes = [...routeSources[2]!.matchAll(routePattern)].map((match) => [match[1], match[2]]);
-    expect(listingsRoutes).toHaveLength(19);
+    expect(listingsRoutes).toHaveLength(20);
     expect(listingsRoutes.filter((entry) => entry[0] === "get" && entry[1] === "/listings")).toHaveLength(1);
     expect(listingsRoutes.filter((entry) => entry[0] === "post" && entry[1] === "/geocoding/forward")).toHaveLength(1);
-    expect(routeSources.flatMap((routeSource) => [...routeSource.matchAll(routePattern)])).toHaveLength(28);
+    expect(routeSources.flatMap((routeSource) => [...routeSource.matchAll(routePattern)])).toHaveLength(29);
     for (const route of [
       "/landlord/listings/:listingId/images",
       "/landlord/listings/:listingId/images/:imageId",

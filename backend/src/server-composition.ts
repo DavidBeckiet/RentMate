@@ -16,6 +16,7 @@ import { createFavoriteService } from "./modules/favorites/favorite-service.js";
 import { registerFavoriteRoutes } from "./modules/favorites/routes.js";
 import { createAdminListingReadRepository } from "./modules/listings/admin-listing-read-repository.js";
 import { createAdminListingReadService } from "./modules/listings/admin-listing-read-service.js";
+import { createModerationActionService } from "./modules/listings/moderation-action-service.js";
 import { createListingCreateService, type TransactionRunner } from "./modules/listings/listing-create-service.js";
 import { createGeocodingService } from "./modules/listings/geocoding-service.js";
 import {
@@ -105,6 +106,7 @@ export async function createBackendApp(options: BackendAppCompositionOptions): P
   const ownerListingReadRepository = createOwnerListingReadRepository(options.sqlExecutor);
   const ownerListingReadService = createOwnerListingReadService(ownerListingReadRepository);
   const adminListingReadService = createAdminListingReadService(createAdminListingReadRepository(options.sqlExecutor));
+  const moderationActionService = createModerationActionService({ transactionRunner });
   const publicListingSearchService = createPublicListingSearchService(
     createPublicListingSearchRepository(options.sqlExecutor),
     options.publicListingSearchConfig
@@ -182,6 +184,7 @@ export async function createBackendApp(options: BackendAppCompositionOptions): P
         landlordRoleMiddleware: landlordRole,
         adminRoleMiddleware: adminRole,
         adminListingReadService,
+        moderationActionService,
         listingCreateService,
         ownerListingReadService,
         publicListingSearchService,

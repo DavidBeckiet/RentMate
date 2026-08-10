@@ -32,7 +32,7 @@ describe("RM-040 application isolation", () => {
     );
     const routePattern = /router\.(get|post|patch|put|delete)\(\s*"([^"]+)"/g;
     const routes = sources.flatMap((source) => [...source.matchAll(routePattern)].map((match) => [match[1], match[2]]));
-    expect(routes).toHaveLength(28);
+    expect(routes).toHaveLength(29);
     expect(routes.filter(([, route]) => route?.includes("favorites"))).toStrictEqual([
       ["get", "/favorites"],
       ["put", "/favorites/:listingId"],
@@ -40,6 +40,7 @@ describe("RM-040 application isolation", () => {
     ]);
     expect(routes.filter(([method, route]) => method === "post" && route?.includes("favorites"))).toHaveLength(0);
     expect(routes.filter(([, route]) => route?.startsWith("/admin"))).toStrictEqual([
+      ["post", "/admin/listings/:listingId/moderation-actions"],
       ["get", "/admin/listings"],
       ["get", "/admin/listings/:listingId/moderation-actions"],
       ["get", "/admin/listings/:listingId"]
@@ -82,7 +83,7 @@ describe("RM-040 application isolation", () => {
       "nominatim.client.ts"
     ]);
     const listingsRoot = path.join(sourceRoot, "modules", "listings");
-    expect((await readdir(listingsRoot)).sort()).toHaveLength(67);
+    expect((await readdir(listingsRoot)).sort()).toHaveLength(71);
     const listingsRoutes = await readFile(path.join(listingsRoot, "routes.ts"), "utf8");
     const routePattern = /router\.(get|post|patch|put|delete)\(\s*"([^"]+)"/g;
     expect(
@@ -90,6 +91,7 @@ describe("RM-040 application isolation", () => {
         .map((match) => [match[1], match[2]])
         .filter(([, route]) => route?.startsWith("/admin"))
     ).toStrictEqual([
+      ["post", "/admin/listings/:listingId/moderation-actions"],
       ["get", "/admin/listings"],
       ["get", "/admin/listings/:listingId/moderation-actions"],
       ["get", "/admin/listings/:listingId"]

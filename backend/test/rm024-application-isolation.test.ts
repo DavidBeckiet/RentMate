@@ -74,6 +74,10 @@ describe("RM-024 application isolation", () => {
       "lookup-controller.ts",
       "lookup-mapper.ts",
       "lookup-repository.ts",
+      "moderation-action-controller.ts",
+      "moderation-action-repository.ts",
+      "moderation-action-service.ts",
+      "moderation-action-validation.ts",
       "moderation-history-mapper.ts",
       "owner-image-mapper.ts",
       "owner-listing-mapper.ts",
@@ -104,6 +108,7 @@ describe("RM-024 application isolation", () => {
       ["get", "/lookups/amenities"],
       ["get", "/listings"],
       ["get", "/listings/:listingId"],
+      ["post", "/admin/listings/:listingId/moderation-actions"],
       ["get", "/admin/listings"],
       ["get", "/admin/listings/:listingId/moderation-actions"],
       ["get", "/admin/listings/:listingId"],
@@ -121,7 +126,8 @@ describe("RM-024 application isolation", () => {
       ["post", "/geocoding/forward"]
     ]);
     expect(routes).not.toMatch(/favorite/i);
-    expect(routes).not.toMatch(/router\.post\(\s*"\/admin\/listings\/:listingId\/moderation-actions"|\/admin\/users/i);
+    expect(routes.match(/router\.post\(\s*"\/admin\/listings\/:listingId\/moderation-actions"/g)).toHaveLength(1);
+    expect(routes).not.toMatch(/\/admin\/users/i);
   });
 
   it("contains exactly one focused significant-edit matrix and no PATCH-local copy", async () => {
@@ -155,7 +161,13 @@ describe("RM-024 application isolation", () => {
   it("adds no moderation write, provider implementation, public reason projection, or framework", async () => {
     const sources = await productionSources();
     const combined = Object.values(sources).join("\n");
-    expect(combined).not.toMatch(/(?:INSERT INTO|UPDATE|DELETE FROM)\s+moderation_history/i);
+    const preRm042 = Object.entries(sources)
+      .filter(([filename]) => !filename.startsWith("moderation-action-"))
+      .map(([, source]) => source)
+      .join("\n");
+    expect(preRm042).not.toMatch(/(?:INSERT INTO|UPDATE|DELETE FROM)\s+moderation_history/i);
+    expect(sources["moderation-action-repository.ts"]?.match(/INSERT INTO moderation_history/g)).toHaveLength(1);
+    expect(sources["moderation-action-repository.ts"]).not.toMatch(/(?:UPDATE|DELETE FROM)\s+moderation_history/i);
     expect(combined).not.toMatch(/bulk.?upload|image.?replacement|queue|worker|outbox/i);
     expect(combined).not.toMatch(
       /BaseRepository|GenericRepository|DIContainer|module.?registry|event.?bus|workflow.?engine|route.?discovery/i

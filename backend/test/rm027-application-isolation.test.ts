@@ -65,6 +65,10 @@ describe("RM-027 application isolation", () => {
       "lookup-controller.ts",
       "lookup-mapper.ts",
       "lookup-repository.ts",
+      "moderation-action-controller.ts",
+      "moderation-action-repository.ts",
+      "moderation-action-service.ts",
+      "moderation-action-validation.ts",
       "moderation-history-mapper.ts",
       "owner-image-mapper.ts",
       "owner-listing-mapper.ts",
@@ -95,6 +99,7 @@ describe("RM-027 application isolation", () => {
       ["get", "/lookups/amenities"],
       ["get", "/listings"],
       ["get", "/listings/:listingId"],
+      ["post", "/admin/listings/:listingId/moderation-actions"],
       ["get", "/admin/listings"],
       ["get", "/admin/listings/:listingId/moderation-actions"],
       ["get", "/admin/listings/:listingId"],
@@ -113,7 +118,8 @@ describe("RM-027 application isolation", () => {
     ]);
     expect(routes.match(/router\.delete/g)).toHaveLength(2);
     expect(routes).not.toMatch(/favorite/i);
-    expect(routes).not.toMatch(/router\.post\(\s*"\/admin\/listings\/:listingId\/moderation-actions"|\/admin\/users/i);
+    expect(routes.match(/router\.post\(\s*"\/admin\/listings\/:listingId\/moderation-actions"/g)).toHaveLength(1);
+    expect(routes).not.toMatch(/\/admin\/users/i);
   });
 
   it("keeps delete persistence owner-scoped, transaction-safe, and database-cascade-only", async () => {

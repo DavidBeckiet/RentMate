@@ -14,7 +14,7 @@ describe("RM-041 application isolation", () => {
       "users"
     ]);
     const files = (await readdir(listingsRoot)).sort();
-    expect(files).toHaveLength(67);
+    expect(files).toHaveLength(71);
     expect(
       files.filter((name) => name.startsWith("admin-listing") || name === "moderation-history-mapper.ts")
     ).toStrictEqual([
@@ -36,16 +36,19 @@ describe("RM-041 application isolation", () => {
     const pattern = /router\.(get|post|patch|put|delete)\(\s*"([^"]+)"/g;
     const all = sources.flatMap((source) => [...source.matchAll(pattern)].map((match) => [match[1], match[2]]));
     const listings = [...sources[2]!.matchAll(pattern)].map((match) => [match[1], match[2]]);
-    expect(all).toHaveLength(28);
-    expect(listings).toHaveLength(19);
+    expect(all).toHaveLength(29);
+    expect(listings).toHaveLength(20);
     expect(listings.filter((route) => route[1] === "/admin/listings")).toStrictEqual([["get", "/admin/listings"]]);
     expect(listings.filter((route) => route[1] === "/admin/listings/:listingId")).toStrictEqual([
       ["get", "/admin/listings/:listingId"]
     ]);
     expect(listings.filter((route) => route[1] === "/admin/listings/:listingId/moderation-actions")).toStrictEqual([
+      ["post", "/admin/listings/:listingId/moderation-actions"],
       ["get", "/admin/listings/:listingId/moderation-actions"]
     ]);
-    expect(all).not.toContainEqual(["post", "/admin/listings/:listingId/moderation-actions"]);
+    expect(
+      all.filter((route) => route[0] === "post" && route[1] === "/admin/listings/:listingId/moderation-actions")
+    ).toHaveLength(1);
     expect(all.some(([, route]) => route === "/admin/users" || route === "/admin/users/:userId/activation")).toBe(
       false
     );

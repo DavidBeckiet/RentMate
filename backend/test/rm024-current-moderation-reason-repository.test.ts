@@ -62,4 +62,17 @@ describe("RM-024 current moderation reason repository", () => {
     expect(value).toBe("Projected only");
     expect(typeof value).toBe("string");
   });
+
+  it("accepts 1000 astral code points and rejects 1001", async () => {
+    const maximum = "😀".repeat(1_000);
+    await expect(
+      createCurrentModerationReasonRepository(fixture([{ reason: maximum }]).executor).findLatestReason(1, "HIDDEN")
+    ).resolves.toBe(maximum);
+    await expect(
+      createCurrentModerationReasonRepository(fixture([{ reason: `${maximum}😀` }]).executor).findLatestReason(
+        1,
+        "HIDDEN"
+      )
+    ).rejects.toBeInstanceOf(RepositoryInvariantError);
+  });
 });

@@ -24,13 +24,13 @@ async function recursiveFiles(root: string): Promise<string[]> {
 describe("RM-032 application isolation", () => {
   it("keeps exactly 55 listings production files and fifteen routes through V1-22 plus V1-09", async () => {
     const files = (await readdir(listingsRoot)).sort();
-    expect(files).toHaveLength(67);
+    expect(files).toHaveLength(71);
     const routes = await listingSource("routes.ts");
     const registrations = [...routes.matchAll(/router\.(get|post|patch|put|delete)\(\s*"([^"]+)"/g)].map((match) => [
       match[1],
       match[2]
     ]);
-    expect(registrations).toHaveLength(19);
+    expect(registrations).toHaveLength(20);
     expect(registrations.filter((entry) => entry[0] === "get" && entry[1] === "/listings")).toHaveLength(1);
     expect(
       registrations.filter((entry) => entry[0] === "delete" && entry[1] === "/landlord/listings/:listingId")

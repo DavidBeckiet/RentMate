@@ -14,7 +14,7 @@ export interface CurrentModerationReasonRepository {
 export type CurrentModerationReasonRepositoryFactory = (executor: SqlExecutor) => CurrentModerationReasonRepository;
 
 function mapCurrentModerationReasonRow(row: Readonly<CurrentModerationReasonRow>): string {
-  if (typeof row.reason !== "string" || row.reason.trim().length === 0 || row.reason.length > 1_000) {
+  if (typeof row.reason !== "string" || row.reason.trim().length === 0 || [...row.reason].length > 1_000) {
     throw new RepositoryInvariantError("Current moderation reason row is invalid.");
   }
   return row.reason;

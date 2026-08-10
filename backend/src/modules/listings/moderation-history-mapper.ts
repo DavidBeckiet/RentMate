@@ -47,7 +47,7 @@ function isPositiveIntegerId(value: unknown): value is number {
 }
 
 function isReason(value: unknown): value is string | null {
-  return value === null || (typeof value === "string" && value.trim().length > 0 && value.length <= 1_000);
+  return value === null || (typeof value === "string" && value.trim().length > 0 && [...value].length <= 1_000);
 }
 
 export function mapModerationHistoryItemRow(row: Readonly<ModerationHistoryItemRow>): ModerationHistoryItem {

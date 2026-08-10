@@ -18,6 +18,15 @@ describe("RM-024 current moderation reason policy", () => {
     expect(resolveCurrentModerationReason(status, reason)).toBe(reason);
   });
 
+  it("counts astral characters as Unicode code points at the 1000/1001 boundary", () => {
+    const maximum = "😀".repeat(1_000);
+    expect(maximum).toHaveLength(2_000);
+    expect(resolveCurrentModerationReason("HIDDEN", maximum)).toBe(maximum);
+    expect(() => resolveCurrentModerationReason("HIDDEN", `${maximum}😀`)).toThrow(
+      CurrentModerationReasonInvariantError
+    );
+  });
+
   it.each([undefined, null, "", "   ", "x".repeat(1_001), 42, {}, { reason: "raw history" }])(
     "rejects invalid applicable reason representation",
     (reason) => {

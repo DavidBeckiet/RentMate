@@ -301,7 +301,11 @@ describe("RM-026 listing lifecycle action HTTP", () => {
         pagination: { page: 1, pageSize: 20, hasNextPage: false }
       });
     await request(app).get("/api/v1/admin/listings").expect(401);
-    await request(app).post("/api/v1/admin/listings/7/moderation-actions").set("Origin", origin).expect(404);
+    await request(app)
+      .post("/api/v1/admin/listings/7/moderation-actions")
+      .set("Origin", origin)
+      .send({ action: "APPROVE" })
+      .expect(401);
     await request(app).get("/api/v1/admin/users").expect(404);
     await request(app).patch("/api/v1/admin/users/7/activation").set("Origin", origin).expect(404);
   });
