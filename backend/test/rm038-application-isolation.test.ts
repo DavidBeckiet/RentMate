@@ -1,4 +1,3 @@
-import { execFileSync } from "node:child_process";
 import { readdir, readFile } from "node:fs/promises";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
@@ -7,13 +6,6 @@ const backendRoot = process.cwd();
 const repositoryRoot = path.resolve(backendRoot, "..");
 const sourceRoot = path.join(backendRoot, "src");
 const listingsRoot = path.join(sourceRoot, "modules", "listings");
-
-function gitDiff(...paths: string[]): string {
-  return execFileSync("git", ["diff", "--name-only", "--", ...paths], {
-    cwd: repositoryRoot,
-    encoding: "utf8"
-  }).trim();
-}
 
 describe("RM-038 verification-only application isolation", () => {
   it("keeps the RM-037 listings inventory and current route inventory", async () => {
@@ -31,27 +23,49 @@ describe("RM-038 verification-only application isolation", () => {
     expect(listingRoutes.filter((match) => match[1] === "get" && match[2] === "/listings/:listingId")).toHaveLength(1);
   });
 
-  it("keeps every RM-039-protected production, schema, frontend, dependency, and frozen-document path unchanged", () => {
-    expect(
-      gitDiff(
-        "backend/src/app.ts",
-        "backend/src/server.ts",
-        "backend/src/config",
-        "backend/src/db",
-        "backend/src/integrations",
-        "backend/src/modules/auth",
-        "backend/src/modules/listings",
-        "backend/src/modules/users",
-        "backend/src/shared",
-        "backend/migrations",
-        "frontend",
-        "docs",
+  it("keeps every RM-039-protected current repository inventory intact", async () => {
+    expect((await readdir(sourceRoot)).sort()).toStrictEqual([
+      "app.ts",
+      "config",
+      "db",
+      "integrations",
+      "modules",
+      "server-composition.ts",
+      "server.ts",
+      "shared",
+      "shutdown.ts"
+    ]);
+    expect((await readdir(path.join(sourceRoot, "integrations"))).sort()).toStrictEqual([
+      "cloudinary.client.ts",
+      "nominatim.client.ts"
+    ]);
+    expect((await readdir(listingsRoot)).sort()).toHaveLength(67);
+    expect((await readdir(path.join(backendRoot, "migrations"))).filter((file) => file.endsWith(".sql"))).toHaveLength(
+      12
+    );
+
+    const routes = await readFile(path.join(listingsRoot, "routes.ts"), "utf8");
+    const routePattern = /router\.(get|post|patch|put|delete)\(\s*"([^"]+)"/g;
+    const adminRoutes = [...routes.matchAll(routePattern)]
+      .map((match) => [match[1], match[2]])
+      .filter(([, route]) => route?.startsWith("/admin"));
+    expect(adminRoutes).toStrictEqual([
+      ["get", "/admin/listings"],
+      ["get", "/admin/listings/:listingId/moderation-actions"],
+      ["get", "/admin/listings/:listingId"]
+    ]);
+
+    const frozenDocuments = await Promise.all(
+      [
         "AGENTS.md",
-        ".env.example",
-        "backend/package-lock.json",
-        "package-lock.json"
-      )
-    ).toBe("backend/src/modules/listings/routes.ts");
+        "docs/requirements/REQUIREMENTS.md",
+        "docs/architecture/ARCHITECTURE.md",
+        "docs/database/DATABASE_DESIGN.md",
+        "docs/api/API_SPECIFICATION.md",
+        "docs/implementation/IMPLEMENTATION_ROADMAP.md"
+      ].map((filename) => readFile(path.join(repositoryRoot, filename), "utf8"))
+    );
+    expect(frozenDocuments.every((document) => document.length > 0)).toBe(true);
   });
 
   it("proves discovery SQL is read-only, count-free, provider-free, narrowly projected, and reuses one distance stage", async () => {

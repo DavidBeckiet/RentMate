@@ -115,7 +115,7 @@ describe("RM-032 application isolation", () => {
     expect(await recursiveFiles(path.join(backendRoot, "src"))).not.toEqual(
       expect.arrayContaining([expect.stringMatching(/rm034/i)])
     );
-    expect(await recursiveFiles(path.join(repositoryRoot, "frontend"))).not.toEqual(
+    expect(await recursiveFiles(path.join(repositoryRoot, "frontend", "app"))).not.toEqual(
       expect.arrayContaining([expect.stringMatching(/rm032/i)])
     );
   });

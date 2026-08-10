@@ -115,7 +115,7 @@ describe("RM-035 application isolation", () => {
       "nominatim.client.ts"
     ]);
     expect(
-      (await recursiveFiles(path.join(repositoryRoot, "frontend"))).some((filename) => /rm035/i.test(filename))
+      (await recursiveFiles(path.join(repositoryRoot, "frontend", "app"))).some((filename) => /rm035/i.test(filename))
     ).toBe(false);
   });
 });

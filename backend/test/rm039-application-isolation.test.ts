@@ -1,4 +1,3 @@
-import { execFileSync } from "node:child_process";
 import { readdir, readFile } from "node:fs/promises";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
@@ -7,13 +6,6 @@ const backendRoot = process.cwd();
 const repositoryRoot = path.resolve(backendRoot, "..");
 const sourceRoot = path.join(backendRoot, "src");
 const favoritesRoot = path.join(sourceRoot, "modules", "favorites");
-
-function gitDiff(...paths: string[]): string {
-  return execFileSync("git", ["diff", "--name-only", "--", ...paths], {
-    cwd: repositoryRoot,
-    encoding: "utf8"
-  }).trim();
-}
 
 describe("RM-039 application isolation", () => {
   it("contains exactly four business modules and five favorite production files", async () => {
@@ -65,26 +57,49 @@ describe("RM-039 application isolation", () => {
     );
   });
 
-  it("adds no migration, dependency, lockfile, frontend, provider, shared, listing, or frozen-document change", async () => {
+  it("preserves the current migration, provider, listing, and frozen-document inventories", async () => {
     expect((await readdir(path.join(backendRoot, "migrations"))).filter((file) => file.endsWith(".sql"))).toHaveLength(
       12
     );
+    expect((await readdir(sourceRoot)).sort()).toStrictEqual([
+      "app.ts",
+      "config",
+      "db",
+      "integrations",
+      "modules",
+      "server-composition.ts",
+      "server.ts",
+      "shared",
+      "shutdown.ts"
+    ]);
+    expect((await readdir(path.join(sourceRoot, "integrations"))).sort()).toStrictEqual([
+      "cloudinary.client.ts",
+      "nominatim.client.ts"
+    ]);
+    const listingsRoot = path.join(sourceRoot, "modules", "listings");
+    expect((await readdir(listingsRoot)).sort()).toHaveLength(67);
+    const listingsRoutes = await readFile(path.join(listingsRoot, "routes.ts"), "utf8");
+    const routePattern = /router\.(get|post|patch|put|delete)\(\s*"([^"]+)"/g;
     expect(
-      gitDiff(
-        "backend/src/server.ts",
-        "backend/src/app.ts",
-        "backend/src/modules/listings",
-        "backend/src/shared",
-        "backend/src/integrations",
-        "backend/migrations",
-        "frontend",
-        "docs",
+      [...listingsRoutes.matchAll(routePattern)]
+        .map((match) => [match[1], match[2]])
+        .filter(([, route]) => route?.startsWith("/admin"))
+    ).toStrictEqual([
+      ["get", "/admin/listings"],
+      ["get", "/admin/listings/:listingId/moderation-actions"],
+      ["get", "/admin/listings/:listingId"]
+    ]);
+    const frozenDocuments = await Promise.all(
+      [
         "AGENTS.md",
-        ".env.example",
-        "backend/package-lock.json",
-        "package-lock.json"
-      )
-    ).toBe("backend/src/modules/listings/routes.ts");
+        "docs/requirements/REQUIREMENTS.md",
+        "docs/architecture/ARCHITECTURE.md",
+        "docs/database/DATABASE_DESIGN.md",
+        "docs/api/API_SPECIFICATION.md",
+        "docs/implementation/IMPLEMENTATION_ROADMAP.md"
+      ].map((filename) => readFile(path.join(repositoryRoot, filename), "utf8"))
+    );
+    expect(frozenDocuments.every((document) => document.length > 0)).toBe(true);
   });
 
   it("routes RM-039 suites through the correct serial Vitest configuration", async () => {

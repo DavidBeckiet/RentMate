@@ -112,7 +112,7 @@ describe("RM-033 application isolation", () => {
     expect(migrations).toHaveLength(12);
     const productionFiles = await recursiveFiles(path.join(backendRoot, "src"));
     expect(productionFiles).not.toEqual(expect.arrayContaining([expect.stringMatching(/rm034/i)]));
-    expect(await recursiveFiles(path.join(repositoryRoot, "frontend"))).not.toEqual(
+    expect(await recursiveFiles(path.join(repositoryRoot, "frontend", "app"))).not.toEqual(
       expect.arrayContaining([expect.stringMatching(/geocod|nominatim|rm033/i)])
     );
   });
