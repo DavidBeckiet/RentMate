@@ -44,6 +44,10 @@ describe("RM-017 application isolation", () => {
       "session-token.ts"
     ]);
     expect(usersFiles).toEqual([
+      "admin-user-controller.ts",
+      "admin-user-repository.ts",
+      "admin-user-service.ts",
+      "admin-user-validation.ts",
       "routes.ts",
       "user-profile.ts",
       "user-validation.ts",
@@ -53,7 +57,7 @@ describe("RM-017 application isolation", () => {
     ]);
   });
 
-  it("registers exactly two current-user routes and keeps auth at four routes", async () => {
+  it("registers exactly two current-user and two admin-user routes while keeping auth at four routes", async () => {
     const authRoutes = await readFile(path.resolve(backendRoot, "src/modules/auth/routes.ts"), "utf8");
     const usersRoutes = await readFile(path.resolve(backendRoot, "src/modules/users/routes.ts"), "utf8");
 
@@ -61,8 +65,11 @@ describe("RM-017 application isolation", () => {
       "get",
       "patch"
     ]);
-    expect([...usersRoutes.matchAll(/router\.(get|patch|post|put|delete)\(/g)]).toHaveLength(2);
-    expect(usersRoutes).not.toMatch(/auth\/me|users\/:userId|admin|role.?middleware|optional|rate.?limit/i);
+    expect([...usersRoutes.matchAll(/router\.(get|patch|post|put|delete)\(/g)]).toHaveLength(4);
+    expect(
+      [...usersRoutes.matchAll(/router\.(get|patch)\(\s*"\/admin\/users[^"]*"/g)].map((match) => match[1])
+    ).toEqual(["get", "patch"]);
+    expect(usersRoutes).not.toMatch(/auth\/me|createOptionalAuthenticationMiddleware|rate.?limit/i);
     expect([...authRoutes.matchAll(/router\.post\(/g)]).toHaveLength(4);
     expect(authRoutes).not.toMatch(/users\/me|auth\/me|password.?reset|refresh.?token/i);
   });

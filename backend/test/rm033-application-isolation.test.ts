@@ -40,7 +40,7 @@ describe("RM-033 application isolation", () => {
     expect(listingsRoutes).toHaveLength(20);
     expect(listingsRoutes.filter((entry) => entry[0] === "get" && entry[1] === "/listings")).toHaveLength(1);
     expect(listingsRoutes.filter((entry) => entry[0] === "post" && entry[1] === "/geocoding/forward")).toHaveLength(1);
-    expect(routeSources.flatMap((routeSource) => [...routeSource.matchAll(routePattern)])).toHaveLength(29);
+    expect(routeSources.flatMap((routeSource) => [...routeSource.matchAll(routePattern)])).toHaveLength(31);
     for (const route of [
       "/landlord/listings/:listingId/images",
       "/landlord/listings/:listingId/images/:imageId",

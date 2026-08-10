@@ -31,7 +31,7 @@ describe("RM-039 application isolation", () => {
     );
     const routePattern = /router\.(get|post|patch|put|delete)\(\s*"([^"]+)"/g;
     const routes = sources.flatMap((source) => [...source.matchAll(routePattern)].map((match) => [match[1], match[2]]));
-    expect(routes).toHaveLength(29);
+    expect(routes).toHaveLength(31);
     expect(routes.filter(([method, route]) => method === "get" && route === "/favorites")).toHaveLength(1);
     expect(routes.filter(([method, route]) => method === "put" && route === "/favorites/:listingId")).toHaveLength(1);
     expect(routes.filter(([method, route]) => method === "delete" && route === "/favorites/:listingId")).toHaveLength(

@@ -43,6 +43,8 @@ import {
 import { createPublicListingDetailRepository } from "./modules/listings/public-listing-detail-repository.js";
 import { createPublicListingDetailService } from "./modules/listings/public-listing-detail-service.js";
 import { registerListingsRoutes } from "./modules/listings/routes.js";
+import { createAdminUserRepository } from "./modules/users/admin-user-repository.js";
+import { createAdminUserService } from "./modules/users/admin-user-service.js";
 import { registerUsersRoutes } from "./modules/users/routes.js";
 import { createUsersRepository } from "./modules/users/users-repository.js";
 import { createUsersService } from "./modules/users/users-service.js";
@@ -102,6 +104,10 @@ export async function createBackendApp(options: BackendAppCompositionOptions): P
   const favoriteService = createFavoriteService(createFavoriteRepository(options.sqlExecutor));
   const lookupRepository = createLookupRepository(options.sqlExecutor);
   const transactionRunner = options.transactionRunner ?? unavailableTransactionRunner;
+  const adminUserService = createAdminUserService({
+    repository: createAdminUserRepository(options.sqlExecutor),
+    transactionRunner
+  });
   const listingCreateService = createListingCreateService({ transactionRunner });
   const ownerListingReadRepository = createOwnerListingReadRepository(options.sqlExecutor);
   const ownerListingReadService = createOwnerListingReadService(ownerListingReadRepository);
@@ -170,6 +176,8 @@ export async function createBackendApp(options: BackendAppCompositionOptions): P
       });
       registerUsersRoutes(router, {
         authenticationMiddleware: requiredAuthentication,
+        adminRoleMiddleware: adminRole,
+        adminUserService,
         usersService
       });
       registerFavoriteRoutes(router, {

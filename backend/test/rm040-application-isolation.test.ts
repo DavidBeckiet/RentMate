@@ -24,7 +24,7 @@ describe("RM-040 application isolation", () => {
     ]);
   });
 
-  it("preserves exactly 25 routes and only V1-23, V1-24, and V1-25 for favorites", async () => {
+  it("preserves exactly 31 routes and only V1-23, V1-24, and V1-25 for favorites", async () => {
     const sources = await Promise.all(
       ["auth", "favorites", "listings", "users"].map((module) =>
         readFile(path.join(sourceRoot, "modules", module, "routes.ts"), "utf8")
@@ -32,7 +32,7 @@ describe("RM-040 application isolation", () => {
     );
     const routePattern = /router\.(get|post|patch|put|delete)\(\s*"([^"]+)"/g;
     const routes = sources.flatMap((source) => [...source.matchAll(routePattern)].map((match) => [match[1], match[2]]));
-    expect(routes).toHaveLength(29);
+    expect(routes).toHaveLength(31);
     expect(routes.filter(([, route]) => route?.includes("favorites"))).toStrictEqual([
       ["get", "/favorites"],
       ["put", "/favorites/:listingId"],
@@ -43,7 +43,9 @@ describe("RM-040 application isolation", () => {
       ["post", "/admin/listings/:listingId/moderation-actions"],
       ["get", "/admin/listings"],
       ["get", "/admin/listings/:listingId/moderation-actions"],
-      ["get", "/admin/listings/:listingId"]
+      ["get", "/admin/listings/:listingId"],
+      ["get", "/admin/users"],
+      ["patch", "/admin/users/:userId/activation"]
     ]);
   });
 

@@ -18,7 +18,7 @@ describe("RM-038 verification-only application isolation", () => {
     const listingRoutes = [...routeSources[2]!.matchAll(routePattern)];
     const allV1Routes = routeSources.flatMap((source) => [...source.matchAll(routePattern)]);
     expect(listingRoutes).toHaveLength(20);
-    expect(allV1Routes).toHaveLength(29);
+    expect(allV1Routes).toHaveLength(31);
     expect(listingRoutes.filter((match) => match[1] === "get" && match[2] === "/listings")).toHaveLength(1);
     expect(listingRoutes.filter((match) => match[1] === "get" && match[2] === "/listings/:listingId")).toHaveLength(1);
   });

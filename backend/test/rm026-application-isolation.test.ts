@@ -156,7 +156,6 @@ describe("RM-026 application isolation", () => {
         "backend/src/app.ts",
         "backend/src/config",
         "backend/src/modules/auth",
-        "backend/src/modules/users",
         "backend/src/shared",
         "backend/src/db",
         "backend/migrations",

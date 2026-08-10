@@ -36,7 +36,7 @@ describe("RM-041 application isolation", () => {
     const pattern = /router\.(get|post|patch|put|delete)\(\s*"([^"]+)"/g;
     const all = sources.flatMap((source) => [...source.matchAll(pattern)].map((match) => [match[1], match[2]]));
     const listings = [...sources[2]!.matchAll(pattern)].map((match) => [match[1], match[2]]);
-    expect(all).toHaveLength(29);
+    expect(all).toHaveLength(31);
     expect(listings).toHaveLength(20);
     expect(listings.filter((route) => route[1] === "/admin/listings")).toStrictEqual([["get", "/admin/listings"]]);
     expect(listings.filter((route) => route[1] === "/admin/listings/:listingId")).toStrictEqual([
@@ -49,9 +49,12 @@ describe("RM-041 application isolation", () => {
     expect(
       all.filter((route) => route[0] === "post" && route[1] === "/admin/listings/:listingId/moderation-actions")
     ).toHaveLength(1);
-    expect(all.some(([, route]) => route === "/admin/users" || route === "/admin/users/:userId/activation")).toBe(
-      false
-    );
+    expect(
+      all.filter(([, route]) => route === "/admin/users" || route === "/admin/users/:userId/activation")
+    ).toStrictEqual([
+      ["get", "/admin/users"],
+      ["patch", "/admin/users/:userId/activation"]
+    ]);
   });
 
   it("keeps RM-041 read-only, provider-free, and outside frozen/protected paths", async () => {

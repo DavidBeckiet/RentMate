@@ -213,7 +213,6 @@ describe("RM-019 application isolation", () => {
         "backend/src/config/env.ts",
         ".env.example",
         "backend/src/modules/auth",
-        "backend/src/modules/users",
         "backend/src/shared",
         "backend/src/db"
       )

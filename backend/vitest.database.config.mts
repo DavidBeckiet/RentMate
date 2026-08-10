@@ -40,7 +40,8 @@ export default defineConfig({
       "test/rm040-favorite.database.integration.test.ts",
       "test/rm040-favorite-concurrency.database.integration.test.ts",
       "test/rm041-admin-listing-read.database.integration.test.ts",
-      "test/rm042-moderation-action.database.integration.test.ts"
+      "test/rm042-moderation-action.database.integration.test.ts",
+      "test/rm043-admin-user.database.integration.test.ts"
     ],
     exclude: ["node_modules/**", "dist/**", "coverage/**"],
     clearMocks: true,

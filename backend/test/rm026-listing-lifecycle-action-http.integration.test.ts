@@ -306,7 +306,11 @@ describe("RM-026 listing lifecycle action HTTP", () => {
       .set("Origin", origin)
       .send({ action: "APPROVE" })
       .expect(401);
-    await request(app).get("/api/v1/admin/users").expect(404);
-    await request(app).patch("/api/v1/admin/users/7/activation").set("Origin", origin).expect(404);
+    await request(app).get("/api/v1/admin/users").expect(401);
+    await request(app)
+      .patch("/api/v1/admin/users/7/activation")
+      .set("Origin", origin)
+      .send({ isActive: false })
+      .expect(401);
   });
 });

@@ -49,7 +49,7 @@ describe("RM-034 permanent production inventory", () => {
 
     expect(listingsRoutes).toHaveLength(20);
     expect(listingsRoutes.filter(([method, route]) => method === "get" && route === "/listings")).toHaveLength(1);
-    expect(routeSources.flatMap((source) => [...source.matchAll(routePattern)])).toHaveLength(29);
+    expect(routeSources.flatMap((source) => [...source.matchAll(routePattern)])).toHaveLength(31);
     expect(
       listingsRoutes.filter(([method, route]) => method === "post" && route === "/geocoding/forward")
     ).toHaveLength(1);

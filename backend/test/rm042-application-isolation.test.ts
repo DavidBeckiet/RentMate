@@ -25,7 +25,7 @@ describe("RM-042 application isolation", () => {
     await expect(readdir(path.join(sourceRoot, "modules", "admin"))).rejects.toThrow();
   });
 
-  it("registers 29 API routes, 20 listings routes, and V1-29 exactly once", async () => {
+  it("registers 31 API routes, 20 listings routes, and V1-29 through V1-31 exactly once", async () => {
     const sources = await Promise.all(
       ["auth", "favorites", "listings", "users"].map((module) =>
         readFile(path.join(sourceRoot, "modules", module, "routes.ts"), "utf8")
@@ -34,15 +34,18 @@ describe("RM-042 application isolation", () => {
     const pattern = /router\.(get|post|patch|put|delete)\(\s*"([^"]+)"/g;
     const all = sources.flatMap((source) => [...source.matchAll(pattern)].map((match) => [match[1], match[2]]));
     const listings = [...sources[2]!.matchAll(pattern)].map((match) => [match[1], match[2]]);
-    expect(all).toHaveLength(29);
+    expect(all).toHaveLength(31);
     expect(listings).toHaveLength(20);
     expect(listings.filter((route) => route[1] === "/admin/listings/:listingId/moderation-actions")).toStrictEqual([
       ["post", "/admin/listings/:listingId/moderation-actions"],
       ["get", "/admin/listings/:listingId/moderation-actions"]
     ]);
-    expect(all.some(([, route]) => route === "/admin/users" || route === "/admin/users/:userId/activation")).toBe(
-      false
-    );
+    expect(
+      all.filter(([, route]) => route === "/admin/users" || route === "/admin/users/:userId/activation")
+    ).toStrictEqual([
+      ["get", "/admin/users"],
+      ["patch", "/admin/users/:userId/activation"]
+    ]);
   });
 
   it("keeps moderation bounded to listing/history SQL without generic endpoints or providers", async () => {
@@ -57,7 +60,7 @@ describe("RM-042 application isolation", () => {
     expect(routes).not.toMatch(/admin\/listings\/:listingId\/(?:approve|reject|hide|restore)|admin\/users/i);
   });
 
-  it("does not add schema, frontend, provider, dependency, or RM-043/RM-044 artifacts", async () => {
+  it("does not add schema, frontend, provider, dependency, or RM-044 artifacts", async () => {
     expect((await readdir(path.join(backendRoot, "migrations"))).filter((file) => file.endsWith(".sql"))).toHaveLength(
       12
     );
