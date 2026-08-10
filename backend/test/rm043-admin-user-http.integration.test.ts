@@ -124,17 +124,15 @@ describe("RM-043 admin user HTTP contract", () => {
       for (const role of ["TENANT", "LANDLORD"] as const) {
         const executor = new Executor();
         executor.account = { id: 7, role, isActive: true };
-        const call = request(await app(executor))
-          [route](path)
-          .set("Cookie", await cookie(role, 7));
+        const agent = request(await app(executor));
+        const call = agent[route](path).set("Cookie", await cookie(role, 7));
         if (route === "patch") call.set("Origin", origin).send({ isActive: false });
         await call.expect(403);
       }
       const inactive = new Executor();
       inactive.account = { id: 3, role: "ADMIN", isActive: false };
-      const call = request(await app(inactive))
-        [route](path)
-        .set("Cookie", await cookie("ADMIN"));
+      const agent = request(await app(inactive));
+      const call = agent[route](path).set("Cookie", await cookie("ADMIN"));
       if (route === "patch") call.set("Origin", origin).send({ isActive: false });
       await call.expect(401);
     }
