@@ -60,7 +60,7 @@ describe("RM-042 application isolation", () => {
     expect(routes).not.toMatch(/admin\/listings\/:listingId\/(?:approve|reject|hide|restore)|admin\/users/i);
   });
 
-  it("does not add schema, frontend, provider, dependency, or RM-044 artifacts", async () => {
+  it("keeps schema, frontend, provider, and dependency scope while allowing RM-044 verification artifacts", async () => {
     expect((await readdir(path.join(backendRoot, "migrations"))).filter((file) => file.endsWith(".sql"))).toHaveLength(
       12
     );
