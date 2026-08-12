@@ -6,8 +6,13 @@ export default defineConfig({
   test: {
     environment: "jsdom",
     setupFiles: ["./test/setup.ts"],
-    include: ["app/**/*.test.tsx"],
-    exclude: ["node_modules/**", ".next/**", "out/**", "coverage/**"],
+    include: [
+      "app/**/*.test.{ts,tsx}",
+      "components/**/*.test.{ts,tsx}",
+      "lib/**/*.test.{ts,tsx}",
+      "test/**/*.test.{ts,tsx}"
+    ],
+    exclude: ["node_modules/**", ".next/**", "out/**", "dist/**", "build/**", "coverage/**"],
     clearMocks: true,
     mockReset: true,
     restoreMocks: true,

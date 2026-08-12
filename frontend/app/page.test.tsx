@@ -1,24 +1,14 @@
 import { render, screen } from "@testing-library/react";
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { describe, expect, it } from "vitest";
 import HomePage from "./page";
 
-afterEach(() => {
-  vi.unstubAllGlobals();
-});
-
 describe("HomePage", () => {
-  it("renders the existing skeleton and reports mocked backend health", async () => {
-    const fetchMock = vi.fn<typeof fetch>().mockResolvedValue({
-      ok: true,
-      json: async () => ({ status: "ok", database: "connected" })
-    } as Response);
-    vi.stubGlobal("fetch", fetchMock);
-
+  it("renders a bounded RentMate foundation placeholder without starting future workflows", () => {
     render(<HomePage />);
 
-    expect(screen.getByRole("heading", { name: "RentMate" })).toBeInTheDocument();
-    expect(screen.getByText("Project skeleton")).toBeInTheDocument();
-    expect(await screen.findByText(/Backend: ok/)).toHaveTextContent("Backend: ok · Database: connected");
-    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(screen.getByRole("heading", { level: 1, name: /Một nền tảng rõ ràng/ })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { level: 2, name: "Nền tảng giao diện đã sẵn sàng" })).toBeInTheDocument();
+    expect(screen.getByText(/Thành phố Hồ Chí Minh/)).toBeInTheDocument();
+    expect(screen.queryByRole("form")).not.toBeInTheDocument();
   });
 });

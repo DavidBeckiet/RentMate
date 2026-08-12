@@ -14,6 +14,7 @@
     "typecheck": "tsc --noEmit",
     "lint": "eslint . --max-warnings=0",
     "test": "vitest run --config vitest.config.mts",
+    "test:rm045": "vitest run --config vitest.config.mts app/page.test.tsx components/ui/app-shell.test.tsx lib/api/transport.test.ts lib/api/client.test.ts lib/auth/auth-provider.test.tsx lib/auth/auth-guard.test.tsx test/rm045-application-isolation.test.ts",
     "format": "prettier --config ../.prettierrc.json --ignore-path ../.prettierignore --write .",
     "format:check": "prettier --config ../.prettierrc.json --ignore-path ../.prettierignore --check ."
   },
