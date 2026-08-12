@@ -66,6 +66,7 @@ describe("RM-048 application isolation", () => {
       dependencies: Record<string, string>;
       devDependencies: Record<string, string>;
     };
+    const detailRoute = read("app/listings/[listingId]/page.tsx");
     const script = packageJson.scripts["test:rm048"];
     expect(script).toContain("test/rm048-application-isolation.test.ts");
     expect(script).toContain("features/listings/search-query.test.ts");
@@ -83,6 +84,7 @@ describe("RM-048 application isolation", () => {
       expect(packages).not.toHaveProperty(dependency);
     }
     expect(read("app/page.tsx")).toContain("<SearchPage />");
-    expect(read("app/listings/[listingId]/page.tsx")).toContain("<ListingDetail listingId={listingId} />");
+    expect(detailRoute).toContain("<ListingDetail");
+    expect(detailRoute).toMatch(/<ListingDetail\b[^>]*\blistingId\s*=\s*\{\s*listingId\s*\}/);
   });
 });
