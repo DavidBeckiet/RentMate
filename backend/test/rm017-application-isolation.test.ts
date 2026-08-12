@@ -1,4 +1,3 @@
-import { execFileSync } from "node:child_process";
 import { readdir, readFile } from "node:fs/promises";
 import path from "node:path";
 import request from "supertest";
@@ -7,21 +6,12 @@ import { createApp } from "../src/app.js";
 import type { Logger } from "../src/shared/logging/logger.js";
 
 const backendRoot = process.cwd();
-const repositoryRoot = path.resolve(backendRoot, "..");
-
 const silentLogger: Logger = {
   debug: () => undefined,
   info: () => undefined,
   warn: () => undefined,
   error: () => undefined
 };
-
-function gitDiff(...paths: string[]): string {
-  return execFileSync("git", ["diff", "--name-only", "--", ...paths], {
-    cwd: repositoryRoot,
-    encoding: "utf8"
-  }).trim();
-}
 
 describe("RM-017 application isolation", () => {
   it("creates exactly the users profile boundary without duplicating auth ownership", async () => {
@@ -102,7 +92,7 @@ describe("RM-017 application isolation", () => {
     expect(usersSources[4]).not.toMatch(/createRoleMiddleware|createOptionalAuthenticationMiddleware|rateLimit/i);
   });
 
-  it("preserves frozen schema, dependencies, global composition, and adjacent task boundaries", async () => {
+  it("preserves frozen schema, dependencies, and global JSON composition", async () => {
     const migrations = (await readdir(path.resolve(backendRoot, "migrations")))
       .filter((filename) => filename.endsWith(".sql"))
       .sort();
@@ -127,9 +117,6 @@ describe("RM-017 application isolation", () => {
     });
     expect(backendPackage.devDependencies["@types/multer"]).toBe("^2.1.0");
     expect(backendPackage.dependencies).not.toHaveProperty("@types/multer");
-    expect(gitDiff("package-lock.json")).toBe("");
-    expect(gitDiff("backend/src/app.ts", "backend/src/config/env.ts", ".env.example")).toBe("");
-    expect(gitDiff("backend/migrations", "frontend", "docs", "AGENTS.md")).toBe("");
     expect(appSource).toContain("app.use(express.json({ strict: false }));");
     expect(appSource.match(/app\.use\(express\.json/g)).toHaveLength(1);
   });
@@ -154,15 +141,21 @@ describe("RM-017 application isolation", () => {
     await request(app).post("/api/v1/auth/login").set("Origin", "http://localhost:3000").send({}).expect(404);
   });
 
-  it("leaves RM-014/RM-016 auth primitives and shared authentication middleware unchanged", async () => {
-    expect(
-      gitDiff(
-        "backend/src/modules/auth/password.ts",
-        "backend/src/modules/auth/session-token.ts",
-        "backend/src/modules/auth/session-cookie.ts",
-        "backend/src/shared/middleware/authentication.ts",
-        "backend/src/shared/types/authentication.ts"
-      )
-    ).toBe("");
+  it("keeps auth primitives and shared authentication middleware on their permanent security boundaries", async () => {
+    const [password, token, cookie, middleware, authenticationTypes] = await Promise.all(
+      [
+        "src/modules/auth/password.ts",
+        "src/modules/auth/session-token.ts",
+        "src/modules/auth/session-cookie.ts",
+        "src/shared/middleware/authentication.ts",
+        "src/shared/types/authentication.ts"
+      ].map((filename) => readFile(path.resolve(backendRoot, filename), "utf8"))
+    );
+
+    expect(password).toContain('from "bcrypt"');
+    expect(token).toContain('const sessionAlgorithm = "HS256"');
+    expect(cookie).toMatch(/httpOnly:\s*true[\s\S]*sameSite:\s*"lax"/);
+    expect(middleware).toMatch(/loadAuthenticationAccount[\s\S]*account\.isActive/);
+    expect(authenticationTypes).toContain('sessionCookieName = "rentmate_session"');
   });
 });

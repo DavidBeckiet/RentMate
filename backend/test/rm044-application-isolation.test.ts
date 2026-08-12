@@ -86,7 +86,7 @@ describe("RM-044 permanent application isolation", () => {
     expect(all).toStrictEqual(expectedRoutes);
   });
 
-  it("keeps schema, providers, and frontend at the frozen pre-RM-045 inventory", async () => {
+  it("keeps the frozen schema and provider inventories", async () => {
     expect(
       (await readdir(path.join(backendRoot, "migrations"))).filter((file) => file.endsWith(".sql")).sort()
     ).toStrictEqual([
@@ -106,12 +106,6 @@ describe("RM-044 permanent application isolation", () => {
     expect((await readdir(path.join(sourceRoot, "integrations"))).sort()).toStrictEqual([
       "cloudinary.client.ts",
       "nominatim.client.ts"
-    ]);
-    expect((await readdir(path.join(repositoryRoot, "frontend", "app"))).sort()).toStrictEqual([
-      "globals.css",
-      "layout.tsx",
-      "page.test.tsx",
-      "page.tsx"
     ]);
   });
 

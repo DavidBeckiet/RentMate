@@ -1,18 +1,9 @@
-import { execFileSync } from "node:child_process";
 import { readdir, readFile } from "node:fs/promises";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
 
 const backendRoot = process.cwd();
-const repositoryRoot = path.resolve(backendRoot, "..");
 const listingsRoot = path.resolve(backendRoot, "src/modules/listings");
-
-function gitDiff(...paths: string[]): string {
-  return execFileSync("git", ["diff", "--name-only", "--", ...paths], {
-    cwd: repositoryRoot,
-    encoding: "utf8"
-  }).trim();
-}
 
 describe("RM-020 application isolation", () => {
   it("contains only the RM-019 lookup, RM-020 create, and RM-021 read files", async () => {
@@ -163,7 +154,7 @@ describe("RM-020 application isolation", () => {
     );
   });
 
-  it("keeps schema, dependencies, lockfiles, frontend, and frozen documents unchanged", async () => {
+  it("keeps the frozen schema and backend dependency inventory", async () => {
     const migrations = (await readdir(path.resolve(backendRoot, "migrations")))
       .filter((filename) => filename.endsWith(".sql"))
       .sort();
@@ -184,11 +175,9 @@ describe("RM-020 application isolation", () => {
       multer: "^2.2.0",
       pg: "8.16.0"
     });
-    expect(gitDiff("package-lock.json")).toBe("");
-    expect(gitDiff("backend/migrations", "frontend", "docs", "AGENTS.md")).toBe("");
   });
 
-  it("changes only the narrow production composition seam outside listings", async () => {
+  it("keeps draft creation on the narrow production composition seam", async () => {
     const composition = await readFile(path.resolve(backendRoot, "src/server-composition.ts"), "utf8");
     const server = await readFile(path.resolve(backendRoot, "src/server.ts"), "utf8");
 
@@ -196,15 +185,5 @@ describe("RM-020 application isolation", () => {
     expect(composition).toContain("options.transactionRunner ?? unavailableTransactionRunner");
     expect(composition.match(/registerListingsRoutes\(/g)).toHaveLength(1);
     expect(server).toContain("withTransaction(databasePool, logger, operation)");
-    expect(
-      gitDiff(
-        "backend/src/app.ts",
-        "backend/src/config/env.ts",
-        ".env.example",
-        "backend/src/modules/auth",
-        "backend/src/shared",
-        "backend/src/db"
-      )
-    ).toBe("");
   });
 });

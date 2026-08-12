@@ -21,3 +21,7 @@ tmp/
 # Frozen specifications and repository policy are not formatting targets
 docs/
 AGENTS.md
+
+# Imported development/tooling instructions
+.codex/skills/
+.taste-skills/

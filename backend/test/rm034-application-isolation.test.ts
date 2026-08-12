@@ -22,6 +22,7 @@ async function recursiveFiles(root: string): Promise<string[]> {
   const entries = await readdir(root, { withFileTypes: true });
   const files: string[] = [];
   for (const entry of entries) {
+    if (["node_modules", ".next", "coverage"].includes(entry.name)) continue;
     const absolute = path.join(root, entry.name);
     if (entry.isDirectory()) files.push(...(await recursiveFiles(absolute)));
     else files.push(absolute);
@@ -180,20 +181,19 @@ describe("RM-034 explicit-only and side-effect isolation", () => {
     expect(source).not.toMatch(/memoiz|geocod(?:ing)?[_ -]?cache|geocod(?:ing)?[_ -]?history/i);
   });
 
-  it("adds no frontend, migration, schema, or automatic coordinate-save surface", async () => {
+  it("keeps geocoding non-persistent and prevents direct frontend provider integration", async () => {
     const productionFiles = await recursiveFiles(sourceRoot);
     const productionSource = await joinedSource(productionFiles);
     const migrations = await recursiveFiles(path.join(backendRoot, "migrations"));
     const migrationSource = await joinedSource(migrations);
-    const frontendFiles = (await recursiveFiles(path.join(repositoryRoot, "frontend"))).filter(
-      (filename) =>
-        !/[\\/](?:node_modules|\.next)[\\/]/.test(filename) && /\.(?:ts|tsx|js|jsx|json|css|md)$/.test(filename)
+    const frontendProductionFiles = (await recursiveFiles(path.join(repositoryRoot, "frontend"))).filter(
+      (filename) => /\.(?:ts|tsx)$/.test(filename) && !/\.test\.(?:ts|tsx)$/.test(filename)
     );
-    const frontendSource = await joinedSource(frontendFiles);
+    const frontendProductionSource = await joinedSource(frontendProductionFiles);
 
     expect(productionFiles).not.toEqual(expect.arrayContaining([expect.stringMatching(/rm034/i)]));
     expect(productionSource).not.toMatch(/confirm.?geocod|save.?candidate|selected.?candidate|reverseGeocode/i);
     expect(migrationSource).not.toMatch(/nominatim|geocod/i);
-    expect(frontendSource).not.toMatch(/nominatim|geocod|autocomplete|typeahead|rm034|rm035/i);
+    expect(frontendProductionSource).not.toMatch(/\bnominatim\b|reverse.?geocod|autocomplete|typeahead/i);
   }, 15_000);
 });

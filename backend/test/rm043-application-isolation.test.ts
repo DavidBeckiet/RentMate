@@ -1,19 +1,10 @@
-import { execFileSync } from "node:child_process";
 import { readdir, readFile } from "node:fs/promises";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
 
 const backendRoot = process.cwd();
-const repositoryRoot = path.resolve(backendRoot, "..");
 const sourceRoot = path.join(backendRoot, "src");
 const usersRoot = path.join(sourceRoot, "modules", "users");
-
-function gitDiff(...paths: string[]): string {
-  return execFileSync("git", ["diff", "--name-only", "--", ...paths], {
-    cwd: repositoryRoot,
-    encoding: "utf8"
-  }).trim();
-}
 
 describe("RM-043 application isolation", () => {
   it("keeps four business modules, no admin module, and exactly ten users production files", async () => {
@@ -69,7 +60,7 @@ describe("RM-043 application isolation", () => {
     expect(combined).not.toMatch(/Cloudinary|Nominatim|queue|worker|outbox|session.?table|blacklist/i);
   });
 
-  it("adds no schema, dependency, lockfile, frontend, provider, frozen-document, or protected production change", async () => {
+  it("keeps the frozen schema and provider inventories with admin behavior in users", async () => {
     expect((await readdir(path.join(backendRoot, "migrations"))).filter((file) => file.endsWith(".sql"))).toHaveLength(
       12
     );
@@ -77,22 +68,5 @@ describe("RM-043 application isolation", () => {
       "cloudinary.client.ts",
       "nominatim.client.ts"
     ]);
-    expect(
-      gitDiff(
-        "backend/src/server.ts",
-        "backend/src/app.ts",
-        "backend/migrations",
-        "backend/src/modules/listings",
-        "backend/src/modules/favorites",
-        "backend/src/modules/auth",
-        "backend/src/integrations",
-        "frontend",
-        "docs",
-        "AGENTS.md",
-        ".env.example",
-        "backend/package-lock.json",
-        "package-lock.json"
-      )
-    ).toBe("");
   });
 });

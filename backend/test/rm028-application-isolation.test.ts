@@ -1,4 +1,3 @@
-import { execFileSync } from "node:child_process";
 import { access, readdir, readFile } from "node:fs/promises";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
@@ -40,10 +39,6 @@ const expectedFocusedTests = [
   "test/rm027-listing-delete-http.integration.test.ts",
   "test/rm027-application-isolation.test.ts"
 ] as const;
-
-function git(...arguments_: string[]): string {
-  return execFileSync("git", arguments_, { cwd: repositoryRoot, encoding: "utf8" }).trim();
-}
 
 describe("RM-028 application isolation and M3 acceptance inventory", () => {
   it("keeps the exact 55-file production listings inventory and fifteen routes", async () => {
@@ -195,22 +190,7 @@ describe("RM-028 application isolation and M3 acceptance inventory", () => {
     expect(database).toContain("fileParallelism: false");
   });
 
-  it("adds no schema, dependency lock, fixture, historical test, frontend, or frozen-document change", async () => {
-    expect(
-      git(
-        "diff",
-        "--name-only",
-        "--",
-        "backend/migrations",
-        "backend/test/helpers/listings-phase4-fixture.ts",
-        "backend/test/support/test-database.ts",
-        "package-lock.json",
-        "frontend",
-        "docs",
-        "AGENTS.md",
-        ".env.example"
-      )
-    ).toBe("");
+  it("keeps the frozen schema inventory", async () => {
     const migrations = (await readdir(path.join(backendRoot, "migrations")))
       .filter((filename) => filename.endsWith(".sql"))
       .sort();

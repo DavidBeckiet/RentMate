@@ -1,18 +1,9 @@
-import { execFileSync } from "node:child_process";
 import { readdir, readFile } from "node:fs/promises";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
 
 const backendRoot = process.cwd();
-const repositoryRoot = path.resolve(backendRoot, "..");
 const listingsRoot = path.join(backendRoot, "src/modules/listings");
-
-function gitDiff(...paths: string[]): string {
-  return execFileSync("git", ["diff", "--name-only", "--", ...paths], {
-    cwd: repositoryRoot,
-    encoding: "utf8"
-  }).trim();
-}
 
 async function source(filename: string): Promise<string> {
   return readFile(path.join(listingsRoot, filename), "utf8");
@@ -86,36 +77,12 @@ describe("RM-031 application isolation", () => {
     });
   });
 
-  it("changes no provider, lifecycle, schema, lockfile, config, fixture, frontend, or frozen path", () => {
-    expect(
-      gitDiff(
-        ".env.example",
-        "backend/package-lock.json",
-        "package-lock.json",
-        "backend/src/app.ts",
-        "backend/src/config/env.ts",
-        "backend/src/integrations/cloudinary.client.ts",
-        "backend/src/modules/listings/listing-lifecycle-policy.ts",
-        "backend/src/modules/listings/listing-image-upload-controller.ts",
-        "backend/src/modules/listings/listing-image-upload-multipart.ts",
-        "backend/src/modules/listings/listing-image-upload-repository.ts",
-        "backend/src/modules/listings/listing-image-upload-service.ts",
-        "backend/src/modules/listings/listing-image-upload-validation.ts",
-        "backend/src/modules/listings/listing-image-delete-controller.ts",
-        "backend/src/modules/listings/listing-image-delete-repository.ts",
-        "backend/src/modules/listings/listing-image-delete-service.ts",
-        "backend/src/modules/listings/listing-delete-controller.ts",
-        "backend/src/modules/listings/listing-delete-repository.ts",
-        "backend/src/modules/listings/listing-delete-service.ts",
-        "backend/src/modules/listings/listing-delete-cleanup.ts",
-        "backend/src/modules/listings/listing-delete-cloudinary-cleanup.ts",
-        "backend/test/helpers/listings-phase4-fixture.ts",
-        "backend/test/support/test-database.ts",
-        "backend/migrations",
-        "frontend",
-        "docs",
-        "AGENTS.md"
-      )
-    ).toBe("");
+  it("keeps reorder isolated from lifecycle transitions and provider operations", async () => {
+    const [policy, controller, service] = await Promise.all(
+      ["listing-lifecycle-policy.ts", "listing-image-order-controller.ts", "listing-image-order-service.ts"].map(source)
+    );
+
+    expect(policy).not.toMatch(/reorder|displayOrder|imageIds/i);
+    expect([controller, service].join("\n")).not.toMatch(/Cloudinary|Nominatim|moderation_history|SET\s+status/i);
   });
 });

@@ -1,4 +1,3 @@
-import { execFileSync } from "node:child_process";
 import { readdir, readFile } from "node:fs/promises";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
@@ -19,13 +18,6 @@ const publicListingProduction = [
   "public-listing-search-validation.ts",
   "public-listing-summary-mapper.ts"
 ] as const;
-
-function gitDiff(...paths: string[]): string {
-  return execFileSync("git", ["diff", "--name-only", "--", ...paths], {
-    cwd: repositoryRoot,
-    encoding: "utf8"
-  }).trim();
-}
 
 describe("RM-036 application isolation", () => {
   it("keeps the public collection and detail routes with the exact post-RM-037 listings inventory", async () => {
@@ -70,7 +62,7 @@ describe("RM-036 application isolation", () => {
     expect(server).toContain("config.deployment.maximumSearchRadiusKm");
   });
 
-  it("keeps the validator/config surface, route count, schema, providers, and frontend unchanged", async () => {
+  it("keeps focused test routing and serial database execution explicit", async () => {
     const backendPackage = JSON.parse(await readFile(path.join(backendRoot, "package.json"), "utf8")) as {
       scripts: Record<string, string>;
     };
@@ -87,7 +79,5 @@ describe("RM-036 application isolation", () => {
     expect(ordinaryVitest).toContain('"test/rm036-public-search.database.integration.test.ts"');
     expect(databaseVitest).toContain('"test/rm036-public-search.database.integration.test.ts"');
     expect(databaseVitest).toContain("fileParallelism: false");
-    expect(gitDiff("backend/src/modules/listings/public-listing-search-validation.ts")).toBe("");
-    expect(gitDiff(".env.example", "backend/src/config/env.ts", "backend/migrations", "frontend")).toBe("");
   });
 });

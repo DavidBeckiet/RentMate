@@ -10,6 +10,7 @@ async function recursiveFiles(root: string): Promise<string[]> {
   const entries = await readdir(root, { withFileTypes: true });
   const files: string[] = [];
   for (const entry of entries) {
+    if (["node_modules", ".next", "coverage"].includes(entry.name)) continue;
     const absolute = path.join(root, entry.name);
     if (entry.isDirectory()) files.push(...(await recursiveFiles(absolute)));
     else files.push(absolute);
@@ -92,7 +93,7 @@ describe("RM-033 application isolation", () => {
     }
   });
 
-  it("adds no dependency, migration, frontend surface, RM-034, or RM-035 production", async () => {
+  it("keeps the frozen dependency and migration inventory with providers behind the backend boundary", async () => {
     const packageJson = JSON.parse(await readFile(path.join(backendRoot, "package.json"), "utf8")) as {
       dependencies: Record<string, string>;
     };
@@ -112,8 +113,12 @@ describe("RM-033 application isolation", () => {
     expect(migrations).toHaveLength(12);
     const productionFiles = await recursiveFiles(path.join(backendRoot, "src"));
     expect(productionFiles).not.toEqual(expect.arrayContaining([expect.stringMatching(/rm034/i)]));
-    expect(await recursiveFiles(path.join(repositoryRoot, "frontend", "app"))).not.toEqual(
-      expect.arrayContaining([expect.stringMatching(/geocod|nominatim|rm033/i)])
+    const frontendProductionFiles = (await recursiveFiles(path.join(repositoryRoot, "frontend"))).filter(
+      (filename) => /\.(?:ts|tsx)$/.test(filename) && !/\.test\.(?:ts|tsx)$/.test(filename)
     );
+    const frontendProduction = (
+      await Promise.all(frontendProductionFiles.map((filename) => readFile(filename, "utf8")))
+    ).join("\n");
+    expect(frontendProduction).not.toMatch(/\bnominatim\b|reverse.?geocod|autocomplete|typeahead/i);
   });
 });

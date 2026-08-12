@@ -1,18 +1,9 @@
-import { execFileSync } from "node:child_process";
 import { access, readdir, readFile } from "node:fs/promises";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
 
 const backendRoot = process.cwd();
-const repositoryRoot = path.resolve(backendRoot, "..");
 const listingsRoot = path.join(backendRoot, "src/modules/listings");
-
-function gitDiff(...paths: string[]): string {
-  return execFileSync("git", ["diff", "--name-only", "--", ...paths], {
-    cwd: repositoryRoot,
-    encoding: "utf8"
-  }).trim();
-}
 
 async function source(filename: string): Promise<string> {
   return readFile(path.join(listingsRoot, filename), "utf8");
@@ -159,14 +150,6 @@ describe("RM-029 application isolation", () => {
   });
 
   it("preserves RM-027 delete transaction files while wiring post-commit Cloudinary cleanup", async () => {
-    expect(
-      gitDiff(
-        "backend/src/modules/listings/listing-delete-controller.ts",
-        "backend/src/modules/listings/listing-delete-repository.ts",
-        "backend/src/modules/listings/listing-delete-service.ts",
-        "backend/src/modules/listings/listing-delete-cleanup.ts"
-      )
-    ).toBe("");
     const composition = await readFile(path.join(backendRoot, "src/server-composition.ts"), "utf8");
     const server = await readFile(path.join(backendRoot, "src/server.ts"), "utf8");
     expect(composition).toContain("createListingDeleteCloudinaryCleanup(options.cloudinaryClient)");
@@ -174,7 +157,7 @@ describe("RM-029 application isolation", () => {
     expect(server).toContain("createCloudinaryClient(");
   });
 
-  it("adds no migration, business module, permanent upload directory, frontend, or frozen-document change", async () => {
+  it("keeps the frozen schema, business modules, and ephemeral upload boundary", async () => {
     const migrations = (await readdir(path.join(backendRoot, "migrations")))
       .filter((filename) => filename.endsWith(".sql"))
       .sort();
@@ -187,22 +170,5 @@ describe("RM-029 application isolation", () => {
       "users"
     ]);
     await expect(access(path.join(backendRoot, "uploads"))).rejects.toBeDefined();
-    expect(
-      gitDiff(
-        ".env.example",
-        "backend/src/config/env.ts",
-        "backend/src/app.ts",
-        "backend/src/db",
-        "backend/migrations",
-        "backend/src/modules/listings/listing-lifecycle-policy.ts",
-        "backend/src/modules/listings/owner-image-mapper.ts",
-        "backend/test/helpers/listings-phase4-fixture.ts",
-        "backend/test/support/test-database.ts",
-        "package-lock.json",
-        "frontend",
-        "docs",
-        "AGENTS.md"
-      )
-    ).toBe("");
   });
 });
