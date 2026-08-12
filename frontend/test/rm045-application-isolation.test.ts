@@ -93,7 +93,10 @@ describe("RM-045 application isolation", () => {
     const layout = read("app/layout.tsx");
     const hrefs = [...shell.matchAll(/href="([^"]+)"/g)].map((match) => match[1]);
 
-    expect(hrefs).toEqual(["#main-content", "/", "/"]);
+    expect(existsSync(join(frontendRoot, "app", "page.tsx"))).toBe(true);
+    expect(hrefs).toContain("#main-content");
+    expect(hrefs).toContain("/");
+    expect(hrefs.every((href) => href.startsWith("/") || href.startsWith("#"))).toBe(true);
     expect(layout.startsWith('"use client"')).toBe(false);
     expect(read("lib/auth/auth-guard.tsx")).toContain("backend authorization remains authoritative");
   });

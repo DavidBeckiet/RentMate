@@ -4,10 +4,13 @@ import type { UserProfile } from "../../types/api";
 import { ApiError } from "../../lib/api/transport";
 import type { AuthContextValue } from "../../lib/auth/auth-provider";
 
-const navigationMocks = vi.hoisted(() => ({ pathname: vi.fn(() => "/") }));
+const navigationMocks = vi.hoisted(() => ({ pathname: vi.fn(() => "/"), replace: vi.fn() }));
 const useAuthMock = vi.hoisted(() => vi.fn<() => AuthContextValue>());
 
-vi.mock("next/navigation", () => ({ usePathname: navigationMocks.pathname }));
+vi.mock("next/navigation", () => ({
+  usePathname: navigationMocks.pathname,
+  useRouter: () => ({ replace: navigationMocks.replace })
+}));
 vi.mock("../../lib/auth/auth-provider", () => ({ useAuth: useAuthMock }));
 
 import { AppShell } from "./app-shell";
@@ -34,6 +37,7 @@ describe("AppShell", () => {
     useAuthMock.mockReturnValue(authValue());
     refresh.mockReset();
     logout.mockReset();
+    navigationMocks.replace.mockReset();
   });
 
   it("provides accessible shell landmarks and current home navigation", () => {
@@ -60,16 +64,80 @@ describe("AppShell", () => {
     expect(screen.getByRole("button", { name: "Mở menu điều hướng" })).toHaveAttribute("aria-expanded", "false");
   });
 
-  it("renders authenticated identity and invokes logout", async () => {
+  it("shows the frozen anonymous auth links and marks the current route", () => {
+    navigationMocks.pathname.mockReturnValue("/login");
+    render(<AppShell>Nội dung trang</AppShell>);
+
+    expect(screen.getByRole("link", { name: "Đăng nhập" })).toHaveAttribute("href", "/login");
+    expect(screen.getByRole("link", { name: "Đăng nhập" })).toHaveAttribute("aria-current", "page");
+    expect(screen.getByRole("link", { name: "Đăng ký tìm phòng" })).toHaveAttribute("href", "/register/tenant");
+    expect(screen.getByRole("link", { name: "Đăng ký cho thuê" })).toHaveAttribute("href", "/register/landlord");
+  });
+
+  it("renders authenticated identity, hides auth links, and navigates home after logout succeeds", async () => {
     useAuthMock.mockReturnValue(authValue({ status: "authenticated", user: tenant }));
     logout.mockResolvedValue();
-    render(<AppShell>Nội dung trang</AppShell>);
+    const view = render(<AppShell>Nội dung trang</AppShell>);
     const navigation = screen.getByRole("navigation", { name: "Điều hướng chính" });
 
     expect(within(navigation).getByText("tenant@example.com")).toBeInTheDocument();
     expect(within(navigation).getByText("TENANT")).toBeInTheDocument();
+    expect(within(navigation).queryByRole("link", { name: "Đăng nhập" })).not.toBeInTheDocument();
     fireEvent.click(within(navigation).getByRole("button", { name: "Đăng xuất" }));
     await waitFor(() => expect(logout).toHaveBeenCalledTimes(1));
+
+    useAuthMock.mockReturnValue(authValue());
+    view.rerender(<AppShell>Nội dung trang</AppShell>);
+    await waitFor(() => expect(navigationMocks.replace).toHaveBeenCalledWith("/"));
+  });
+
+  it("blocks duplicate logout submissions while the request is pending", async () => {
+    let resolveLogout: (() => void) | undefined;
+    logout.mockReturnValue(
+      new Promise<void>((resolve) => {
+        resolveLogout = resolve;
+      })
+    );
+    useAuthMock.mockReturnValue(authValue({ status: "authenticated", user: tenant }));
+    render(<AppShell>Nội dung trang</AppShell>);
+
+    const logoutButton = screen.getByRole("button", { name: "Đăng xuất" });
+    fireEvent.click(logoutButton);
+    fireEvent.click(logoutButton);
+
+    expect(logout).toHaveBeenCalledTimes(1);
+    expect(screen.getByRole("button", { name: "Đang đăng xuất…" })).toBeDisabled();
+    resolveLogout?.();
+    await waitFor(() => expect(screen.getByRole("button", { name: "Đăng xuất" })).toBeEnabled());
+    expect(navigationMocks.replace).not.toHaveBeenCalled();
+  });
+
+  it("keeps the authenticated user in place and shows a safe error after logout fails", async () => {
+    logout.mockResolvedValue();
+    useAuthMock.mockReturnValue(authValue({ status: "authenticated", user: tenant }));
+    const view = render(<AppShell>Nội dung trang</AppShell>);
+
+    fireEvent.click(screen.getByRole("button", { name: "Đăng xuất" }));
+    await waitFor(() => expect(logout).toHaveBeenCalledTimes(1));
+
+    useAuthMock.mockReturnValue(
+      authValue({
+        status: "authenticated",
+        user: tenant,
+        error: new ApiError({
+          status: 503,
+          code: "SERVICE_UNAVAILABLE",
+          message: "Private detail",
+          category: "backend"
+        })
+      })
+    );
+    view.rerender(<AppShell>Nội dung trang</AppShell>);
+
+    expect(screen.getByText("tenant@example.com")).toBeInTheDocument();
+    expect(screen.getByRole("alert")).toHaveTextContent("Đăng xuất chưa thành công. Vui lòng thử lại.");
+    expect(screen.queryByText("Private detail")).not.toBeInTheDocument();
+    expect(navigationMocks.replace).not.toHaveBeenCalled();
   });
 
   it("renders a safe auth error and retry control", () => {

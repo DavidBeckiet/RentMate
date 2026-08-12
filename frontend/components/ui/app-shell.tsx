@@ -1,15 +1,24 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useId, useState, type ReactNode } from "react";
 import { useAuth } from "../../lib/auth/auth-provider";
+import { Button } from "./button";
+
+const anonymousNavigationLinks = [
+  { href: "/login", label: "Đăng nhập", emphasis: "normal" },
+  { href: "/register/tenant", label: "Đăng ký tìm phòng", emphasis: "quiet" },
+  { href: "/register/landlord", label: "Đăng ký cho thuê", emphasis: "quiet" }
+] as const;
 
 export function AppShell({ children }: Readonly<{ children: ReactNode }>) {
   const pathname = usePathname();
+  const router = useRouter();
   const menuId = useId();
   const [menuOpen, setMenuOpen] = useState(false);
   const [logoutPending, setLogoutPending] = useState(false);
+  const [logoutRequested, setLogoutRequested] = useState(false);
   const { status, user, error, refresh, logout } = useAuth();
 
   useEffect(() => {
@@ -26,8 +35,17 @@ export function AppShell({ children }: Readonly<{ children: ReactNode }>) {
     return () => window.removeEventListener("keydown", closeOnEscape);
   }, [menuOpen]);
 
+  useEffect(() => {
+    if (logoutRequested && status === "anonymous") {
+      setLogoutRequested(false);
+      router.replace("/");
+    }
+  }, [logoutRequested, router, status]);
+
   const handleLogout = async () => {
+    if (logoutPending) return;
     setLogoutPending(true);
+    setLogoutRequested(true);
     try {
       await logout();
     } finally {
@@ -78,6 +96,19 @@ export function AppShell({ children }: Readonly<{ children: ReactNode }>) {
               Trang chủ
             </Link>
 
+            {(status === "anonymous" || status === "error") &&
+              anonymousNavigationLinks.map((link) => (
+                <Link
+                  key={link.href}
+                  href={link.href}
+                  aria-current={pathname === link.href ? "page" : undefined}
+                  className={`inline-flex min-h-11 items-center rounded-md px-3 transition-colors hover:bg-teal-50 hover:text-teal-800 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-teal-700 ${link.emphasis === "normal" ? "font-medium text-slate-700" : "text-sm font-semibold text-teal-800"}`}
+                  onClick={() => setMenuOpen(false)}
+                >
+                  {link.label}
+                </Link>
+              ))}
+
             {status === "loading" && (
               <span className="inline-flex min-h-11 items-center px-3 text-sm text-slate-600" aria-live="polite">
                 Đang kiểm tra tài khoản…
@@ -105,14 +136,15 @@ export function AppShell({ children }: Readonly<{ children: ReactNode }>) {
                     {user.role}
                   </span>
                 </p>
-                <button
-                  type="button"
-                  className="min-h-11 rounded-md border border-slate-300 px-4 font-semibold text-slate-800 transition-colors hover:border-teal-700 hover:text-teal-800 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-teal-700 disabled:cursor-not-allowed disabled:opacity-60"
-                  disabled={logoutPending}
+                <Button
+                  variant="secondary"
+                  pending={logoutPending}
+                  pendingLabel="Đang đăng xuất…"
+                  className="w-full md:w-auto"
                   onClick={() => void handleLogout()}
                 >
-                  {logoutPending ? "Đang đăng xuất…" : "Đăng xuất"}
-                </button>
+                  Đăng xuất
+                </Button>
               </div>
             )}
 
