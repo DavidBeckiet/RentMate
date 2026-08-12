@@ -17,6 +17,20 @@ const backendRoot = process.cwd();
 const repositoryRoot = path.resolve(backendRoot, "..");
 const sourceRoot = path.join(backendRoot, "src");
 const listingsRoot = path.join(sourceRoot, "modules/listings");
+const browserAutocompleteAttribute =
+  /(<[A-Za-z][^<>]*?)\s+autocomplete\s*=\s*(?:"[^"\r\n]*"|'[^'\r\n]*'|\{[^}\r\n]*\})/gi;
+const directProviderOrReverseGeocoding = /nominatim|reverse.?geocod/i;
+const geocodingContext = /geocod|address|location/i;
+const automaticGeocodingBehavior = /autocomplete|typeahead/i;
+
+function hasUnsupportedFrontendGeocoding(relativePath: string, source: string): boolean {
+  const semanticSource = source.replace(browserAutocompleteAttribute, "$1");
+  const surface = `${relativePath}\n${semanticSource}`;
+  return (
+    directProviderOrReverseGeocoding.test(surface) ||
+    (geocodingContext.test(surface) && automaticGeocodingBehavior.test(surface))
+  );
+}
 
 async function recursiveFiles(root: string): Promise<string[]> {
   const entries = await readdir(root, { withFileTypes: true });
@@ -189,11 +203,37 @@ describe("RM-034 explicit-only and side-effect isolation", () => {
     const frontendProductionFiles = (await recursiveFiles(path.join(repositoryRoot, "frontend"))).filter(
       (filename) => /\.(?:ts|tsx)$/.test(filename) && !/\.test\.(?:ts|tsx)$/.test(filename)
     );
-    const frontendProductionSource = await joinedSource(frontendProductionFiles);
+    const unsupportedFrontendFiles: string[] = [];
+    for (const filename of frontendProductionFiles) {
+      const relativePath = path.relative(repositoryRoot, filename).replaceAll("\\", "/");
+      if (hasUnsupportedFrontendGeocoding(relativePath, await readFile(filename, "utf8"))) {
+        unsupportedFrontendFiles.push(relativePath);
+      }
+    }
 
     expect(productionFiles).not.toEqual(expect.arrayContaining([expect.stringMatching(/rm034/i)]));
     expect(productionSource).not.toMatch(/confirm.?geocod|save.?candidate|selected.?candidate|reverseGeocode/i);
     expect(migrationSource).not.toMatch(/nominatim|geocod/i);
-    expect(frontendProductionSource).not.toMatch(/\bnominatim\b|reverse.?geocod|autocomplete|typeahead/i);
+    expect(unsupportedFrontendFiles).toStrictEqual([]);
+
+    expect(hasUnsupportedFrontendGeocoding("frontend/features/auth-form.tsx", '<Input autoComplete="email" />')).toBe(
+      false
+    );
+    expect(
+      hasUnsupportedFrontendGeocoding("frontend/features/location-form.tsx", '<Input autoComplete="street-address" />')
+    ).toBe(false);
+    expect(hasUnsupportedFrontendGeocoding("frontend/lib/api/listings.ts", "forwardGeocode(body)")).toBe(false);
+    for (const [relativePath, source] of [
+      ["frontend/lib/nominatim.client.ts", "export class ProviderClient {}"],
+      ["frontend/lib/provider.ts", 'fetch("https://nominatim.openstreetmap.org/search")'],
+      ["frontend/lib/provider.ts", "new NominatimClient()"],
+      ["frontend/features/location.ts", "reverseGeocode(point)"],
+      ["frontend/features/address.ts", "addressAutocomplete(query)"],
+      ["frontend/features/location.ts", "locationTypeahead(query)"],
+      ["frontend/features/geocoding.ts", "geocodingAutocomplete(query)"],
+      ["frontend/features/location.ts", 'const autoComplete = "provider"']
+    ] as const) {
+      expect(hasUnsupportedFrontendGeocoding(relativePath, source)).toBe(true);
+    }
   }, 15_000);
 });
