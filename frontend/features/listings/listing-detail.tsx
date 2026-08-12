@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { MapBase } from "../../components/map/map-base";
 import { Button } from "../../components/ui/button";
 import { ErrorState, LoadingState } from "../../components/ui/feedback-states";
@@ -15,6 +15,7 @@ const maximumListingId = 2_147_483_647;
 
 export interface ListingDetailProps {
   readonly listingId: string;
+  readonly actions?: ReactNode;
 }
 
 function parseListingId(value: string): number | null {
@@ -23,7 +24,7 @@ function parseListingId(value: string): number | null {
   return Number.isSafeInteger(parsed) && parsed >= 1 && parsed <= maximumListingId ? parsed : null;
 }
 
-export function ListingDetail({ listingId }: ListingDetailProps) {
+export function ListingDetail({ listingId, actions }: ListingDetailProps) {
   const parsedId = useMemo(() => parseListingId(listingId), [listingId]);
   const [detail, setDetail] = useState<PublicListingDetail | null>(null);
   const [status, setStatus] = useState<"loading" | "success" | "not-found" | "error">(
@@ -114,6 +115,7 @@ export function ListingDetail({ listingId }: ListingDetailProps) {
         <p className="mt-2 text-slate-700">
           {formatAreaSqm(detail.roomAreaSqm)} · {detail.propertyType.label} · {detail.areaName}
         </p>
+        {actions ? <div className="mt-5 rounded-xl border border-stone-200 bg-white p-4">{actions}</div> : null}
       </header>
 
       {primaryImage ? (

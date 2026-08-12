@@ -18,6 +18,7 @@
     "test:rm046": "vitest run --config vitest.config.mts components/ui/form-controls.test.tsx components/ui/shared-primitives.test.tsx lib/validation/api-field-errors.test.ts components/map/map-base.test.tsx test/rm046-application-isolation.test.ts",
     "test:rm047": "vitest run --config vitest.config.mts features/auth/validation.test.ts features/auth/registration-form.test.tsx features/auth/login-form.test.tsx features/auth/auth-page-shell.test.tsx components/ui/app-shell.test.tsx lib/auth/auth-provider.test.tsx test/rm045-application-isolation.test.ts test/rm047-application-isolation.test.ts",
     "test:rm048": "vitest run --config vitest.config.mts features/listings/search-query.test.ts features/listings/search-filters.test.tsx features/listings/search-page.test.tsx features/listings/search-map.test.tsx features/listings/radius-controls.test.tsx features/listings/listing-card.test.tsx features/listings/listing-detail.test.tsx test/rm048-application-isolation.test.ts app/page.test.tsx components/ui/app-shell.test.tsx",
+    "test:rm049": "vitest run --config vitest.config.mts features/favorites/favorite-save-control.test.tsx features/favorites/favorite-remove-control.test.tsx features/favorites/favorites-page.test.tsx features/listings/listing-detail.test.tsx components/ui/app-shell.test.tsx test/rm049-application-isolation.test.ts",
     "format": "prettier --config ../.prettierrc.json --ignore-path ../.prettierignore --write .",
     "format:check": "prettier --config ../.prettierrc.json --ignore-path ../.prettierignore --check ."
   },

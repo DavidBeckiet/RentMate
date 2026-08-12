@@ -130,6 +130,16 @@ export function AppShell({ children }: Readonly<{ children: ReactNode }>) {
 
             {status === "authenticated" && user && (
               <div className="flex flex-col gap-2 md:flex-row md:items-center">
+                {user.role === "TENANT" ? (
+                  <Link
+                    href="/favorites"
+                    aria-current={pathname === "/favorites" ? "page" : undefined}
+                    className="inline-flex min-h-11 items-center rounded-md px-3 font-medium text-slate-700 transition-colors hover:bg-teal-50 hover:text-teal-800 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-teal-700"
+                    onClick={() => setMenuOpen(false)}
+                  >
+                    Tin đã lưu
+                  </Link>
+                ) : null}
                 <p className="px-3 text-sm text-slate-600">
                   <span className="font-medium text-slate-900">{user.email}</span>
                   <span className="ml-2 rounded-full bg-teal-50 px-2 py-1 text-xs font-semibold text-teal-800">

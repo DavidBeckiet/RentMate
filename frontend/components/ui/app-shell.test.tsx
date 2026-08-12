@@ -82,6 +82,7 @@ describe("AppShell", () => {
 
     expect(within(navigation).getByText("tenant@example.com")).toBeInTheDocument();
     expect(within(navigation).getByText("TENANT")).toBeInTheDocument();
+    expect(within(navigation).getByRole("link", { name: "Tin đã lưu" })).toHaveAttribute("href", "/favorites");
     expect(within(navigation).queryByRole("link", { name: "Đăng nhập" })).not.toBeInTheDocument();
     fireEvent.click(within(navigation).getByRole("button", { name: "Đăng xuất" }));
     await waitFor(() => expect(logout).toHaveBeenCalledTimes(1));
@@ -89,6 +90,23 @@ describe("AppShell", () => {
     useAuthMock.mockReturnValue(authValue());
     view.rerender(<AppShell>Nội dung trang</AppShell>);
     await waitFor(() => expect(navigationMocks.replace).toHaveBeenCalledWith("/"));
+  });
+
+  it("shows current favorites navigation only to authenticated tenants", () => {
+    navigationMocks.pathname.mockReturnValue("/favorites");
+    useAuthMock.mockReturnValue(authValue({ status: "authenticated", user: tenant }));
+    const view = render(<AppShell>Nội dung trang</AppShell>);
+    expect(screen.getByRole("link", { name: "Tin đã lưu" })).toHaveAttribute("aria-current", "page");
+
+    useAuthMock.mockReturnValue(
+      authValue({ status: "authenticated", user: { ...tenant, role: "LANDLORD", phone: "+84901234567" } })
+    );
+    view.rerender(<AppShell>Nội dung trang</AppShell>);
+    expect(screen.queryByRole("link", { name: "Tin đã lưu" })).not.toBeInTheDocument();
+
+    useAuthMock.mockReturnValue(authValue({ status: "authenticated", user: { ...tenant, role: "ADMIN" } }));
+    view.rerender(<AppShell>Nội dung trang</AppShell>);
+    expect(screen.queryByRole("link", { name: "Tin đã lưu" })).not.toBeInTheDocument();
   });
 
   it("blocks duplicate logout submissions while the request is pending", async () => {

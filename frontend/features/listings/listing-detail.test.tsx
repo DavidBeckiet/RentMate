@@ -69,12 +69,40 @@ function detail(overrides: Partial<PublicListingDetail> = {}): PublicListingDeta
   };
 }
 
+function backendError(status: number): ApiError {
+  return new ApiError({ status, code: "SAFE_ERROR", message: "private", category: "backend" });
+}
+
 beforeEach(() => {
   apiMocks.getPublicDetail.mockReset();
   useAuthMock.mockReturnValue(authValue());
 });
 
 describe("ListingDetail", () => {
+  it("renders a generic action only after public detail succeeds", async () => {
+    apiMocks.getPublicDetail.mockResolvedValue(detail());
+    render(<ListingDetail listingId="42" actions={<button type="button">Tác vụ ngoài</button>} />);
+
+    expect(screen.queryByRole("button", { name: "Tác vụ ngoài" })).not.toBeInTheDocument();
+    expect(await screen.findByRole("button", { name: "Tác vụ ngoài" })).toBeInTheDocument();
+  });
+
+  it("does not render the generic action in loading or unavailable states", async () => {
+    let rejectDetail: ((reason: unknown) => void) | undefined;
+    apiMocks.getPublicDetail.mockReturnValue(
+      new Promise((_resolve, reject) => {
+        rejectDetail = reject;
+      })
+    );
+    render(<ListingDetail listingId="42" actions={<button type="button">Tác vụ ngoài</button>} />);
+
+    expect(screen.getByRole("status")).toHaveTextContent("Đang tải tin đăng");
+    expect(screen.queryByRole("button", { name: "Tác vụ ngoài" })).not.toBeInTheDocument();
+    rejectDetail?.(backendError(404));
+    expect(await screen.findByRole("alert")).toHaveTextContent("không tồn tại hoặc hiện không khả dụng");
+    expect(screen.queryByRole("button", { name: "Tác vụ ngoài" })).not.toBeInTheDocument();
+  });
+
   it("loads public detail without waiting for auth and renders ordered images plus approximate location", async () => {
     apiMocks.getPublicDetail.mockResolvedValue(detail());
     render(<ListingDetail listingId="42" />);
