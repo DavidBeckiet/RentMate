@@ -12,9 +12,29 @@ const production = [
   "features/listings/owner-listing-editor.tsx",
   "features/listings/owner-lifecycle-actions.tsx"
 ] as const;
+const publicAndFavoriteProduction = [
+  "features/listings/listing-card.tsx",
+  "features/listings/listing-detail.tsx",
+  "features/favorites/favorites-page.tsx"
+] as const;
+const browserAutocompleteAttribute =
+  /(<[A-Za-z][^<>]*?)\s+autocomplete\s*=\s*(?:"[^"\r\n]*"|'[^'\r\n]*'|\{[^}\r\n]*\})/gi;
 
 function read(path: string): string {
   return readFileSync(join(frontendRoot, path), "utf8");
+}
+
+function hasUnsupportedOwnerProviderBehavior(source: string): boolean {
+  const semanticSource = source.replace(browserAutocompleteAttribute, "$1");
+  return (
+    /nominatim|cloudinary|upload.?preset|cloudinary.?public.?id|signed.?upload|api[_-]?(?:key|secret)|cloud_name/i.test(
+      semanticSource
+    ) ||
+    /reverse.?geocod|autocomplete|typeahead/i.test(semanticSource) ||
+    /navigator\.geolocation/i.test(semanticSource) ||
+    /from\s+["'](?:leaflet|react-leaflet)["']/i.test(semanticSource) ||
+    /on(?:MapClick|MarkerMove)\s*=\s*\{[^}\r\n]*forwardGeocode/i.test(semanticSource)
+  );
 }
 
 describe("RM-050 application isolation", () => {
@@ -31,13 +51,34 @@ describe("RM-050 application isolation", () => {
     expect(source).not.toMatch(/document\.cookie|localStorage|sessionStorage|indexedDB/i);
   });
 
-  it("keeps admin, favorites, image mutation, geocoding, and browser-location workflows outside RM-050", () => {
+  it("keeps admin, favorites, and direct provider behavior outside the owner workflow", () => {
     const source = production.map(read).join("\n");
     expect(source).not.toMatch(/api\.admin|api\.favorites/);
-    expect(source).not.toMatch(/uploadImage|deleteImage|reorderImages|forwardGeocode/);
-    expect(source).not.toMatch(/Nominatim|nominatim|geocod|navigator\.geolocation/i);
-    expect(source).not.toMatch(/onMarkerMove|onMapClick|draggable\s*=/);
-    expect(source).not.toMatch(/\/admin|\/landlord\/listings\/new|image uploader/i);
+    expect(source).not.toMatch(/\/admin|features\/favorites|from\s+["'][^"']*favorites/i);
+    expect(hasUnsupportedOwnerProviderBehavior(source)).toBe(false);
+    expect(
+      hasUnsupportedOwnerProviderBehavior(`
+        api.listings.forwardGeocode(body, signal);
+        api.listings.uploadImage(listingId, input, signal);
+        api.listings.deleteImage(listingId, imageId, signal);
+        api.listings.reorderImages(listingId, body, signal);
+        <MapBase onMapClick={onMapClick} onMarkerMove={onMarkerMove} markers={[{ draggable: true }]} />;
+      `)
+    ).toBe(false);
+    for (const unsupported of [
+      'fetch("https://nominatim.openstreetmap.org/search")',
+      "new NominatimClient()",
+      "reverseGeocode(point)",
+      "addressAutocomplete(query)",
+      "<MapBase onMapClick={() => api.listings.forwardGeocode(body)} />",
+      "navigator.geolocation.getCurrentPosition(success)",
+      'import { MapContainer } from "react-leaflet"',
+      "cloudinary.v2.uploader.upload(file)",
+      'const uploadPreset = "unsigned"',
+      "mutateCloudinaryPublicId(image)"
+    ]) {
+      expect(hasUnsupportedOwnerProviderBehavior(unsupported)).toBe(true);
+    }
   });
 
   it("has no local lifecycle transition authority or background PATCH", () => {
@@ -57,6 +98,7 @@ describe("RM-050 application isolation", () => {
     const publicDetail = read("features/listings/listing-detail.tsx");
     const publicCard = read("features/listings/listing-card.tsx");
     const favorites = read("features/favorites/favorites-page.tsx");
+    const publicAndFavorites = publicAndFavoriteProduction.map(read).join("\n");
     expect(owner).toContain("Vị trí chính xác của tin");
     expect(owner).toContain("detail.latitude");
     expect(owner).toContain("detail.longitude");
@@ -64,6 +106,9 @@ describe("RM-050 application isolation", () => {
     expect(publicDetail).not.toContain("Vị trí chính xác của tin");
     expect(publicCard).not.toMatch(/addressText|landlordContact/);
     expect(favorites).not.toMatch(/addressText|landlordContact/);
+    expect(publicAndFavorites).not.toMatch(
+      /api\.listings\s*\.\s*(?:uploadImage|deleteImage|reorderImages|forwardGeocode)/
+    );
   });
 
   it("registers only the three RM-050 routes and focused suite without dependency drift", () => {
