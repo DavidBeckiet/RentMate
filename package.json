@@ -97,6 +97,7 @@
     "test:rm044": "npm --prefix backend run test:rm044",
     "test:rm044:database": "npm --prefix backend run test:rm044:database",
     "test:rm045": "npm --prefix frontend run test:rm045",
+    "test:rm046": "npm --prefix frontend run test:rm046",
     "migrate:clean": "npm --prefix backend run migrate:clean --",
     "migrate:existing": "npm --prefix backend run migrate:existing --",
     "admin:provision": "npm --prefix backend run admin:provision",
