@@ -19,3 +19,7 @@ npm-debug.log*
 # Operating system files
 .DS_Store
 Thumbs.db
+
+# Python generated cache
+__pycache__/
+*.py[cod]
