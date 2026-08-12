@@ -109,6 +109,34 @@ describe("AppShell", () => {
     expect(screen.queryByRole("link", { name: "Tin đã lưu" })).not.toBeInTheDocument();
   });
 
+  it.each([
+    ["/landlord", "Tin của tôi"],
+    ["/landlord/listings/42", "Tin của tôi"],
+    ["/landlord/profile", "Hồ sơ"]
+  ])("shows landlord navigation with the correct current item at %s", (pathname, currentLabel) => {
+    navigationMocks.pathname.mockReturnValue(pathname);
+    useAuthMock.mockReturnValue(
+      authValue({ status: "authenticated", user: { ...tenant, role: "LANDLORD", phone: "+84901234567" } })
+    );
+    render(<AppShell>Nội dung trang</AppShell>);
+
+    expect(screen.getByRole("link", { name: "Tin của tôi" })).toHaveAttribute("href", "/landlord");
+    expect(screen.getByRole("link", { name: "Hồ sơ" })).toHaveAttribute("href", "/landlord/profile");
+    expect(screen.getByRole("link", { name: currentLabel })).toHaveAttribute("aria-current", "page");
+    expect(screen.queryByRole("link", { name: "Tin đã lưu" })).not.toBeInTheDocument();
+  });
+
+  it("keeps landlord links hidden for anonymous users and admins", () => {
+    const view = render(<AppShell>Nội dung trang</AppShell>);
+    expect(screen.queryByRole("link", { name: "Tin của tôi" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: "Hồ sơ" })).not.toBeInTheDocument();
+
+    useAuthMock.mockReturnValue(authValue({ status: "authenticated", user: { ...tenant, role: "ADMIN" } }));
+    view.rerender(<AppShell>Nội dung trang</AppShell>);
+    expect(screen.queryByRole("link", { name: "Tin của tôi" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: "Hồ sơ" })).not.toBeInTheDocument();
+  });
+
   it("blocks duplicate logout submissions while the request is pending", async () => {
     let resolveLogout: (() => void) | undefined;
     logout.mockReturnValue(
