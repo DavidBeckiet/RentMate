@@ -48,7 +48,7 @@ describe("AppShell", () => {
     expect(screen.getByRole("main")).toHaveAttribute("id", "main-content");
     expect(screen.getByRole("link", { name: "Bỏ qua đến nội dung chính" })).toHaveAttribute("href", "#main-content");
     expect(screen.getAllByRole("link", { name: "RentMate" })[0]).toHaveAttribute("href", "/");
-    expect(screen.getByRole("link", { name: "Trang chủ" })).toHaveAttribute("aria-current", "page");
+    expect(screen.getByRole("link", { name: "Tìm phòng" })).toHaveAttribute("aria-current", "page");
   });
 
   it("opens the mobile menu with ARIA state and closes it with Escape", () => {

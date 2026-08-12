@@ -93,7 +93,7 @@ export function AppShell({ children }: Readonly<{ children: ReactNode }>) {
               className="inline-flex min-h-11 items-center rounded-md px-3 font-medium text-slate-700 transition-colors hover:bg-teal-50 hover:text-teal-800 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-teal-700"
               onClick={() => setMenuOpen(false)}
             >
-              Trang chủ
+              Tìm phòng
             </Link>
 
             {(status === "anonymous" || status === "error") &&

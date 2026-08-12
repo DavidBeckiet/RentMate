@@ -1,14 +1,22 @@
 import { render, screen } from "@testing-library/react";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
+
+vi.mock("../features/listings/search-page", () => ({
+  SearchPage: () => (
+    <section>
+      <h1>Tìm phòng phù hợp tại Thành phố Hồ Chí Minh</h1>
+      <form aria-label="Tìm kiếm tin đăng" />
+    </section>
+  )
+}));
+
 import HomePage from "./page";
 
 describe("HomePage", () => {
-  it("renders a bounded RentMate foundation placeholder without starting future workflows", () => {
+  it("renders the public search experience at the root route", () => {
     render(<HomePage />);
 
-    expect(screen.getByRole("heading", { level: 1, name: /Một nền tảng rõ ràng/ })).toBeInTheDocument();
-    expect(screen.getByRole("heading", { level: 2, name: "Nền tảng giao diện đã sẵn sàng" })).toBeInTheDocument();
-    expect(screen.getByText(/Thành phố Hồ Chí Minh/)).toBeInTheDocument();
-    expect(screen.queryByRole("form")).not.toBeInTheDocument();
+    expect(screen.getByRole("heading", { level: 1, name: /Tìm phòng phù hợp/ })).toBeInTheDocument();
+    expect(screen.getByRole("form", { name: "Tìm kiếm tin đăng" })).toBeInTheDocument();
   });
 });

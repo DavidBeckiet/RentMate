@@ -1,0 +1,67 @@
+import { render, screen } from "@testing-library/react";
+import { describe, expect, it, vi } from "vitest";
+import type { PublicListingSummary } from "../../types/api";
+
+vi.mock("next/image", () => ({
+  default: ({ alt }: { alt: string }) => <span role="img" aria-label={alt} />
+}));
+
+import { ListingCard } from "./listing-card";
+
+function listing(overrides: Partial<PublicListingSummary> = {}): PublicListingSummary {
+  return {
+    id: 42,
+    title: "Studio sáng gần trung tâm",
+    monthlyRent: 7_500_000,
+    roomAreaSqm: 28.5,
+    areaName: "Bến Thành, Quận 1",
+    latitude: 10.772,
+    longitude: 106.698,
+    propertyType: { code: "STUDIO", label: "Studio" },
+    amenities: [{ code: "WIFI", label: "Wi-Fi" }],
+    coverImage: { url: "https://res.cloudinary.com/rentmate/image/upload/studio.webp", altText: null, displayOrder: 1 },
+    updatedAt: "2026-08-01T00:00:00.000Z",
+    ...overrides
+  };
+}
+
+describe("ListingCard", () => {
+  it("renders only the public summary presentation and detail link", () => {
+    render(<ListingCard listing={listing()} />);
+
+    expect(screen.getByRole("link", { name: /Studio sáng gần trung tâm/ })).toHaveAttribute("href", "/listings/42");
+    expect(screen.getByText(/7[.\s]500[.\s]000/)).toBeInTheDocument();
+    expect(screen.getByText(/28,5 m²/)).toHaveTextContent("Studio");
+    expect(screen.getByText("Bến Thành, Quận 1")).toBeInTheDocument();
+    expect(screen.getByText("Wi-Fi")).toBeInTheDocument();
+    expect(screen.getByRole("img", { name: "Ảnh của Studio sáng gần trung tâm" })).toBeInTheDocument();
+    expect(document.body).not.toHaveTextContent(/landlord|addressText|moderation|106\.698/i);
+  });
+
+  it("renders distance only when the radius result supplies it and respects backend alt text", () => {
+    const view = render(
+      <ListingCard
+        listing={listing({
+          distanceKm: 2.34,
+          coverImage: {
+            url: "https://res.cloudinary.com/rentmate/image/upload/a.webp",
+            altText: "Phòng có cửa sổ",
+            displayOrder: 1
+          }
+        })}
+      />
+    );
+    expect(screen.getByText("2,3 km")).toBeInTheDocument();
+    expect(screen.getByRole("img", { name: "Phòng có cửa sổ" })).toBeInTheDocument();
+
+    view.rerender(<ListingCard listing={listing()} />);
+    expect(screen.queryByText(/ km$/)).not.toBeInTheDocument();
+  });
+
+  it("uses a restrained placeholder for a defensive runtime payload without a cover image", () => {
+    const withoutCover = { ...listing(), coverImage: null } as unknown as PublicListingSummary;
+    render(<ListingCard listing={withoutCover} />);
+
+    expect(screen.getByRole("img", { name: "Chưa có ảnh cho Studio sáng gần trung tâm" })).toBeInTheDocument();
+  });
+});
