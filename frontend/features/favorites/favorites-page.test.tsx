@@ -278,14 +278,27 @@ describe("FavoritesPage", () => {
 
   it("moves to the previous URL only when successful removal reconciliation empties a later page", async () => {
     navigationMocks.query = "page=2&pageSize=40";
-    apiMocks.list
-      .mockResolvedValueOnce(page([listing(9, "Tin cuối trang hai")], 2, false, 40))
-      .mockResolvedValueOnce(page([], 2, false, 40));
-    apiMocks.remove.mockResolvedValue(undefined);
+    const initialPage = deferred<ApiPage<PublicListingSummary>>();
+    const removal = deferred<void>();
+    const emptyPage = deferred<ApiPage<PublicListingSummary>>();
+    apiMocks.list.mockReturnValueOnce(initialPage.promise).mockReturnValueOnce(emptyPage.promise);
+    apiMocks.remove.mockReturnValue(removal.promise);
     render(<FavoritesPage />);
-    await screen.findByText("Tin cuối trang hai");
 
-    fireEvent.click(screen.getByRole("button", { name: "Bỏ lưu" }));
+    await waitFor(() => expect(apiMocks.list).toHaveBeenCalledOnce());
+    await act(async () => initialPage.resolve(page([listing(9, "Tin cuối trang hai")], 2, false, 40)));
+    const removeButton = await screen.findByRole("button", { name: "Bỏ lưu" });
+
+    fireEvent.click(removeButton);
+    await waitFor(() => expect(apiMocks.remove).toHaveBeenCalledWith(9, expect.any(AbortSignal)));
+    expect(apiMocks.remove).toHaveBeenCalledOnce();
+    expect(apiMocks.list).toHaveBeenCalledOnce();
+
+    await act(async () => removal.resolve());
+    await waitFor(() => expect(apiMocks.list).toHaveBeenCalledTimes(2));
+    expect(navigationMocks.replace).not.toHaveBeenCalled();
+
+    await act(async () => emptyPage.resolve(page([], 2, false, 40)));
     await waitFor(() => expect(navigationMocks.replace).toHaveBeenCalledWith("/favorites?pageSize=40"));
     expect(apiMocks.list).toHaveBeenCalledTimes(2);
   });
