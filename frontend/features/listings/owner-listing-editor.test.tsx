@@ -4,14 +4,37 @@ import { useState } from "react";
 import type { AuthContextValue } from "../../lib/auth/auth-provider";
 import type { ListingContentBody, OwnerListingDetail, UserProfile } from "../../types/api";
 
-const apiMocks = vi.hoisted(() => ({ updateOwned: vi.fn() }));
+const apiMocks = vi.hoisted(() => ({ updateOwned: vi.fn(), forwardGeocode: vi.fn() }));
 const useAuthMock = vi.hoisted(() => vi.fn<() => AuthContextValue>());
 
 vi.mock("../../lib/api/client", async () => {
   const actual = await vi.importActual<typeof import("../../lib/api/client")>("../../lib/api/client");
-  return { ...actual, api: { listings: { updateOwned: apiMocks.updateOwned } } };
+  return { ...actual, api: { listings: apiMocks } };
 });
 vi.mock("../../lib/auth/auth-provider", () => ({ useAuth: useAuthMock }));
+vi.mock("../../components/map/map-base", () => ({
+  MapBase: ({
+    ariaLabel,
+    onMapClick,
+    onMarkerMove
+  }: {
+    ariaLabel: string;
+    onMapClick?: (point: { latitude: number; longitude: number }) => void;
+    onMarkerMove?: (id: string | number, point: { latitude: number; longitude: number }) => void;
+  }) => (
+    <div role="region" aria-label={ariaLabel}>
+      <button type="button" onClick={() => onMapClick?.({ latitude: 10.81, longitude: 106.71 })}>
+        Đặt ghim kiểm thử
+      </button>
+      <button
+        type="button"
+        onClick={() => onMarkerMove?.("owner-draft-location", { latitude: 10.82, longitude: 106.72 })}
+      >
+        Kéo ghim kiểm thử
+      </button>
+    </div>
+  )
+}));
 
 import { ApiError } from "../../lib/api/client";
 import { OwnerListingEditor, type OwnerEditorFeedback } from "./owner-listing-editor";
@@ -86,7 +109,7 @@ function save() {
 
 describe("OwnerListingEditor", () => {
   beforeEach(() => {
-    apiMocks.updateOwned.mockReset();
+    Object.values(apiMocks).forEach((mock) => mock.mockReset());
     refresh.mockReset();
     refresh.mockResolvedValue();
     useAuthMock.mockReturnValue({ status: "authenticated", user: landlord, error: null, refresh, logout: vi.fn() });
@@ -285,6 +308,67 @@ describe("OwnerListingEditor", () => {
     fireEvent.click(screen.getByRole("button", { name: "Hoàn tác thay đổi" }));
     expect(screen.getByLabelText("Tiêu đề")).toHaveValue("Studio");
     expect(screen.getByRole("button", { name: "Lưu thay đổi" })).toBeDisabled();
+    expect(apiMocks.updateOwned).not.toHaveBeenCalled();
+  });
+
+  it("composes geocoding into the existing address/coordinate draft and persists candidate coordinates only on save", async () => {
+    apiMocks.forwardGeocode.mockResolvedValue([
+      { displayName: "102 Nguyễn Huệ, Quận 1", latitude: 10.775, longitude: 106.704 }
+    ]);
+    apiMocks.updateOwned.mockResolvedValue(
+      detail({ addressText: "102 Nguyễn Huệ", latitude: 10.775, longitude: 106.704 })
+    );
+    render(<Harness />);
+    change("Tiêu đề", "Nháp chưa lưu");
+    change("Địa chỉ chính xác", "  102 Nguyễn Huệ  ");
+    expect(apiMocks.forwardGeocode).not.toHaveBeenCalled();
+    expect(apiMocks.updateOwned).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByRole("button", { name: "Tìm vị trí từ địa chỉ" }));
+    await waitFor(() => expect(apiMocks.forwardGeocode).toHaveBeenCalledOnce());
+    expect(apiMocks.forwardGeocode.mock.calls[0][0]).toEqual({ addressText: "102 Nguyễn Huệ" });
+    fireEvent.click(await screen.findByRole("button", { name: "102 Nguyễn Huệ, Quận 1" }));
+    expect(screen.getByLabelText("Địa chỉ chính xác")).toHaveValue("  102 Nguyễn Huệ  ");
+    expect(screen.getByLabelText("Vĩ độ")).toHaveValue(10.775);
+    expect(screen.getByLabelText("Kinh độ")).toHaveValue(106.704);
+    expect(apiMocks.updateOwned).not.toHaveBeenCalled();
+    save();
+    await waitFor(() => expect(apiMocks.updateOwned).toHaveBeenCalledOnce());
+    expect(apiMocks.updateOwned.mock.calls[0][1]).toMatchObject({
+      title: "Nháp chưa lưu",
+      addressText: "102 Nguyễn Huệ",
+      latitude: 10.775,
+      longitude: 106.704
+    });
+  });
+
+  it("uses map click and marker drag to update the same coordinate fields without geocoding or autosave", () => {
+    render(<Harness />);
+    fireEvent.click(screen.getByRole("button", { name: "Đặt ghim kiểm thử" }));
+    expect(screen.getByLabelText("Vĩ độ")).toHaveValue(10.81);
+    expect(screen.getByLabelText("Kinh độ")).toHaveValue(106.71);
+    fireEvent.click(screen.getByRole("button", { name: "Kéo ghim kiểm thử" }));
+    expect(screen.getByLabelText("Vĩ độ")).toHaveValue(10.82);
+    expect(screen.getByLabelText("Kinh độ")).toHaveValue(106.72);
+    expect(screen.getByText(/Bạn có thay đổi chưa lưu/)).toBeInTheDocument();
+    expect(apiMocks.forwardGeocode).not.toHaveBeenCalled();
+    expect(apiMocks.updateOwned).not.toHaveBeenCalled();
+  });
+
+  it("keeps all unsaved editor fields usable after a geocoding provider failure", async () => {
+    apiMocks.forwardGeocode.mockRejectedValue(
+      new ApiError({ status: 502, code: "GEOCODING_PROVIDER_ERROR", message: "private", category: "backend" })
+    );
+    render(<Harness />);
+    change("Tiêu đề", "Nháp còn nguyên");
+    change("Địa chỉ chính xác", "Địa chỉ đang sửa");
+    change("Vĩ độ", "10.9");
+    change("Kinh độ", "106.9");
+    fireEvent.click(screen.getByRole("button", { name: "Tìm vị trí từ địa chỉ" }));
+    expect(await screen.findByRole("alert")).toHaveTextContent("Dịch vụ định vị tạm thời không khả dụng.");
+    expect(screen.getByLabelText("Tiêu đề")).toHaveValue("Nháp còn nguyên");
+    expect(screen.getByLabelText("Địa chỉ chính xác")).toHaveValue("Địa chỉ đang sửa");
+    expect(screen.getByLabelText("Vĩ độ")).toHaveValue(10.9);
+    expect(screen.getByLabelText("Kinh độ")).toHaveValue(106.9);
     expect(apiMocks.updateOwned).not.toHaveBeenCalled();
   });
 });

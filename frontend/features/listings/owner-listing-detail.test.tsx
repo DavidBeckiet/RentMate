@@ -6,6 +6,10 @@ import type { OwnerListingDetail as OwnerDetail, UserProfile } from "../../types
 const apiMocks = vi.hoisted(() => ({
   getOwned: vi.fn(),
   updateOwned: vi.fn(),
+  uploadImage: vi.fn(),
+  deleteImage: vi.fn(),
+  reorderImages: vi.fn(),
+  forwardGeocode: vi.fn(),
   listPropertyTypes: vi.fn(),
   listAmenities: vi.fn()
 }));
@@ -16,7 +20,14 @@ vi.mock("../../lib/api/client", async () => {
   return {
     ...actual,
     api: {
-      listings: { getOwned: apiMocks.getOwned, updateOwned: apiMocks.updateOwned },
+      listings: {
+        getOwned: apiMocks.getOwned,
+        updateOwned: apiMocks.updateOwned,
+        uploadImage: apiMocks.uploadImage,
+        deleteImage: apiMocks.deleteImage,
+        reorderImages: apiMocks.reorderImages,
+        forwardGeocode: apiMocks.forwardGeocode
+      },
       lookups: { listPropertyTypes: apiMocks.listPropertyTypes, listAmenities: apiMocks.listAmenities }
     }
   };
@@ -35,7 +46,7 @@ vi.mock("../../components/map/map-base", () => ({
 vi.mock("./owner-lifecycle-actions", () => ({
   OwnerLifecycleActions: ({ detail, blocked }: { detail: OwnerDetail; blocked: boolean }) => (
     <div data-testid="lifecycle">
-      {detail.status}:{String(blocked)}
+      {detail.status}:{String(blocked)}:{detail.images.length}
     </div>
   )
 }));
@@ -141,29 +152,31 @@ describe("OwnerListingDetail", () => {
     expect(apiMocks.getOwned).not.toHaveBeenCalled();
   });
 
-  it("renders exact private location, a non-draggable map seam, and ordered read-only images", async () => {
+  it("keeps exact private location in the shared editor and composes the canonical image manager", async () => {
     apiMocks.getOwned.mockResolvedValue(detail());
     render(<OwnerListingDetail listingId="42" />);
     expect(apiMocks.getOwned).toHaveBeenCalledWith(42, expect.any(AbortSignal));
     expect(await screen.findByRole("heading", { level: 1, name: "Studio chính chủ" })).toBeInTheDocument();
-    expect(screen.getByText("101 Nguyễn Huệ, Quận 1")).toBeInTheDocument();
-    expect(screen.getByText(/Vĩ độ 10\.7731/)).toHaveTextContent("Kinh độ 106.7032");
-    expect(screen.getByRole("region", { name: "Bản đồ vị trí chính xác của tin" })).toBeInTheDocument();
+    expect(screen.getByLabelText("Địa chỉ chính xác")).toHaveValue("101 Nguyễn Huệ, Quận 1");
+    expect(screen.getByLabelText("Vĩ độ")).toHaveValue(10.7731);
+    expect(screen.getByLabelText("Kinh độ")).toHaveValue(106.7032);
+    expect(screen.getByRole("region", { name: "Bản đồ điều chỉnh vị trí chính xác của tin" })).toBeInTheDocument();
     expect(screen.queryByText(/vị trí xấp xỉ/i)).not.toBeInTheDocument();
     expect(screen.getAllByRole("img").map((image) => image.getAttribute("aria-label"))).toEqual([
       "Ảnh thứ nhất",
       "Ảnh thứ hai"
     ]);
-    expect(screen.getByText("2 ảnh · chỉ đọc")).toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: /tải ảnh|xóa ảnh|sắp xếp/i })).not.toBeInTheDocument();
+    expect(screen.getByText("2/8 ảnh · ảnh đầu tiên là ảnh bìa")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Tải ảnh lên" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Xóa ảnh 1" })).toBeInTheDocument();
     expect(screen.queryByText("Lý do cũ không được hiện")).not.toBeInTheDocument();
   });
 
-  it("shows zero-image submission guidance without introducing image mutation", async () => {
+  it("shows zero-image submission guidance and the owner upload action", async () => {
     apiMocks.getOwned.mockResolvedValue(detail({ status: "DRAFT", images: [] }));
     render(<OwnerListingDetail listingId="42" />);
     expect(await screen.findByText("Cần ít nhất một ảnh trước khi gửi duyệt.")).toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: /ảnh/i })).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Tải ảnh lên" })).toBeInTheDocument();
   });
 
   it.each([
@@ -216,5 +229,49 @@ describe("OwnerListingDetail", () => {
     expect(await screen.findByRole("heading", { name: "Tin hiện tại" })).toBeInTheDocument();
     await act(async () => oldRequest.resolve(detail({ title: "Tin cũ" })));
     expect(screen.queryByText("Tin cũ")).not.toBeInTheDocument();
+  });
+
+  it("takes image count and lifecycle status only from the post-upload V1-13 refresh", async () => {
+    const initial = detail({ status: "APPROVED" });
+    const refreshed = detail({
+      status: "PENDING",
+      images: [
+        ...initial.images,
+        { ...initial.images[0]!, id: 3, displayOrder: 3, url: "https://example.com/third.webp" }
+      ]
+    });
+    apiMocks.getOwned.mockResolvedValueOnce(initial).mockResolvedValueOnce(refreshed);
+    apiMocks.uploadImage.mockResolvedValue(refreshed.images[2]);
+    render(<OwnerListingDetail listingId="42" />);
+    await screen.findByRole("heading", { level: 1, name: "Studio chính chủ" });
+    fireEvent.change(screen.getByLabelText("Chọn một ảnh"), {
+      target: { files: [new File(["image"], "third.webp", { type: "image/webp" })] }
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Tải ảnh lên" }));
+    await waitFor(() => expect(apiMocks.getOwned).toHaveBeenCalledTimes(2));
+    await waitFor(() => expect(screen.getByTestId("lifecycle")).toHaveTextContent("PENDING:false:3"));
+    expect(screen.getByText("3/8 ảnh · ảnh đầu tiên là ảnh bìa")).toBeInTheDocument();
+  });
+
+  it("blocks image mutation and lifecycle while content is dirty", async () => {
+    apiMocks.getOwned.mockResolvedValue(detail());
+    render(<OwnerListingDetail listingId="42" />);
+    await screen.findByRole("heading", { level: 1, name: "Studio chính chủ" });
+    fireEvent.change(screen.getByLabelText("Tiêu đề"), { target: { value: "Nháp chưa lưu" } });
+    expect(screen.getByText("Hãy lưu hoặc hoàn tác thay đổi nội dung trước khi quản lý ảnh.")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Tải ảnh lên" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Xóa ảnh 1" })).toBeDisabled();
+    expect(screen.getByTestId("lifecycle")).toHaveTextContent("APPROVED:true:2");
+  });
+
+  it("blocks lifecycle for a local image-order draft and unblocks after explicit revert", async () => {
+    apiMocks.getOwned.mockResolvedValue(detail());
+    render(<OwnerListingDetail listingId="42" />);
+    await screen.findByRole("heading", { level: 1, name: "Studio chính chủ" });
+    fireEvent.click(screen.getByRole("button", { name: "Đưa ảnh 2 lên" }));
+    expect(screen.getByTestId("lifecycle")).toHaveTextContent("APPROVED:true:2");
+    expect(apiMocks.reorderImages).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByRole("button", { name: "Hoàn tác thứ tự" }));
+    expect(screen.getByTestId("lifecycle")).toHaveTextContent("APPROVED:false:2");
   });
 });

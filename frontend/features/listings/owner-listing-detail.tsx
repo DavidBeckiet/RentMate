@@ -1,15 +1,14 @@
 "use client";
 
-import Image from "next/image";
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { MapBase } from "../../components/map/map-base";
 import { Button } from "../../components/ui/button";
 import { ErrorState, LoadingState } from "../../components/ui/feedback-states";
 import { ListingStatusBadge } from "../../components/ui/status-badge";
 import { api, ApiError } from "../../lib/api/client";
 import { useAuth } from "../../lib/auth/auth-provider";
 import type { Amenity, OwnerListingDetail as OwnerDetail, PropertyType } from "../../types/api";
+import { OwnerImageManager } from "./owner-image-manager";
 import { OwnerLifecycleActions } from "./owner-lifecycle-actions";
 import { OwnerListingEditor, type LookupResource, type OwnerEditorFeedback } from "./owner-listing-editor";
 
@@ -37,19 +36,6 @@ function lookupAfterFailure<Value>(current: LookupResource<Value>): LookupResour
   return { status: "error", data: current.data };
 }
 
-function hasValidCoordinates(detail: OwnerDetail): detail is OwnerDetail & { latitude: number; longitude: number } {
-  return (
-    detail.latitude !== null &&
-    detail.longitude !== null &&
-    Number.isFinite(detail.latitude) &&
-    Number.isFinite(detail.longitude) &&
-    detail.latitude >= -90 &&
-    detail.latitude <= 90 &&
-    detail.longitude >= -180 &&
-    detail.longitude <= 180
-  );
-}
-
 export function OwnerListingDetail({ listingId }: { readonly listingId: string }) {
   const parsedId = useMemo(() => parseListingId(listingId), [listingId]);
   const { status: authStatus, user, error: authError, refresh } = useAuth();
@@ -61,6 +47,8 @@ export function OwnerListingDetail({ listingId }: { readonly listingId: string }
   const [amenities, setAmenities] = useState<LookupResource<Amenity>>(initialLookup);
   const [editorDirty, setEditorDirty] = useState(false);
   const [editorBusy, setEditorBusy] = useState(false);
+  const [imageBusy, setImageBusy] = useState(false);
+  const [imageOrderDirty, setImageOrderDirty] = useState(false);
   const [editorFeedback, setEditorFeedback] = useState<OwnerEditorFeedback | null>(null);
   const detailIdentity = useRef(0);
   const authRefreshForId = useRef<number | null>(null);
@@ -70,6 +58,8 @@ export function OwnerListingDetail({ listingId }: { readonly listingId: string }
   useEffect(() => {
     setEditorDirty(false);
     setEditorBusy(false);
+    setImageBusy(false);
+    setImageOrderDirty(false);
     setEditorFeedback(null);
   }, [parsedId]);
 
@@ -213,9 +203,8 @@ export function OwnerListingDetail({ listingId }: { readonly listingId: string }
 
   const detail = detailState.detail;
   const title = detail.title ?? "Chưa có tiêu đề";
-  const orderedImages = [...detail.images].sort((left, right) => left.displayOrder - right.displayOrder);
   const reasonLabel = detail.status === "REJECTED" ? "Lý do từ chối" : detail.status === "HIDDEN" ? "Lý do ẩn" : null;
-  const blocked = editorDirty || editorBusy;
+  const blocked = editorDirty || editorBusy || imageBusy || imageOrderDirty;
 
   return (
     <article className="space-y-8">
@@ -244,77 +233,6 @@ export function OwnerListingDetail({ listingId }: { readonly listingId: string }
         ) : null}
       </header>
 
-      <section
-        aria-labelledby="owner-images-heading"
-        className="space-y-4 rounded-xl border border-stone-200 bg-white p-6"
-      >
-        <div className="flex flex-wrap items-baseline justify-between gap-3">
-          <h2 id="owner-images-heading" className="text-xl font-semibold text-slate-950">
-            Ảnh hiện tại
-          </h2>
-          <p className="text-sm text-slate-600">{orderedImages.length} ảnh · chỉ đọc</p>
-        </div>
-        {orderedImages.length > 0 ? (
-          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
-            {orderedImages.map((image) => (
-              <figure key={image.id} className="space-y-2">
-                <div className="relative aspect-[4/3] overflow-hidden rounded-lg bg-stone-100">
-                  <Image
-                    src={image.url}
-                    alt={image.altText ?? `Ảnh ${image.displayOrder} của ${title}`}
-                    fill
-                    sizes="(min-width: 1024px) 256px, (min-width: 640px) 33vw, 50vw"
-                    className="object-cover"
-                  />
-                </div>
-                <figcaption className="text-xs text-slate-600">
-                  Thứ tự {image.displayOrder}
-                  {image.altText ? ` · ${image.altText}` : ""}
-                </figcaption>
-              </figure>
-            ))}
-          </div>
-        ) : (
-          <p className="rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm text-amber-950">
-            Cần ít nhất một ảnh trước khi gửi duyệt.
-          </p>
-        )}
-      </section>
-
-      {hasValidCoordinates(detail) ? (
-        <section
-          aria-labelledby="owner-map-heading"
-          className="space-y-4 rounded-xl border border-stone-200 bg-white p-6"
-        >
-          <div>
-            <h2 id="owner-map-heading" className="text-xl font-semibold text-slate-950">
-              Vị trí chính xác của tin
-            </h2>
-            <p className="mt-1 text-sm text-slate-600">{detail.addressText ?? "Chưa nhập địa chỉ chính xác"}</p>
-            <p className="mt-1 text-xs text-slate-500">
-              Vĩ độ {detail.latitude} · Kinh độ {detail.longitude}
-            </p>
-          </div>
-          <MapBase
-            ariaLabel="Bản đồ vị trí chính xác của tin"
-            center={{ latitude: detail.latitude, longitude: detail.longitude }}
-            zoom={16}
-            markers={[
-              {
-                id: detail.id,
-                label: `${title} — vị trí chính xác`,
-                position: { latitude: detail.latitude, longitude: detail.longitude }
-              }
-            ]}
-          />
-        </section>
-      ) : (
-        <section className="rounded-xl border border-stone-200 bg-white p-6">
-          <h2 className="text-xl font-semibold text-slate-950">Vị trí chính xác của tin</h2>
-          <p className="mt-2 text-sm text-slate-600">Chưa có cặp tọa độ hợp lệ để hiển thị bản đồ.</p>
-        </section>
-      )}
-
       <OwnerListingEditor
         detail={detail}
         propertyTypes={propertyTypes}
@@ -326,6 +244,14 @@ export function OwnerListingDetail({ listingId }: { readonly listingId: string }
         onEdit={() => setEditorFeedback(null)}
         onRetryPropertyTypes={() => setPropertyVersion((version) => version + 1)}
         onRetryAmenities={() => setAmenityVersion((version) => version + 1)}
+      />
+
+      <OwnerImageManager
+        detail={detail}
+        contentBlocked={editorDirty || editorBusy}
+        onCanonicalChange={replaceDetail}
+        onBusyChange={setImageBusy}
+        onOrderDirtyChange={setImageOrderDirty}
       />
 
       <OwnerLifecycleActions

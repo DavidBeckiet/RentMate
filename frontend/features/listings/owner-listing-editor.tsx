@@ -13,6 +13,7 @@ import { api, ApiError } from "../../lib/api/client";
 import { useAuth } from "../../lib/auth/auth-provider";
 import { mapApiErrorToFields } from "../../lib/validation/api-field-errors";
 import type { Amenity, ListingContentBody, OwnerListingDetail, PropertyType } from "../../types/api";
+import { OwnerLocationControls } from "./owner-location-controls";
 
 export type LookupResource<Value> =
   | { readonly status: "loading"; readonly data: readonly Value[] }
@@ -318,6 +319,20 @@ export function OwnerListingEditor({
     onEdit();
   };
 
+  const updateCoordinates = (latitude: string, longitude: string) => {
+    setForm((current) => ({ ...current, latitude, longitude }));
+    setDirtyFields((current) => {
+      const next = new Set(current);
+      if (latitude === canonicalForm.latitude) next.delete("latitude");
+      else next.add("latitude");
+      if (longitude === canonicalForm.longitude) next.delete("longitude");
+      else next.add("longitude");
+      return next;
+    });
+    setFeedback(emptyFeedback);
+    onEdit();
+  };
+
   const revert = () => {
     setForm(canonicalForm);
     setDirtyFields(new Set());
@@ -489,6 +504,13 @@ export function OwnerListingEditor({
             onChange={(event) => updateField("longitude", event.target.value)}
           />
         </div>
+        <OwnerLocationControls
+          addressText={form.addressText}
+          latitude={form.latitude}
+          longitude={form.longitude}
+          disabled={pending}
+          onCoordinatesChange={updateCoordinates}
+        />
       </section>
 
       <section
