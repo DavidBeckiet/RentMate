@@ -90,6 +90,8 @@
     "test:rm043:database": "vitest run --config vitest.database.config.mts test/rm043-admin-user.database.integration.test.ts",
     "test:rm044": "vitest run --config vitest.config.mts test/rm044-admin-authorization-http.integration.test.ts test/rm044-application-isolation.test.ts test/rm042-moderation-action-service.test.ts test/rm042-application-isolation.test.ts test/rm043-application-isolation.test.ts",
     "test:rm044:database": "vitest run --config vitest.database.config.mts test/rm044-moderation-matrix.database.integration.test.ts test/rm044-moderation-concurrency.database.integration.test.ts test/rm044-activation-visibility.database.integration.test.ts",
+    "test:rm053": "vitest run --config vitest.config.mts test/rm053-contract-inventory.test.ts test/rm053-authorization-matrix.test.ts test/rm053-application-isolation.test.ts",
+    "test:rm053:database": "vitest run --config vitest.database.config.mts test/rm053-fresh-backend.database.integration.test.ts test/rm053-lifecycle-visibility.database.integration.test.ts",
     "migrate:clean": "tsx src/db/migrations/cli.ts clean",
     "migrate:existing": "tsx src/db/migrations/cli.ts existing",
     "admin:provision": "tsx src/db/admin-provisioning/cli.ts",
