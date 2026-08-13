@@ -298,7 +298,7 @@ describe("OwnerImageManager", () => {
       expect(apiMocks.reorderImages).toHaveBeenCalledWith(42, { imageIds: [2, 1, 3] }, expect.any(AbortSignal))
     );
     await waitFor(() => expect(apiMocks.getOwned).toHaveBeenCalledOnce());
-    expect(screen.getByTestId("coordination")).toHaveTextContent("false:false");
+    await waitFor(() => expect(screen.getByTestId("coordination")).toHaveTextContent("false:false"));
   });
 
   it("does not call V1-21 for a no-op and supports explicit local revert", async () => {
@@ -348,8 +348,10 @@ describe("OwnerImageManager", () => {
     await waitFor(() => expect(apiMocks.uploadImage).toHaveBeenCalledOnce());
     await waitFor(() => expect(apiMocks.getOwned).toHaveBeenCalledOnce());
     expect(apiMocks.deleteImage).not.toHaveBeenCalled();
-    fireEvent.click(screen.getByRole("button", { name: "Xóa ảnh cũ để hoàn tất" }));
-    fireEvent.click(screen.getByRole("button", { name: "Xác nhận xóa" }));
+    const deleteOldButton = await screen.findByRole("button", { name: "Xóa ảnh cũ để hoàn tất" });
+    await waitFor(() => expect(deleteOldButton).toBeEnabled());
+    fireEvent.click(deleteOldButton);
+    fireEvent.click(await screen.findByRole("button", { name: "Xác nhận xóa" }));
     await waitFor(() => expect(apiMocks.deleteImage).toHaveBeenCalledOnce());
     await waitFor(() => expect(apiMocks.getOwned).toHaveBeenCalledTimes(2));
   });
@@ -386,8 +388,10 @@ describe("OwnerImageManager", () => {
     chooseFile(undefined, true);
     fireEvent.click(screen.getByRole("button", { name: "Tải ảnh mới" }));
     await waitFor(() => expect(apiMocks.getOwned).toHaveBeenCalledOnce());
-    fireEvent.click(screen.getByRole("button", { name: "Xóa ảnh cũ để hoàn tất" }));
-    fireEvent.click(screen.getByRole("button", { name: "Xác nhận xóa" }));
+    const deleteOldButton = await screen.findByRole("button", { name: "Xóa ảnh cũ để hoàn tất" });
+    await waitFor(() => expect(deleteOldButton).toBeEnabled());
+    fireEvent.click(deleteOldButton);
+    fireEvent.click(await screen.findByRole("button", { name: "Xác nhận xóa" }));
     expect(await screen.findByRole("alert")).toHaveTextContent("Không thể hoàn tất thao tác ảnh");
     expect(screen.getByTestId("canonical")).toHaveTextContent("DRAFT:4");
     expect(apiMocks.deleteImage).toHaveBeenCalledOnce();
