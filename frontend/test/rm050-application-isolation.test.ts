@@ -1,5 +1,5 @@
-import { readFileSync } from "node:fs";
-import { join } from "node:path";
+import { existsSync, readFileSync } from "node:fs";
+import { dirname, extname, join, relative, resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 
 const frontendRoot = process.cwd();
@@ -19,9 +19,36 @@ const publicAndFavoriteProduction = [
 ] as const;
 const browserAutocompleteAttribute =
   /(<[A-Za-z][^<>]*?)\s+autocomplete\s*=\s*(?:"[^"\r\n]*"|'[^'\r\n]*'|\{[^}\r\n]*\})/gi;
+const localModuleImport = /(?:from\s+|import\s*)["'](\.[^"']+)["']/g;
 
 function read(path: string): string {
   return readFileSync(join(frontendRoot, path), "utf8");
+}
+
+function resolveLocalModule(importerPath: string, specifier: string): string | null {
+  const basePath = resolve(frontendRoot, dirname(importerPath), specifier);
+  const candidates = extname(basePath)
+    ? [basePath]
+    : [`${basePath}.ts`, `${basePath}.tsx`, join(basePath, "index.ts"), join(basePath, "index.tsx")];
+  const resolvedPath = candidates.find((candidate) => existsSync(candidate));
+  if (!resolvedPath) return null;
+  const localPath = relative(frontendRoot, resolvedPath).replaceAll("\\", "/");
+  return localPath.startsWith("features/listings/") ? localPath : null;
+}
+
+function readOwnerListingComposition(entryPath: string): string {
+  const visited = new Set<string>();
+  const visit = (path: string) => {
+    if (visited.has(path)) return;
+    visited.add(path);
+    const source = read(path);
+    for (const match of source.matchAll(localModuleImport)) {
+      const importedPath = resolveLocalModule(path, match[1]!);
+      if (importedPath) visit(importedPath);
+    }
+  };
+  visit(entryPath);
+  return [...visited].map(read).join("\n");
 }
 
 function hasUnsupportedOwnerProviderBehavior(source: string): boolean {
@@ -39,7 +66,10 @@ function hasUnsupportedOwnerProviderBehavior(source: string): boolean {
 
 describe("RM-050 application isolation", () => {
   it("uses only shared users/lookups/listings clients and no browser-held credentials", () => {
-    const source = production.map(read).join("\n");
+    const source = [
+      production.map(read).join("\n"),
+      readOwnerListingComposition("features/listings/owner-listing-detail.tsx")
+    ].join("\n");
     expect(source).toMatch(/api\.users\s*\.updateCurrent/);
     expect(source).toMatch(/api\.lookups\s*\.listPropertyTypes/);
     expect(source).toMatch(/api\.lookups\s*\.listAmenities/);
@@ -52,7 +82,10 @@ describe("RM-050 application isolation", () => {
   });
 
   it("keeps admin, favorites, and direct provider behavior outside the owner workflow", () => {
-    const source = production.map(read).join("\n");
+    const source = [
+      production.map(read).join("\n"),
+      readOwnerListingComposition("features/listings/owner-listing-detail.tsx")
+    ].join("\n");
     expect(source).not.toMatch(/api\.admin|api\.favorites/);
     expect(source).not.toMatch(/\/admin|features\/favorites|from\s+["'][^"']*favorites/i);
     expect(hasUnsupportedOwnerProviderBehavior(source)).toBe(false);
@@ -94,18 +127,20 @@ describe("RM-050 application isolation", () => {
   });
 
   it("keeps exact coordinates in owner workflow and public privacy files untouched by composition", () => {
-    const owner = read("features/listings/owner-listing-detail.tsx");
+    const owner = readOwnerListingComposition("features/listings/owner-listing-detail.tsx");
     const publicDetail = read("features/listings/listing-detail.tsx");
     const publicCard = read("features/listings/listing-card.tsx");
     const favorites = read("features/favorites/favorites-page.tsx");
     const publicAndFavorites = publicAndFavoriteProduction.map(read).join("\n");
-    expect(owner).toContain("Vị trí chính xác của tin");
-    expect(owner).toContain("detail.latitude");
-    expect(owner).toContain("detail.longitude");
+    expect(owner).toMatch(/latitude/);
+    expect(owner).toMatch(/longitude/);
+    expect(owner).toMatch(/MapBase/);
+    expect(owner).not.toContain("Vị trí xấp xỉ");
     expect(publicDetail).toContain("Vị trí xấp xỉ");
     expect(publicDetail).not.toContain("Vị trí chính xác của tin");
     expect(publicCard).not.toMatch(/addressText|landlordContact/);
     expect(favorites).not.toMatch(/addressText|landlordContact/);
+    expect(publicAndFavorites).not.toMatch(/Vị trí chính xác|địa chỉ chính xác/i);
     expect(publicAndFavorites).not.toMatch(
       /api\.listings\s*\.\s*(?:uploadImage|deleteImage|reorderImages|forwardGeocode)/
     );
