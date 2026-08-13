@@ -54,6 +54,17 @@ describe("LoginForm", () => {
     expect(navigationMocks.replace).toHaveBeenCalledWith("/");
   });
 
+  it("enforces the optional admin entry role after login without changing the shared default", async () => {
+    apiMocks.login.mockResolvedValue({ ...admin, role: "TENANT" });
+    authMocks.refresh.mockResolvedValue();
+    render(<LoginForm requiredRole="ADMIN" successDestination="/admin" />);
+    fillLogin("tenant@example.com", "password");
+    fireEvent.click(screen.getByRole("button", { name: "Đăng nhập" }));
+    expect(await screen.findByRole("alert")).toHaveTextContent("Trang này dành cho quản trị viên.");
+    expect(authMocks.refresh).toHaveBeenCalledOnce();
+    expect(navigationMocks.replace).not.toHaveBeenCalled();
+  });
+
   it("keeps INVALID_CREDENTIALS generic and form-level", async () => {
     apiMocks.login.mockRejectedValue(
       new ApiError({

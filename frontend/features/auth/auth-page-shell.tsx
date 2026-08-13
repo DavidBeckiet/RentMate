@@ -2,29 +2,51 @@
 
 import { useRouter } from "next/navigation";
 import { useEffect, useId, type ReactNode } from "react";
-import { LoadingState } from "../../components/ui/feedback-states";
+import { EmptyState, LoadingState } from "../../components/ui/feedback-states";
 import { useAuth } from "../../lib/auth/auth-provider";
+import type { UserRole } from "../../types/api";
 
 export interface AuthPageShellProps {
   readonly title: string;
   readonly description: string;
   readonly children: ReactNode;
   readonly footer: ReactNode;
+  readonly requiredRole?: UserRole;
+  readonly successDestination?: string;
+  readonly wrongRoleMessage?: string;
 }
 
-export function AuthPageShell({ title, description, children, footer }: AuthPageShellProps) {
+export function AuthPageShell({
+  title,
+  description,
+  children,
+  footer,
+  requiredRole,
+  successDestination = "/",
+  wrongRoleMessage = "Tài khoản này không thể truy cập trang đăng nhập này."
+}: AuthPageShellProps) {
   const router = useRouter();
-  const { status } = useAuth();
+  const { status, user } = useAuth();
   const headingId = useId();
 
   useEffect(() => {
-    if (status === "authenticated") router.replace("/");
-  }, [router, status]);
+    if (status === "authenticated" && user && (!requiredRole || user.role === requiredRole)) {
+      router.replace(successDestination);
+    }
+  }, [requiredRole, router, status, successDestination, user]);
 
-  if (status === "loading" || status === "authenticated") {
+  if (status === "loading" || (status === "authenticated" && user && (!requiredRole || user.role === requiredRole))) {
     return (
       <div className="mx-auto w-full max-w-md">
         <LoadingState message={status === "loading" ? "Đang kiểm tra tài khoản…" : "Đang chuyển hướng…"} />
+      </div>
+    );
+  }
+
+  if (status === "authenticated") {
+    return (
+      <div className="mx-auto w-full max-w-md">
+        <EmptyState title={wrongRoleMessage} description="Hãy đăng xuất và dùng đúng tài khoản để tiếp tục." />
       </div>
     );
   }

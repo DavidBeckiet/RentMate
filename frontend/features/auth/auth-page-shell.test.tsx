@@ -79,6 +79,25 @@ describe("AuthPageShell", () => {
     await waitFor(() => expect(navigationMocks.replace).toHaveBeenCalledWith("/"));
   });
 
+  it("supports an admin-only entry mode and gives a wrong-role account safe guidance", async () => {
+    useAuthMock.mockReturnValue(authValue({ status: "authenticated", user: tenant }));
+    render(
+      <AuthPageShell
+        title="Đăng nhập quản trị"
+        description="Quản trị"
+        footer={null}
+        requiredRole="ADMIN"
+        successDestination="/admin"
+        wrongRoleMessage="Trang này dành cho quản trị viên."
+      >
+        <form aria-label="Đăng nhập quản trị" />
+      </AuthPageShell>
+    );
+    expect(screen.getByText("Trang này dành cho quản trị viên.")).toBeInTheDocument();
+    expect(screen.queryByRole("form")).not.toBeInTheDocument();
+    expect(navigationMocks.replace).not.toHaveBeenCalled();
+  });
+
   it("keeps the recovery form available when auth bootstrap fails", () => {
     useAuthMock.mockReturnValue(
       authValue({

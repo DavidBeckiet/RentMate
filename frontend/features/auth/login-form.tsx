@@ -8,6 +8,7 @@ import { InputField } from "../../components/ui/form-controls";
 import { api, ApiError } from "../../lib/api/client";
 import { useAuth } from "../../lib/auth/auth-provider";
 import { mapApiErrorToFields } from "../../lib/validation/api-field-errors";
+import type { UserRole } from "../../types/api";
 import { validateLoginInput } from "./validation";
 
 type LoginField = "email" | "password";
@@ -49,7 +50,12 @@ function feedbackFor(error: unknown): LoginFeedback {
   return mapApiErrorToFields(error, ["email", "password"] as const);
 }
 
-export function LoginForm() {
+export interface LoginFormProps {
+  readonly requiredRole?: UserRole;
+  readonly successDestination?: string;
+}
+
+export function LoginForm({ requiredRole, successDestination = "/" }: LoginFormProps = {}) {
   const router = useRouter();
   const { refresh } = useAuth();
   const [email, setEmail] = useState("");
@@ -82,9 +88,17 @@ export function LoginForm() {
     setPending(true);
     setFeedback(emptyFeedback);
     try {
-      await api.auth.login(validation.value);
+      const profile = await api.auth.login(validation.value);
       await refresh();
-      router.replace("/");
+      if (requiredRole && profile.role !== requiredRole) {
+        setFeedback({
+          fieldErrors: {},
+          formMessage: "Trang này dành cho quản trị viên.",
+          requestId: null
+        });
+        return;
+      }
+      router.replace(successDestination);
     } catch (error) {
       setFeedback(feedbackFor(error));
     } finally {
