@@ -98,6 +98,8 @@
     "test:rm044:database": "npm --prefix backend run test:rm044:database",
     "test:rm053": "npm --prefix backend run test:rm053",
     "test:rm053:database": "npm --prefix backend run test:rm053:database",
+    "test:rm054": "npm --prefix backend exec vitest run --config vitest.config.mts test/rm054-browser-fixture.test.ts && npm --prefix frontend exec vitest run --config vitest.config.mts test/rm054-application-isolation.test.ts",
+    "test:rm054:e2e": "npm --prefix frontend run test:rm054:e2e",
     "test:rm045": "npm --prefix frontend run test:rm045",
     "test:rm046": "npm --prefix frontend run test:rm046",
     "test:rm047": "npm --prefix frontend run test:rm047",

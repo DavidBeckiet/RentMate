@@ -11,6 +11,7 @@
     "dev": "tsx watch src/server.ts",
     "build": "tsc",
     "start": "node dist/server.js",
+    "start:rm054:e2e": "tsx test/rm054-browser-server.ts",
     "typecheck": "tsc --noEmit && tsc --noEmit -p tsconfig.test.json",
     "lint": "eslint src test vitest.config.mts vitest.database.config.mts eslint.config.mjs --max-warnings=0",
     "test": "vitest run --config vitest.config.mts",

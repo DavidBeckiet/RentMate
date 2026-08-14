@@ -23,3 +23,8 @@ Thumbs.db
 # Python generated cache
 __pycache__/
 *.py[cod]
+
+# Playwright artifacts
+/frontend/test-results/
+/frontend/playwright-report/
+/frontend/blob-report/
