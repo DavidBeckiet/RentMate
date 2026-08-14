@@ -48,6 +48,8 @@ async function cleanDatabase(): Promise<void> {
   await pool.query("DROP TABLE IF EXISTS rm006_committed_fixture");
   await pool.query("DROP TABLE IF EXISTS rm006_rolled_back_fixture");
   await pool.query("DROP TABLE IF EXISTS rm006_skipped_fixture");
+  await pool.query("DROP TABLE IF EXISTS moderation_history");
+  await pool.query("DROP TABLE IF EXISTS favorites");
   await pool.query("DROP TABLE IF EXISTS listing_amenities");
   await pool.query("DROP TABLE IF EXISTS listing_images");
   await pool.query("DROP TABLE IF EXISTS listings");

@@ -7,6 +7,7 @@ import {
   rm053Jpeg,
   rm053Origin
 } from "./helpers/rm053-backend-fixture.js";
+import { readTestDatabaseUrl } from "./support/test-database.js";
 
 const fixture = createRm053DatabaseFixture();
 const listingInput = Object.freeze({
@@ -100,7 +101,8 @@ describe("RM-053 fresh migrated backend journey", () => {
 
   it("boots an empty test database and keeps one listing consistent through registration, moderation, privacy, favorites, and landlord activation", async () => {
     await fixture.dropKnownFrozenSchema();
-    expect(await fixture.currentDatabaseName()).toBe("rentmate_test_rm053");
+    const configuredTestDatabaseName = decodeURIComponent(new URL(readTestDatabaseUrl()).pathname.slice(1));
+    expect(await fixture.currentDatabaseName()).toBe(configuredTestDatabaseName);
     await expect(fixture.bootstrap()).resolves.toMatchObject({
       appliedMigrationCount: 12,
       lastAppliedMigrationVersion: 12,
