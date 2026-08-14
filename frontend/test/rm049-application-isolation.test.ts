@@ -3,6 +3,8 @@ import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 
 const frontendRoot = process.cwd();
+const browserTestPackageImport =
+  /(?:from\s+|import\s*(?:\(\s*)?|require\s*\(\s*)["'](?:@playwright\/test|playwright(?:-core)?)(?:\/[^"']*)?["']/;
 const favoriteProduction = [
   "features/favorites/favorite-save-control.tsx",
   "features/favorites/favorite-remove-control.tsx",
@@ -23,6 +25,7 @@ describe("RM-049 application isolation", () => {
     expect(source).not.toMatch(/Authorization|Bearer|decodeJWT|decodeJwt|rentmate_session/i);
     expect(source).not.toMatch(/document\.cookie|localStorage|sessionStorage|indexedDB/i);
     expect(source).not.toMatch(/from\s+["'][^"']*backend|from\s+["'][^"']*src\/modules/);
+    expect(source).not.toMatch(browserTestPackageImport);
   });
 
   it("keeps fake membership, hydration, maps, discovery filters, and later workflows out of favorites", () => {
@@ -60,10 +63,11 @@ describe("RM-049 application isolation", () => {
       "nuqs",
       "query-string",
       "react-hook-form",
-      "zod",
-      "@playwright/test"
+      "zod"
     ]) {
       expect(packages).not.toHaveProperty(dependency);
     }
+    for (const dependency of ["@playwright/test", "playwright", "playwright-core"])
+      expect(packageJson.dependencies).not.toHaveProperty(dependency);
   });
 });

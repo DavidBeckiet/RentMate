@@ -3,6 +3,8 @@ import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 
 const frontendRoot = process.cwd();
+const browserTestPackageImport =
+  /(?:from\s+|import\s*(?:\(\s*)?|require\s*\(\s*)["'](?:@playwright\/test|playwright(?:-core)?)(?:\/[^"']*)?["']/;
 const rm048Production = [
   "features/listings/format.ts",
   "features/listings/listing-card.tsx",
@@ -39,6 +41,7 @@ describe("RM-048 application isolation", () => {
     expect(source).not.toMatch(/Authorization|Bearer|decodeJWT|decodeJwt|setToken/i);
     expect(source).not.toMatch(/api\.favorites|api\.admin|createDraft|updateOwned|forwardGeocode|uploadImage/i);
     expect(source).not.toMatch(/\/favorites|\/landlord|\/admin/);
+    expect(source).not.toMatch(browserTestPackageImport);
   });
 
   it("keeps map presentation API-free and search movement explicit", () => {
@@ -60,7 +63,7 @@ describe("RM-048 application isolation", () => {
     expect(detail).not.toMatch(/user\.(?:email|phone)/);
   });
 
-  it("adds one focused script without adding a dependency or future route", () => {
+  it("adds one focused script without adding runtime browser-test tooling or a future route", () => {
     const packageJson = JSON.parse(read("package.json")) as {
       scripts: Record<string, string>;
       dependencies: Record<string, string>;
@@ -78,11 +81,12 @@ describe("RM-048 application isolation", () => {
       "nuqs",
       "query-string",
       "react-hook-form",
-      "zod",
-      "@playwright/test"
+      "zod"
     ]) {
       expect(packages).not.toHaveProperty(dependency);
     }
+    for (const dependency of ["@playwright/test", "playwright", "playwright-core"])
+      expect(packageJson.dependencies).not.toHaveProperty(dependency);
     expect(read("app/page.tsx")).toContain("<SearchPage />");
     expect(detailRoute).toContain("<ListingDetail");
     expect(detailRoute).toMatch(/<ListingDetail\b[^>]*\blistingId\s*=\s*\{\s*listingId\s*\}/);

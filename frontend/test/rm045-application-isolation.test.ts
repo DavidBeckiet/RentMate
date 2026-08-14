@@ -3,15 +3,22 @@ import { join, relative } from "node:path";
 import { describe, expect, it } from "vitest";
 
 const frontendRoot = process.cwd();
+const productionRoots = ["app", "components", "features", "lib", "types"] as const;
+const browserTestPackageImport =
+  /(?:from\s+|import\s*(?:\(\s*)?|require\s*\(\s*)["'](?:@playwright\/test|playwright(?:-core)?)(?:\/[^"']*)?["']/;
 
 function sourceFiles(directory: string): readonly string[] {
   return readdirSync(directory).flatMap((entry) => {
     const path = join(directory, entry);
     if (["node_modules", ".next", "coverage"].includes(entry)) return [];
     if (statSync(path).isDirectory()) return sourceFiles(path);
-    if (!/\.(ts|tsx)$/.test(entry) || /\.test\.(ts|tsx)$/.test(entry)) return [];
+    if (!/\.(ts|tsx)$/.test(entry) || /\.(?:test|spec)\.(ts|tsx)$/.test(entry)) return [];
     return [path];
   });
+}
+
+function productionSourceFiles(): readonly string[] {
+  return productionRoots.flatMap((root) => sourceFiles(join(frontendRoot, root)));
 }
 
 function read(path: string): string {
@@ -63,7 +70,7 @@ describe("RM-045 application isolation", () => {
   });
 
   it("centralizes raw browser fetch and cookie credentials in transport", () => {
-    const productionFiles = sourceFiles(frontendRoot);
+    const productionFiles = productionSourceFiles();
     const transportPath = join(frontendRoot, "lib", "api", "transport.ts");
     const rawFetchOutsideTransport = productionFiles
       .filter((path) => path !== transportPath)
@@ -78,12 +85,13 @@ describe("RM-045 application isolation", () => {
   });
 
   it("keeps tokens, browser storage, backend types, and middleware auth outside frontend production", () => {
-    const production = sourceFiles(frontendRoot)
+    const production = productionSourceFiles()
       .map((path) => readFileSync(path, "utf8"))
       .join("\n");
 
     expect(production).not.toMatch(/Bearer|decodeJWT|decodeJwt|localStorage|sessionStorage|setToken/);
     expect(production).not.toMatch(/from\s+["'][^"']*backend|from\s+["'][^"']*src\/modules/);
+    expect(production).not.toMatch(browserTestPackageImport);
     expect(existsSync(join(frontendRoot, "middleware.ts"))).toBe(false);
     expect(existsSync(join(frontendRoot, "middleware.tsx"))).toBe(false);
   });

@@ -3,6 +3,8 @@ import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 
 const root = process.cwd();
+const browserTestPackageImport =
+  /(?:from\s+|import\s*(?:\(\s*)?|require\s*\(\s*)["'](?:@playwright\/test|playwright(?:-core)?)(?:\/[^"']*)?["']/;
 const production = [
   "features/listings/admin-listings-page.tsx",
   "features/listings/admin-listing-detail.tsx",
@@ -18,6 +20,7 @@ describe("RM-052 application isolation", () => {
     for (const call of ["listListings", "getListing", "listHistory", "moderate", "listUsers", "setActivation"])
       expect(source).toMatch(new RegExp(`api\\.admin\\s*\\.\\s*${call}`));
     expect(source).not.toMatch(/\bfetch\s*\(|axios|XMLHttpRequest/);
+    expect(source).not.toMatch(browserTestPackageImport);
   });
 
   it("does not add token, cookie, storage, owner mutation, or provider behavior", () => {
@@ -49,7 +52,9 @@ describe("RM-052 application isolation", () => {
     };
     expect(packageJson.scripts["test:rm052"]).toContain("rm052-application-isolation.test.ts");
     const packages = { ...packageJson.dependencies, ...packageJson.devDependencies };
-    for (const dependency of ["@tanstack/react-query", "swr", "zustand", "playwright", "@playwright/test"])
+    for (const dependency of ["@tanstack/react-query", "swr", "zustand"])
       expect(packages).not.toHaveProperty(dependency);
+    for (const dependency of ["@playwright/test", "playwright", "playwright-core"])
+      expect(packageJson.dependencies).not.toHaveProperty(dependency);
   });
 });

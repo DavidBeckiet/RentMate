@@ -3,6 +3,8 @@ import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 
 const frontendRoot = process.cwd();
+const browserTestPackageImport =
+  /(?:from\s+|import\s*(?:\(\s*)?|require\s*\(\s*)["'](?:@playwright\/test|playwright(?:-core)?)(?:\/[^"']*)?["']/;
 
 function read(path: string): string {
   return readFileSync(join(frontendRoot, path), "utf8");
@@ -49,6 +51,7 @@ describe("RM-047 application isolation", () => {
     expect(authProduction).not.toMatch(/useSearchParams|URLSearchParams|[?&](?:next|redirect)=/i);
     expect(authProduction).not.toMatch(/console\.(?:log|error|debug)\s*\(/);
     expect(authProduction).not.toMatch(/forgot-password|reset-password|social-login|google-login|facebook-login/i);
+    expect(authProduction).not.toMatch(browserTestPackageImport);
   });
 
   it("keeps RM-048 and later actor workflows outside auth scope", () => {
@@ -60,7 +63,7 @@ describe("RM-047 application isolation", () => {
     expect(authProduction).not.toMatch(/\/admin|\/landlord|\/favorites/);
   });
 
-  it("includes feature tests and a focused RM-047 script without adding an auth dependency", () => {
+  it("includes feature tests and a focused RM-047 script without adding runtime test tooling", () => {
     const vitest = read("vitest.config.mts");
     const packageJson = JSON.parse(read("package.json")) as {
       scripts: Record<string, string>;
@@ -72,6 +75,7 @@ describe("RM-047 application isolation", () => {
     expect(packageJson.scripts["test:rm047"]).toContain("test/rm047-application-isolation.test.ts");
     expect({ ...packageJson.dependencies, ...packageJson.devDependencies }).not.toHaveProperty("react-hook-form");
     expect({ ...packageJson.dependencies, ...packageJson.devDependencies }).not.toHaveProperty("zod");
-    expect({ ...packageJson.dependencies, ...packageJson.devDependencies }).not.toHaveProperty("@playwright/test");
+    for (const dependency of ["@playwright/test", "playwright", "playwright-core"])
+      expect(packageJson.dependencies).not.toHaveProperty(dependency);
   });
 });

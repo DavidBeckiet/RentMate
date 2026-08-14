@@ -3,6 +3,8 @@ import { dirname, extname, join, relative, resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 
 const frontendRoot = process.cwd();
+const browserTestPackageImport =
+  /(?:from\s+|import\s*(?:\(\s*)?|require\s*\(\s*)["'](?:@playwright\/test|playwright(?:-core)?)(?:\/[^"']*)?["']/;
 const production = [
   "features/auth/landlord-profile.tsx",
   "features/listings/owner-query.ts",
@@ -79,6 +81,7 @@ describe("RM-050 application isolation", () => {
     expect(source).not.toMatch(/\bfetch\s*\(|globalThis\.fetch|axios/i);
     expect(source).not.toMatch(/Authorization|Bearer|decodeJWT|decodeJwt|rentmate_session/i);
     expect(source).not.toMatch(/document\.cookie|localStorage|sessionStorage|indexedDB/i);
+    expect(source).not.toMatch(browserTestPackageImport);
   });
 
   it("keeps admin, favorites, and direct provider behavior outside the owner workflow", () => {
@@ -160,15 +163,10 @@ describe("RM-050 application isolation", () => {
     expect(detail).toContain("<OwnerListingDetail listingId={listingId} />");
     expect(packageJson.scripts["test:rm050"]).toContain("test/rm050-application-isolation.test.ts");
     const packages = { ...packageJson.dependencies, ...packageJson.devDependencies };
-    for (const dependency of [
-      "@tanstack/react-query",
-      "swr",
-      "zustand",
-      "react-hook-form",
-      "zod",
-      "@playwright/test"
-    ]) {
+    for (const dependency of ["@tanstack/react-query", "swr", "zustand", "react-hook-form", "zod"]) {
       expect(packages).not.toHaveProperty(dependency);
     }
+    for (const dependency of ["@playwright/test", "playwright", "playwright-core"])
+      expect(packageJson.dependencies).not.toHaveProperty(dependency);
   });
 });
