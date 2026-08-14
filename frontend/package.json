@@ -22,7 +22,9 @@
     "test:rm050": "vitest run --config vitest.config.mts features/auth/landlord-profile.test.tsx features/listings/owner-query.test.ts features/listings/owner-listing-card.test.tsx features/listings/owner-listings-page.test.tsx features/listings/owner-listing-detail.test.tsx features/listings/owner-listing-editor.test.tsx features/listings/owner-lifecycle-actions.test.tsx test/rm050-application-isolation.test.ts components/ui/app-shell.test.tsx",
     "test:rm051": "vitest run --config vitest.config.mts features/listings/owner-location-controls.test.tsx features/listings/owner-image-manager.test.tsx features/listings/owner-listing-editor.test.tsx features/listings/owner-listing-detail.test.tsx features/listings/owner-lifecycle-actions.test.tsx components/map/map-base.test.tsx test/rm051-application-isolation.test.ts",
     "test:rm052": "vitest run --config vitest.config.mts features/auth/admin-user-query.test.ts features/auth/admin-user-card.test.tsx features/auth/admin-users-page.test.tsx features/listings/admin-listing-query.test.ts features/listings/admin-listing-card.test.tsx features/listings/admin-listings-page.test.tsx features/listings/admin-listing-detail.test.tsx features/listings/moderation-history.test.tsx features/listings/moderation-actions.test.tsx test/rm052-application-isolation.test.ts features/auth/login-form.test.tsx features/auth/auth-page-shell.test.tsx components/ui/app-shell.test.tsx",
+    "test:rm055": "vitest run --config vitest.config.mts lib/config/production-api-base.test.ts",
     "test:rm054:e2e": "playwright test --config playwright.config.ts",
+    "deploy:validate": "npm --prefix ../backend exec tsx ../frontend/lib/config/production-api-base.ts",
     "format": "prettier --config ../.prettierrc.json --ignore-path ../.prettierignore --write .",
     "format:check": "prettier --config ../.prettierrc.json --ignore-path ../.prettierignore --check ."
   },
