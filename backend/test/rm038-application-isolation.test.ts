@@ -23,11 +23,14 @@ describe("RM-038 verification-only application isolation", () => {
     expect(listingRoutes.filter((match) => match[1] === "get" && match[2] === "/listings/:listingId")).toHaveLength(1);
   });
 
-  it("keeps every RM-039-protected current repository inventory intact", async () => {
-    expect((await readdir(sourceRoot)).sort()).toStrictEqual([
+  it("keeps frozen business roots while classifying deployment as operator tooling", async () => {
+    const sourceEntries = await readdir(sourceRoot, { withFileTypes: true });
+    const sourceNames = sourceEntries.map((entry) => entry.name).sort();
+    const allowedSourceRoots = new Set([
       "app.ts",
       "config",
       "db",
+      "deployment",
       "integrations",
       "modules",
       "server-composition.ts",
@@ -35,6 +38,29 @@ describe("RM-038 verification-only application isolation", () => {
       "shared",
       "shutdown.ts"
     ]);
+    expect(sourceNames.filter((name) => !allowedSourceRoots.has(name))).toStrictEqual([]);
+    expect(sourceEntries.find((entry) => entry.name === "deployment")?.isDirectory()).toBe(true);
+    expect((await readdir(path.join(sourceRoot, "modules"))).sort()).toStrictEqual([
+      "auth",
+      "favorites",
+      "listings",
+      "users"
+    ]);
+
+    const runtimeComposition = await Promise.all(
+      ["app.ts", "server.ts", "server-composition.ts"].map((filename) =>
+        readFile(path.join(sourceRoot, filename), "utf8")
+      )
+    );
+    expect(runtimeComposition.join("\n")).not.toMatch(/(?:\.\/|\.\.\/)deployment\//);
+    const deploymentSources = await Promise.all(
+      (await readdir(path.join(sourceRoot, "deployment"))).map((filename) =>
+        readFile(path.join(sourceRoot, "deployment", filename), "utf8")
+      )
+    );
+    expect(deploymentSources.join("\n")).not.toMatch(
+      /from "\.\.\/modules\/|express|Router|router\.(?:get|post|patch|put|delete)/
+    );
     expect((await readdir(path.join(sourceRoot, "integrations"))).sort()).toStrictEqual([
       "cloudinary.client.ts",
       "nominatim.client.ts"

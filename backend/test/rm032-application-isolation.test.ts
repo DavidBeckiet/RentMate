@@ -90,7 +90,25 @@ describe("RM-032 application isolation", () => {
       const source = await readFile(filename, "utf8");
       if (/from "cloudinary"/.test(source)) cloudinaryImports.push(path.relative(backendRoot, filename));
     }
-    expect(cloudinaryImports).toStrictEqual([path.normalize("src/integrations/cloudinary.client.ts")]);
+    const deploymentPrefix = `${path.normalize("src/deployment")}${path.sep}`;
+    expect(cloudinaryImports.filter((filename) => !filename.startsWith(deploymentPrefix))).toStrictEqual([
+      path.normalize("src/integrations/cloudinary.client.ts")
+    ]);
+    expect(cloudinaryImports.filter((filename) => filename.startsWith(deploymentPrefix))).toStrictEqual([
+      path.normalize("src/deployment/provider-check.ts")
+    ]);
+
+    const providerCheck = await readFile(path.join(backendRoot, "src/deployment/provider-check.ts"), "utf8");
+    expect(providerCheck).toContain("await cloudinary.api.ping()");
+    expect(providerCheck).toContain("if (require.main === module)");
+    expect(providerCheck).not.toMatch(/cloudinary\.(?:uploader|upload|destroy)|\.upload\(|\.destroy\(/i);
+
+    const requestPathComposition = await Promise.all(
+      ["app.ts", "server.ts", "server-composition.ts"].map((filename) =>
+        readFile(path.join(backendRoot, "src", filename), "utf8")
+      )
+    );
+    expect(requestPathComposition.join("\n")).not.toMatch(/(?:\.\/|\.\.\/)deployment\//);
   });
 
   it("adds no schema, dependency, RM-034/RM-035 production, or RM-032 frontend surface", async () => {

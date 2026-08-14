@@ -92,22 +92,43 @@ describe("RM-034 permanent production inventory", () => {
     );
   });
 
-  it("limits all production Nominatim/geocoding references to the committed RM-033 surface", async () => {
+  it("keeps product Nominatim ownership while allowing isolated deployment checks", async () => {
     const productionFiles = await recursiveFiles(sourceRoot);
     const matching: string[] = [];
     for (const filename of productionFiles) {
       if (/nominatim|geocod/i.test(await readFile(filename, "utf8"))) matching.push(relative(filename));
     }
-    expect(matching).toStrictEqual([
-      "src/config/env.ts",
-      "src/integrations/nominatim.client.ts",
-      "src/modules/listings/geocoding-controller.ts",
-      "src/modules/listings/geocoding-service.ts",
-      "src/modules/listings/geocoding-validation.ts",
-      "src/modules/listings/routes.ts",
-      "src/server-composition.ts",
-      "src/server.ts"
-    ]);
+    const deploymentMatching = matching.filter((filename) => filename.startsWith("src/deployment/"));
+    const productMatching = matching.filter((filename) => !filename.startsWith("src/deployment/"));
+    for (const filename of productMatching) {
+      expect(filename).toMatch(
+        /^src\/(?:config\/env\.ts|integrations\/nominatim\.client\.ts|modules\/listings\/(?:geocoding-[^/]+|routes)\.ts|server(?:-composition)?\.ts)$/
+      );
+    }
+    expect(productMatching).toEqual(
+      expect.arrayContaining([
+        "src/config/env.ts",
+        "src/integrations/nominatim.client.ts",
+        "src/modules/listings/geocoding-service.ts",
+        "src/modules/listings/routes.ts",
+        "src/server-composition.ts",
+        "src/server.ts"
+      ])
+    );
+    expect(deploymentMatching).toEqual(
+      expect.arrayContaining(["src/deployment/provider-check.ts", "src/deployment/validate-production-environment.ts"])
+    );
+
+    const providerCheck = await readFile(path.join(sourceRoot, "deployment/provider-check.ts"), "utf8");
+    const environmentValidator = await readFile(
+      path.join(sourceRoot, "deployment/validate-production-environment.ts"),
+      "utf8"
+    );
+    expect(providerCheck).toContain('from "../integrations/nominatim.client.js"');
+    expect(providerCheck.match(/createNominatimClient\(/g)).toHaveLength(1);
+    expect(providerCheck).toContain("timeoutMs: NOMINATIM_TIMEOUT_MS");
+    expect(providerCheck).not.toMatch(/reverse.?geocod|\/reverse|\bretry\b|backoff|setInterval|cron|queue|worker/i);
+    expect(environmentValidator).not.toMatch(/createNominatimClient|forwardGeocode|\bfetch\s*\(/);
 
     const service = await readFile(path.join(listingsRoot, "geocoding-service.ts"), "utf8");
     expect(service.match(/nominatimClient\.forwardGeocode\(/g)).toHaveLength(1);

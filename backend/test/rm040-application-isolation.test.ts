@@ -65,14 +65,16 @@ describe("RM-040 application isolation", () => {
     expect(repository).not.toMatch(/CountingExecutor|RM-040|analytics|notification|queue|worker|outbox/i);
   });
 
-  it("preserves current production, schema, provider, and frozen-document inventories", async () => {
+  it("preserves favorites architecture while isolating operator deployment tooling", async () => {
     expect((await readdir(path.join(backendRoot, "migrations"))).filter((file) => file.endsWith(".sql"))).toHaveLength(
       12
     );
-    expect((await readdir(sourceRoot)).sort()).toStrictEqual([
+    const sourceEntries = await readdir(sourceRoot, { withFileTypes: true });
+    const allowedSourceRoots = new Set([
       "app.ts",
       "config",
       "db",
+      "deployment",
       "integrations",
       "modules",
       "server-composition.ts",
@@ -80,6 +82,25 @@ describe("RM-040 application isolation", () => {
       "shared",
       "shutdown.ts"
     ]);
+    expect(sourceEntries.map((entry) => entry.name).filter((name) => !allowedSourceRoots.has(name))).toStrictEqual([]);
+    expect(sourceEntries.find((entry) => entry.name === "deployment")?.isDirectory()).toBe(true);
+
+    const deploymentSources = await Promise.all(
+      (await readdir(path.join(sourceRoot, "deployment"))).map((file) =>
+        readFile(path.join(sourceRoot, "deployment", file), "utf8")
+      )
+    );
+    expect(deploymentSources.join("\n")).not.toMatch(
+      /from "\.\.\/modules\/|express|Router|router\.(?:get|post|patch|put|delete)/
+    );
+    const favoritesSources = await Promise.all(
+      (await readdir(favoritesRoot)).map((file) => readFile(path.join(favoritesRoot, file), "utf8"))
+    );
+    expect(favoritesSources.join("\n")).not.toMatch(/(?:\.\.\/){2}deployment\/|src\/deployment/);
+    const runtimeSources = await Promise.all(
+      ["app.ts", "server.ts", "server-composition.ts"].map((file) => readFile(path.join(sourceRoot, file), "utf8"))
+    );
+    expect(runtimeSources.join("\n")).not.toMatch(/(?:\.\/|\.\.\/)deployment\//);
     expect((await readdir(path.join(sourceRoot, "integrations"))).sort()).toStrictEqual([
       "cloudinary.client.ts",
       "nominatim.client.ts"

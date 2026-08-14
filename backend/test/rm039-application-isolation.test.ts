@@ -57,14 +57,16 @@ describe("RM-039 application isolation", () => {
     );
   });
 
-  it("preserves the current migration, provider, listing, and frozen-document inventories", async () => {
+  it("preserves business architecture while allowing isolated deployment tooling", async () => {
     expect((await readdir(path.join(backendRoot, "migrations"))).filter((file) => file.endsWith(".sql"))).toHaveLength(
       12
     );
-    expect((await readdir(sourceRoot)).sort()).toStrictEqual([
+    const sourceEntries = await readdir(sourceRoot, { withFileTypes: true });
+    const allowedSourceRoots = new Set([
       "app.ts",
       "config",
       "db",
+      "deployment",
       "integrations",
       "modules",
       "server-composition.ts",
@@ -72,6 +74,21 @@ describe("RM-039 application isolation", () => {
       "shared",
       "shutdown.ts"
     ]);
+    expect(sourceEntries.map((entry) => entry.name).filter((name) => !allowedSourceRoots.has(name))).toStrictEqual([]);
+    expect(sourceEntries.find((entry) => entry.name === "deployment")?.isDirectory()).toBe(true);
+
+    const deploymentSources = await Promise.all(
+      (await readdir(path.join(sourceRoot, "deployment"))).map((file) =>
+        readFile(path.join(sourceRoot, "deployment", file), "utf8")
+      )
+    );
+    expect(deploymentSources.join("\n")).not.toMatch(
+      /from "\.\.\/modules\/|express|Router|router\.(?:get|post|patch|put|delete)/
+    );
+    const runtimeSources = await Promise.all(
+      ["app.ts", "server.ts", "server-composition.ts"].map((file) => readFile(path.join(sourceRoot, file), "utf8"))
+    );
+    expect(runtimeSources.join("\n")).not.toMatch(/(?:\.\/|\.\.\/)deployment\//);
     expect((await readdir(path.join(sourceRoot, "integrations"))).sort()).toStrictEqual([
       "cloudinary.client.ts",
       "nominatim.client.ts"
