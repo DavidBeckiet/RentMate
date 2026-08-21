@@ -199,6 +199,22 @@ export function SearchPage() {
   return (
     <div className={styles.page}>
       <div className={`rm-page-container ${styles.content}`}>
+        <header className={styles.searchIntro}>
+          <div className={styles.introCopy}>
+            <span className={styles.introLabel}>
+              <Icon name="sparkles" className="h-3.5 w-3.5" />
+              Room finder · TP.HCM
+            </span>
+            <h1 id="search-heading">
+              Lọc nhanh. <span>Chọn đúng phòng.</span>
+            </h1>
+          </div>
+          <p>
+            Tập trung vào phòng phù hợp, ngân sách vừa tầm và khu vực bạn muốn sống. Bản đồ chỉ mở khi bạn
+            cần kiểm tra vị trí.
+          </p>
+        </header>
+
         <div className={styles.layout}>
           <aside
             id="search-filter-sidebar"
@@ -219,16 +235,16 @@ export function SearchPage() {
             />
           </aside>
 
-          <main className={styles.results} aria-labelledby="search-heading">
+          <main className={styles.results} aria-label="Kết quả tìm phòng">
             <div className={styles.resultsToolbar}>
               <div className={styles.resultSummary}>
                 <span className={styles.resultIcon}>
                   <Icon name="home" className="h-5 w-5" />
                 </span>
                 <div>
-                  <h1 id="search-heading">
+                  <h2>
                     Tìm thấy <strong>{items.length}</strong> phòng trên trang này
-                  </h1>
+                  </h2>
                   <p>Các tin công khai phù hợp với điều kiện của bạn</p>
                 </div>
               </div>
@@ -244,10 +260,6 @@ export function SearchPage() {
                   <Icon name="sliders" className="h-4 w-4" />
                   Bộ lọc
                   {filterCount > 0 ? <span>{filterCount}</span> : null}
-                </button>
-                <button type="button" onClick={() => setMobileMapOpen(!mobileMapOpen)} className={styles.mapButton}>
-                  <Icon name="map" className="h-4 w-4" />
-                  <span>{mobileMapOpen ? "Ẩn bản đồ" : "Bản đồ"}</span>
                 </button>
                 <label className={styles.sortControl}>
                   <span>Sắp xếp:</span>
@@ -270,11 +282,21 @@ export function SearchPage() {
                     )}
                   </select>
                 </label>
+                <button
+                  type="button"
+                  aria-expanded={mobileMapOpen}
+                  aria-controls="search-map-panel"
+                  onClick={() => setMobileMapOpen((open) => !open)}
+                  className={styles.mapButton}
+                >
+                  <Icon name="map" className="h-4 w-4" />
+                  <span>{mobileMapOpen ? "Đóng bản đồ" : "Xem bản đồ"}</span>
+                </button>
               </div>
             </div>
 
             {mobileMapOpen ? (
-              <div className={styles.mapPanel}>
+              <div id="search-map-panel" className={styles.mapPanel}>
                 <RadiusControls
                   proposedCenter={proposedRadiusCenter}
                   selectingCenter={selectingRadiusCenter}

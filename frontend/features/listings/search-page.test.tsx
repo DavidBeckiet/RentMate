@@ -150,7 +150,7 @@ describe("SearchPage", () => {
     expect(screen.getByRole("status")).toHaveTextContent("Đang tìm tin đăng");
     expect(await screen.findByText("card:Phòng A")).toBeInTheDocument();
     expect(screen.getByText("card:Phòng B")).toBeInTheDocument();
-    fireEvent.click(screen.getByRole("button", { name: "Bản đồ" }));
+    fireEvent.click(screen.getByRole("button", { name: "Xem bản đồ" }));
     expect(screen.getByText("marker:Phòng A")).toBeInTheDocument();
     expect(screen.getByText("marker:Phòng B")).toBeInTheDocument();
     expect(apiMocks.searchPublic).toHaveBeenCalledTimes(1);
@@ -167,7 +167,7 @@ describe("SearchPage", () => {
     await screen.findByText("card:Phòng A");
     expect(apiMocks.searchPublic).toHaveBeenCalledTimes(1);
 
-    fireEvent.click(screen.getByRole("button", { name: "Bản đồ" }));
+    fireEvent.click(screen.getByRole("button", { name: "Xem bản đồ" }));
     fireEvent.click(screen.getByRole("button", { name: "Move map" }));
     expect(apiMocks.searchPublic).toHaveBeenCalledTimes(1);
     fireEvent.click(screen.getByRole("button", { name: "Tìm trong khu vực này" }));
@@ -184,7 +184,7 @@ describe("SearchPage", () => {
     apiMocks.searchPublic.mockResolvedValue(page([]));
     render(<SearchPage />);
     await waitFor(() => expect(apiMocks.searchPublic).toHaveBeenCalledOnce());
-    fireEvent.click(screen.getByRole("button", { name: "Bản đồ" }));
+    fireEvent.click(screen.getByRole("button", { name: "Xem bản đồ" }));
     fireEvent.click(screen.getByRole("button", { name: "Commit radius" }));
     expect(navigation.push).toHaveBeenCalledWith(
       "/search?centerLat=10.75&centerLng=106.67&radiusKm=75&sort=distance_asc"

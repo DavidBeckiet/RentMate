@@ -36,6 +36,11 @@ interface FilterDraft {
 type FieldErrors = Partial<Record<keyof FilterDraft, string>>;
 type AreaPreset = "all" | "under20" | "20to30" | "30to50" | "over50" | "custom";
 
+const BUDGET_MIN = 0;
+const BUDGET_MAX = 15_000_000;
+const BUDGET_STEP = 500_000;
+const BUDGET_MIN_GAP = 1_000_000;
+
 const emptySearchState: SearchQueryState = {
   mode: "ordinary",
   amenities: [],
@@ -49,8 +54,14 @@ function draftFromState(state: SearchQueryState): FilterDraft {
   return {
     q: values.q ?? "",
     areaName: values.areaName ?? "",
-    minMonthlyRent: values.minMonthlyRent === undefined ? "" : String(values.minMonthlyRent),
-    maxMonthlyRent: values.maxMonthlyRent === undefined ? "" : String(values.maxMonthlyRent),
+    minMonthlyRent:
+      values.minMonthlyRent === undefined || values.minMonthlyRent <= BUDGET_MIN
+        ? ""
+        : String(values.minMonthlyRent),
+    maxMonthlyRent:
+      values.maxMonthlyRent === undefined || values.maxMonthlyRent >= BUDGET_MAX
+        ? ""
+        : String(values.maxMonthlyRent),
     minRoomAreaSqm: values.minRoomAreaSqm === undefined ? "" : String(values.minRoomAreaSqm),
     maxRoomAreaSqm: values.maxRoomAreaSqm === undefined ? "" : String(values.maxRoomAreaSqm),
     propertyType: values.propertyType ?? "",
@@ -125,6 +136,21 @@ function areaValuesFor(preset: AreaPreset): Pick<FilterDraft, "minRoomAreaSqm" |
   return { minRoomAreaSqm: "", maxRoomAreaSqm: "" };
 }
 
+function budgetSliderValue(monthlyRent: string, fallback: number): number {
+  if (!monthlyRent) return fallback;
+  const value = Number(monthlyRent);
+  if (!Number.isFinite(value)) return fallback;
+  return Math.min(BUDGET_MAX, Math.max(BUDGET_MIN, value));
+}
+
+function formatBudget(value: number): string {
+  if (value <= BUDGET_MIN) return "0đ";
+  if (value >= BUDGET_MAX) return "15 triệu+";
+  const millions = value / 1_000_000;
+  const label = Number.isInteger(millions) ? String(millions) : millions.toFixed(1).replace(".", ",");
+  return `${label} triệu/tháng`;
+}
+
 function FieldError({ message }: { readonly message?: string }) {
   return message ? (
     <p role="alert" className={styles.fieldError}>
@@ -189,6 +215,16 @@ export function SearchFilters({
 
   const count = activeFilterCount(committed);
   const selectedAreaPreset = customAreaOpen ? "custom" : areaPresetFor(draft);
+  const selectedMaxBudget = Math.max(
+    BUDGET_MIN_GAP,
+    budgetSliderValue(draft.maxMonthlyRent, BUDGET_MAX)
+  );
+  const selectedMinBudget = Math.min(
+    budgetSliderValue(draft.minMonthlyRent, BUDGET_MIN),
+    selectedMaxBudget - BUDGET_MIN_GAP
+  );
+  const minBudgetProgress = ((selectedMinBudget - BUDGET_MIN) / (BUDGET_MAX - BUDGET_MIN)) * 100;
+  const maxBudgetProgress = ((selectedMaxBudget - BUDGET_MIN) / (BUDGET_MAX - BUDGET_MIN)) * 100;
 
   return (
     <form aria-label="Bộ lọc tìm phòng" onSubmit={submit} className={styles.filters} noValidate>
@@ -284,37 +320,83 @@ export function SearchFilters({
         </fieldset>
 
         <section className={styles.section}>
-          <span className={styles.sectionLabel}>Khoảng giá</span>
-          <div className={styles.rangeFields}>
-            <label>
-              <span>Từ</span>
+          <div className={styles.budgetHeader}>
+            <span className={styles.sectionLabel}>Khoảng giá</span>
+            <div className={styles.budgetValues}>
+              <output htmlFor="listing-min-budget" className={styles.budgetValue}>
+                {formatBudget(selectedMinBudget)}
+              </output>
+              <span aria-hidden="true">→</span>
+              <output htmlFor="listing-max-budget" className={styles.budgetValue}>
+                {formatBudget(selectedMaxBudget)}
+              </output>
+            </div>
+          </div>
+          <div className={styles.budgetSliderWrap}>
+            <div className={styles.budgetTrack}>
+              <span
+                className={styles.budgetTrackFill}
+                aria-hidden="true"
+                style={{
+                  left: `${minBudgetProgress}%`,
+                  right: `${100 - maxBudgetProgress}%`
+                }}
+              />
               <input
-                aria-label="Giá từ (VND/tháng)"
+                id="listing-min-budget"
+                aria-label="Giá tối thiểu"
+                aria-valuetext={
+                  selectedMinBudget <= BUDGET_MIN
+                    ? "Không đặt giá tối thiểu"
+                    : formatBudget(selectedMinBudget)
+                }
+                className={`${styles.budgetSlider} ${styles.budgetSliderMin}`}
                 name="minMonthlyRent"
-                type="number"
-                inputMode="numeric"
-                min="1"
-                step="1"
-                placeholder="0đ"
-                value={draft.minMonthlyRent}
-                onChange={(event) => setDraft((current) => ({ ...current, minMonthlyRent: event.target.value }))}
+                type="range"
+                min={BUDGET_MIN}
+                max={BUDGET_MAX}
+                step={BUDGET_STEP}
+                value={selectedMinBudget}
+                aria-valuemax={selectedMaxBudget - BUDGET_MIN_GAP}
+                onChange={(event) => {
+                  const value = Math.min(Number(event.target.value), selectedMaxBudget - BUDGET_MIN_GAP);
+                  setDraft((current) => ({
+                    ...current,
+                    minMonthlyRent: value <= BUDGET_MIN ? "" : String(value)
+                  }));
+                  setErrors((current) => ({ ...current, minMonthlyRent: undefined, maxMonthlyRent: undefined }));
+                }}
               />
-            </label>
-            <span className={styles.rangeDash}>–</span>
-            <label>
-              <span>Đến</span>
               <input
-                aria-label="Giá đến (VND/tháng)"
+                id="listing-max-budget"
+                aria-label="Giá tối đa"
+                aria-valuetext={
+                  selectedMaxBudget >= BUDGET_MAX
+                    ? "15 triệu trở lên, không giới hạn"
+                    : formatBudget(selectedMaxBudget)
+                }
+                className={`${styles.budgetSlider} ${styles.budgetSliderMax}`}
                 name="maxMonthlyRent"
-                type="number"
-                inputMode="numeric"
-                min="1"
-                step="1"
-                placeholder="Không giới hạn"
-                value={draft.maxMonthlyRent}
-                onChange={(event) => setDraft((current) => ({ ...current, maxMonthlyRent: event.target.value }))}
+                type="range"
+                min={BUDGET_MIN}
+                max={BUDGET_MAX}
+                step={BUDGET_STEP}
+                value={selectedMaxBudget}
+                aria-valuemin={selectedMinBudget + BUDGET_MIN_GAP}
+                onChange={(event) => {
+                  const value = Math.max(Number(event.target.value), selectedMinBudget + BUDGET_MIN_GAP);
+                  setDraft((current) => ({
+                    ...current,
+                    maxMonthlyRent: value >= BUDGET_MAX ? "" : String(value)
+                  }));
+                  setErrors((current) => ({ ...current, minMonthlyRent: undefined, maxMonthlyRent: undefined }));
+                }}
               />
-            </label>
+            </div>
+            <div className={styles.budgetScale} aria-hidden="true">
+              <span>0đ</span>
+              <span>15 triệu+</span>
+            </div>
           </div>
           <FieldError message={errors.minMonthlyRent} />
           <FieldError message={errors.maxMonthlyRent} />

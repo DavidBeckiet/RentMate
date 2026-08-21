@@ -47,15 +47,44 @@ describe("SearchFilters", () => {
     expect(onApply).toHaveBeenCalledWith({ q: "studio", amenities: [] }, "newest");
   });
 
-  it("validates rent and custom area pairs", () => {
+  it("maps both budget handles to the existing minimum and maximum rent contract", () => {
     renderFilters();
-    fireEvent.change(screen.getByLabelText("Giá từ (VND/tháng)"), { target: { value: "9000000" } });
-    fireEvent.change(screen.getByLabelText("Giá đến (VND/tháng)"), { target: { value: "5000000" } });
+    fireEvent.change(screen.getByRole("slider", { name: "Giá tối thiểu" }), {
+      target: { value: "5000000" }
+    });
+    fireEvent.change(screen.getByRole("slider", { name: "Giá tối đa" }), {
+      target: { value: "7000000" }
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Tìm kiếm" }));
+
+    expect(onApply).toHaveBeenCalledWith(
+      { minMonthlyRent: 5000000, maxMonthlyRent: 7000000, amenities: [] },
+      "newest"
+    );
+  });
+
+  it("keeps the two budget handles on one scale and prevents them from crossing", () => {
+    renderFilters();
+    fireEvent.change(screen.getByRole("slider", { name: "Giá tối đa" }), {
+      target: { value: "7000000" }
+    });
+    fireEvent.change(screen.getByRole("slider", { name: "Giá tối thiểu" }), {
+      target: { value: "9000000" }
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Tìm kiếm" }));
+
+    expect(onApply).toHaveBeenCalledWith(
+      { minMonthlyRent: 6000000, maxMonthlyRent: 7000000, amenities: [] },
+      "newest"
+    );
+  });
+
+  it("validates a custom area pair", () => {
+    renderFilters();
     fireEvent.click(screen.getByRole("radio", { name: "Tùy chỉnh" }));
     fireEvent.change(screen.getByLabelText("Diện tích từ (m²)"), { target: { value: "20.123" } });
     fireEvent.click(screen.getByRole("button", { name: "Tìm kiếm" }));
 
-    expect(screen.getByText("Giá tối đa phải lớn hơn hoặc bằng giá tối thiểu.")).toBeInTheDocument();
     expect(screen.getByText("Nhập số dương với tối đa hai chữ số thập phân.")).toBeInTheDocument();
     expect(onApply).not.toHaveBeenCalled();
   });

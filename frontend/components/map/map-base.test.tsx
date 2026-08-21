@@ -25,7 +25,8 @@ const leafletMocks = vi.hoisted(() => {
     events: {} as MapEvents,
     markerEvents: new Map<string, MarkerEvents>(),
     tile: null as null | { url: string; attribution: string },
-    setView: vi.fn()
+    setView: vi.fn(),
+    fitBounds: vi.fn()
   };
   const map = {
     getCenter: () => state.center,
@@ -36,7 +37,8 @@ const leafletMocks = vi.hoisted(() => {
       getEast: () => state.bounds.east,
       getWest: () => state.bounds.west
     }),
-    setView: state.setView
+    setView: state.setView,
+    fitBounds: state.fitBounds
   };
   return { state, map };
 });
@@ -54,7 +56,12 @@ vi.mock("next/dynamic", () => ({
   }
 }));
 
-vi.mock("leaflet", () => ({ Icon: class Icon {} }));
+vi.mock("leaflet", () => ({
+  Icon: class Icon {},
+  latLng: (latitude: number, longitude: number) => ({
+    toBounds: (sizeInMeters: number) => ({ latitude, longitude, sizeInMeters })
+  })
+}));
 vi.mock("leaflet/dist/images/marker-icon.png", () => ({ default: "marker-icon.png" }));
 vi.mock("leaflet/dist/images/marker-icon-2x.png", () => ({ default: "marker-icon-2x.png" }));
 vi.mock("leaflet/dist/images/marker-shadow.png", () => ({ default: "marker-shadow.png" }));
@@ -73,6 +80,11 @@ vi.mock("react-leaflet", () => ({
     leafletMocks.state.markerEvents.set(title, eventHandlers);
     return <div data-testid={`marker-${title}`}>{children}</div>;
   },
+  Circle: ({ children, radius }: { children: ReactNode; radius: number }) => (
+    <div data-testid="radius-circle" data-radius={radius}>
+      {children}
+    </div>
+  ),
   Tooltip: ({ children }: { children: ReactNode }) => <span>{children}</span>,
   useMap: () => leafletMocks.map,
   useMapEvents: (events: MapEvents) => {
@@ -99,6 +111,7 @@ beforeEach(() => {
   leafletMocks.state.markerEvents.clear();
   leafletMocks.state.tile = null;
   leafletMocks.state.setView.mockClear();
+  leafletMocks.state.fitBounds.mockClear();
 });
 
 describe("MapBase client boundary", () => {
@@ -191,5 +204,23 @@ describe("LeafletMap", () => {
       })
     );
     expect(onMarkerMove).toHaveBeenCalledWith("draft-location", { latitude: 10.76, longitude: 106.69 });
+  });
+
+  it("fits the viewport to and renders an optional radius circle", () => {
+    render(
+      <LeafletMap
+        ariaLabel="Bản đồ bán kính"
+        center={initialViewport.center}
+        zoom={13}
+        radiusCircle={{ center: initialViewport.center, radiusMeters: 5000, label: "Bán kính 5 km" }}
+      />
+    );
+
+    expect(leafletMocks.state.fitBounds).toHaveBeenCalledWith(
+      { latitude: 10.77, longitude: 106.7, sizeInMeters: 10000 },
+      { padding: [28, 28], maxZoom: 15 }
+    );
+    expect(screen.getByTestId("radius-circle")).toHaveAttribute("data-radius", "5000");
+    expect(screen.getByText("Bán kính 5 km")).toBeInTheDocument();
   });
 });

@@ -28,11 +28,18 @@ export interface MapMarker {
   readonly draggable?: boolean;
 }
 
+export interface MapRadiusCircle {
+  readonly center: MapPoint;
+  readonly radiusMeters: number;
+  readonly label?: string;
+}
+
 export interface MapBaseProps {
   readonly ariaLabel: string;
   readonly center: MapPoint;
   readonly zoom: number;
   readonly markers?: readonly MapMarker[];
+  readonly radiusCircle?: MapRadiusCircle;
   readonly onViewportChange?: (viewport: MapViewport) => void;
   readonly onMapClick?: (point: MapPoint) => void;
   readonly onMarkerMove?: (id: MapMarker["id"], point: MapPoint) => void;
