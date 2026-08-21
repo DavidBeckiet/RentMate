@@ -83,7 +83,7 @@ export function LandlordProfile() {
         title="Trang này dành cho tài khoản người cho thuê"
         description="Hãy dùng tài khoản người cho thuê để cập nhật hồ sơ."
         action={
-          <Link className="font-semibold text-teal-800 underline decoration-2 underline-offset-4" href="/">
+          <Link className="font-semibold text-teal-800 underline decoration-2 underline-offset-4" href="/search">
             Tìm phòng
           </Link>
         }

@@ -87,7 +87,8 @@ describe("RM-048 application isolation", () => {
     }
     for (const dependency of ["@playwright/test", "playwright", "playwright-core"])
       expect(packageJson.dependencies).not.toHaveProperty(dependency);
-    expect(read("app/page.tsx")).toContain("<SearchPage />");
+    expect(read("app/page.tsx")).toContain("<HomePageExperience />");
+    expect(read("app/search/page.tsx")).toContain("<SearchPage />");
     expect(detailRoute).toContain("<ListingDetail");
     expect(detailRoute).toMatch(/<ListingDetail\b[^>]*\blistingId\s*=\s*\{\s*listingId\s*\}/);
   });

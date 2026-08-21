@@ -381,7 +381,7 @@ export function NearMePage() {
                   key={listing.id}
                   listing={listing}
                   showFavorite={!preview}
-                  href={preview ? "/?sort=newest" : undefined}
+                  href={preview ? "/search" : undefined}
                 />
               ))}
             </div>

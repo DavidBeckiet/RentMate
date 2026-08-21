@@ -1,11 +1,11 @@
 import { render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 
-vi.mock("../features/listings/search-page", () => ({
-  SearchPage: () => (
+vi.mock("../features/listings/home-page", () => ({
+  HomePageExperience: () => (
     <section>
-      <h1>Tìm phòng phù hợp tại Thành phố Hồ Chí Minh</h1>
-      <form aria-label="Tìm kiếm tin đăng" />
+      <h1>RentMate — Chạm đúng nơi, sống đúng chất</h1>
+      <a href="/search">Bắt đầu tìm phòng</a>
     </section>
   )
 }));
@@ -13,10 +13,10 @@ vi.mock("../features/listings/search-page", () => ({
 import HomePage from "./page";
 
 describe("HomePage", () => {
-  it("renders the public search experience at the root route", () => {
+  it("renders the standalone homepage experience at the root route", () => {
     render(<HomePage />);
 
-    expect(screen.getByRole("heading", { level: 1, name: /Tìm phòng phù hợp/ })).toBeInTheDocument();
-    expect(screen.getByRole("form", { name: "Tìm kiếm tin đăng" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { level: 1, name: /RentMate/ })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Bắt đầu tìm phòng" })).toHaveAttribute("href", "/search");
   });
 });

@@ -121,7 +121,7 @@ export function ListingDetail({ listingId, actions }: ListingDetailProps) {
     <article className={`${styles.detail} space-y-10`}>
       <header className="space-y-5 border-2 border-heroDark-950 bg-rent-coral p-6 shadow-glass sm:p-8">
         <Link
-          href="/?sort=newest"
+          href="/search"
           className="inline-flex items-center gap-2 font-display text-xs font-bold uppercase tracking-wider text-rent-ink transition-transform hover:-translate-x-1"
         >
           <Icon name="arrow" className="h-4 w-4 rotate-180" />

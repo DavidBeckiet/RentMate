@@ -20,9 +20,11 @@ export type IconName =
   | "ruler"
   | "search"
   | "shield"
+  | "sliders"
   | "sparkles"
   | "star"
   | "target"
+  | "refresh"
   | "user"
   | "users"
   | "wifi";
@@ -89,6 +91,7 @@ const paths: Record<IconName, ReactNode> = {
       <path d="m8.5 12 2.3 2.3 4.7-5" />
     </>
   ),
+  sliders: <path d="M4 7h10m4 0h2M4 17h2m4 0h10M14 4v6M6 14v6" />,
   sparkles: (
     <path d="m12 3 1.2 3.8L17 8l-3.8 1.2L12 13l-1.2-3.8L7 8l3.8-1.2L12 3ZM5 14l.9 2.1L8 17l-2.1.9L5 20l-.9-2.1L2 17l2.1-.9L5 14Zm13 0 1.2 2.8L22 18l-2.8 1.2L18 22l-1.2-2.8L14 18l2.8-1.2L18 14Z" />
   ),
@@ -100,6 +103,7 @@ const paths: Record<IconName, ReactNode> = {
       <path d="M12 3V1m9 11h2M12 21v2M3 12H1" />
     </>
   ),
+  refresh: <path d="M20 6v5h-5M4 18v-5h5m9.5-5A7 7 0 0 0 6.8 5.2L4 8m16 8-2.8 2.8A7 7 0 0 1 5.5 16" />,
   user: (
     <>
       <circle cx="12" cy="8" r="4" />

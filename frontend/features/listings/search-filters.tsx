@@ -1,11 +1,10 @@
 "use client";
 
 import { useEffect, useMemo, useState, type FormEvent } from "react";
-import { Button } from "../../components/ui/button";
-import { CheckboxField, CheckboxGroup, InputField, SelectField } from "../../components/ui/form-controls";
 import { Icon } from "../../components/ui/icon";
 import type { Amenity, PropertyType, PublicListingSort } from "../../types/api";
 import { activeFilterCount, searchFilterValues, type SearchFilterValues, type SearchQueryState } from "./search-query";
+import styles from "./search-filters.module.css";
 
 export interface LookupResource<T> {
   readonly status: "loading" | "success" | "error";
@@ -35,6 +34,15 @@ interface FilterDraft {
 }
 
 type FieldErrors = Partial<Record<keyof FilterDraft, string>>;
+type AreaPreset = "all" | "under20" | "20to30" | "30to50" | "over50" | "custom";
+
+const emptySearchState: SearchQueryState = {
+  mode: "ordinary",
+  amenities: [],
+  page: 1,
+  pageSize: 20,
+  sort: "newest"
+};
 
 function draftFromState(state: SearchQueryState): FilterDraft {
   const values = searchFilterValues(state);
@@ -99,17 +107,30 @@ function validateDraft(draft: FilterDraft): { values?: SearchFilterValues; error
   };
 }
 
-function hasSecondaryFilters(state: SearchQueryState): boolean {
-  return Boolean(
-    state.areaName ||
-      state.minMonthlyRent ||
-      state.maxMonthlyRent ||
-      state.minRoomAreaSqm ||
-      state.maxRoomAreaSqm ||
-      state.propertyType ||
-      state.amenities.length > 0 ||
-      state.sort !== (state.mode === "radius" ? "distance_asc" : "newest")
-  );
+function areaPresetFor(draft: FilterDraft): AreaPreset {
+  const { minRoomAreaSqm: min, maxRoomAreaSqm: max } = draft;
+  if (!min && !max) return "all";
+  if (!min && max === "20") return "under20";
+  if (min === "20" && max === "30") return "20to30";
+  if (min === "30" && max === "50") return "30to50";
+  if (min === "50" && !max) return "over50";
+  return "custom";
+}
+
+function areaValuesFor(preset: AreaPreset): Pick<FilterDraft, "minRoomAreaSqm" | "maxRoomAreaSqm"> {
+  if (preset === "under20") return { minRoomAreaSqm: "", maxRoomAreaSqm: "20" };
+  if (preset === "20to30") return { minRoomAreaSqm: "20", maxRoomAreaSqm: "30" };
+  if (preset === "30to50") return { minRoomAreaSqm: "30", maxRoomAreaSqm: "50" };
+  if (preset === "over50") return { minRoomAreaSqm: "50", maxRoomAreaSqm: "" };
+  return { minRoomAreaSqm: "", maxRoomAreaSqm: "" };
+}
+
+function FieldError({ message }: { readonly message?: string }) {
+  return message ? (
+    <p role="alert" className={styles.fieldError}>
+      {message}
+    </p>
+  ) : null;
 }
 
 export function SearchFilters({
@@ -123,12 +144,14 @@ export function SearchFilters({
 }: SearchFiltersProps) {
   const [draft, setDraft] = useState<FilterDraft>(() => draftFromState(committed));
   const [errors, setErrors] = useState<FieldErrors>({});
-  const [advancedOpen, setAdvancedOpen] = useState(() => hasSecondaryFilters(committed));
+  const [amenitiesOpen, setAmenitiesOpen] = useState(() => committed.amenities.length > 0);
+  const [customAreaOpen, setCustomAreaOpen] = useState(() => areaPresetFor(draftFromState(committed)) === "custom");
 
   useEffect(() => {
     setDraft(draftFromState(committed));
     setErrors({});
-    if (hasSecondaryFilters(committed)) setAdvancedOpen(true);
+    setCustomAreaOpen(areaPresetFor(draftFromState(committed)) === "custom");
+    if (committed.amenities.length > 0) setAmenitiesOpen(true);
   }, [committed]);
 
   const propertyOptions = useMemo(() => {
@@ -157,225 +180,275 @@ export function SearchFilters({
   };
 
   const clear = () => {
-    setDraft(draftFromState({ mode: "ordinary", amenities: [], page: 1, pageSize: 20, sort: "newest" }));
+    setDraft(draftFromState(emptySearchState));
     setErrors({});
-    setAdvancedOpen(false);
+    setAmenitiesOpen(false);
+    setCustomAreaOpen(false);
     onClear();
   };
 
   const count = activeFilterCount(committed);
+  const selectedAreaPreset = customAreaOpen ? "custom" : areaPresetFor(draft);
 
   return (
-    <form
-      onSubmit={submit}
-      className="sticky top-24 border-2 border-heroDark-950 bg-rent-surface p-5 shadow-glass"
-      noValidate
-    >
-      <div className="mb-5 flex items-center justify-between border-b-2 border-heroDark-950 pb-4">
-        <div className="flex items-center gap-2">
-          <Icon name="target" className="h-5 w-5" />
-          <h2 className="font-display text-xl font-bold tracking-[-0.04em]">Bộ lọc</h2>
-        </div>
-        {count > 0 ? (
-          <span className="border-2 border-heroDark-950 bg-rent-yellow px-2 py-1 font-display text-[10px] font-bold uppercase">
-            {count} đang dùng
+    <form aria-label="Bộ lọc tìm phòng" onSubmit={submit} className={styles.filters} noValidate>
+      <header className={styles.header}>
+        <div className={styles.title}>
+          <span className={styles.titleIcon}>
+            <Icon name="sliders" className="h-5 w-5" />
           </span>
-        ) : null}
-      </div>
-
-      <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-end lg:grid-cols-1">
-        <InputField
-          id="listing-search-q"
-          name="q"
-          label="Tên phòng hoặc khu vực"
-          placeholder="Ví dụ: studio gần Bến Thành"
-          value={draft.q}
-          onChange={(event) => setDraft((current) => ({ ...current, q: event.target.value }))}
-        />
-        <Button type="submit" className="w-full">
-          <Icon name="search" className="h-4 w-4" />
-          Tìm kiếm
-        </Button>
-      </div>
-
-      <div className="mt-4 flex flex-wrap items-center justify-between gap-2 border-t-2 border-heroDark-950 pt-4">
-        <button
-          type="button"
-          aria-expanded={advancedOpen}
-          aria-controls="advanced-listing-filters"
-          className="inline-flex min-h-10 items-center gap-2 border-2 border-heroDark-950 bg-[#e5eefc] px-3 font-display text-xs font-bold shadow-glass-sm lg:hidden"
-          onClick={() => setAdvancedOpen((open) => !open)}
-        >
-          <Icon name="chevronDown" className={`h-4 w-4 transition-transform ${advancedOpen ? "rotate-180" : ""}`} />
-          {advancedOpen ? "Ẩn bộ lọc nâng cao" : "Hiện bộ lọc nâng cao"}
-        </button>
-        <button
-          type="button"
-          className="inline-flex min-h-10 items-center gap-2 border-2 border-heroDark-950 bg-rent-yellow px-3 font-display text-xs font-bold shadow-glass-sm"
-          onClick={clear}
-        >
-          <Icon name="close" className="h-3.5 w-3.5" />
-          Xóa bộ lọc
-        </button>
-      </div>
-
-      <div id="advanced-listing-filters" className={`${advancedOpen ? "block" : "hidden"} mt-5 space-y-5 lg:block`}>
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-1">
-          <InputField
-            id="listing-area-name"
-            name="areaName"
-            label="Khu vực gần đúng"
-            placeholder="Ví dụ: Quận 1"
-            value={draft.areaName}
-            onChange={(event) => setDraft((current) => ({ ...current, areaName: event.target.value }))}
-          />
-          <InputField
-            id="listing-min-rent"
-            name="minMonthlyRent"
-            label="Giá từ (VND/tháng)"
-            type="number"
-            inputMode="numeric"
-            step="1"
-            min="1"
-            value={draft.minMonthlyRent}
-            error={errors.minMonthlyRent}
-            onChange={(event) => setDraft((current) => ({ ...current, minMonthlyRent: event.target.value }))}
-          />
-          <InputField
-            id="listing-max-rent"
-            name="maxMonthlyRent"
-            label="Giá đến (VND/tháng)"
-            type="number"
-            inputMode="numeric"
-            step="1"
-            min="1"
-            value={draft.maxMonthlyRent}
-            error={errors.maxMonthlyRent}
-            onChange={(event) => setDraft((current) => ({ ...current, maxMonthlyRent: event.target.value }))}
-          />
-          <InputField
-            id="listing-min-area"
-            name="minRoomAreaSqm"
-            label="Diện tích từ (m²)"
-            type="number"
-            inputMode="decimal"
-            step="0.01"
-            min="0.01"
-            value={draft.minRoomAreaSqm}
-            error={errors.minRoomAreaSqm}
-            onChange={(event) => setDraft((current) => ({ ...current, minRoomAreaSqm: event.target.value }))}
-          />
-          <InputField
-            id="listing-max-area"
-            name="maxRoomAreaSqm"
-            label="Diện tích đến (m²)"
-            type="number"
-            inputMode="decimal"
-            step="0.01"
-            min="0.01"
-            value={draft.maxRoomAreaSqm}
-            error={errors.maxRoomAreaSqm}
-            onChange={(event) => setDraft((current) => ({ ...current, maxRoomAreaSqm: event.target.value }))}
-          />
-          <SelectField
-            id="listing-property-type"
-            name="propertyType"
-            label="Loại hình"
-            value={draft.propertyType}
-            onChange={(event) => setDraft((current) => ({ ...current, propertyType: event.target.value }))}
-          >
-            <option value="">Tất cả loại hình</option>
-            {propertyOptions.map((option) => (
-              <option key={option.code} value={option.code}>
-                {option.label}
-              </option>
-            ))}
-          </SelectField>
-          <SelectField
-            id="listing-sort"
-            name="sort"
-            label="Sắp xếp"
-            value={committed.mode === "radius" ? "distance_asc" : draft.sort}
-            disabled={committed.mode === "radius"}
-            onChange={(event) => setDraft((current) => ({ ...current, sort: event.target.value as PublicListingSort }))}
-          >
-            {committed.mode === "radius" ? (
-              <option value="distance_asc">Khoảng cách gần nhất</option>
-            ) : (
-              <>
-                <option value="newest">Mới cập nhật</option>
-                <option value="rent_asc">Giá thấp đến cao</option>
-                <option value="rent_desc">Giá cao đến thấp</option>
-              </>
-            )}
-          </SelectField>
-        </div>
-
-        <div className="space-y-4 border-t-2 border-heroDark-950 pt-5">
-          <div className="border-2 border-heroDark-950 bg-rent-yellow p-3">
-            <h3 className="font-display text-sm font-bold">Danh mục loại hình</h3>
-            {propertyTypes.status === "loading" ? (
-              <p role="status" className="mt-2 text-sm font-semibold">
-                Đang tải loại hình…
-              </p>
-            ) : propertyTypes.status === "error" ? (
-              <div role="alert" className="mt-2 text-sm font-semibold text-red-800">
-                <p>Không thể tải loại hình. Các bộ lọc khác vẫn dùng được.</p>
-                <Button variant="secondary" className="mt-3" onClick={onRetryPropertyTypes}>
-                  Thử lại
-                </Button>
-              </div>
-            ) : propertyTypes.data.length === 0 ? (
-              <p className="mt-2 text-sm font-semibold">Hiện chưa có loại hình đang hoạt động.</p>
-            ) : (
-              <p className="mt-2 text-sm font-semibold">Chọn một loại hình từ danh sách phía trên.</p>
-            )}
+          <div>
+            <h2>Bộ lọc</h2>
+            {count > 0 ? <span>{count} điều kiện đang dùng</span> : <span>Tìm theo nhu cầu của bạn</span>}
           </div>
+        </div>
+        <button type="button" className={styles.resetButton} onClick={clear}>
+          <Icon name="refresh" className="h-3.5 w-3.5" />
+          Đặt lại
+        </button>
+      </header>
 
-          <div className="border-2 border-heroDark-950 bg-[#e5eefc] p-3">
-            <CheckboxGroup id="listing-amenities" legend="Tiện ích" hint="Tin đăng phải có tất cả tiện ích bạn chọn.">
+      <div className={styles.scrollArea}>
+        <section className={styles.section}>
+          <label className={styles.sectionLabel} htmlFor="listing-search-q">
+            Từ khóa
+          </label>
+          <div className={styles.inputWithIcon}>
+            <Icon name="search" className="h-4 w-4" />
+            <input
+              id="listing-search-q"
+              name="q"
+              type="search"
+              placeholder="Địa chỉ, tên phòng…"
+              value={draft.q}
+              onChange={(event) => setDraft((current) => ({ ...current, q: event.target.value }))}
+            />
+          </div>
+        </section>
+
+        <section className={styles.section}>
+          <label className={styles.sectionLabel} htmlFor="listing-area-name">
+            Khu vực
+          </label>
+          <div className={styles.inputWithIcon}>
+            <Icon name="pin" className="h-4 w-4" />
+            <input
+              id="listing-area-name"
+              name="areaName"
+              placeholder="Ví dụ: Quận 1"
+              value={draft.areaName}
+              onChange={(event) => setDraft((current) => ({ ...current, areaName: event.target.value }))}
+            />
+          </div>
+        </section>
+
+        <fieldset className={styles.section}>
+          <legend className={styles.sectionLabel}>Loại phòng</legend>
+          {propertyTypes.status === "loading" ? (
+            <p role="status" className={styles.helpText}>
+              Đang tải loại phòng…
+            </p>
+          ) : propertyTypes.status === "error" ? (
+            <div role="alert" className={styles.lookupError}>
+              <span>Chưa tải được danh mục.</span>
+              <button type="button" onClick={onRetryPropertyTypes}>
+                Thử lại
+              </button>
+            </div>
+          ) : (
+            <div className={styles.choiceList}>
+              <label className={styles.choice}>
+                <input
+                  type="radio"
+                  name="propertyType"
+                  value=""
+                  checked={draft.propertyType === ""}
+                  onChange={() => setDraft((current) => ({ ...current, propertyType: "" }))}
+                />
+                <span>Tất cả loại phòng</span>
+              </label>
+              {propertyOptions.map((option) => (
+                <label key={option.code} className={styles.choice}>
+                  <input
+                    type="radio"
+                    name="propertyType"
+                    value={option.code}
+                    checked={draft.propertyType === option.code}
+                    onChange={() => setDraft((current) => ({ ...current, propertyType: option.code }))}
+                  />
+                  <span>{option.label}</span>
+                </label>
+              ))}
+            </div>
+          )}
+        </fieldset>
+
+        <section className={styles.section}>
+          <span className={styles.sectionLabel}>Khoảng giá</span>
+          <div className={styles.rangeFields}>
+            <label>
+              <span>Từ</span>
+              <input
+                aria-label="Giá từ (VND/tháng)"
+                name="minMonthlyRent"
+                type="number"
+                inputMode="numeric"
+                min="1"
+                step="1"
+                placeholder="0đ"
+                value={draft.minMonthlyRent}
+                onChange={(event) => setDraft((current) => ({ ...current, minMonthlyRent: event.target.value }))}
+              />
+            </label>
+            <span className={styles.rangeDash}>–</span>
+            <label>
+              <span>Đến</span>
+              <input
+                aria-label="Giá đến (VND/tháng)"
+                name="maxMonthlyRent"
+                type="number"
+                inputMode="numeric"
+                min="1"
+                step="1"
+                placeholder="Không giới hạn"
+                value={draft.maxMonthlyRent}
+                onChange={(event) => setDraft((current) => ({ ...current, maxMonthlyRent: event.target.value }))}
+              />
+            </label>
+          </div>
+          <FieldError message={errors.minMonthlyRent} />
+          <FieldError message={errors.maxMonthlyRent} />
+        </section>
+
+        <fieldset className={styles.section}>
+          <legend className={styles.sectionLabel}>Diện tích</legend>
+          <div className={styles.choiceList}>
+            {[
+              ["all", "Tất cả diện tích"],
+              ["under20", "Dưới 20 m²"],
+              ["20to30", "20 – 30 m²"],
+              ["30to50", "30 – 50 m²"],
+              ["over50", "Trên 50 m²"],
+              ["custom", "Tùy chỉnh"]
+            ].map(([value, label]) => (
+              <label key={value} className={styles.choice}>
+                <input
+                  type="radio"
+                  name="areaPreset"
+                  value={value}
+                  checked={selectedAreaPreset === value}
+                  onChange={() => {
+                    const preset = value as AreaPreset;
+                    setCustomAreaOpen(preset === "custom");
+                    setDraft((current) => ({
+                      ...current,
+                      ...(preset === "custom"
+                        ? { minRoomAreaSqm: current.minRoomAreaSqm, maxRoomAreaSqm: current.maxRoomAreaSqm }
+                        : areaValuesFor(preset))
+                    }));
+                  }}
+                />
+                <span>{label}</span>
+              </label>
+            ))}
+          </div>
+          {selectedAreaPreset === "custom" ? (
+            <div className={styles.customArea}>
+              <label>
+                <span>Từ m²</span>
+                <input
+                  aria-label="Diện tích từ (m²)"
+                  name="minRoomAreaSqm"
+                  type="number"
+                  inputMode="decimal"
+                  min="0.01"
+                  step="0.01"
+                  value={draft.minRoomAreaSqm}
+                  onChange={(event) => setDraft((current) => ({ ...current, minRoomAreaSqm: event.target.value }))}
+                />
+              </label>
+              <label>
+                <span>Đến m²</span>
+                <input
+                  aria-label="Diện tích đến (m²)"
+                  name="maxRoomAreaSqm"
+                  type="number"
+                  inputMode="decimal"
+                  min="0.01"
+                  step="0.01"
+                  value={draft.maxRoomAreaSqm}
+                  onChange={(event) => setDraft((current) => ({ ...current, maxRoomAreaSqm: event.target.value }))}
+                />
+              </label>
+            </div>
+          ) : null}
+          <FieldError message={errors.minRoomAreaSqm} />
+          <FieldError message={errors.maxRoomAreaSqm} />
+        </fieldset>
+
+        <section className={styles.section}>
+          <button
+            type="button"
+            className={styles.amenityToggle}
+            aria-expanded={amenitiesOpen}
+            aria-controls="listing-amenities"
+            onClick={() => setAmenitiesOpen((open) => !open)}
+          >
+            <span>
+              <strong>Tiện ích</strong>
+              <small>{draft.amenities.length > 0 ? `${draft.amenities.length} đã chọn` : "Không bắt buộc"}</small>
+            </span>
+            <Icon name="chevronDown" className={amenitiesOpen ? styles.chevronOpen : styles.chevron} />
+          </button>
+          {amenitiesOpen ? (
+            <div id="listing-amenities" className={styles.amenityPanel}>
+              <p className={styles.helpText}>Phòng phải có tất cả tiện ích đã chọn.</p>
               {amenities.status === "loading" ? (
-                <p role="status" className="text-sm font-semibold">
+                <p role="status" className={styles.helpText}>
                   Đang tải tiện ích…
                 </p>
               ) : amenities.status === "error" ? (
-                <div role="alert" className="text-sm font-semibold text-red-800">
-                  <p>Không thể tải tiện ích. Các bộ lọc khác vẫn dùng được.</p>
-                  <Button variant="secondary" className="mt-3" onClick={onRetryAmenities}>
+                <div role="alert" className={styles.lookupError}>
+                  <span>Chưa tải được tiện ích.</span>
+                  <button type="button" onClick={onRetryAmenities}>
                     Thử lại
-                  </Button>
+                  </button>
                 </div>
               ) : amenityOptions.length === 0 ? (
-                <p className="text-sm font-semibold">Hiện chưa có tiện ích đang hoạt động.</p>
+                <p className={styles.helpText}>Chưa có tiện ích đang hoạt động.</p>
               ) : (
-                <div className="grid gap-x-4 sm:grid-cols-2 lg:grid-cols-1">
+                <div className={styles.amenityList}>
                   {amenityOptions.map((amenity) => (
-                    <CheckboxField
-                      key={amenity.code}
-                      id={`amenity-${amenity.code}`}
-                      name="amenities"
-                      label={amenity.label}
-                      value={amenity.code}
-                      checked={draft.amenities.includes(amenity.code)}
-                      onChange={(event) =>
-                        setDraft((current) => ({
-                          ...current,
-                          amenities: event.target.checked
-                            ? [...current.amenities, amenity.code]
-                            : current.amenities.filter((code) => code !== amenity.code)
-                        }))
-                      }
-                    />
+                    <label key={amenity.code} className={styles.choice}>
+                      <input
+                        type="checkbox"
+                        name="amenities"
+                        value={amenity.code}
+                        checked={draft.amenities.includes(amenity.code)}
+                        onChange={(event) =>
+                          setDraft((current) => ({
+                            ...current,
+                            amenities: event.target.checked
+                              ? [...current.amenities, amenity.code]
+                              : current.amenities.filter((code) => code !== amenity.code)
+                          }))
+                        }
+                      />
+                      <span>{amenity.label}</span>
+                    </label>
                   ))}
                 </div>
               )}
-            </CheckboxGroup>
-          </div>
-        </div>
+            </div>
+          ) : null}
+        </section>
+      </div>
 
-        <Button type="submit" className="w-full">
-          Áp dụng bộ lọc
-        </Button>
+      <div className={styles.applyBar}>
+        <button type="submit" className={styles.applyButton}>
+          <Icon name="search" className="h-4 w-4" />
+          Tìm kiếm
+        </button>
       </div>
     </form>
   );

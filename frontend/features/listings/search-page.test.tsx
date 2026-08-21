@@ -150,6 +150,7 @@ describe("SearchPage", () => {
     expect(screen.getByRole("status")).toHaveTextContent("Đang tìm tin đăng");
     expect(await screen.findByText("card:Phòng A")).toBeInTheDocument();
     expect(screen.getByText("card:Phòng B")).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Bản đồ" }));
     expect(screen.getByText("marker:Phòng A")).toBeInTheDocument();
     expect(screen.getByText("marker:Phòng B")).toBeInTheDocument();
     expect(apiMocks.searchPublic).toHaveBeenCalledTimes(1);
@@ -166,10 +167,11 @@ describe("SearchPage", () => {
     await screen.findByText("card:Phòng A");
     expect(apiMocks.searchPublic).toHaveBeenCalledTimes(1);
 
+    fireEvent.click(screen.getByRole("button", { name: "Bản đồ" }));
     fireEvent.click(screen.getByRole("button", { name: "Move map" }));
     expect(apiMocks.searchPublic).toHaveBeenCalledTimes(1);
     fireEvent.click(screen.getByRole("button", { name: "Tìm trong khu vực này" }));
-    expect(navigation.push).toHaveBeenLastCalledWith("/?north=10.9&south=10.6&east=106.9&west=106.5");
+    expect(navigation.push).toHaveBeenLastCalledWith("/search?north=10.9&south=10.6&east=106.9&west=106.5");
     expect(apiMocks.searchPublic).toHaveBeenCalledTimes(1);
 
     navigation.query = "north=10.9&south=10.6&east=106.9&west=106.5";
@@ -182,8 +184,11 @@ describe("SearchPage", () => {
     apiMocks.searchPublic.mockResolvedValue(page([]));
     render(<SearchPage />);
     await waitFor(() => expect(apiMocks.searchPublic).toHaveBeenCalledOnce());
+    fireEvent.click(screen.getByRole("button", { name: "Bản đồ" }));
     fireEvent.click(screen.getByRole("button", { name: "Commit radius" }));
-    expect(navigation.push).toHaveBeenCalledWith("/?centerLat=10.75&centerLng=106.67&radiusKm=75&sort=distance_asc");
+    expect(navigation.push).toHaveBeenCalledWith(
+      "/search?centerLat=10.75&centerLng=106.67&radiusKm=75&sort=distance_asc"
+    );
   });
 
   it("renders empty, 422 recovery, explicit retry, and no total count", async () => {
@@ -212,9 +217,9 @@ describe("SearchPage", () => {
     await screen.findByText("card:Studio");
     expect(screen.getAllByText("Trang 2").length).toBeGreaterThan(0);
     fireEvent.click(screen.getByRole("button", { name: "Trang trước" }));
-    expect(navigation.push).toHaveBeenCalledWith("/?q=studio");
+    expect(navigation.push).toHaveBeenCalledWith("/search?q=studio");
     fireEvent.click(screen.getByRole("button", { name: "Trang sau" }));
-    expect(navigation.push).toHaveBeenCalledWith("/?q=studio&page=3");
+    expect(navigation.push).toHaveBeenCalledWith("/search?q=studio&page=3");
   });
 
   it("syncs the committed filter on back/forward URL changes", async () => {

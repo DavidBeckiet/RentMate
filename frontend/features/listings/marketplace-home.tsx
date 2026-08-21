@@ -2,7 +2,6 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { useState } from "react";
 import { Icon } from "../../components/ui/icon";
 import { Reveal } from "../../components/ui/reveal";
 import { useAuth } from "../../lib/auth/auth-provider";
@@ -10,15 +9,7 @@ import type { ApiPage, PropertyType, PublicListingSummary } from "../../types/ap
 import { FavoriteSaveControl } from "../favorites/favorite-save-control";
 import { formatAreaSqm, formatVnd } from "./format";
 import { HeroSearch } from "./hero-search";
-import {
-  demoListings,
-  demoPropertyTypes,
-  faqItems,
-  landlordBenefits,
-  neighborhoods,
-  productSteps,
-  userReviews
-} from "./homepage-content";
+import { demoListings, demoPropertyTypes } from "./homepage-content";
 import type { SearchFilterValues } from "./search-query";
 import styles from "./marketplace-home.module.css";
 
@@ -33,7 +24,7 @@ export interface MarketplaceHomeProps {
 }
 
 function ListingPreview({ listing, demo }: { readonly listing: PublicListingSummary; readonly demo: boolean }) {
-  const href = demo ? "/?sort=newest" : `/listings/${listing.id}`;
+  const href = demo ? "/search" : `/listings/${listing.id}`;
 
   return (
     <article className={styles.listingCard}>
@@ -95,6 +86,63 @@ function ListingPreview({ listing, demo }: { readonly listing: PublicListingSumm
   );
 }
 
+function HeroListingPreview({ listing, demo }: { readonly listing: PublicListingSummary; readonly demo: boolean }) {
+  const href = demo ? "/search" : `/listings/${listing.id}`;
+  const firstAmenity = listing.amenities[0]?.label;
+
+  return (
+    <article className={styles.heroListingCard}>
+      <Link
+        href={href}
+        className={`${styles.heroListingLink} group cursor-pointer focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4`}
+      >
+        <div className={styles.heroListingImage}>
+          <Image
+            src={listing.coverImage.url}
+            alt={listing.coverImage.altText ?? `Ảnh của ${listing.title}`}
+            fill
+            priority
+            sizes="(min-width: 1024px) 220px, 100vw"
+            className="object-cover transition-transform duration-500 group-hover:scale-[1.04]"
+          />
+          <span className={styles.heroListingType}>{listing.propertyType.label}</span>
+          <span className={styles.heroListingStatus}>{demo ? "Dữ liệu demo" : "Phòng mới"}</span>
+        </div>
+
+        <div className={styles.heroListingBody}>
+          <div className="flex items-start justify-between gap-4">
+            <div>
+              <p className="font-display text-[10px] font-bold uppercase tracking-[0.14em] text-rent-subtle">
+                Phòng nổi bật
+              </p>
+              <p className="mt-1 font-display text-xl font-bold tracking-[-0.04em] text-brandBlue-600">
+                {formatVnd(listing.monthlyRent)}
+              </p>
+            </div>
+            <span className="grid h-8 w-8 shrink-0 place-items-center border-2 border-heroDark-950 bg-rent-accent transition-colors group-hover:bg-rent-coral">
+              <Icon name="arrowUpRight" className="h-4 w-4 transition-transform group-hover:rotate-45" />
+            </span>
+          </div>
+
+          <h2 className={styles.heroListingTitle}>{listing.title}</h2>
+
+          <div className={styles.heroListingMeta}>
+            <span>
+              <Icon name="pin" className="h-4 w-4" />
+              <span className="truncate">{listing.areaName}</span>
+            </span>
+            <span>
+              <Icon name="ruler" className="h-4 w-4" />
+              {formatAreaSqm(listing.roomAreaSqm)}
+            </span>
+            {firstAmenity ? <span>{firstAmenity}</span> : null}
+          </div>
+        </div>
+      </Link>
+    </article>
+  );
+}
+
 export function MarketplaceHome({
   propertyTypes,
   propertyTypesLoading,
@@ -105,10 +153,11 @@ export function MarketplaceHome({
   onRetryListings
 }: MarketplaceHomeProps) {
   const { status, user } = useAuth();
-  const [activeFaq, setActiveFaq] = useState<number | null>(0);
   const liveListings = listings?.data ?? [];
   const usingDemo = liveListings.length === 0;
-  const displayListings = (usingDemo ? demoListings : liveListings).slice(0, 4);
+  const listingSource = usingDemo ? demoListings : liveListings;
+  const featuredListing = liveListings[0] ?? demoListings[0]!;
+  const displayListings = listingSource.length > 1 ? listingSource.slice(1, 4) : listingSource.slice(0, 1);
   const displayPropertyTypes = propertyTypes.length > 0 ? propertyTypes : demoPropertyTypes;
   const landlordHref = status === "authenticated" && user?.role === "LANDLORD" ? "/landlord" : "/register/landlord";
 
@@ -116,102 +165,74 @@ export function MarketplaceHome({
     <div className={styles.home}>
       <section className={styles.hero} aria-labelledby="home-title">
         <div className={`rm-page-container ${styles.heroGrid}`}>
-          <div className={styles.heroCopy}>
-            <div className="flex flex-wrap items-center gap-3">
-              <span className="rm-eyebrow">
-                <Icon name="sparkles" className="h-4 w-4" />
-                Urban living OS
-              </span>
-              <span className="font-display text-[11px] font-bold uppercase tracking-[0.14em]">TP.HCM · 2026</span>
+          <div className={styles.heroTop}>
+            <div className={styles.heroCopy}>
+              <div className="flex flex-wrap items-center gap-3">
+                <span className="rm-eyebrow">
+                  <Icon name="sparkles" className="h-4 w-4" />
+                  Urban living OS
+                </span>
+                <span className="font-display text-[11px] font-bold uppercase tracking-[0.14em]">TP.HCM · 2026</span>
+              </div>
+
+              <h1 id="home-title" className={styles.heroTitle}>
+                <span className={styles.heroLine}>
+                  <span>
+                    Tìm phòng <em className={styles.highlight}>đúng khu.</em>
+                  </span>
+                </span>
+                <span className={styles.heroLine}>
+                  <span>Sống đúng nhịp.</span>
+                </span>
+              </h1>
+
+              <p className="mt-4 max-w-xl text-[15px] font-semibold leading-6 text-rent-secondary sm:text-base">
+                Lọc đúng điều cần thiết, xem vị trí xấp xỉ và kết nối trực tiếp với chủ nhà.
+              </p>
             </div>
 
-            <h1 id="home-title" className={styles.heroTitle}>
-              <span className={styles.heroLine}>
-                <span>Đừng chỉ</span>
-              </span>
-              <span className={styles.heroLine}>
-                <span className={styles.highlight}>tìm phòng.</span>
-              </span>
-              <span className={styles.heroLine}>
-                <span>Tìm nhịp sống.</span>
-              </span>
-            </h1>
-
-            <p className="mt-7 max-w-xl text-base font-semibold leading-7 text-rent-secondary sm:text-lg">
-              Chọn khu phố, cảm nhận không gian và lọc đúng thứ bạn cần — không cò, không phí, không lộ vị trí chính
-              xác.
-            </p>
-
-            <div className="mt-8 max-w-3xl">
-              <HeroSearch
-                propertyTypes={displayPropertyTypes}
-                loading={propertyTypesLoading && propertyTypes.length === 0}
-                onSearch={onSearch}
-              />
-            </div>
-
-            <div className="mt-7 flex flex-wrap items-center gap-x-6 gap-y-3 text-xs font-bold">
-              <span className="inline-flex items-center gap-2">
-                <Icon name="check" className="h-4 w-4" /> Không phí môi giới
-              </span>
-              <span className="inline-flex items-center gap-2">
-                <Icon name="shield" className="h-4 w-4" /> Vị trí xấp xỉ
-              </span>
-              <span className="inline-flex items-center gap-2">
-                <Icon name="map" className="h-4 w-4" /> Tìm trên bản đồ
-              </span>
+            <div
+              className={styles.heroVisual}
+              aria-label={usingDemo ? "Phòng mẫu nổi bật" : "Phòng công khai nổi bật"}
+            >
+              <div className={styles.heroListingWrap}>
+                <span className={styles.heroVisualLabel}>{usingDemo ? "Phòng demo" : "Vừa cập nhật"}</span>
+                <HeroListingPreview listing={featuredListing} demo={usingDemo} />
+              </div>
             </div>
           </div>
 
-          <div className={styles.heroVisual} aria-label="Minh họa không gian sống tại thành phố">
-            <div className={styles.imageFrame}>
-              <Image
-                src="/images/rentmate-home-hero.png"
-                alt="Khu dân cư hiện đại với nhiều mảng xanh tại Thành phố Hồ Chí Minh"
-                fill
-                priority
-                sizes="(min-width: 1024px) 44vw, 100vw"
-                className="object-cover"
-              />
-              <span className={styles.scanLine} aria-hidden="true" />
-              <div className="absolute bottom-5 left-5 z-[3] max-w-[15rem] border-2 border-heroDark-950 bg-rent-surface p-3 shadow-glass">
-                <div className="flex items-center gap-2 font-display text-xs font-bold uppercase tracking-[0.12em]">
-                  <span className="h-2.5 w-2.5 bg-brandBlue-500" />
-                  Neighborhood signal
-                </div>
-                <p className="mt-2 text-sm font-bold">Nhiều cây xanh · Đi bộ thuận tiện · 12 phòng mới</p>
-              </div>
-            </div>
-            <span className={`${styles.heroSticker} ${styles.stickerTop}`}>Tin mới mỗi ngày</span>
-            <span className={`${styles.heroSticker} ${styles.stickerBottom}`}>100% trực tiếp</span>
+          <div className={styles.heroSearchBand}>
+            <HeroSearch
+              propertyTypes={displayPropertyTypes}
+              loading={propertyTypesLoading && propertyTypes.length === 0}
+              onSearch={onSearch}
+            />
+          </div>
+
+          <div className={styles.heroTrustRow} aria-label="Lợi ích khi tìm phòng">
+            <span>
+              <Icon name="check" className="h-4 w-4" /> Không phí môi giới
+            </span>
+            <span>
+              <Icon name="shield" className="h-4 w-4" /> Vị trí công khai xấp xỉ
+            </span>
+            <span>
+              <Icon name="map" className="h-4 w-4" /> Có chế độ bản đồ
+            </span>
           </div>
         </div>
       </section>
 
-      <section aria-label="Thông tin nổi bật" className={styles.statGrid}>
-        {[
-          ["01", "Vị trí", "Hiển thị xấp xỉ, ưu tiên riêng tư"],
-          ["02", "Tìm kiếm", "Lọc theo đúng nhịp sống của bạn"],
-          ["03", "Kết nối", "Liên hệ trực tiếp khi đủ quyền"],
-          ["04", "Chủ nhà", "Workspace theo dõi từng trạng thái"]
-        ].map(([number, title, note]) => (
-          <div key={number} className={styles.stat}>
-            <span className="font-display text-xs font-bold text-rent-coral">/{number}</span>
-            <h2 className="mt-4 font-display text-2xl font-bold tracking-[-0.04em]">{title}</h2>
-            <p className="mt-2 max-w-xs text-sm font-semibold leading-6 text-rent-secondary">{note}</p>
-          </div>
-        ))}
-      </section>
-
-      <section className="rm-section">
+      <section className="py-10 sm:py-12 lg:py-14">
         <div className="rm-page-container">
-          <Reveal className="flex flex-col justify-between gap-6 md:flex-row md:items-end">
+          <Reveal className="flex flex-col justify-between gap-5 md:flex-row md:items-end">
             <div>
               <span className="rm-eyebrow">Fresh drop · chỗ ở mới</span>
-              <h2 className={styles.sectionHeading}>Không gian đáng để dừng lại.</h2>
+              <h2 className={styles.sectionHeading}>Phòng mới, xem nhanh.</h2>
             </div>
             <Link
-              href="/?sort=newest"
+              href="/search"
               className="group inline-flex min-h-12 w-fit items-center gap-3 border-2 border-heroDark-950 bg-rent-surface px-5 font-display text-sm font-bold shadow-glass-sm transition-transform hover:-translate-x-0.5 hover:-translate-y-0.5 hover:shadow-glass"
             >
               Xem tất cả tin
@@ -219,7 +240,7 @@ export function MarketplaceHome({
             </Link>
           </Reveal>
 
-          <div className="mt-5 flex min-h-8 flex-wrap items-center gap-3 text-xs font-semibold text-rent-secondary">
+          <div className="mt-4 flex min-h-8 flex-wrap items-center gap-3 text-xs font-semibold text-rent-secondary">
             {usingDemo ? (
               <span className="border-2 border-heroDark-950 bg-rent-yellow px-3 py-1 font-display font-bold uppercase tracking-[0.1em]">
                 Dữ liệu mẫu để preview
@@ -241,9 +262,9 @@ export function MarketplaceHome({
             ) : null}
           </div>
 
-          <div className={`mt-9 ${styles.listingGrid}`}>
+          <div className={`mt-7 ${styles.listingGrid}`}>
             {displayListings.map((listing, index) => (
-              <Reveal key={listing.id} delay={(index % 4) as 0 | 1 | 2 | 3}>
+              <Reveal key={listing.id} delay={(index % 3) as 0 | 1 | 2}>
                 <ListingPreview listing={listing} demo={usingDemo} />
               </Reveal>
             ))}
@@ -251,261 +272,48 @@ export function MarketplaceHome({
         </div>
       </section>
 
-      <section className="border-y-2 border-heroDark-950 bg-rent-accent py-16 sm:py-20">
-        <div className="rm-page-container">
-          <Reveal className="grid gap-6 lg:grid-cols-[0.8fr_1.2fr] lg:items-end">
-            <div>
-              <span className="font-display text-xs font-bold uppercase tracking-[0.16em]">Pick a neighborhood</span>
-              <h2 className={`${styles.sectionHeading} mt-5`}>Chọn khu. Chọn mood.</h2>
-            </div>
-            <p className="max-w-xl text-base font-semibold leading-7 lg:justify-self-end">
-              Đừng bắt đầu bằng bốn bức tường. Hãy bắt đầu bằng quãng đường đi làm, quán cà phê quen và nhịp sống bạn
-              muốn.
-            </p>
-          </Reveal>
-
-          <div className={`mt-12 ${styles.neighborhoodGrid}`}>
-            {neighborhoods.map((place, index) => (
-              <Reveal key={place.name} delay={(index % 3) as 0 | 1 | 2}>
-                <button
-                  type="button"
-                  onClick={() => onSearch({ q: place.name, amenities: [] })}
-                  className={`${styles.neighborhood} group block w-full text-left`}
-                >
-                  <Image
-                    src={place.image}
-                    alt={`Không gian sống tại ${place.name}`}
-                    fill
-                    sizes="(min-width: 768px) 34vw, 100vw"
-                    className="object-cover"
-                  />
-                  <span className="absolute inset-x-0 bottom-0 z-[2] p-5 text-white">
-                    <span className="font-display text-xs font-bold uppercase tracking-[0.14em]">{place.count}</span>
-                    <span className="mt-1 flex items-end justify-between gap-4">
-                      <strong className="font-display text-3xl font-bold tracking-[-0.05em] sm:text-4xl">
-                        {place.name}
-                      </strong>
-                      <Icon name="arrowUpRight" className="h-7 w-7 transition-transform group-hover:rotate-45" />
-                    </span>
-                    <span className="mt-2 block text-sm font-semibold text-[#d8e5df]">{place.note}</span>
-                  </span>
-                </button>
-              </Reveal>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      <section className="rm-section">
-        <div className="rm-page-container grid gap-10 lg:grid-cols-[0.82fr_1.18fr] lg:items-center">
+      <section className="border-y-2 border-heroDark-950 bg-heroDark-950 py-8 text-white sm:py-10">
+        <div className="rm-page-container grid gap-5 lg:grid-cols-[0.75fr_1.25fr] lg:items-center">
           <Reveal>
-            <span className="rm-eyebrow">Map mode · Privacy first</span>
-            <h2 className={`${styles.sectionHeading} mt-6`}>Ở gần điều quan trọng.</h2>
-            <p className="mt-6 max-w-lg text-base font-semibold leading-7 text-rent-secondary">
-              Chọn một tâm điểm, đặt bán kính và chủ động bấm tìm. RentMate chỉ hiển thị vị trí công khai đã được làm
-              tròn.
-            </p>
-            <div className="mt-8 space-y-4">
-              {[
-                ["shield", "Không công khai địa chỉ chính xác"],
-                ["target", "Bán kính tìm kiếm linh hoạt"],
-                ["map", "Map di chuyển không tự gửi yêu cầu"]
-              ].map(([icon, label]) => (
-                <div
-                  key={label}
-                  className="flex items-center gap-3 border-b-2 border-heroDark-950 pb-3 font-display text-sm font-bold"
-                >
-                  <span className="grid h-10 w-10 place-items-center border-2 border-heroDark-950 bg-rent-coral shadow-glass-sm">
-                    <Icon name={icon as "shield" | "target" | "map"} className="h-5 w-5" />
-                  </span>
-                  {label}
-                </div>
-              ))}
-            </div>
-            <Link
-              href="/near-me"
-              className="mt-8 inline-flex min-h-12 items-center gap-3 border-2 border-heroDark-950 bg-rent-accent px-5 font-display text-sm font-bold shadow-glass transition-transform hover:-translate-x-1 hover:-translate-y-1"
-            >
-              Mở bản đồ
-              <Icon name="arrow" />
-            </Link>
-          </Reveal>
-
-          <Reveal delay={1}>
-            <div className={styles.mapStage} aria-label="Mô phỏng bản đồ tìm phòng theo bán kính">
-              <span className={styles.mapPin} style={{ left: "46%", top: "44%" }}>
-                <Icon name="pin" />
-              </span>
-              <span
-                className={styles.mapPin}
-                style={{ left: "22%", top: "25%", background: "#ff7657", animationDelay: "-1s" }}
-              >
-                <Icon name="home" />
-              </span>
-              <span
-                className={styles.mapPin}
-                style={{ right: "16%", bottom: "19%", background: "#ffd34e", animationDelay: "-2s" }}
-              >
-                <Icon name="building" />
-              </span>
-              <div className="absolute bottom-5 left-5 z-[3] border-2 border-heroDark-950 bg-rent-surface p-4 shadow-glass">
-                <p className="font-display text-xs font-bold uppercase tracking-[0.12em]">Quanh bạn · 3 km</p>
-                <p className="mt-2 text-3xl font-display font-bold">24 chỗ ở</p>
-                <p className="mt-1 text-xs font-semibold text-rent-secondary">Vị trí hiển thị là xấp xỉ</p>
-              </div>
-            </div>
-          </Reveal>
-        </div>
-      </section>
-
-      <section className="border-y-2 border-heroDark-950 bg-heroDark-950 py-16 text-white sm:py-24">
-        <div className="rm-page-container">
-          <Reveal>
-            <span className="inline-flex border-2 border-white bg-rent-coral px-3 py-1 font-display text-xs font-bold uppercase tracking-[0.14em] text-heroDark-950 shadow-[4px_4px_0_#fff]">
-              Quy trình 03 bước
+            <span className="font-display text-xs font-bold uppercase tracking-[0.16em] text-rent-accent">
+              Chọn bước tiếp theo
             </span>
-            <h2 className={`${styles.sectionHeading} mt-7 max-w-5xl text-white`}>Từ “đang tìm” đến “đã hẹn xem”.</h2>
+            <h2 className="mt-3 max-w-xl font-display text-3xl font-bold leading-[0.96] tracking-[-0.05em] sm:text-4xl">
+              Một điểm bắt đầu. Hai lối đi rõ ràng.
+            </h2>
           </Reveal>
-          <div className="mt-12 grid border-2 border-white md:grid-cols-3">
-            {productSteps.map((step, index) => (
-              <Reveal key={step.number} delay={(index % 3) as 0 | 1 | 2}>
-                <article className="flex min-h-72 h-full flex-col justify-between border-b-2 border-white p-6 last:border-b-0 md:border-b-0 md:border-r-2 md:last:border-r-0 sm:p-8">
-                  <div className="flex items-start justify-between">
-                    <span className="font-display text-sm font-bold text-rent-accent">/{step.number}</span>
-                    <Icon name={step.icon} className="h-8 w-8 text-rent-coral" />
-                  </div>
-                  <div>
-                    <h3 className="font-display text-2xl font-bold tracking-[-0.04em]">{step.title}</h3>
-                    <p className="mt-4 text-sm font-semibold leading-6 text-[#b9cbc6]">{step.description}</p>
-                  </div>
-                </article>
-              </Reveal>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      <section className="rm-section">
-        <div className="rm-page-container">
-          <Reveal className="grid overflow-hidden border-2 border-heroDark-950 bg-rent-coral shadow-card-elevated lg:grid-cols-[1.15fr_0.85fr]">
-            <div className="p-7 sm:p-10 lg:p-14">
-              <span className="font-display text-xs font-bold uppercase tracking-[0.16em]">Dành cho chủ nhà</span>
-              <h2 className={`${styles.sectionHeading} mt-5`}>Có chỗ trống? Biến nó thành một lời mời.</h2>
-              <p className="mt-6 max-w-xl text-base font-semibold leading-7">
-                Workspace dành riêng cho chủ nhà giúp bạn tạo bản nháp, quản lý ảnh và theo dõi vòng đời tin đăng.
-              </p>
+          <div className="grid gap-4 sm:grid-cols-2">
+            <Reveal delay={1}>
+              <Link
+                href="/search"
+                className="group flex min-h-36 flex-col justify-between border-2 border-white bg-rent-accent p-4 text-heroDark-950 shadow-[5px_5px_0_#fff] transition-transform hover:-translate-x-1 hover:-translate-y-1"
+              >
+                <Icon name="search" className="h-6 w-6" />
+                <span className="flex items-end justify-between gap-4">
+                  <span>
+                    <span className="block text-xs font-bold uppercase tracking-[0.12em]">Người thuê</span>
+                    <strong className="mt-1 block font-display text-xl font-bold">Tìm phòng ngay</strong>
+                  </span>
+                  <Icon name="arrowUpRight" className="h-6 w-6 transition-transform group-hover:rotate-45" />
+                </span>
+              </Link>
+            </Reveal>
+            <Reveal delay={2}>
               <Link
                 href={landlordHref}
-                className="mt-8 inline-flex min-h-12 items-center gap-3 border-2 border-heroDark-950 bg-rent-accent px-5 font-display text-sm font-bold shadow-glass transition-transform hover:-translate-x-1 hover:-translate-y-1"
+                className="group flex min-h-36 flex-col justify-between border-2 border-white bg-rent-coral p-4 text-heroDark-950 shadow-[5px_5px_0_#fff] transition-transform hover:-translate-x-1 hover:-translate-y-1"
               >
-                Bắt đầu đăng tin
-                <Icon name="arrowUpRight" />
-              </Link>
-            </div>
-            <div className="border-t-2 border-heroDark-950 bg-rent-surface p-7 lg:border-l-2 lg:border-t-0 sm:p-10">
-              {landlordBenefits.map((benefit, index) => (
-                <div
-                  key={benefit.title}
-                  className="flex gap-4 border-b-2 border-heroDark-950 py-5 first:pt-0 last:border-b-0 last:pb-0"
-                >
-                  <span className="grid h-11 w-11 shrink-0 place-items-center border-2 border-heroDark-950 bg-[#e5eefc] shadow-glass-sm">
-                    <Icon name={benefit.icon} />
+                <Icon name="building" className="h-6 w-6" />
+                <span className="flex items-end justify-between gap-4">
+                  <span>
+                    <span className="block text-xs font-bold uppercase tracking-[0.12em]">Chủ nhà</span>
+                    <strong className="mt-1 block font-display text-xl font-bold">Đăng chỗ trống</strong>
                   </span>
-                  <div>
-                    <span className="font-display text-[10px] font-bold uppercase tracking-[0.14em] text-rent-coral">
-                      0{index + 1}
-                    </span>
-                    <h3 className="font-display text-lg font-bold">{benefit.title}</h3>
-                    <p className="mt-1 text-sm font-semibold leading-6 text-rent-secondary">{benefit.text}</p>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </Reveal>
-        </div>
-      </section>
-
-      <section className="border-y-2 border-heroDark-950 bg-[#e5eefc] py-16 sm:py-20">
-        <div className="rm-page-container">
-          <Reveal className="flex flex-col justify-between gap-5 sm:flex-row sm:items-end">
-            <div>
-              <span className="font-display text-xs font-bold uppercase tracking-[0.16em]">Voice notes</span>
-              <h2 className={`${styles.sectionHeading} mt-4`}>Người thật nói gì?</h2>
-            </div>
-            <span className="w-fit border-2 border-heroDark-950 bg-rent-yellow px-3 py-1 font-display text-xs font-bold shadow-glass-sm">
-              4.9 / 5
-            </span>
-          </Reveal>
-          <div className={`mt-10 ${styles.quoteRail}`}>
-            {userReviews.map((review, index) => (
-              <Reveal key={review.name} delay={(index % 3) as 0 | 1 | 2}>
-                <article
-                  className={`${styles.quote} ${index === 1 ? "bg-rent-accent" : index === 2 ? "bg-rent-coral" : "bg-rent-surface"}`}
-                >
-                  <div>
-                    <Icon name="star" filled className="h-6 w-6" />
-                    <blockquote className="mt-6 font-display text-xl font-bold leading-7 tracking-[-0.025em]">
-                      “{review.quote}”
-                    </blockquote>
-                  </div>
-                  <div className="mt-8 flex items-center gap-3 border-t-2 border-heroDark-950 pt-4">
-                    <Image
-                      src={review.avatar}
-                      alt={review.name}
-                      width={48}
-                      height={48}
-                      className="h-12 w-12 border-2 border-heroDark-950 object-cover"
-                    />
-                    <div>
-                      <p className="font-display text-sm font-bold">{review.name}</p>
-                      <p className="text-xs font-semibold text-rent-secondary">{review.role}</p>
-                    </div>
-                  </div>
-                </article>
-              </Reveal>
-            ))}
+                  <Icon name="arrowUpRight" className="h-6 w-6 transition-transform group-hover:rotate-45" />
+                </span>
+              </Link>
+            </Reveal>
           </div>
-        </div>
-      </section>
-
-      <section className="rm-section">
-        <div className="rm-page-container grid gap-10 lg:grid-cols-[0.72fr_1.28fr]">
-          <Reveal>
-            <span className="rm-eyebrow">FAQ · Hỏi nhanh</span>
-            <h2 className={`${styles.sectionHeading} mt-6`}>Trước khi bạn bắt đầu.</h2>
-          </Reveal>
-          <Reveal delay={1}>
-            <div>
-              {faqItems.map((faq, index) => {
-                const open = activeFaq === index;
-                return (
-                  <div key={faq.q} className={styles.faqItem}>
-                    <button
-                      type="button"
-                      className="flex min-h-20 w-full items-center justify-between gap-5 py-5 text-left font-display text-lg font-bold sm:text-xl"
-                      aria-expanded={open}
-                      onClick={() => setActiveFaq(open ? null : index)}
-                    >
-                      <span>
-                        <span className="mr-3 text-sm text-rent-coral">0{index + 1}</span>
-                        {faq.q}
-                      </span>
-                      <span
-                        className={`grid h-10 w-10 shrink-0 place-items-center border-2 border-heroDark-950 transition-colors ${open ? "bg-rent-coral" : "bg-rent-accent"}`}
-                      >
-                        <Icon name={open ? "minus" : "plus"} className="h-5 w-5" />
-                      </span>
-                    </button>
-                    {open ? (
-                      <p className="max-w-2xl pb-6 pr-14 text-sm font-semibold leading-7 text-rent-secondary">
-                        {faq.a}
-                      </p>
-                    ) : null}
-                  </div>
-                );
-              })}
-            </div>
-          </Reveal>
         </div>
       </section>
     </div>

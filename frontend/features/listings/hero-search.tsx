@@ -36,36 +36,36 @@ export function HeroSearch({ propertyTypes, loading = false, onSearch }: HeroSea
     <div className={styles.shell}>
       <form onSubmit={submit} noValidate>
         <div className={styles.searchGrid}>
-          <label className={`${styles.field} flex min-w-0 items-center gap-3 px-4 py-3 sm:px-5`}>
-            <Icon name="search" className="h-6 w-6 shrink-0" />
+          <label className={styles.field}>
+            <span className={styles.fieldIcon} aria-hidden="true">
+              <Icon name="search" className="h-5 w-5" />
+            </span>
             <span className="min-w-0 flex-1">
-              <span className="block font-display text-[10px] font-bold uppercase tracking-[0.17em] text-rent-subtle">
-                Bạn muốn sống ở đâu?
-              </span>
+              <span className={styles.fieldLabel}>Bạn muốn sống ở đâu?</span>
               <input
                 id="hero-search-keyword"
                 name="q"
                 value={keyword}
                 onChange={(event) => setKeyword(event.currentTarget.value)}
                 placeholder="Nhập khu vực hoặc tên phòng"
-                className="mt-0.5 min-h-8 w-full border-0 bg-transparent p-0 font-display text-base font-bold text-heroDark-950 outline-none placeholder:text-rent-subtle sm:text-lg"
+                className={styles.textInput}
               />
             </span>
           </label>
 
-          <label className={`${styles.field} flex items-center gap-3 px-4 py-3 sm:px-5`}>
-            <Icon name="building" className="h-6 w-6 shrink-0" />
+          <label className={styles.field}>
+            <span className={styles.fieldIcon} aria-hidden="true">
+              <Icon name="building" className="h-5 w-5" />
+            </span>
             <span className="min-w-0 flex-1">
-              <span className="block font-display text-[10px] font-bold uppercase tracking-[0.17em] text-rent-subtle">
-                Kiểu không gian
-              </span>
+              <span className={styles.fieldLabel}>Kiểu không gian</span>
               <select
                 id="hero-search-property-type"
                 name="propertyType"
                 value={propertyType}
                 disabled={loading}
                 onChange={(event) => setPropertyType(event.currentTarget.value)}
-                className="mt-0.5 min-h-8 w-full border-0 bg-transparent p-0 font-display text-base font-bold text-heroDark-950 outline-none"
+                className={styles.selectInput}
               >
                 <option value="">Tất cả loại hình</option>
                 {propertyTypes.map((type) => (
@@ -77,24 +77,21 @@ export function HeroSearch({ propertyTypes, loading = false, onSearch }: HeroSea
             </span>
           </label>
 
-          <button
-            type="submit"
-            className="group inline-flex min-h-16 items-center justify-center gap-2 border-t-2 border-heroDark-950 bg-rent-accent px-6 font-display text-base font-bold text-heroDark-950 transition-colors hover:bg-rent-coral focus-visible:outline-none md:min-h-full md:border-l-2 md:border-t-0"
-          >
-            Khám phá
-            <Icon name="arrow" className="h-5 w-5 transition-transform group-hover:translate-x-1" />
+          <button type="submit" className={`${styles.submitButton} group`}>
+            <span>Tìm phòng</span>
+            <Icon name="arrow" className="h-5 w-5 transition-transform group-hover:translate-x-1.5" />
           </button>
         </div>
       </form>
 
-      <div className="flex flex-wrap items-center gap-2 border-t-2 border-heroDark-950 bg-[#e5eefc] px-4 py-3 text-xs sm:px-5">
-        <span className="font-display font-bold uppercase tracking-[0.12em]">Đi nhanh:</span>
+      <div className={styles.quickRow}>
+        <span className={styles.quickLabel}>Tìm nhanh</span>
         {suggestions.map((suggestion) => (
           <button
             key={suggestion}
             type="button"
             onClick={() => chooseSuggestion(suggestion)}
-            className="border-b-2 border-heroDark-950/35 font-bold transition-colors hover:border-rent-coral hover:text-brandBlue-600"
+            className={styles.suggestion}
           >
             {suggestion}
           </button>

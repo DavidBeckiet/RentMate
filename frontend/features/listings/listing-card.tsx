@@ -10,15 +10,21 @@ export interface ListingCardProps {
   readonly listing: PublicListingSummary;
   readonly showFavorite?: boolean;
   readonly href?: string;
+  readonly variant?: "default" | "search";
 }
 
-export function ListingCard({ listing, showFavorite = true, href }: ListingCardProps) {
+export function ListingCard({ listing, showFavorite = true, href, variant = "default" }: ListingCardProps) {
   const coverImage = listing.coverImage;
+  const searchVariant = variant === "search";
 
   return (
-    <article className={`${styles.card} group relative flex h-full flex-col overflow-hidden`}>
+    <article
+      className={`${styles.card} ${searchVariant ? styles.searchCard : ""} group relative flex h-full flex-col overflow-hidden`}
+    >
       <Link href={href ?? `/listings/${listing.id}`} className="flex h-full flex-1 flex-col focus-visible:outline-none">
-        <div className="relative aspect-[4/3] overflow-hidden border-b-2 border-heroDark-950 bg-[#e5eefc]">
+        <div
+          className={`${styles.media} relative aspect-[4/3] overflow-hidden border-b-2 border-heroDark-950 bg-[#e5eefc]`}
+        >
           {coverImage ? (
             <Image
               src={coverImage.url}
@@ -38,7 +44,9 @@ export function ListingCard({ listing, showFavorite = true, href }: ListingCardP
             </div>
           )}
 
-          <span className="absolute left-3 top-3 border-2 border-heroDark-950 bg-rent-yellow px-2.5 py-1 font-display text-[10px] font-bold uppercase tracking-[0.1em] shadow-glass-sm">
+          <span
+            className={`${styles.badge} absolute left-3 top-3 border-2 border-heroDark-950 bg-rent-yellow px-2.5 py-1 font-display text-[10px] font-bold uppercase tracking-[0.1em] shadow-glass-sm`}
+          >
             {listing.propertyType.label}
           </span>
           {listing.distanceKm !== undefined ? (
@@ -49,28 +57,33 @@ export function ListingCard({ listing, showFavorite = true, href }: ListingCardP
           ) : null}
         </div>
 
-        <div className="flex flex-1 flex-col justify-between gap-5 p-4 sm:p-5">
+        <div className={`${styles.content} flex flex-1 flex-col justify-between gap-5 p-4 sm:p-5`}>
           <div>
             <div className="flex items-start justify-between gap-3">
-              <p className="font-display text-xl font-bold tracking-[-0.04em] text-brandBlue-600">
+              <p className={`${styles.price} font-display text-xl font-bold tracking-[-0.04em] text-brandBlue-600`}>
                 {formatVnd(listing.monthlyRent)}
               </p>
               <Icon name="arrowUpRight" className="h-5 w-5 shrink-0 transition-transform group-hover:rotate-45" />
             </div>
             <h2 className="rm-listing-title mt-2 font-display text-base font-bold leading-5">{listing.title}</h2>
-            <p className="mt-3 flex items-center gap-2 text-xs font-semibold text-rent-secondary">
+            <p className={`${styles.location} mt-3 flex items-center gap-2 text-xs font-semibold text-rent-secondary`}>
               <Icon name="pin" className="h-4 w-4 shrink-0" />
               <span className="truncate">{listing.areaName}</span>
             </p>
           </div>
 
-          <div className="flex flex-wrap items-center justify-between gap-2 border-t-2 border-heroDark-950 pt-3 text-xs font-bold">
+          <div
+            className={`${styles.meta} flex flex-wrap items-center justify-between gap-2 border-t-2 border-heroDark-950 pt-3 text-xs font-bold`}
+          >
             <span className="inline-flex items-center gap-1.5">
               <Icon name="ruler" className="h-4 w-4" />
               {formatAreaSqm(listing.roomAreaSqm)} · {listing.propertyType.label}
             </span>
             {listing.amenities.slice(0, 1).map((amenity) => (
-              <span key={amenity.code} className="border border-heroDark-950 bg-[#e5eefc] px-2 py-1">
+              <span
+                key={amenity.code}
+                className={`${styles.amenity} border border-heroDark-950 bg-[#e5eefc] px-2 py-1`}
+              >
                 {amenity.label}
               </span>
             ))}

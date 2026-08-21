@@ -72,7 +72,8 @@ export function AppShell({ children }: Readonly<{ children: ReactNode }>) {
     }
   };
 
-  const listingCurrent = pathname === "/" || pathname.startsWith("/listings") ? "page" : undefined;
+  const homeCurrent = pathname === "/" ? "page" : undefined;
+  const listingCurrent = pathname === "/search" || pathname.startsWith("/listings") ? "page" : undefined;
 
   return (
     <div className="flex min-h-screen flex-col pb-[4.5rem] text-rent-ink md:pb-0">
@@ -123,7 +124,10 @@ export function AppShell({ children }: Readonly<{ children: ReactNode }>) {
             )}
           >
             <div className="flex flex-col gap-1 lg:flex-row lg:items-center lg:gap-1.5">
-              <Link href="/" aria-current={listingCurrent} className={navLink}>
+              <Link href="/" aria-current={homeCurrent} className={navLink}>
+                Trang chủ
+              </Link>
+              <Link href="/search" aria-current={listingCurrent} className={navLink}>
                 Tìm phòng
               </Link>
               <Link href="/near-me" aria-current={pathname === "/near-me" ? "page" : undefined} className={navLink}>
@@ -275,7 +279,11 @@ export function AppShell({ children }: Readonly<{ children: ReactNode }>) {
 
       <main
         id="main-content"
-        className={pathname === "/" || pathname === "/near-me" ? "flex-1" : "rm-page-container flex-1 py-8 sm:py-12"}
+        className={
+          pathname === "/" || pathname === "/search" || pathname === "/near-me"
+            ? "flex-1"
+            : "rm-page-container flex-1 py-8 sm:py-12"
+        }
       >
         {children}
       </main>
@@ -325,7 +333,7 @@ export function AppShell({ children }: Readonly<{ children: ReactNode }>) {
               Khám phá
             </h2>
             <nav aria-label="Khám phá RentMate" className="flex flex-col gap-3">
-              <Link href="/?sort=newest" className={footerLink}>
+              <Link href="/search" className={footerLink}>
                 Phòng mới nhất
               </Link>
               <Link href="/near-me" className={footerLink}>
@@ -366,12 +374,24 @@ export function AppShell({ children }: Readonly<{ children: ReactNode }>) {
         aria-label="Điều hướng nhanh"
         className={cx(
           isAuthPage ? "hidden" : "grid",
-          "fixed bottom-0 left-0 right-0 z-50 grid-cols-4 border-t-2 border-heroDark-950 bg-rent-surface md:hidden"
+          "fixed bottom-0 left-0 right-0 z-50 grid-cols-5 border-t-2 border-heroDark-950 bg-rent-surface md:hidden"
         )}
       >
-        <Link href="/" className="flex min-h-16 flex-col items-center justify-center gap-1 text-[10px] font-bold">
+        <Link
+          href="/"
+          aria-current={homeCurrent}
+          className="flex min-h-16 flex-col items-center justify-center gap-1 text-[10px] font-bold"
+        >
+          <Icon name="home" className="h-5 w-5" />
+          Home
+        </Link>
+        <Link
+          href="/search"
+          aria-current={listingCurrent}
+          className="flex min-h-16 flex-col items-center justify-center gap-1 border-l-2 border-heroDark-950 text-[10px] font-bold"
+        >
           <Icon name="search" className="h-5 w-5" />
-          Khám phá
+          Tìm
         </Link>
         <Link
           href="/near-me"

@@ -38,27 +38,22 @@ beforeEach(() => {
 describe("SearchFilters", () => {
   it("keeps typing as a draft until the primary search action is applied", () => {
     renderFilters();
-    expect(screen.getByLabelText("Tên phòng hoặc khu vực")).toBeVisible();
-    expect(document.getElementById("advanced-listing-filters")).toHaveClass("hidden", "lg:block");
+    expect(screen.getByLabelText("Từ khóa")).toBeVisible();
+    expect(screen.queryByRole("checkbox", { name: "Wi-Fi" })).not.toBeInTheDocument();
 
-    fireEvent.change(screen.getByLabelText("Tên phòng hoặc khu vực"), { target: { value: "  studio  " } });
+    fireEvent.change(screen.getByLabelText("Từ khóa"), { target: { value: "  studio  " } });
     expect(onApply).not.toHaveBeenCalled();
     fireEvent.click(screen.getByRole("button", { name: "Tìm kiếm" }));
     expect(onApply).toHaveBeenCalledWith({ q: "studio", amenities: [] }, "newest");
   });
 
-  it("discloses advanced native controls and validates rent/area pairs", () => {
+  it("validates rent and custom area pairs", () => {
     renderFilters();
-    const disclosure = screen.getByRole("button", { name: "Hiện bộ lọc nâng cao" });
-    expect(disclosure).toHaveAttribute("aria-expanded", "false");
-    fireEvent.click(disclosure);
-    expect(screen.getByRole("button", { name: /Ẩn bộ lọc nâng cao/ })).toHaveAttribute("aria-expanded", "true");
-    expect(document.getElementById("advanced-listing-filters")).toHaveClass("block", "lg:block");
-
     fireEvent.change(screen.getByLabelText("Giá từ (VND/tháng)"), { target: { value: "9000000" } });
     fireEvent.change(screen.getByLabelText("Giá đến (VND/tháng)"), { target: { value: "5000000" } });
+    fireEvent.click(screen.getByRole("radio", { name: "Tùy chỉnh" }));
     fireEvent.change(screen.getByLabelText("Diện tích từ (m²)"), { target: { value: "20.123" } });
-    fireEvent.click(screen.getByRole("button", { name: "Áp dụng bộ lọc" }));
+    fireEvent.click(screen.getByRole("button", { name: "Tìm kiếm" }));
 
     expect(screen.getByText("Giá tối đa phải lớn hơn hoặc bằng giá tối thiểu.")).toBeInTheDocument();
     expect(screen.getByText("Nhập số dương với tối đa hai chữ số thập phân.")).toBeInTheDocument();
@@ -73,13 +68,13 @@ describe("SearchFilters", () => {
     };
     renderFilters({ committed });
 
-    expect(screen.getByRole("option", { name: "Mã không còn trong danh mục: OLD_ROOM" })).toBeInTheDocument();
+    expect(screen.getByRole("radio", { name: "Mã không còn trong danh mục: OLD_ROOM" })).toBeChecked();
     expect(screen.getByRole("checkbox", { name: "Mã không còn trong danh mục: OLD_WIFI" })).toBeChecked();
     expect(screen.getByRole("checkbox", { name: "Wi-Fi" })).toBeChecked();
-    expect(screen.getByText("Tin đăng phải có tất cả tiện ích bạn chọn.")).toBeInTheDocument();
+    expect(screen.getByText("Phòng phải có tất cả tiện ích đã chọn.")).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole("checkbox", { name: "Mã không còn trong danh mục: OLD_WIFI" }));
-    fireEvent.click(screen.getByRole("button", { name: "Áp dụng bộ lọc" }));
+    fireEvent.click(screen.getByRole("button", { name: "Tìm kiếm" }));
     expect(onApply).toHaveBeenCalledWith(
       expect.objectContaining({ propertyType: "OLD_ROOM", amenities: ["WIFI"] }),
       "newest"
@@ -91,15 +86,24 @@ describe("SearchFilters", () => {
       propertyTypes: { status: "error", data: [] },
       amenities: { status: "error", data: [] }
     });
-    fireEvent.click(screen.getByRole("button", { name: "Hiện bộ lọc nâng cao" }));
+    fireEvent.click(screen.getByRole("button", { name: /^Tiện ích/ }));
     const retries = screen.getAllByRole("button", { name: "Thử lại" });
     fireEvent.click(retries[0]!);
     fireEvent.click(retries[1]!);
     expect(onRetryPropertyTypes).toHaveBeenCalledOnce();
     expect(onRetryAmenities).toHaveBeenCalledOnce();
-    expect(screen.getByLabelText("Tên phòng hoặc khu vực")).toBeEnabled();
+    expect(screen.getByLabelText("Từ khóa")).toBeEnabled();
 
-    fireEvent.click(screen.getByRole("button", { name: "Xóa bộ lọc" }));
+    fireEvent.click(screen.getByRole("button", { name: "Đặt lại" }));
     expect(onClear).toHaveBeenCalledOnce();
+  });
+
+  it("maps a one-tap area preset to the existing min/max query contract", () => {
+    renderFilters();
+
+    fireEvent.click(screen.getByRole("radio", { name: "20 – 30 m²" }));
+    fireEvent.click(screen.getByRole("button", { name: "Tìm kiếm" }));
+
+    expect(onApply).toHaveBeenCalledWith({ minRoomAreaSqm: 20, maxRoomAreaSqm: 30, amenities: [] }, "newest");
   });
 });

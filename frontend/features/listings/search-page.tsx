@@ -8,14 +8,14 @@ import { ErrorState, LoadingState } from "../../components/ui/feedback-states";
 import { Icon } from "../../components/ui/icon";
 import { Pagination } from "../../components/ui/pagination";
 import { api, ApiError } from "../../lib/api/client";
-import type { Amenity, ApiPage, PropertyType, PublicListingSummary, PublicListingSort } from "../../types/api";
+import type { Amenity, PropertyType, PublicListingSummary, PublicListingSort } from "../../types/api";
 import { ListingCard } from "./listing-card";
-import { MarketplaceHome } from "./marketplace-home";
 import { RadiusControls } from "./radius-controls";
 import { SearchFilters, type LookupResource } from "./search-filters";
 import { SearchMap } from "./search-map";
 import {
   applySearchFilters,
+  activeFilterCount,
   parseSearchQuery,
   searchFilterValues,
   serializeSearchState,
@@ -26,6 +26,7 @@ import {
   type SearchFilterValues,
   type SearchQueryState
 } from "./search-query";
+import styles from "./search-page.module.css";
 
 type SearchStatus = "idle" | "loading" | "success" | "error";
 
@@ -45,7 +46,6 @@ export function SearchPage() {
   const rawQuery = searchParams.toString();
   const parsed = useMemo(() => parseSearchQuery(new URLSearchParams(rawQuery)), [rawQuery]);
   const committedIdentity = parsed.ok ? serializeSearchState(parsed.state).toString() : `invalid:${rawQuery}`;
-  const [result, setResult] = useState<ApiPage<PublicListingSummary> | null>(null);
   const [items, setItems] = useState<readonly PublicListingSummary[]>([]);
   const [currentPage, setCurrentPage] = useState(1);
   const [hasNextPage, setHasNextPage] = useState(false);
@@ -61,6 +61,7 @@ export function SearchPage() {
   const [selectingRadiusCenter, setSelectingRadiusCenter] = useState(false);
   const [radiusResetKey, setRadiusResetKey] = useState(0);
   const [mobileMapOpen, setMobileMapOpen] = useState(false);
+  const [mobileFiltersOpen, setMobileFiltersOpen] = useState(false);
   const searchRequestIdentity = useRef(0);
 
   useEffect(() => {
@@ -112,7 +113,6 @@ export function SearchPage() {
   useEffect(() => {
     if (!parsed.ok) {
       ++searchRequestIdentity.current;
-      setResult(null);
       setItems([]);
       setCurrentPage(1);
       setHasNextPage(false);
@@ -124,7 +124,6 @@ export function SearchPage() {
     const controller = new AbortController();
     const identity = ++searchRequestIdentity.current;
     let active = true;
-    setResult(null);
     setItems([]);
     setCurrentPage(parsed.state.page);
     setHasNextPage(false);
@@ -135,7 +134,6 @@ export function SearchPage() {
       .searchPublic({ ...toPublicListingSearchQuery(parsed.state), pageSize: 20 }, controller.signal)
       .then((page) => {
         if (!active || controller.signal.aborted || identity !== searchRequestIdentity.current) return;
-        setResult(page);
         setItems(page.data);
         setCurrentPage(page.pagination.page);
         setHasNextPage(page.pagination.hasNextPage);
@@ -155,7 +153,7 @@ export function SearchPage() {
 
   const navigate = (state: SearchQueryState) => {
     const query = serializeSearchState(state).toString();
-    router.push(query ? `/?${query}` : "/");
+    router.push(query ? `/search?${query}` : "/search");
   };
 
   const clearSearch = () => {
@@ -163,8 +161,9 @@ export function SearchPage() {
     setProposedRadiusCenter(null);
     setSelectingRadiusCenter(false);
     setMobileMapOpen(false);
+    setMobileFiltersOpen(false);
     setRadiusResetKey((key) => key + 1);
-    router.push("/");
+    router.push("/search");
   };
 
   if (!parsed.ok) {
@@ -192,102 +191,76 @@ export function SearchPage() {
   }
 
   const committed = parsed.state;
+  const filterCount = activeFilterCount(committed);
   const applyFilters = (values: SearchFilterValues, sort: PublicListingSort) => {
     navigate(applySearchFilters(committed, values, sort));
   };
 
-  if (rawQuery.length === 0) {
-    return (
-      <MarketplaceHome
-        propertyTypes={propertyTypes.data}
-        propertyTypesLoading={propertyTypes.status === "loading"}
-        listings={result}
-        listingsStatus={searchStatus}
-        listingsError={searchStatus === "error" ? searchErrorMessage(searchError) : null}
-        onSearch={(values) => applyFilters(values, "newest")}
-        onRetryListings={() => setSearchRetryKey((key) => key + 1)}
-      />
-    );
-  }
-
   return (
-    <div className="flex min-h-screen flex-col">
-      {/* Top Hero Dark Banner */}
-      <section className="relative border-b-2 border-heroDark-950 bg-rent-coral py-10">
-        <div className="rm-page-container grid gap-6 md:grid-cols-[1fr_auto] md:items-end">
-          <div>
-            <span className="inline-flex items-center gap-2 font-display text-xs font-bold uppercase tracking-[0.16em]">
-              <Icon name="sparkles" className="h-4 w-4" />
-              Search mode
-            </span>
-            <h1
-              id="search-heading"
-              className="mt-3 font-display text-5xl font-bold leading-none tracking-[-0.06em] sm:text-7xl"
-            >
-              Tìm đúng chỗ.
-            </h1>
-            <p className="mt-3 max-w-2xl text-sm font-semibold sm:text-base">
-              Lọc theo khu vực, ngân sách, diện tích và tiện ích — dữ liệu được lấy từ các tin đang công khai.
-            </p>
-          </div>
-          <span className="w-fit border-2 border-heroDark-950 bg-rent-yellow px-3 py-2 font-display text-xs font-bold uppercase tracking-[0.12em] shadow-glass-sm">
-            Live inventory
-          </span>
-        </div>
-      </section>
-
-      {/* Main 2-Column Search Layout */}
-      <div className="rm-page-container w-full flex-1 py-8 sm:py-12">
-        <div className="grid grid-cols-1 items-start gap-8 lg:grid-cols-12">
-          {/* Left Sidebar Filter Column */}
-          <div className="lg:col-span-4 xl:col-span-3">
+    <div className={styles.page}>
+      <div className={`rm-page-container ${styles.content}`}>
+        <div className={styles.layout}>
+          <aside
+            id="search-filter-sidebar"
+            className={styles.filterSidebar}
+            data-open={mobileFiltersOpen ? "true" : "false"}
+          >
             <SearchFilters
               committed={committed}
               propertyTypes={propertyTypes}
               amenities={amenities}
               onRetryPropertyTypes={() => setPropertyRetryKey((key) => key + 1)}
               onRetryAmenities={() => setAmenityRetryKey((key) => key + 1)}
-              onApply={applyFilters}
+              onApply={(values, sort) => {
+                setMobileFiltersOpen(false);
+                applyFilters(values, sort);
+              }}
               onClear={clearSearch}
             />
-          </div>
+          </aside>
 
-          {/* Right Results Column */}
-          <main className="lg:col-span-8 xl:col-span-9 space-y-6">
-            {/* Results Summary & Sorting Bar */}
-            <div className="flex flex-col items-center justify-between gap-4 border-2 border-heroDark-950 bg-rent-surface p-4 shadow-glass-sm sm:flex-row">
-              <div className="flex items-center gap-2.5 text-sm text-rent-secondary sm:text-base">
-                <span className="grid h-10 w-10 place-items-center border-2 border-heroDark-950 bg-rent-accent">
+          <main className={styles.results} aria-labelledby="search-heading">
+            <div className={styles.resultsToolbar}>
+              <div className={styles.resultSummary}>
+                <span className={styles.resultIcon}>
                   <Icon name="home" className="h-5 w-5" />
                 </span>
-                <span>
-                  Đang hiển thị <strong className="font-display text-lg font-bold text-rent-ink">{items.length}</strong>{" "}
-                  phòng trọ
-                </span>
+                <div>
+                  <h1 id="search-heading">
+                    Tìm thấy <strong>{items.length}</strong> phòng trên trang này
+                  </h1>
+                  <p>Các tin công khai phù hợp với điều kiện của bạn</p>
+                </div>
               </div>
 
-              <div className="flex items-center gap-3 w-full sm:w-auto justify-end flex-wrap">
-                {/* Map Toggle Button */}
+              <div className={styles.toolbarActions}>
                 <button
                   type="button"
-                  onClick={() => setMobileMapOpen(!mobileMapOpen)}
-                  className="inline-flex min-h-10 items-center gap-2 border-2 border-heroDark-950 bg-[#e5eefc] px-3 text-xs font-bold shadow-glass-sm transition-transform hover:-translate-y-0.5"
+                  aria-expanded={mobileFiltersOpen}
+                  aria-controls="search-filter-sidebar"
+                  onClick={() => setMobileFiltersOpen((open) => !open)}
+                  className={styles.mobileFilterButton}
                 >
-                  <Icon name="map" className="h-4 w-4" />
-                  <span>{mobileMapOpen ? "Ẩn bản đồ" : "Xem bản đồ"}</span>
+                  <Icon name="sliders" className="h-4 w-4" />
+                  Bộ lọc
+                  {filterCount > 0 ? <span>{filterCount}</span> : null}
                 </button>
-
-                {/* Sort Selector */}
-                <div className="flex items-center gap-2">
-                  <span className="text-xs font-bold text-slate-500 whitespace-nowrap">Sắp xếp:</span>
+                <button type="button" onClick={() => setMobileMapOpen(!mobileMapOpen)} className={styles.mapButton}>
+                  <Icon name="map" className="h-4 w-4" />
+                  <span>{mobileMapOpen ? "Ẩn bản đồ" : "Bản đồ"}</span>
+                </button>
+                <label className={styles.sortControl}>
+                  <span>Sắp xếp:</span>
                   <select
+                    aria-label="Sắp xếp kết quả"
                     value={committed.mode === "radius" ? "distance_asc" : committed.sort}
                     disabled={committed.mode === "radius"}
-                    onChange={(e) => applyFilters(searchFilterValues(committed), e.target.value as PublicListingSort)}
-                    className="min-h-10 border-2 border-heroDark-950 bg-white px-3 text-xs font-bold shadow-glass-sm focus:outline-none"
+                    onChange={(event) =>
+                      applyFilters(searchFilterValues(committed), event.target.value as PublicListingSort)
+                    }
                   >
                     {committed.mode === "radius" ? (
-                      <option value="distance_asc">Khoảng cách gần nhất</option>
+                      <option value="distance_asc">Gần nhất</option>
                     ) : (
                       <>
                         <option value="newest">Mới nhất</option>
@@ -296,39 +269,38 @@ export function SearchPage() {
                       </>
                     )}
                   </select>
-                </div>
+                </label>
               </div>
             </div>
 
-            {/* Optional Interactive Map Panel */}
-            <div
-              className={`${mobileMapOpen ? "block" : "hidden lg:block"} space-y-4 border-2 border-heroDark-950 bg-rent-surface p-4 shadow-glass`}
-            >
-              <RadiusControls
-                proposedCenter={proposedRadiusCenter}
-                selectingCenter={selectingRadiusCenter}
-                initialRadiusKm={committed.mode === "radius" ? committed.radiusKm : undefined}
-                resetKey={radiusResetKey}
-                onProposedCenterChange={setProposedRadiusCenter}
-                onSelectingCenterChange={setSelectingRadiusCenter}
-                onCommit={(center, radiusKm) => navigate(withRadius(committed, center, radiusKm))}
-              />
-              <div className="h-[24rem] overflow-hidden border-2 border-heroDark-950">
-                <SearchMap
-                  listings={items}
-                  pendingViewport={pendingViewport}
-                  proposedRadiusCenter={proposedRadiusCenter}
-                  selectingRadiusCenter={selectingRadiusCenter}
-                  onViewportChange={setPendingViewport}
-                  onSearchBounds={(viewport) => navigate(withBounds(committed, viewport.bounds))}
-                  onRadiusCenterSelected={(point) => {
-                    if (!selectingRadiusCenter) return;
-                    setProposedRadiusCenter(point);
-                    setSelectingRadiusCenter(false);
-                  }}
+            {mobileMapOpen ? (
+              <div className={styles.mapPanel}>
+                <RadiusControls
+                  proposedCenter={proposedRadiusCenter}
+                  selectingCenter={selectingRadiusCenter}
+                  initialRadiusKm={committed.mode === "radius" ? committed.radiusKm : undefined}
+                  resetKey={radiusResetKey}
+                  onProposedCenterChange={setProposedRadiusCenter}
+                  onSelectingCenterChange={setSelectingRadiusCenter}
+                  onCommit={(center, radiusKm) => navigate(withRadius(committed, center, radiusKm))}
                 />
+                <div className={styles.mapCanvas}>
+                  <SearchMap
+                    listings={items}
+                    pendingViewport={pendingViewport}
+                    proposedRadiusCenter={proposedRadiusCenter}
+                    selectingRadiusCenter={selectingRadiusCenter}
+                    onViewportChange={setPendingViewport}
+                    onSearchBounds={(viewport) => navigate(withBounds(committed, viewport.bounds))}
+                    onRadiusCenterSelected={(point) => {
+                      if (!selectingRadiusCenter) return;
+                      setProposedRadiusCenter(point);
+                      setSelectingRadiusCenter(false);
+                    }}
+                  />
+                </div>
               </div>
-            </div>
+            ) : null}
 
             {/* Feedback States */}
             {searchStatus === "loading" && <LoadingState message="Đang tìm tin đăng…" />}
@@ -351,30 +323,25 @@ export function SearchPage() {
             )}
 
             {searchStatus === "success" && items.length === 0 && (
-              <div className="space-y-4 border-2 border-dashed border-heroDark-950 bg-rent-surface p-10 text-center shadow-glass-sm">
-                <span className="mx-auto grid h-14 w-14 place-items-center border-2 border-heroDark-950 bg-rent-yellow shadow-glass-sm">
+              <div className={styles.emptyState}>
+                <span className={styles.emptyIcon}>
                   <Icon name="search" className="h-7 w-7" />
                 </span>
                 <h3 className="font-display text-xl font-bold">Chưa tìm thấy tin đăng phù hợp</h3>
                 <p className="text-sm font-semibold text-rent-secondary">
-                  Vui lòng thử thay đổi từ khóa hoặc điều chỉnh lại bộ lọc bên trái
+                  Vui lòng thử thay đổi từ khóa hoặc nới lỏng một vài điều kiện lọc.
                 </p>
-                <button
-                  type="button"
-                  onClick={clearSearch}
-                  className="mt-2 inline-flex min-h-11 items-center gap-2 border-2 border-heroDark-950 bg-rent-accent px-4 font-display text-xs font-bold shadow-glass-sm transition-transform hover:-translate-y-0.5"
-                >
+                <button type="button" onClick={clearSearch} className={styles.emptyAction}>
                   Xóa bộ lọc và xem tất cả
                 </button>
               </div>
             )}
 
-            {/* 3-column listing grid */}
             {items.length > 0 && (
               <div className="space-y-6">
-                <div className="grid grid-cols-1 gap-6 md:grid-cols-2 xl:grid-cols-3">
+                <div className={styles.listingGrid}>
                   {items.map((listing) => (
-                    <ListingCard key={listing.id} listing={listing} showFavorite />
+                    <ListingCard key={listing.id} listing={listing} showFavorite variant="search" />
                   ))}
                 </div>
 
@@ -387,7 +354,7 @@ export function SearchPage() {
                 />
                 {/* End of Results Indicator */}
                 {!hasNextPage && items.length > 0 && (
-                  <div className="border-2 border-heroDark-950 bg-rent-accent p-5 text-center font-display text-xs font-bold shadow-glass-sm">
+                  <div className={styles.endState}>
                     <span>Bạn đã xem hết {items.length} phòng trọ phù hợp.</span>
                   </div>
                 )}

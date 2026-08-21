@@ -1,11 +1,11 @@
-import { Suspense } from "react";
-import { LoadingState } from "../components/ui/feedback-states";
-import { SearchPage } from "../features/listings/search-page";
+import type { Metadata } from "next";
+import { HomePageExperience } from "../features/listings/home-page";
+
+export const metadata: Metadata = {
+  title: "RentMate — Chạm đúng nơi, sống đúng chất",
+  description: "Khám phá RentMate và bắt đầu hành trình tìm một nơi ở phù hợp với nhịp sống của bạn."
+};
 
 export default function HomePage() {
-  return (
-    <Suspense fallback={<LoadingState message="Đang mở trang tìm phòng…" />}>
-      <SearchPage />
-    </Suspense>
-  );
+  return <HomePageExperience />;
 }

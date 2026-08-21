@@ -53,7 +53,17 @@ describe("AppShell", () => {
     expect(screen.getByRole("main")).toHaveAttribute("id", "main-content");
     expect(screen.getByRole("link", { name: "Bỏ qua đến nội dung chính" })).toHaveAttribute("href", "#main-content");
     expect(screen.getAllByRole("link", { name: "RentMate" })[0]).toHaveAttribute("href", "/");
+    expect(screen.getByRole("link", { name: "Trang chủ" })).toHaveAttribute("aria-current", "page");
+    expect(screen.getByRole("link", { name: "Tìm phòng" })).toHaveAttribute("href", "/search");
+    expect(screen.getByRole("link", { name: "Tìm phòng" })).not.toHaveAttribute("aria-current");
+  });
+
+  it("marks the dedicated search navigation at /search", () => {
+    navigationMocks.pathname.mockReturnValue("/search");
+    render(<AppShell>Nội dung trang</AppShell>);
+
     expect(screen.getByRole("link", { name: "Tìm phòng" })).toHaveAttribute("aria-current", "page");
+    expect(screen.getByRole("link", { name: "Trang chủ" })).not.toHaveAttribute("aria-current");
   });
 
   it("opens the mobile menu with ARIA state and closes it with Escape", () => {
