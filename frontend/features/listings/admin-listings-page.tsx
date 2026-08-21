@@ -99,17 +99,19 @@ export function AdminListingsPage() {
 
   return (
     <section className={`${styles.adminPage} rm-workspace space-y-8 my-4`}>
-      <header className="flex flex-col gap-4 rounded-3xl border border-slate-200/90 bg-white p-8 shadow-glass sm:flex-row sm:items-center sm:justify-between">
+      <header className="flex flex-col gap-4 border-2 border-heroDark-950 bg-rent-yellow p-6 shadow-glass sm:flex-row sm:items-center sm:justify-between sm:p-8">
         <div className="max-w-2xl space-y-2">
           <span className="rm-eyebrow">QUẢN TRỊ VIÊN</span>
-          <h1 className="text-3xl font-black text-slate-900 sm:text-4xl tracking-tight">Hàng đợi kiểm duyệt</h1>
+          <h1 className="font-display text-4xl font-bold tracking-[-0.055em] text-rent-ink sm:text-6xl">
+            Hàng đợi kiểm duyệt
+          </h1>
           <p className="text-sm font-medium text-slate-600 leading-relaxed">
             Đánh giá chất lượng hình ảnh, tiện ích và khu vực tin đăng trước khi duyệt hoặc từ chối.
           </p>
         </div>
       </header>
 
-      <div className="rounded-2xl border border-slate-200/80 bg-white/90 p-4 shadow-sm backdrop-blur-md max-w-xs">
+      <div className="max-w-xs border-2 border-heroDark-950 bg-rent-surface p-4 shadow-glass-sm">
         <SelectField
           id="admin-listing-status"
           name="status"
@@ -144,7 +146,7 @@ export function AdminListingsPage() {
         />
       ) : null}
       {loadState.status === "success" && loadState.result.data.length > 0 ? (
-        <div className="rounded-3xl border border-slate-200/90 bg-white shadow-glass overflow-hidden divide-y divide-slate-100">
+        <div className="divide-y-2 divide-heroDark-950 overflow-hidden border-2 border-heroDark-950 bg-rent-surface shadow-glass">
           {loadState.result.data.map((listing) => (
             <AdminListingCard key={listing.id} listing={listing} />
           ))}

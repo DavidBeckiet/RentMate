@@ -13,12 +13,12 @@ export function Pagination({ ariaLabel, page, hasNextPage, onPrevious, onNext, c
   return (
     <nav
       aria-label={ariaLabel}
-      className={`flex items-center justify-between gap-3 rounded-card border border-rent-line bg-white p-3 sm:gap-4 ${className}`}
+      className={`flex items-center justify-between gap-3 border-2 border-heroDark-950 bg-rent-surface p-3 shadow-glass-sm sm:gap-4 ${className}`}
     >
       <Button variant="secondary" disabled={page <= 1} onClick={onPrevious}>
         Trang trước
       </Button>
-      <span className="text-sm font-semibold text-rent-secondary" aria-live="polite">
+      <span className="font-display text-sm font-bold text-rent-secondary" aria-live="polite">
         Trang {page}
       </span>
       <Button variant="secondary" disabled={!hasNextPage} onClick={onNext}>

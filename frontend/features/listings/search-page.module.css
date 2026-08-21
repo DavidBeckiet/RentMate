@@ -1,9 +1,0 @@
-.searchPage :global(.text-teal-600) { color: #0284c7 !important; }
-.searchPage :global(.text-teal-700),
-.searchPage :global(.text-teal-800),
-.searchPage :global(.text-teal-900) { color: #0369a1 !important; }
-.searchPage :global(.bg-teal-50) { background-color: #f0f9ff !important; }
-.searchPage :global(.bg-teal-600),
-.searchPage :global(.bg-teal-700) { background-color: #0284c7 !important; }
-.searchPage :global(.border-teal-200) { border-color: #bae6fd !important; }
-.searchPage :global(.border-teal-500) { border-color: #0ea5e9 !important; }

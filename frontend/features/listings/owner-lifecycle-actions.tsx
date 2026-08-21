@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "../../components/ui/button";
+import { Icon } from "../../components/ui/icon";
 import { api, ApiError } from "../../lib/api/client";
 import { useAuth } from "../../lib/auth/auth-provider";
 import { mapApiErrorToFields } from "../../lib/validation/api-field-errors";
@@ -185,8 +186,13 @@ export function OwnerLifecycleActions({
           <p className="text-sm font-medium text-rent-ink">Kiểm tra trước khi gửi duyệt</p>
           <ul className="mt-2 grid gap-1 text-sm text-rent-secondary sm:grid-cols-2">
             {completeness.map((item) => (
-              <li key={item.label}>
-                {item.ready ? "✓" : "○"} {item.label}
+              <li key={item.label} className="flex items-center gap-2">
+                <span
+                  className={`grid h-5 w-5 place-items-center border border-heroDark-950 ${item.ready ? "bg-rent-accent" : "bg-white"}`}
+                >
+                  {item.ready ? <Icon name="check" className="h-3.5 w-3.5" /> : null}
+                </span>
+                {item.label}
               </li>
             ))}
           </ul>

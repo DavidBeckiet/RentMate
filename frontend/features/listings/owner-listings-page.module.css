@@ -1,4 +1,15 @@
-.ownerPage :global(.text-teal-700), .ownerPage :global(.text-teal-800), .ownerPage :global(.text-teal-900) { color: #0369a1 !important; }
-.ownerPage :global(.bg-teal-600), .ownerPage :global(.bg-teal-700) { background-color: #0284c7 !important; }
-.ownerPage :global(.rm-eyebrow) { color: #0369a1; background: #e0f2fe; border-color: #bae6fd; }
-.ownerPage :global(.shadow-glow-teal) { --tw-shadow-color: rgb(14 165 233 / 0.2) !important; }
+.ownerPage :global(.text-teal-700),
+.ownerPage :global(.text-teal-800),
+.ownerPage :global(.text-teal-900) {
+  color: #176b4d !important;
+}
+.ownerPage :global(.bg-teal-600),
+.ownerPage :global(.bg-teal-700) {
+  background-color: #176b4d !important;
+}
+.ownerPage > header {
+  border: 2px solid #092b27 !important;
+  border-radius: 0 !important;
+  background: #c9f269 !important;
+  box-shadow: 6px 6px 0 #092b27 !important;
+}

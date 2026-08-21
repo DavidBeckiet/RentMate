@@ -11,11 +11,11 @@ export interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
 
 const variantClasses: Record<ButtonVariant, string> = {
   primary:
-    "border border-sky-600/90 bg-gradient-to-r from-sky-600 via-sky-700 to-blue-800 text-white shadow-lg shadow-sky-900/20 hover:-translate-y-0.5 hover:shadow-xl hover:brightness-110 active:translate-y-0 active:scale-[0.98]",
+    "border-2 border-heroDark-950 bg-rent-accent text-heroDark-950 shadow-glass-sm hover:-translate-x-0.5 hover:-translate-y-0.5 hover:shadow-glass active:translate-x-0 active:translate-y-0 active:shadow-none",
   secondary:
-    "border border-slate-200 bg-white/90 text-slate-800 shadow-sm backdrop-blur-md hover:-translate-y-0.5 hover:border-sky-500 hover:bg-sky-50/70 hover:text-sky-900 hover:shadow-md active:translate-y-0 active:scale-[0.98]",
+    "border-2 border-heroDark-950 bg-rent-surface text-heroDark-950 shadow-glass-sm hover:-translate-x-0.5 hover:-translate-y-0.5 hover:bg-[#e5eefc] hover:shadow-glass active:translate-x-0 active:translate-y-0 active:shadow-none",
   danger:
-    "border border-rose-600/90 bg-gradient-to-r from-rose-600 via-rose-700 to-rose-800 text-white shadow-sm hover:-translate-y-0.5 hover:shadow-md hover:brightness-110 active:translate-y-0 active:scale-[0.98]"
+    "border-2 border-heroDark-950 bg-rent-coral text-heroDark-950 shadow-glass-sm hover:-translate-x-0.5 hover:-translate-y-0.5 hover:shadow-glass active:translate-x-0 active:translate-y-0 active:shadow-none"
 };
 
 export function Button({
@@ -34,13 +34,13 @@ export function Button({
       type={type}
       disabled={disabled || pending}
       aria-busy={pending || undefined}
-      className={`inline-flex min-h-11 items-center justify-center gap-2 rounded-xl px-5 py-2.5 text-sm font-bold tracking-tight transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-600 focus-visible:ring-offset-2 disabled:translate-y-0 disabled:scale-100 disabled:cursor-not-allowed disabled:border-slate-200 disabled:bg-slate-100 disabled:text-slate-400 disabled:shadow-none ${variantClasses[variant]} ${className}`}
+      className={`inline-flex min-h-11 items-center justify-center gap-2 px-5 py-2.5 font-display text-sm font-bold tracking-tight transition-[background-color,box-shadow,transform] duration-200 focus-visible:outline-none disabled:translate-x-0 disabled:translate-y-0 disabled:cursor-not-allowed disabled:border-heroDark-950/40 disabled:bg-[#dfddd5] disabled:text-rent-subtle disabled:shadow-none ${variantClasses[variant]} ${className}`}
     >
       {pending ? (
         <>
           <span
             aria-hidden="true"
-            className="h-4 w-4 animate-spin rounded-full border-2 border-current border-r-transparent motion-reduce:animate-none"
+            className="h-4 w-4 animate-spin border-2 border-current border-r-transparent motion-reduce:animate-none"
           />
           {pendingLabel}
         </>

@@ -1,27 +1,32 @@
 import type { Metadata } from "next";
 import { Suspense, type ReactNode } from "react";
-import { Plus_Jakarta_Sans } from "next/font/google";
+import { Manrope, Space_Grotesk } from "next/font/google";
 import { AppShell } from "../components/ui/app-shell";
 import { AuthProvider } from "../lib/auth/auth-provider";
 import "leaflet/dist/leaflet.css";
 import "./globals.css";
 
-const plusJakartaSans = Plus_Jakarta_Sans({
+const manrope = Manrope({
   subsets: ["latin", "vietnamese"],
-  weight: ["400", "500", "600", "700", "800"],
-  variable: "--font-plus-jakarta",
+  variable: "--font-manrope",
+  display: "swap"
+});
+
+const spaceGrotesk = Space_Grotesk({
+  subsets: ["latin", "vietnamese"],
+  variable: "--font-space-grotesk",
   display: "swap"
 });
 
 export const metadata: Metadata = {
-  title: "RentMate - Nền Tảng Cho Thuê Phòng Trọ & Căn Hộ Cao Cấp",
-  description: "Nền tảng kết nối người thuê và chủ nhà thông minh, minh bạch tại Thành phố Hồ Chí Minh."
+  title: "RentMate — Chạm đúng nơi, sống đúng chất",
+  description: "Khám phá phòng trọ và căn hộ minh bạch, trực quan, đúng nhu cầu trên RentMate."
 };
 
 export default function RootLayout({ children }: Readonly<{ children: ReactNode }>) {
   return (
-    <html lang="vi" className={`${plusJakartaSans.variable} font-sans`}>
-      <body className="antialiased selection:bg-teal-500/20 selection:text-teal-900">
+    <html lang="vi" className={`${manrope.variable} ${spaceGrotesk.variable}`}>
+      <body>
         <AuthProvider>
           <Suspense fallback={<div className="min-h-screen bg-slate-50" />}>
             <AppShell>{children}</AppShell>

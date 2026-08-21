@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { Button } from "../../components/ui/button";
+import { Icon } from "../../components/ui/icon";
 import { api, ApiError } from "../../lib/api/client";
 import { useAuth } from "../../lib/auth/auth-provider";
 
@@ -100,7 +101,15 @@ export function FavoriteSaveControl({ listingId, compact = false }: FavoriteSave
 
   if (authStatus === "anonymous") {
     if (compact) {
-      return <Link className="grid h-10 w-10 place-items-center rounded-xl bg-white/95 text-xl text-slate-600 shadow-md transition hover:text-sky-600" href="/login" aria-label="Đăng nhập để lưu tin">♡</Link>;
+      return (
+        <Link
+          className="grid h-10 w-10 place-items-center border-2 border-heroDark-950 bg-rent-surface text-heroDark-950 shadow-glass-sm transition-transform hover:-translate-y-0.5"
+          href="/login"
+          aria-label="Đăng nhập để lưu tin"
+        >
+          <Icon name="heart" className="h-5 w-5" />
+        </Link>
+      );
     }
     return (
       <p className="text-sm leading-6 text-slate-600">
@@ -114,7 +123,16 @@ export function FavoriteSaveControl({ listingId, compact = false }: FavoriteSave
 
   if (authStatus === "error") {
     if (compact) {
-      return <button type="button" className="grid h-10 w-10 place-items-center rounded-xl bg-white/95 text-xl text-rose-600 shadow-md" onClick={() => void refresh()} aria-label="Thử lại quyền lưu tin">!</button>;
+      return (
+        <button
+          type="button"
+          className="grid h-10 w-10 place-items-center border-2 border-heroDark-950 bg-rent-coral font-display text-lg font-bold shadow-glass-sm"
+          onClick={() => void refresh()}
+          aria-label="Thử lại quyền lưu tin"
+        >
+          !
+        </button>
+      );
     }
     return (
       <div className="flex flex-wrap items-center gap-3" role="alert">
@@ -139,9 +157,9 @@ export function FavoriteSaveControl({ listingId, compact = false }: FavoriteSave
         disabled={outcome.status === "success"}
         onClick={() => void save()}
         aria-label={outcome.status === "success" ? "Đã lưu tin" : "Lưu tin"}
-        className="!min-h-10 !min-w-10 !rounded-xl !p-0 text-xl"
+        className="!min-h-10 !min-w-10 !p-0"
       >
-        {outcome.status === "success" ? "♥" : "♡"}
+        <Icon name="heart" filled={outcome.status === "success"} className="h-5 w-5" />
       </Button>
     );
   }

@@ -37,7 +37,7 @@ export interface CheckboxGroupProps {
 }
 
 const controlClasses =
-  "min-h-11 w-full rounded-xl border border-slate-200 bg-white/90 px-4 py-2.5 text-base text-slate-800 shadow-sm outline-none placeholder:text-slate-400 transition-all duration-200 focus:border-sky-600 focus:bg-white focus:ring-4 focus:ring-sky-500/10 disabled:cursor-not-allowed disabled:border-slate-200 disabled:bg-slate-100 disabled:text-slate-400 aria-[invalid=true]:border-rose-600 aria-[invalid=true]:focus:ring-rose-500/10";
+  "min-h-12 w-full border-2 border-heroDark-950 bg-rent-surface px-4 py-2.5 text-base font-semibold text-rent-ink shadow-glass-sm outline-none placeholder:font-normal placeholder:text-rent-subtle transition-[background-color,box-shadow,transform] duration-200 focus:-translate-x-0.5 focus:-translate-y-0.5 focus:bg-white focus:shadow-glass disabled:cursor-not-allowed disabled:bg-[#dfddd5] disabled:text-rent-subtle aria-[invalid=true]:border-rose-700 aria-[invalid=true]:bg-rose-50";
 
 function labelText(label: string, required?: boolean) {
   return (
@@ -46,7 +46,7 @@ function labelText(label: string, required?: boolean) {
       {required ? (
         <>
           {" "}
-          <span className="text-red-700">(bắt buộc)</span>
+          <span className="text-rose-700">(bắt buộc)</span>
         </>
       ) : null}
     </>
@@ -60,14 +60,18 @@ function descriptionId(id: string, hint: ReactNode, error: string | undefined, e
 function FieldMessage({ id, hint, error }: { id: string; hint?: ReactNode; error?: string }) {
   if (error) {
     return (
-      <p id={`${id}-error`} role="alert" className="text-sm text-red-700">
+      <p
+        id={`${id}-error`}
+        role="alert"
+        className="border-l-4 border-rose-700 pl-2 text-sm font-semibold text-rose-800"
+      >
         {error}
       </p>
     );
   }
 
   return hint ? (
-    <p id={`${id}-hint`} className="text-sm text-slate-600">
+    <p id={`${id}-hint`} className="text-sm text-rent-secondary">
       {hint}
     </p>
   ) : null;
@@ -76,7 +80,7 @@ function FieldMessage({ id, hint, error }: { id: string; hint?: ReactNode; error
 export function InputField({ id, name, label, hint, error, required, className = "", ...inputProps }: InputFieldProps) {
   return (
     <div className="space-y-2">
-      <label htmlFor={id} className="block text-sm font-semibold text-rent-ink">
+      <label htmlFor={id} className="block font-display text-sm font-bold text-rent-ink">
         {labelText(label, required)}
       </label>
       <input
@@ -105,7 +109,7 @@ export function TextareaField({
 }: TextareaFieldProps) {
   return (
     <div className="space-y-2">
-      <label htmlFor={id} className="block text-sm font-semibold text-rent-ink">
+      <label htmlFor={id} className="block font-display text-sm font-bold text-rent-ink">
         {labelText(label, required)}
       </label>
       <textarea
@@ -135,7 +139,7 @@ export function SelectField({
 }: SelectFieldProps) {
   return (
     <div className="space-y-2">
-      <label htmlFor={id} className="block text-sm font-semibold text-rent-ink">
+      <label htmlFor={id} className="block font-display text-sm font-bold text-rent-ink">
         {labelText(label, required)}
       </label>
       <select
@@ -175,7 +179,7 @@ export function CheckboxField({
           required={required}
           aria-invalid={error ? true : checkboxProps["aria-invalid"]}
           aria-describedby={descriptionId(id, hint, error, checkboxProps["aria-describedby"])}
-          className={`mt-1 h-5 w-5 shrink-0 rounded border-stone-400 text-sky-700 focus:ring-2 focus:ring-sky-700 focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60 ${className}`}
+          className={`mt-1 h-5 w-5 shrink-0 border-2 border-heroDark-950 text-brandBlue-600 focus:ring-2 focus:ring-rent-coral focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60 ${className}`}
         />
         <span className="pt-0.5">{labelText(label, required)}</span>
       </label>
@@ -195,7 +199,7 @@ export function CheckboxGroup({ id, legend, hint, error, required, disabled, chi
       aria-describedby={messageId}
       className="space-y-2"
     >
-      <legend className="text-sm font-semibold text-rent-ink">{labelText(legend, required)}</legend>
+      <legend className="font-display text-sm font-bold text-rent-ink">{labelText(legend, required)}</legend>
       <div className="space-y-1">{children}</div>
       <FieldMessage id={id} hint={hint} error={error} />
     </fieldset>

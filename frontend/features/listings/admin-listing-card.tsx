@@ -11,7 +11,9 @@ export function AdminListingCard({ listing }: { readonly listing: AdminListingSu
       <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
         <div className="min-w-0 space-y-3">
           <div className="flex flex-wrap items-center gap-3">
-            <h2 className="text-lg font-semibold text-rent-ink">{listing.title ?? "Chưa có tiêu đề"}</h2>
+            <h2 className="font-display text-xl font-bold tracking-tight text-rent-ink">
+              {listing.title ?? "Chưa có tiêu đề"}
+            </h2>
             <ListingStatusBadge status={listing.status} />
           </div>
           <ListingMetadata>{listing.areaName ?? "Chưa có khu vực"}</ListingMetadata>
@@ -34,7 +36,7 @@ export function AdminListingCard({ listing }: { readonly listing: AdminListingSu
         </div>
         <Link
           href={`/admin/listings/${listing.id}`}
-          className="inline-flex min-h-11 shrink-0 items-center justify-center rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-bold text-slate-800 shadow-sm transition-all hover:border-teal-500 hover:bg-teal-50 hover:text-teal-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-600"
+          className="inline-flex min-h-11 shrink-0 items-center justify-center border-2 border-heroDark-950 bg-rent-accent px-4 py-2 font-display text-xs font-bold uppercase tracking-wider text-rent-ink shadow-glass-sm transition-transform hover:-translate-x-0.5 hover:-translate-y-0.5 focus-visible:outline-none"
         >
           Xem chi tiết
         </Link>

@@ -3,18 +3,16 @@
 @tailwind utilities;
 
 :root {
-  --rm-canvas: #f8fafc;
-  --rm-surface: #ffffff;
-  --rm-surface-muted: #f1f5f9;
-  --rm-text-primary: #0f172a;
-  --rm-text-secondary: #334155;
-  --rm-text-muted: #64748b;
-  --rm-border: #e2e8f0;
-  --rm-border-strong: #cbd5e1;
-  --rm-primary: #0284c7;
-  --rm-primary-hover: #0369a1;
-  --rm-primary-subtle: #e0f2fe;
-  --rm-accent: #0ea5e9;
+  --rm-canvas: #f4f1e8;
+  --rm-paper: #fffdf7;
+  --rm-ink: #092b27;
+  --rm-ink-soft: #34554e;
+  --rm-line: #092b27;
+  --rm-green: #176b4d;
+  --rm-lime: #c9f269;
+  --rm-coral: #ff7657;
+  --rm-blue: #86b6ff;
+  --rm-yellow: #ffd34e;
   --rm-ease-out: cubic-bezier(0.16, 1, 0.3, 1);
 }
 
@@ -33,18 +31,35 @@ body {
   overflow-x: hidden;
   background-color: var(--rm-canvas);
   background-image:
-    radial-gradient(at 10% 10%, rgba(2, 132, 199, 0.04) 0px, transparent 50%),
-    radial-gradient(at 90% 90%, rgba(14, 165, 233, 0.04) 0px, transparent 50%);
-  color: var(--rm-text-primary);
-  font-family: var(--font-plus-jakarta), Inter, ui-sans-serif, system-ui, sans-serif;
+    linear-gradient(rgb(9 43 39 / 0.035) 1px, transparent 1px),
+    linear-gradient(90deg, rgb(9 43 39 / 0.035) 1px, transparent 1px);
+  background-size: 32px 32px;
+  color: var(--rm-ink);
+  font-family: var(--font-manrope), Inter, ui-sans-serif, system-ui, sans-serif;
   font-size: 16px;
   line-height: 1.5;
+  text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
 }
 
+button,
+a,
+input,
+select,
+textarea {
+  -webkit-tap-highlight-color: transparent;
+}
+
+button,
+a,
+select,
+summary {
+  cursor: pointer;
+}
+
 ::selection {
-  background: rgba(2, 132, 199, 0.2);
-  color: #075985;
+  background: var(--rm-lime);
+  color: var(--rm-ink);
 }
 
 @layer components {
@@ -53,15 +68,15 @@ body {
   }
 
   .rm-section {
-    @apply py-12 sm:py-16 lg:py-24;
+    @apply py-16 sm:py-20 lg:py-28;
   }
 
   .rm-eyebrow {
-    @apply inline-flex items-center gap-2 text-xs font-extrabold tracking-widest uppercase text-sky-700 bg-sky-50 px-3 py-1 rounded-full border border-sky-100;
+    @apply inline-flex min-h-8 items-center gap-2 border-2 border-heroDark-950 bg-rent-accent px-3 py-1 font-display text-[11px] font-bold uppercase tracking-[0.16em] text-heroDark-950 shadow-glass-sm;
   }
 
   .rm-section-title {
-    @apply mt-3 text-3xl font-extrabold text-slate-900 sm:text-4xl lg:text-5xl;
+    @apply mt-5 max-w-4xl font-display text-4xl font-bold leading-[0.98] tracking-[-0.05em] text-heroDark-950 sm:text-5xl lg:text-7xl;
   }
 
   .rm-listing-title {
@@ -73,61 +88,115 @@ body {
 
   .rm-reveal {
     opacity: 0;
-    transform: translateY(24px);
-    transition: opacity 0.5s var(--rm-ease-out), transform 0.5s var(--rm-ease-out);
+    transform: translateY(28px) rotate(0.4deg);
+    transition:
+      opacity 560ms var(--rm-ease-out),
+      transform 560ms var(--rm-ease-out);
+    transition-delay: calc(var(--rm-delay, 0) * 90ms);
   }
 
   .rm-reveal[data-visible="true"] {
     opacity: 1;
-    transform: translateY(0);
+    transform: translateY(0) rotate(0);
+  }
+
+  .rm-reveal[data-delay="1"] {
+    --rm-delay: 1;
+  }
+  .rm-reveal[data-delay="2"] {
+    --rm-delay: 2;
+  }
+  .rm-reveal[data-delay="3"] {
+    --rm-delay: 3;
   }
 
   .rm-auth-shell {
-    @apply mx-auto grid min-h-[38rem] w-full max-w-5xl overflow-hidden rounded-3xl border border-slate-200/80 bg-white shadow-card-elevated lg:grid-cols-[1fr_1.1fr];
+    @apply mx-auto grid min-h-[40rem] w-full max-w-6xl overflow-hidden border-2 border-heroDark-950 bg-rent-surface shadow-card-elevated lg:grid-cols-[0.95fr_1.05fr];
   }
 
   .rm-auth-visual {
-    @apply relative min-h-[20rem] overflow-hidden p-8 text-white flex flex-col justify-between lg:min-h-full;
-    background:
-      linear-gradient(135deg, rgba(2, 132, 199, 0.9) 0%, rgba(2, 6, 23, 0.95) 100%),
-      url("/images/rentmate-home-hero.png") center / cover no-repeat;
+    @apply relative flex min-h-[22rem] flex-col justify-between overflow-hidden border-b-2 border-heroDark-950 p-7 text-white lg:min-h-full lg:border-b-0 lg:border-r-2 sm:p-10;
+    background: #092b27 url("/images/rentmate-home-hero.png") 64% center / cover no-repeat;
   }
 
-  .rm-workspace-panel {
-    @apply overflow-hidden rounded-3xl border border-slate-200/80 bg-white shadow-glass;
+  .rm-auth-visual::after {
+    position: absolute;
+    inset: 0;
+    content: "";
+    background: linear-gradient(120deg, rgb(9 43 39 / 0.96) 10%, rgb(9 43 39 / 0.44) 78%);
   }
 
-  .bg-grid-pattern {
-    background-size: 32px 32px;
-    background-image:
-      linear-gradient(to right, rgba(255, 255, 255, 0.04) 1px, transparent 1px),
-      linear-gradient(to bottom, rgba(255, 255, 255, 0.04) 1px, transparent 1px);
+  .rm-workspace-panel,
+  .rm-card {
+    @apply overflow-hidden border-2 border-heroDark-950 bg-rent-surface shadow-glass;
+  }
+
+  .rm-workspace {
+    @apply relative;
+  }
+
+  .rm-workspace::before {
+    position: absolute;
+    z-index: -1;
+    top: -1.25rem;
+    right: -0.5rem;
+    width: 7rem;
+    height: 7rem;
+    border: 2px solid var(--rm-ink);
+    border-radius: 999px;
+    background: var(--rm-lime);
+    content: "";
   }
 
   .rm-card {
-    background: #ffffff;
-    border: 1px solid #e2e8f0;
-    border-radius: 1.25rem;
-    transition: all 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+    transition:
+      transform 180ms var(--rm-ease-out),
+      box-shadow 180ms var(--rm-ease-out);
   }
 
   .rm-card:hover {
-    border-color: #0284c7;
-    transform: translateY(-6px);
-    box-shadow: 0 20px 35px -10px rgba(2, 132, 199, 0.2);
+    transform: translate(-3px, -3px);
+    box-shadow: 9px 9px 0 var(--rm-ink);
+  }
+
+  .bg-grid-pattern {
+    background-image:
+      linear-gradient(rgb(255 255 255 / 0.08) 1px, transparent 1px),
+      linear-gradient(90deg, rgb(255 255 255 / 0.08) 1px, transparent 1px);
+    background-size: 30px 30px;
   }
 }
 
+:focus-visible {
+  outline: 3px solid var(--rm-coral);
+  outline-offset: 3px;
+}
+
 ::-webkit-scrollbar {
-  width: 7px;
+  width: 10px;
 }
 ::-webkit-scrollbar-track {
-  background: #f1f5f9;
+  background: var(--rm-canvas);
 }
 ::-webkit-scrollbar-thumb {
-  background: #cbd5e1;
-  border-radius: 4px;
+  border: 2px solid var(--rm-canvas);
+  background: var(--rm-ink);
 }
-::-webkit-scrollbar-thumb:hover {
-  background: #0284c7;
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+  .rm-reveal {
+    opacity: 1;
+    transform: none;
+  }
 }

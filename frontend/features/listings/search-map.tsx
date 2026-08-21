@@ -43,11 +43,11 @@ export function SearchMap({
   return (
     <section
       aria-labelledby="search-map-heading"
-      className="min-w-0 rounded-card border border-rent-line bg-white p-4"
+      className="min-w-0 border-2 border-heroDark-950 bg-rent-surface p-4 shadow-glass-sm"
     >
       <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h2 id="search-map-heading" className="font-semibold text-rent-ink">
+          <h2 id="search-map-heading" className="font-display text-xl font-bold text-rent-ink">
             Bản đồ kết quả
           </h2>
           <p className="mt-1 text-sm text-rent-secondary">Vị trí xấp xỉ, dựa trên tọa độ công khai đã làm tròn.</p>
@@ -59,7 +59,10 @@ export function SearchMap({
         )}
       </div>
       {selectingRadiusCenter ? (
-        <p role="status" className="mb-3 rounded-control bg-rent-primary-subtle px-3 py-2 text-sm font-medium text-teal-900">
+        <p
+          role="status"
+          className="mb-3 border-2 border-heroDark-950 bg-rent-yellow px-3 py-2 text-sm font-bold text-rent-ink"
+        >
           Chọn một điểm trên bản đồ làm tâm tìm kiếm.
         </p>
       ) : null}

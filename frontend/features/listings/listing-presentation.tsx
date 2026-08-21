@@ -14,7 +14,7 @@ export interface ListingImageProps {
 
 export function ListingImage({ image, title, sizes, className = "" }: ListingImageProps) {
   return (
-    <div className={`relative aspect-[4/3] overflow-hidden bg-slate-100 ${className}`}>
+    <div className={`relative aspect-[4/3] overflow-hidden border-b-2 border-heroDark-950 bg-[#e5eefc] ${className}`}>
       {image ? (
         <Image
           src={image.url}
@@ -27,9 +27,16 @@ export function ListingImage({ image, title, sizes, className = "" }: ListingIma
         <div
           role="img"
           aria-label={`Chưa có ảnh cho ${title}`}
-          className="flex h-full flex-col items-center justify-center gap-3 px-4 text-center text-sm font-semibold text-slate-400"
+          className="flex h-full flex-col items-center justify-center gap-3 px-4 text-center font-display text-sm font-bold text-rent-secondary"
         >
-          <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="h-9 w-9 text-sky-600">
+          <svg
+            aria-hidden="true"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            className="h-9 w-9 text-brandBlue-600"
+          >
             <rect x="3" y="4" width="18" height="16" rx="2" />
             <circle cx="8" cy="9" r="1.5" />
             <path d="m4 18 5.5-5 3.5 3 2.5-2.5 4.5 4.5" />
@@ -54,17 +61,29 @@ export function ListingPrice({
   const rentValue = formatVnd(monthlyRent).replace(/\s*\/\s*tháng$/, "");
 
   return (
-    <p className="flex flex-wrap items-baseline gap-x-1.5 text-slate-900">
-      <span className={emphasis === "prominent" ? "text-3xl font-black tracking-tight text-sky-700" : "text-2xl font-black tracking-tight text-sky-700"}>
+    <p className="flex flex-wrap items-baseline gap-x-1.5 text-rent-ink">
+      <span
+        className={
+          emphasis === "prominent"
+            ? "font-display text-4xl font-bold tracking-[-0.05em] text-brandBlue-600"
+            : "font-display text-2xl font-bold tracking-[-0.04em] text-brandBlue-600"
+        }
+      >
         {rentValue}
       </span>
-      <span className="text-xs font-bold uppercase tracking-wider text-slate-500">/ tháng</span>
+      <span className="font-display text-xs font-bold uppercase tracking-wider text-rent-secondary">/ tháng</span>
     </p>
   );
 }
 
-export function ListingMetadata({ children, className = "" }: { readonly children: ReactNode; readonly className?: string }) {
-  return <p className={`text-sm font-semibold leading-6 text-slate-600 ${className}`}>{children}</p>;
+export function ListingMetadata({
+  children,
+  className = ""
+}: {
+  readonly children: ReactNode;
+  readonly className?: string;
+}) {
+  return <p className={`text-sm font-semibold leading-6 text-rent-secondary ${className}`}>{children}</p>;
 }
 
 export function ListingAmenityChips({ amenities }: { readonly amenities: readonly Amenity[] }) {
@@ -75,7 +94,7 @@ export function ListingAmenityChips({ amenities }: { readonly amenities: readonl
       {amenities.map((amenity) => (
         <li
           key={amenity.code}
-          className="rounded-lg border border-slate-200/80 bg-slate-50 px-2.5 py-1 text-[11px] font-extrabold text-slate-600"
+          className="border-2 border-heroDark-950 bg-[#e5eefc] px-2.5 py-1 font-display text-[11px] font-bold text-rent-ink shadow-glass-sm"
         >
           {amenity.label}
         </li>
@@ -93,7 +112,7 @@ export function ListingCardShell({
 }) {
   return (
     <article
-      className={`group overflow-hidden rounded-card border border-slate-200/90 bg-white shadow-sm transition-[border-color,box-shadow,transform] duration-300 hover:-translate-y-1 hover:border-sky-500/50 hover:shadow-card-hover ${className}`}
+      className={`group overflow-hidden border-2 border-heroDark-950 bg-rent-surface shadow-glass transition-[box-shadow,transform] duration-200 hover:-translate-x-1 hover:-translate-y-1 hover:shadow-card-hover ${className}`}
     >
       {children}
     </article>

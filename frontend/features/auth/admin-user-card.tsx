@@ -16,7 +16,7 @@ export function AdminUserCard({ user, onActivationRequest, actionDisabled = fals
       <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
         <div className="min-w-0 space-y-3">
           <div className="flex flex-wrap items-center gap-3">
-            <h2 className="break-all text-lg font-semibold text-rent-ink">{user.email}</h2>
+            <h2 className="break-all font-display text-lg font-bold text-rent-ink">{user.email}</h2>
             <AccountStatusBadge isActive={user.isActive} />
           </div>
           <dl className="grid gap-3 border-t border-rent-line pt-3 text-sm text-rent-secondary sm:grid-cols-2">
@@ -44,7 +44,7 @@ export function AdminUserCard({ user, onActivationRequest, actionDisabled = fals
           <button
             type="button"
             disabled={actionDisabled}
-            className="inline-flex min-h-11 shrink-0 items-center justify-center rounded-control border border-rent-strong px-4 py-2 text-sm font-semibold text-rent-ink transition-colors hover:border-teal-700 hover:bg-rent-primary-subtle focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-700 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60"
+            className="inline-flex min-h-11 shrink-0 items-center justify-center border-2 border-heroDark-950 bg-rent-yellow px-4 py-2 font-display text-xs font-bold uppercase tracking-wider text-rent-ink shadow-glass-sm transition-transform hover:-translate-x-0.5 hover:-translate-y-0.5 focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-60"
             onClick={() => onActivationRequest(user)}
           >
             {user.isActive ? "Ngừng hoạt động" : "Kích hoạt lại"}

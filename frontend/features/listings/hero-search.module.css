@@ -1,5 +1,37 @@
-.search { display: grid; gap: 0.5rem; border: 1px solid #1e293b; border-radius: 1rem; background: rgb(15 23 42 / 0.95); padding: 0.75rem; box-shadow: 0 25px 50px -12px rgb(0 0 0 / 0.45); }
+.shell {
+  position: relative;
+  border: 2px solid #092b27;
+  background: #fffdf7;
+  box-shadow: 8px 8px 0 #092b27;
+}
 
-@media (min-width: 640px) {
-  .search { grid-template-columns: minmax(0, 1fr) 10rem auto; }
+.shell::before {
+  position: absolute;
+  top: -12px;
+  left: 28px;
+  width: 54px;
+  height: 20px;
+  border: 2px solid #092b27;
+  background: #ff7657;
+  content: "";
+  transform: rotate(-4deg);
+}
+
+.searchGrid {
+  display: grid;
+}
+
+.field + .field {
+  border-top: 2px solid #092b27;
+}
+
+@media (min-width: 720px) {
+  .searchGrid {
+    grid-template-columns: minmax(0, 1fr) minmax(12rem, 0.42fr) auto;
+  }
+
+  .field + .field {
+    border-top: 0;
+    border-left: 2px solid #092b27;
+  }
 }

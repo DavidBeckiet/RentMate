@@ -1,10 +1,28 @@
 .detail :global(.text-teal-700),
 .detail :global(.text-teal-800),
-.detail :global(.text-teal-900) { color: #0369a1 !important; }
-.detail :global(.text-teal-600) { color: #0284c7 !important; }
-.detail :global(.bg-teal-600) { background-color: #0284c7 !important; }
-.detail :global(.border-teal-200) { border-color: #bae6fd !important; }
-.detail :global(.border-teal-100) { border-color: #e0f2fe !important; }
-.detail :global(.bg-gradient-to-br) { background-image: linear-gradient(135deg, #f0f9ff, #ffffff 55%, #f0f9ff) !important; }
-.detail :global(.shadow-glow-teal) { --tw-shadow-color: rgb(14 165 233 / 0.2) !important; }
-.detail :global(.rm-eyebrow) { color: #0369a1; background: #e0f2fe; border-color: #bae6fd; }
+.detail :global(.text-teal-900) {
+  color: #176b4d !important;
+}
+.detail :global(.text-teal-600) {
+  color: #176b4d !important;
+}
+.detail :global(.bg-teal-600) {
+  background-color: #176b4d !important;
+}
+.detail :global(.border-teal-200),
+.detail :global(.border-teal-100) {
+  border-color: #092b27 !important;
+}
+.detail :global(.bg-gradient-to-br) {
+  background-image: none !important;
+  background-color: #c9f269 !important;
+}
+.detail :global(.shadow-glow-teal) {
+  box-shadow: 6px 6px 0 #092b27 !important;
+}
+.detail > header {
+  border: 2px solid #092b27 !important;
+  border-radius: 0 !important;
+  background: #ff7657 !important;
+  box-shadow: 6px 6px 0 #092b27 !important;
+}

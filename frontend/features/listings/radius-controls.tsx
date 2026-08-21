@@ -92,10 +92,13 @@ export function RadiusControls({
   };
 
   return (
-    <section aria-labelledby="radius-heading" className="rounded-card border border-rent-line bg-white p-5 sm:p-6">
+    <section
+      aria-labelledby="radius-heading"
+      className="border-2 border-heroDark-950 bg-rent-surface p-5 shadow-glass-sm sm:p-6"
+    >
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <h2 id="radius-heading" className="font-semibold text-rent-ink">
+          <h2 id="radius-heading" className="font-display text-xl font-bold text-rent-ink">
             Tìm theo bán kính
           </h2>
           <p className="mt-1 text-sm text-rent-secondary">
@@ -103,7 +106,7 @@ export function RadiusControls({
           </p>
         </div>
         {proposedCenter ? (
-          <span className="rounded-full bg-teal-50 px-3 py-1 text-xs font-semibold text-teal-800">
+          <span className="border-2 border-heroDark-950 bg-rent-accent px-3 py-1 font-display text-xs font-bold text-rent-ink">
             Đã chọn tâm tìm kiếm
           </span>
         ) : null}

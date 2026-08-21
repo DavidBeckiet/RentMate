@@ -226,10 +226,13 @@ export function OwnerListingsPage() {
 
   return (
     <section aria-labelledby="owner-listings-heading" className={`${styles.ownerPage} rm-workspace space-y-8 my-4`}>
-      <header className="flex flex-col gap-6 rounded-3xl border border-slate-200/90 bg-white p-8 shadow-glass sm:flex-row sm:items-center sm:justify-between">
+      <header className="flex flex-col gap-6 border-2 border-heroDark-950 bg-rent-accent p-6 shadow-glass sm:flex-row sm:items-center sm:justify-between sm:p-8">
         <div className="max-w-2xl space-y-2">
           <span className="rm-eyebrow">KHU VỰC CHỦ NHÀ</span>
-          <h1 id="owner-listings-heading" className="text-3xl font-black text-slate-900 sm:text-4xl tracking-tight">
+          <h1
+            id="owner-listings-heading"
+            className="font-display text-4xl font-bold tracking-[-0.055em] text-rent-ink sm:text-6xl"
+          >
             Quản lý tin cho thuê
           </h1>
           <p className="text-sm font-medium text-slate-600 leading-relaxed">
@@ -237,14 +240,19 @@ export function OwnerListingsPage() {
           </p>
         </div>
         {isLandlord ? (
-          <Button pending={createPending} pendingLabel="Đang tạo…" onClick={() => void createDraft()} className="shrink-0 shadow-glow-teal">
-            + Tạo tin mới
+          <Button
+            pending={createPending}
+            pendingLabel="Đang tạo…"
+            onClick={() => void createDraft()}
+            className="shrink-0"
+          >
+            Tạo tin mới
           </Button>
         ) : null}
       </header>
 
       {isLandlord && parsed.ok ? (
-        <div className="rounded-2xl border border-slate-200/80 bg-white/90 p-4 shadow-sm backdrop-blur-md max-w-xs">
+        <div className="max-w-xs border-2 border-heroDark-950 bg-rent-surface p-4 shadow-glass-sm">
           <SelectField
             id="owner-status-filter"
             name="status"
@@ -266,7 +274,10 @@ export function OwnerListingsPage() {
       ) : null}
 
       {createFeedback ? (
-        <p role="alert" className="rounded-2xl border border-rose-200 bg-rose-50 p-4 text-sm font-medium text-rose-950">
+        <p
+          role="alert"
+          className="border-2 border-heroDark-950 bg-rent-coral p-4 text-sm font-bold text-rent-ink shadow-glass-sm"
+        >
           {createFeedback}
         </p>
       ) : null}

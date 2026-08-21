@@ -1,3 +1,15 @@
-.adminDetail :global(.text-teal-700), .adminDetail :global(.text-teal-800), .adminDetail :global(.text-teal-900) { color: #0369a1 !important; }
-.adminDetail :global(.bg-teal-600), .adminDetail :global(.bg-teal-700) { background-color: #0284c7 !important; }
-.adminDetail :global(.rm-eyebrow) { color: #0369a1; background: #e0f2fe; border-color: #bae6fd; }
+.adminDetail :global(.text-teal-700),
+.adminDetail :global(.text-teal-800),
+.adminDetail :global(.text-teal-900) {
+  color: #176b4d !important;
+}
+.adminDetail :global(.bg-teal-600),
+.adminDetail :global(.bg-teal-700) {
+  background-color: #176b4d !important;
+}
+.adminDetail > header {
+  border: 2px solid #092b27 !important;
+  border-radius: 0 !important;
+  background: #ffd34e !important;
+  box-shadow: 6px 6px 0 #092b27 !important;
+}

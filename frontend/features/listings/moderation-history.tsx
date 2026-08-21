@@ -4,6 +4,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Button } from "../../components/ui/button";
 import { EmptyState, ErrorState, LoadingState } from "../../components/ui/feedback-states";
+import { Icon } from "../../components/ui/icon";
 import { Pagination } from "../../components/ui/pagination";
 import { api, ApiError } from "../../lib/api/client";
 import type { ApiPage, ModerationHistoryItem } from "../../types/api";
@@ -116,17 +117,22 @@ export function ModerationHistory({
         <EmptyState title="Chưa có lịch sử kiểm duyệt" />
       ) : null}
       {state.status === "success" && state.result.data.length > 0 ? (
-          <ol className="space-y-3 border-l border-rent-line pl-4 sm:pl-5">
-            {state.result.data.map((item) => (
+        <ol className="space-y-3 border-l border-rent-line pl-4 sm:pl-5">
+          {state.result.data.map((item) => (
             <li key={item.id} className="relative rounded-card border border-rent-line bg-white p-4 sm:p-5">
-              <span aria-hidden="true" className="absolute -left-[1.35rem] top-6 h-2.5 w-2.5 rounded-full border-2 border-white bg-teal-700 sm:-left-[1.6rem]" />
-              <p className="font-semibold text-rent-ink">
-                {item.previousStatus} → {item.newStatus}
+              <span
+                aria-hidden="true"
+                className="absolute -left-[1.35rem] top-6 h-2.5 w-2.5 rounded-full border-2 border-white bg-teal-700 sm:-left-[1.6rem]"
+              />
+              <p className="flex items-center gap-2 font-display font-bold text-rent-ink">
+                {item.previousStatus} <Icon name="arrow" className="h-4 w-4" /> {item.newStatus}
               </p>
               <p className="mt-1 text-sm text-rent-secondary">
                 Quản trị viên #{item.adminId} · {new Date(item.createdAt).toLocaleString("vi-VN")}
               </p>
-              {item.reason ? <p className="mt-3 whitespace-pre-wrap text-sm text-rent-secondary">{item.reason}</p> : null}
+              {item.reason ? (
+                <p className="mt-3 whitespace-pre-wrap text-sm text-rent-secondary">{item.reason}</p>
+              ) : null}
             </li>
           ))}
         </ol>

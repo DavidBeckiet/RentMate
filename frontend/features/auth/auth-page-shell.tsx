@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useId, useState, type ReactNode } from "react";
 import { EmptyState, LoadingState } from "../../components/ui/feedback-states";
+import { Icon } from "../../components/ui/icon";
 import { RentMateMark } from "../../components/ui/rentmate-mark";
 import { useAuth } from "../../lib/auth/auth-provider";
 import type { UserRole } from "../../types/api";
@@ -148,9 +149,11 @@ export function AuthPageShell({
           <div className={styles.visualTopline}>
             <Link href="/" className={styles.visualBrand} aria-label="Về trang chủ RentMate">
               <span className={styles.brandMark}>
-              <RentMateMark className="h-6 w-6 text-white" />
+                <RentMateMark className="h-6 w-6 text-white" />
               </span>
-              <span>Rentmate<span className={styles.brandAccent}>.vn</span></span>
+              <span>
+                Rentmate<span className={styles.brandAccent}>.vn</span>
+              </span>
             </Link>
             <span className={styles.livePill}>
               <span className={styles.liveDot} aria-hidden="true" />
@@ -160,9 +163,7 @@ export function AuthPageShell({
 
           <div className={styles.visualCopy}>
             <span className={styles.visualEyebrow}>{visual.eyebrow}</span>
-            <h2>
-              {visual.title}
-            </h2>
+            <h2>{visual.title}</h2>
             <p>{visual.description}</p>
           </div>
 
@@ -173,7 +174,9 @@ export function AuthPageShell({
             </div>
             <div className={styles.visualRule} aria-hidden="true" />
             <div className={styles.visualTrust}>
-              <span className={styles.trustIcon} aria-hidden="true">✓</span>
+              <span className={styles.trustIcon} aria-hidden="true">
+                <Icon name="shield" className="h-4 w-4" />
+              </span>
               <span>Vị trí xấp xỉ an toàn</span>
             </div>
           </div>
@@ -186,7 +189,9 @@ export function AuthPageShell({
               <strong>{visual.cardTitle}</strong>
               <span>{visual.cardDescription}</span>
             </span>
-            <span className={styles.visualCardArrow} aria-hidden="true">→</span>
+            <span className={styles.visualCardArrow} aria-hidden="true">
+              <Icon name="arrow" className="h-5 w-5" />
+            </span>
           </div>
         </div>
       </div>
@@ -202,7 +207,9 @@ export function AuthPageShell({
         </header>
         <div className={styles.formBody}>{children}</div>
         <div className={styles.formTrust}>
-          <span className={styles.formTrustIcon} aria-hidden="true">✓</span>
+          <span className={styles.formTrustIcon} aria-hidden="true">
+            <Icon name="shield" className="h-4 w-4" />
+          </span>
           <span>Thông tin của bạn được giữ riêng tư và chỉ dùng để vận hành tài khoản.</span>
         </div>
         <footer className={styles.formFooter}>{footer}</footer>

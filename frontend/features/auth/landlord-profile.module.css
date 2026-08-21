@@ -1,5 +1,22 @@
-.profile :global(.text-teal-700), .profile :global(.text-teal-800), .profile :global(.text-teal-900) { color: #0369a1 !important; }
-.profile :global(.bg-teal-600), .profile :global(.bg-teal-700) { background-color: #0284c7 !important; }
-.profile :global(.bg-rent-primary-subtle) { background: #e0f2fe !important; }
-.profile :global(.text-teal-900) { color: #075985 !important; }
-.profile :global(.rm-workspace-panel) { border-color: #e2e8f0; box-shadow: 0 20px 40px -28px rgb(2 132 199 / 0.35); }
+.profile :global(.text-teal-700),
+.profile :global(.text-teal-800),
+.profile :global(.text-teal-900) {
+  color: #176b4d !important;
+}
+.profile :global(.bg-teal-600),
+.profile :global(.bg-teal-700) {
+  background-color: #176b4d !important;
+}
+.profile :global(.bg-rent-primary-subtle) {
+  background: #c9f269 !important;
+}
+.profile :global(.rm-workspace-panel) {
+  border-color: #092b27;
+  box-shadow: 6px 6px 0 #092b27;
+}
+.profile > header {
+  border: 2px solid #092b27 !important;
+  border-radius: 0 !important;
+  background: #c9f269 !important;
+  box-shadow: 6px 6px 0 #092b27 !important;
+}

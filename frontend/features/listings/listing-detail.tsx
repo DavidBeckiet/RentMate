@@ -6,6 +6,7 @@ import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { MapBase } from "../../components/map/map-base";
 import { Button } from "../../components/ui/button";
 import { ErrorState, LoadingState } from "../../components/ui/feedback-states";
+import { Icon } from "../../components/ui/icon";
 import { api, ApiError } from "../../lib/api/client";
 import { useAuth } from "../../lib/auth/auth-provider";
 import type { PublicListingDetail } from "../../types/api";
@@ -88,7 +89,10 @@ export function ListingDetail({ listingId, actions }: ListingDetailProps) {
       <ErrorState
         message="Tin đăng không tồn tại hoặc hiện không khả dụng."
         action={
-          <Link className="inline-flex items-center gap-2 rounded-xl bg-teal-600 px-5 py-2.5 text-sm font-bold text-white shadow-glow-teal" href="/">
+          <Link
+            className="inline-flex items-center gap-2 rounded-xl bg-teal-600 px-5 py-2.5 text-sm font-bold text-white shadow-glow-teal"
+            href="/"
+          >
             Quay lại trang chủ
           </Link>
         }
@@ -115,27 +119,26 @@ export function ListingDetail({ listingId, actions }: ListingDetailProps) {
 
   return (
     <article className={`${styles.detail} space-y-10`}>
-      <header className="space-y-4 border-b border-slate-200/80 pb-8">
+      <header className="space-y-5 border-2 border-heroDark-950 bg-rent-coral p-6 shadow-glass sm:p-8">
         <Link
           href="/?sort=newest"
-          className="inline-flex items-center gap-2 text-xs font-extrabold uppercase tracking-wider text-teal-700 hover:text-teal-900 transition-colors"
+          className="inline-flex items-center gap-2 font-display text-xs font-bold uppercase tracking-wider text-rent-ink transition-transform hover:-translate-x-1"
         >
-          <svg aria-hidden="true" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" d="M10.5 19.5 3 12m0 0 7.5-7.5M3 12h18" />
-          </svg>
+          <Icon name="arrow" className="h-4 w-4 rotate-180" />
           <span>Quay lại tìm phòng</span>
         </Link>
         <div className="space-y-2">
           <div className="flex flex-wrap items-center gap-3">
             <span className="rm-eyebrow">TIN CÔNG KHAI</span>
-            <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-bold text-slate-700">{detail.propertyType.label}</span>
+            <span className="border-2 border-heroDark-950 bg-rent-surface px-3 py-1 font-display text-xs font-bold text-rent-ink shadow-glass-sm">
+              {detail.propertyType.label}
+            </span>
           </div>
-          <h1 className="text-3xl font-black text-slate-900 sm:text-4xl lg:text-5xl tracking-tight leading-tight">{detail.title}</h1>
-          <p className="flex items-center gap-2 text-base font-semibold text-slate-600">
-            <svg aria-hidden="true" className="h-5 w-5 text-teal-600 shrink-0" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" d="M15 10.5a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z" />
-              <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 10.5c0 7.142-7.5 11.25-7.5 11.25S4.5 17.642 4.5 10.5a7.5 7.5 0 1 1 15 0Z" />
-            </svg>
+          <h1 className="font-display text-4xl font-bold leading-[0.95] tracking-[-0.055em] text-rent-ink sm:text-6xl">
+            {detail.title}
+          </h1>
+          <p className="flex items-center gap-2 text-base font-bold text-rent-ink">
+            <Icon name="pin" className="h-5 w-5 shrink-0" />
             <span>{detail.areaName}</span>
             <span>·</span>
             <span>{formatAreaSqm(detail.roomAreaSqm)}</span>
@@ -145,8 +148,11 @@ export function ListingDetail({ listingId, actions }: ListingDetailProps) {
 
       {/* Gallery Bento Grid */}
       {primaryImage ? (
-        <section aria-label="Hình ảnh tin đăng" className="grid gap-4 lg:grid-cols-[minmax(0,1.8fr)_minmax(14rem,0.8fr)]">
-          <div className="relative aspect-[16/10] overflow-hidden rounded-3xl bg-slate-100 shadow-glass lg:aspect-auto lg:min-h-[30rem]">
+        <section
+          aria-label="Hình ảnh tin đăng"
+          className="grid gap-4 lg:grid-cols-[minmax(0,1.8fr)_minmax(14rem,0.8fr)]"
+        >
+          <div className="relative aspect-[16/10] overflow-hidden border-2 border-heroDark-950 bg-[#e5eefc] shadow-glass lg:aspect-auto lg:min-h-[30rem]">
             <Image
               key={primaryImage.url}
               src={primaryImage.url}
@@ -163,7 +169,7 @@ export function ListingDetail({ listingId, actions }: ListingDetailProps) {
                 <button
                   type="button"
                   key={`${image.url}-${image.displayOrder}`}
-                  className="rm-gallery-thumb rounded-2xl overflow-hidden shadow-sm"
+                  className="rm-gallery-thumb overflow-hidden border-2 border-heroDark-950 bg-rent-surface shadow-glass-sm"
                   data-selected={image.displayOrder === primaryImage.displayOrder}
                   aria-label={`Xem ảnh ${image.displayOrder + 1} của ${detail.title}`}
                   onClick={() => setSelectedImageOrder(image.displayOrder)}
@@ -176,7 +182,7 @@ export function ListingDetail({ listingId, actions }: ListingDetailProps) {
                     className="object-cover transition-transform duration-300 hover:scale-105"
                   />
                   {index === thumbnailImages.length - 1 && orderedImages.length > thumbnailImages.length + 1 ? (
-                    <span className="absolute inset-0 grid place-items-center bg-slate-950/70 text-sm font-extrabold text-white backdrop-blur-xs">
+                    <span className="absolute inset-0 grid place-items-center bg-heroDark-950/85 font-display text-sm font-bold text-white">
                       +{orderedImages.length - thumbnailImages.length - 1} ảnh nữa
                     </span>
                   ) : null}
@@ -188,12 +194,9 @@ export function ListingDetail({ listingId, actions }: ListingDetailProps) {
       ) : (
         <section
           aria-label="Hình ảnh tin đăng"
-          className="flex aspect-[16/10] flex-col items-center justify-center gap-3 rounded-3xl bg-slate-100 px-6 text-center text-sm font-semibold text-slate-500 shadow-sm"
+          className="flex aspect-[16/10] flex-col items-center justify-center gap-3 border-2 border-heroDark-950 bg-[#e5eefc] px-6 text-center text-sm font-bold text-rent-secondary shadow-glass"
         >
-          <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="h-12 w-12 text-teal-600">
-            <rect x="3" y="4" width="18" height="16" rx="2" />
-            <path d="m4 18 5.5-5 3.5 3 2.5-2.5 4.5 4.5" />
-          </svg>
+          <Icon name="home" className="h-12 w-12 text-brandBlue-600" />
           <span>Tin đăng chưa có hình ảnh</span>
         </section>
       )}
@@ -202,23 +205,23 @@ export function ListingDetail({ listingId, actions }: ListingDetailProps) {
       <div className="grid gap-10 lg:grid-cols-[minmax(0,1fr)_22rem]">
         <div className="space-y-10">
           {/* Key Specs Card */}
-          <div className="grid grid-cols-3 gap-4 rounded-3xl border border-slate-200/90 bg-white p-6 shadow-glass">
-            <div>
+          <div className="grid grid-cols-1 divide-y-2 divide-heroDark-950 border-2 border-heroDark-950 bg-rent-surface shadow-glass sm:grid-cols-3 sm:divide-x-2 sm:divide-y-0">
+            <div className="p-5">
               <p className="text-xs font-bold uppercase tracking-wider text-slate-400">Loại hình</p>
               <p className="mt-1 text-base font-extrabold text-slate-900">{detail.propertyType.label}</p>
             </div>
-            <div>
+            <div className="p-5">
               <p className="text-xs font-bold uppercase tracking-wider text-slate-400">Diện tích</p>
               <p className="mt-1 text-base font-extrabold text-slate-900">{formatAreaSqm(detail.roomAreaSqm)}</p>
             </div>
-            <div>
+            <div className="p-5">
               <p className="text-xs font-bold uppercase tracking-wider text-slate-400">Khu vực</p>
               <p className="mt-1 text-base font-extrabold text-slate-900">{detail.areaName}</p>
             </div>
           </div>
 
-          <section aria-labelledby="description-heading" className="space-y-4 border-t border-slate-200/80 pt-8">
-            <h2 id="description-heading" className="text-2xl font-black text-slate-900">
+          <section aria-labelledby="description-heading" className="space-y-4 border-t-2 border-heroDark-950 pt-8">
+            <h2 id="description-heading" className="font-display text-3xl font-bold tracking-tight text-rent-ink">
               Mô tả chi tiết
             </h2>
             <p className="max-w-3xl whitespace-pre-wrap text-base leading-relaxed text-slate-700 font-medium">
@@ -226,25 +229,32 @@ export function ListingDetail({ listingId, actions }: ListingDetailProps) {
             </p>
           </section>
 
-          <section aria-labelledby="amenities-heading" className="space-y-4 border-t border-slate-200/80 pt-8">
-            <h2 id="amenities-heading" className="text-2xl font-black text-slate-900">
+          <section aria-labelledby="amenities-heading" className="space-y-4 border-t-2 border-heroDark-950 pt-8">
+            <h2 id="amenities-heading" className="font-display text-3xl font-bold tracking-tight text-rent-ink">
               Tiện ích đi kèm
             </h2>
             {detail.amenities.length > 0 ? (
-              <div><ListingAmenityChips amenities={detail.amenities} /></div>
+              <div>
+                <ListingAmenityChips amenities={detail.amenities} />
+              </div>
             ) : (
               <p className="text-sm font-medium text-slate-500">Tin đăng chưa liệt kê tiện ích.</p>
             )}
           </section>
 
-          <section aria-labelledby="detail-map-heading" className="rounded-3xl border border-slate-200/90 bg-white p-6 shadow-glass space-y-4">
+          <section
+            aria-labelledby="detail-map-heading"
+            className="space-y-4 border-2 border-heroDark-950 bg-rent-surface p-6 shadow-glass"
+          >
             <div>
-              <h2 id="detail-map-heading" className="text-xl font-black text-slate-900">
+              <h2 id="detail-map-heading" className="font-display text-2xl font-bold text-rent-ink">
                 Vị trí xấp xỉ
               </h2>
-              <p className="text-xs font-medium text-slate-500">Để bảo vệ quyền riêng tư của chủ nhà, tọa độ trên bản đồ được làm tròn xấp xỉ.</p>
+              <p className="text-xs font-medium text-slate-500">
+                Để bảo vệ quyền riêng tư của chủ nhà, tọa độ trên bản đồ được làm tròn xấp xỉ.
+              </p>
             </div>
-            <div className="overflow-hidden rounded-2xl border border-slate-200/80 min-h-[18rem]">
+            <div className="min-h-[18rem] overflow-hidden border-2 border-heroDark-950">
               <MapBase
                 ariaLabel="Bản đồ vị trí xấp xỉ của tin đăng"
                 center={{ latitude: detail.latitude, longitude: detail.longitude }}
@@ -263,31 +273,37 @@ export function ListingDetail({ listingId, actions }: ListingDetailProps) {
 
         {/* Sticky Contact Sidebar Card */}
         <aside className="h-fit space-y-6 lg:sticky lg:top-24">
-          <section className="rounded-3xl border border-teal-200/80 bg-gradient-to-br from-teal-50/80 via-white to-teal-50/40 p-6 shadow-card-hover space-y-4">
+          <section className="space-y-4 border-2 border-heroDark-950 bg-rent-accent p-6 shadow-glass">
             <span className="rm-eyebrow">MỨC GIÁ THUÊ</span>
             <div>
               <ListingPrice monthlyRent={detail.monthlyRent} emphasis="prominent" />
             </div>
-            {actions ? <div className="border-t border-teal-100 pt-4">{actions}</div> : null}
+            {actions ? <div className="border-t-2 border-heroDark-950 pt-4">{actions}</div> : null}
           </section>
 
-          <section className="rounded-3xl border border-slate-200/90 bg-white p-6 shadow-glass space-y-4">
+          <section className="space-y-4 border-2 border-heroDark-950 bg-rent-surface p-6 shadow-glass">
             <span className="rm-eyebrow">THÔNG TIN LIÊN HỆ</span>
             <h2 className="text-lg font-extrabold text-slate-900">Thông tin liên hệ</h2>
             {detail.landlordContact ? (
               <dl className="space-y-4 text-sm font-medium text-slate-700">
-                <div className="rounded-2xl bg-slate-50 p-3.5 border border-slate-100">
+                <div className="border-2 border-heroDark-950 bg-[#e5eefc] p-3.5">
                   <dt className="text-xs font-bold text-slate-400">Email liên hệ</dt>
                   <dd className="mt-1 break-all">
-                    <a className="font-extrabold text-teal-700 hover:text-teal-900" href={`mailto:${detail.landlordContact.email}`}>
+                    <a
+                      className="font-extrabold text-teal-700 hover:text-teal-900"
+                      href={`mailto:${detail.landlordContact.email}`}
+                    >
                       {detail.landlordContact.email}
                     </a>
                   </dd>
                 </div>
-                <div className="rounded-2xl bg-slate-50 p-3.5 border border-slate-100">
+                <div className="border-2 border-heroDark-950 bg-[#e5eefc] p-3.5">
                   <dt className="text-xs font-bold text-slate-400">Số điện thoại</dt>
                   <dd className="mt-1">
-                    <a className="font-extrabold text-teal-700 hover:text-teal-900" href={`tel:${detail.landlordContact.phone}`}>
+                    <a
+                      className="font-extrabold text-teal-700 hover:text-teal-900"
+                      href={`tel:${detail.landlordContact.phone}`}
+                    >
                       {detail.landlordContact.phone}
                     </a>
                   </dd>
