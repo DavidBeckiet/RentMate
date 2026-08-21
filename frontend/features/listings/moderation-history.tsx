@@ -4,6 +4,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Button } from "../../components/ui/button";
 import { EmptyState, ErrorState, LoadingState } from "../../components/ui/feedback-states";
+import { Pagination } from "../../components/ui/pagination";
 import { api, ApiError } from "../../lib/api/client";
 import type { ApiPage, ModerationHistoryItem } from "../../types/api";
 
@@ -97,8 +98,8 @@ export function ModerationHistory({
 
   if (!parsed) return <ErrorState message="Liên kết lịch sử kiểm duyệt không hợp lệ." />;
   return (
-    <section aria-labelledby="moderation-history-heading" className="space-y-4">
-      <h2 id="moderation-history-heading" className="text-2xl font-semibold text-slate-950">
+    <section aria-labelledby="moderation-history-heading" className="space-y-4 border-t border-rent-line pt-8">
+      <h2 id="moderation-history-heading" className="text-2xl font-semibold text-rent-ink">
         Lịch sử kiểm duyệt
       </h2>
       {state.status === "idle" || state.status === "loading" ? (
@@ -115,38 +116,29 @@ export function ModerationHistory({
         <EmptyState title="Chưa có lịch sử kiểm duyệt" />
       ) : null}
       {state.status === "success" && state.result.data.length > 0 ? (
-        <ol className="space-y-3">
-          {state.result.data.map((item) => (
-            <li key={item.id} className="rounded-xl border border-stone-200 bg-white p-5">
-              <p className="font-semibold text-slate-950">
+          <ol className="space-y-3 border-l border-rent-line pl-4 sm:pl-5">
+            {state.result.data.map((item) => (
+            <li key={item.id} className="relative rounded-card border border-rent-line bg-white p-4 sm:p-5">
+              <span aria-hidden="true" className="absolute -left-[1.35rem] top-6 h-2.5 w-2.5 rounded-full border-2 border-white bg-teal-700 sm:-left-[1.6rem]" />
+              <p className="font-semibold text-rent-ink">
                 {item.previousStatus} → {item.newStatus}
               </p>
-              <p className="mt-1 text-sm text-slate-600">
+              <p className="mt-1 text-sm text-rent-secondary">
                 Quản trị viên #{item.adminId} · {new Date(item.createdAt).toLocaleString("vi-VN")}
               </p>
-              {item.reason ? <p className="mt-3 whitespace-pre-wrap text-sm text-slate-700">{item.reason}</p> : null}
+              {item.reason ? <p className="mt-3 whitespace-pre-wrap text-sm text-rent-secondary">{item.reason}</p> : null}
             </li>
           ))}
         </ol>
       ) : null}
       {state.status === "success" ? (
-        <nav aria-label="Phân trang lịch sử kiểm duyệt" className="flex items-center justify-between gap-4">
-          <Button
-            variant="secondary"
-            disabled={state.result.pagination.page <= 1}
-            onClick={() => router.push(historyUrl(listingId, { ...parsed, page: state.result.pagination.page - 1 }))}
-          >
-            Trang trước
-          </Button>
-          <span className="text-sm text-slate-600">Trang {state.result.pagination.page}</span>
-          <Button
-            variant="secondary"
-            disabled={!state.result.pagination.hasNextPage}
-            onClick={() => router.push(historyUrl(listingId, { ...parsed, page: state.result.pagination.page + 1 }))}
-          >
-            Trang sau
-          </Button>
-        </nav>
+        <Pagination
+          ariaLabel="Phân trang lịch sử kiểm duyệt"
+          page={state.result.pagination.page}
+          hasNextPage={state.result.pagination.hasNextPage}
+          onPrevious={() => router.push(historyUrl(listingId, { ...parsed, page: state.result.pagination.page - 1 }))}
+          onNext={() => router.push(historyUrl(listingId, { ...parsed, page: state.result.pagination.page + 1 }))}
+        />
       ) : null}
     </section>
   );

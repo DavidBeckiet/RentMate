@@ -8,6 +8,7 @@ import { InputField } from "../../components/ui/form-controls";
 import { api, ApiError } from "../../lib/api/client";
 import { useAuth } from "../../lib/auth/auth-provider";
 import { mapApiErrorToFields } from "../../lib/validation/api-field-errors";
+import styles from "./landlord-profile.module.css";
 
 const e164Phone = /^\+[1-9][0-9]{7,14}$/;
 
@@ -127,20 +128,20 @@ export function LandlordProfile() {
   };
 
   return (
-    <section aria-labelledby="landlord-profile-heading" className="mx-auto max-w-2xl space-y-8">
-      <header>
-        <p className="text-sm font-semibold uppercase tracking-[0.16em] text-teal-700">Tài khoản người cho thuê</p>
-        <h1 id="landlord-profile-heading" className="mt-2 text-3xl font-bold tracking-tight text-slate-950 sm:text-4xl">
+    <section aria-labelledby="landlord-profile-heading" className={`${styles.profile} rm-workspace grid gap-8 lg:grid-cols-[0.72fr_1.28fr] lg:items-start`}>
+      <header className="border-b border-rent-line pb-6">
+        <p className="text-sm font-semibold text-teal-700">TÀI KHOẢN NGƯỜI CHO THUÊ</p>
+        <h1 id="landlord-profile-heading" className="mt-2 text-3xl font-bold text-rent-ink sm:text-4xl">
           Hồ sơ liên hệ
         </h1>
-        <p className="mt-3 leading-7 text-slate-600">
+        <p className="mt-3 leading-7 text-rent-secondary">
           Email đăng nhập không thể thay đổi. Số điện thoại là thông tin liên hệ bắt buộc của người cho thuê.
         </p>
       </header>
 
       <form
         onSubmit={(event) => void submit(event)}
-        className="space-y-6 rounded-xl border border-stone-200 bg-white p-6 shadow-sm"
+        className="rm-workspace-panel space-y-6 p-5 sm:p-7"
       >
         <InputField id="landlord-email" name="email" label="Email" type="email" value={user.email} readOnly />
         <InputField
@@ -165,13 +166,13 @@ export function LandlordProfile() {
         />
 
         {feedback.message ? (
-          <p role="alert" className="text-sm text-red-700">
+          <p role="alert" className="rounded-control border border-red-200 bg-red-50 p-3 text-sm text-red-950">
             {feedback.message}
             {feedback.requestId ? ` Mã yêu cầu: ${feedback.requestId}` : ""}
           </p>
         ) : null}
         {feedback.success ? (
-          <p aria-live="polite" className="text-sm font-medium text-teal-800">
+          <p aria-live="polite" className="rounded-control bg-rent-primary-subtle p-3 text-sm font-medium text-teal-900">
             {feedback.success}
           </p>
         ) : null}

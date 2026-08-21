@@ -169,21 +169,21 @@ export function OwnerLifecycleActions({
   return (
     <section
       aria-labelledby="owner-actions-heading"
-      className="space-y-5 rounded-xl border border-stone-200 bg-white p-6"
+      className="space-y-5 rounded-card border border-rent-line bg-white p-5 sm:p-6"
     >
       <div>
-        <h2 id="owner-actions-heading" className="text-xl font-semibold text-slate-950">
+        <h2 id="owner-actions-heading" className="text-xl font-semibold text-rent-ink">
           Trạng thái &amp; tác vụ
         </h2>
-        <p className="mt-1 text-sm text-slate-600">
+        <p className="mt-1 text-sm text-rent-secondary">
           Mọi thay đổi trạng thái chỉ được hiển thị sau phản hồi từ máy chủ.
         </p>
       </div>
 
       {(detail.status === "DRAFT" || detail.status === "HIDDEN") && (
-        <div className="rounded-lg bg-stone-50 p-4">
-          <p className="text-sm font-medium text-slate-900">Kiểm tra trước khi gửi duyệt</p>
-          <ul className="mt-2 grid gap-1 text-sm text-slate-700 sm:grid-cols-2">
+        <div className="rounded-control border border-rent-line bg-rent-surface-muted p-4">
+          <p className="text-sm font-medium text-rent-ink">Kiểm tra trước khi gửi duyệt</p>
+          <ul className="mt-2 grid gap-1 text-sm text-rent-secondary sm:grid-cols-2">
             {completeness.map((item) => (
               <li key={item.label}>
                 {item.ready ? "✓" : "○"} {item.label}
@@ -195,13 +195,13 @@ export function OwnerLifecycleActions({
       )}
 
       {blocked ? (
-        <p className="rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm text-amber-950">
+        <p className="rounded-control border border-amber-200 bg-amber-50 p-4 text-sm text-amber-950">
           Bạn có thay đổi chưa lưu. Hãy lưu hoặc hoàn tác trước.
         </p>
       ) : null}
 
       {feedback ? (
-        <div role="alert" className="rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-950">
+        <div role="alert" className="rounded-control border border-red-200 bg-red-50 p-4 text-sm text-red-950">
           <p>{feedback.message}</p>
           {feedback.requestId ? <p className="mt-1 text-xs">Mã yêu cầu: {feedback.requestId}</p> : null}
           {feedback.refreshSuggested ? (
@@ -247,14 +247,14 @@ export function OwnerLifecycleActions({
       </div>
 
       {detail.status === "DRAFT" ? (
-        <div className="border-t border-stone-200 pt-5">
+        <div className="border-t border-rent-line pt-5">
           <h3 className="font-semibold text-red-800">Vùng nguy hiểm</h3>
           <p className="mt-1 text-sm text-slate-600">
             Máy chủ sẽ kiểm tra tin có đủ điều kiện xóa vĩnh viễn hay không.
           </p>
           {confirmingDelete ? (
             <div
-              className="mt-4 rounded-lg border border-red-200 bg-red-50 p-4"
+              className="mt-4 rounded-control border border-red-200 bg-red-50 p-4"
               role="group"
               aria-label="Xác nhận xóa tin"
             >

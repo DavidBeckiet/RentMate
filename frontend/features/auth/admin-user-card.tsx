@@ -12,28 +12,28 @@ export interface AdminUserCardProps {
 
 export function AdminUserCard({ user, onActivationRequest, actionDisabled = false }: AdminUserCardProps) {
   return (
-    <article className="rounded-xl border border-stone-200 bg-white p-5 shadow-sm">
+    <article className="rm-admin-row">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
         <div className="min-w-0 space-y-3">
           <div className="flex flex-wrap items-center gap-3">
-            <h2 className="break-all text-lg font-semibold text-slate-950">{user.email}</h2>
+            <h2 className="break-all text-lg font-semibold text-rent-ink">{user.email}</h2>
             <AccountStatusBadge isActive={user.isActive} />
           </div>
-          <dl className="grid gap-2 text-sm text-slate-700 sm:grid-cols-2">
+          <dl className="grid gap-3 border-t border-rent-line pt-3 text-sm text-rent-secondary sm:grid-cols-2">
             <div>
-              <dt className="font-semibold text-slate-900">Vai trò</dt>
+              <dt className="font-semibold text-rent-ink">Vai trò</dt>
               <dd>{roleLabels[user.role]}</dd>
             </div>
             <div>
-              <dt className="font-semibold text-slate-900">Điện thoại</dt>
+              <dt className="font-semibold text-rent-ink">Điện thoại</dt>
               <dd>{user.phone ?? "Chưa có số điện thoại"}</dd>
             </div>
             <div>
-              <dt className="font-semibold text-slate-900">Tạo lúc</dt>
+              <dt className="font-semibold text-rent-ink">Tạo lúc</dt>
               <dd>{dateFormatter.format(new Date(user.createdAt))}</dd>
             </div>
             <div>
-              <dt className="font-semibold text-slate-900">Cập nhật</dt>
+              <dt className="font-semibold text-rent-ink">Cập nhật</dt>
               <dd>{dateFormatter.format(new Date(user.updatedAt))}</dd>
             </div>
           </dl>
@@ -44,7 +44,7 @@ export function AdminUserCard({ user, onActivationRequest, actionDisabled = fals
           <button
             type="button"
             disabled={actionDisabled}
-            className="inline-flex min-h-11 shrink-0 items-center justify-center rounded-md border border-stone-300 px-4 py-2 text-sm font-semibold text-slate-900 transition-colors hover:bg-stone-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-700 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60"
+            className="inline-flex min-h-11 shrink-0 items-center justify-center rounded-control border border-rent-strong px-4 py-2 text-sm font-semibold text-rent-ink transition-colors hover:border-teal-700 hover:bg-rent-primary-subtle focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-700 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60"
             onClick={() => onActivationRequest(user)}
           >
             {user.isActive ? "Ngừng hoạt động" : "Kích hoạt lại"}

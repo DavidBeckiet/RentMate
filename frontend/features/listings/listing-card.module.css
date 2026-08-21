@@ -1,0 +1,6 @@
+.listingCard :global(.text-teal-600) { color: #0284c7 !important; }
+.listingCard :global(.text-teal-700),
+.listingCard :global(.text-teal-800),
+.listingCard :global(.text-teal-900) { color: #0369a1 !important; }
+.listingCard :global(.bg-teal-50) { background-color: #f0f9ff !important; }
+.listingCard :global(.border-teal-500) { border-color: #0ea5e9 !important; }

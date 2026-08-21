@@ -10,9 +10,12 @@ export interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
 }
 
 const variantClasses: Record<ButtonVariant, string> = {
-  primary: "bg-teal-700 text-white hover:bg-teal-800",
-  secondary: "border border-stone-300 bg-white text-slate-900 hover:bg-stone-50",
-  danger: "bg-red-700 text-white hover:bg-red-800"
+  primary:
+    "border border-sky-600/90 bg-gradient-to-r from-sky-600 via-sky-700 to-blue-800 text-white shadow-lg shadow-sky-900/20 hover:-translate-y-0.5 hover:shadow-xl hover:brightness-110 active:translate-y-0 active:scale-[0.98]",
+  secondary:
+    "border border-slate-200 bg-white/90 text-slate-800 shadow-sm backdrop-blur-md hover:-translate-y-0.5 hover:border-sky-500 hover:bg-sky-50/70 hover:text-sky-900 hover:shadow-md active:translate-y-0 active:scale-[0.98]",
+  danger:
+    "border border-rose-600/90 bg-gradient-to-r from-rose-600 via-rose-700 to-rose-800 text-white shadow-sm hover:-translate-y-0.5 hover:shadow-md hover:brightness-110 active:translate-y-0 active:scale-[0.98]"
 };
 
 export function Button({
@@ -31,7 +34,7 @@ export function Button({
       type={type}
       disabled={disabled || pending}
       aria-busy={pending || undefined}
-      className={`inline-flex min-h-11 items-center justify-center gap-2 rounded-md px-4 py-2 text-sm font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-700 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60 ${variantClasses[variant]} ${className}`}
+      className={`inline-flex min-h-11 items-center justify-center gap-2 rounded-xl px-5 py-2.5 text-sm font-bold tracking-tight transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-600 focus-visible:ring-offset-2 disabled:translate-y-0 disabled:scale-100 disabled:cursor-not-allowed disabled:border-slate-200 disabled:bg-slate-100 disabled:text-slate-400 disabled:shadow-none ${variantClasses[variant]} ${className}`}
     >
       {pending ? (
         <>

@@ -4,7 +4,7 @@
 
 This file is the repository-level execution policy for Codex work on RentMate. It applies to the entire repository.
 
-Before any implementation task, read these frozen documents in full:
+Before any historical MVP roadmap implementation task, read these frozen documents in full:
 
 - `docs/requirements/REQUIREMENTS.md`
 - `docs/architecture/ARCHITECTURE.md`
@@ -12,7 +12,9 @@ Before any implementation task, read these frozen documents in full:
 - `docs/api/API_SPECIFICATION.md`
 - `docs/implementation/IMPLEMENTATION_ROADMAP.md`
 
-Implement one explicitly requested roadmap task at a time. Preserve unrelated user work, do not reopen frozen decisions, do not expand MVP scope, verify the result, report accurately, and stop.
+Historical MVP roadmap work means work explicitly performed against RM-001 through RM-055 in `docs/implementation/IMPLEMENTATION_ROADMAP.md`. Implement one explicitly requested roadmap task at a time. Preserve unrelated user work, do not reopen frozen MVP decisions, do not expand MVP scope, verify the result, report accurately, and stop.
+
+RentMate has completed the MVP roadmap RM-001 through RM-055. New post-MVP / V2 development may be requested outside the historical frozen roadmap. For post-MVP work, the user's current explicit request defines the scope and done condition; no RM-* task, UIV2-* task, or other task ID is required unless the user explicitly asks for one.
 
 ## 2. Source-of-truth order
 
@@ -27,7 +29,7 @@ Use this authority order:
 7. `docs/requirements/REQUIREMENTS.md`
 8. Existing implementation patterns, only where they do not conflict with the documents above
 
-A current request may select and narrow work. It must not silently override frozen product, API, schema, lifecycle, privacy, or security decisions. Those decisions may change only through a separate, explicit design-change review requested by the user.
+A current request may select and narrow work. For historical MVP roadmap work, it must not silently override frozen product, API, schema, lifecycle, privacy, or security decisions. For post-MVP work, existing business contracts remain authoritative unless the user explicitly requests a deliberate V2 design change to product contract, architecture, API, database, security, privacy, lifecycle, or business rules.
 
 If authoritative documents genuinely contradict one another, stop the conflicting part and report the exact conflict. Do not invent a resolution. Existing code is not authoritative when it conflicts with the documents above.
 
@@ -51,11 +53,11 @@ If authoritative documents genuinely contradict one another, stop the conflictin
 - Hard deletion is restricted to an owned `DRAFT` with no moderation-history rows.
 - No atomic image-replacement endpoint.
 
-Do not alter these boundaries during an implementation task.
+Do not alter these boundaries during historical MVP roadmap work. Post-MVP work may change them only when the user explicitly requests a deliberate V2 design change; do not pretend the frozen MVP contract never existed.
 
 ## 4. Task selection and execution protocol
 
-Every implementation request must name exactly one roadmap task, such as `RM-001`.
+For historical MVP roadmap work, every implementation request must name exactly one roadmap task, such as `RM-001`.
 
 For the selected task:
 
@@ -73,7 +75,31 @@ Roadmap ordering alone is not proof that a dependency is complete. Before treati
 
 Do not automatically start the next task.
 
-If an implementation request names no task, ask the user to select one. If it names multiple tasks, do not silently combine them; ask the user to select one unless the prompt explicitly and deliberately authorizes a tightly coupled multi-task operation.
+If a historical MVP roadmap implementation request names no task, ask the user to select one. If it names multiple tasks, do not silently combine them; ask the user to select one unless the prompt explicitly and deliberately authorizes a tightly coupled multi-task operation.
+
+## 4.1 Post-MVP / V2 development
+
+After the MVP, the user may explicitly request product upgrades outside the frozen roadmap.
+
+For post-MVP requests:
+
+- No RM-* task is required.
+- No new task ID is required.
+- No task has to be added to `docs/implementation/IMPLEMENTATION_ROADMAP.md`.
+- The user's current explicitly scoped request defines the scope and done condition.
+- Perform only the scope requested at one time.
+- Do not automatically expand into unrelated work.
+- Existing business contracts remain authoritative unless the user explicitly requests a deliberate V2 design change.
+- Historical RM completion state is not changed by post-MVP work.
+
+RM-001 through RM-055 remain historical MVP implementation records. Do not reinterpret old RM tasks to contain new features or redesigns. Do not add RM-056 or later tasks to the frozen roadmap, create a second roadmap, or invent fake task identifiers unless the user separately requests a planning artifact.
+
+For user-authorized post-MVP frontend redesign:
+
+- Existing business behavior remains authoritative.
+- Existing visual structure is not frozen.
+- The implementation may rewrite layouts, replace visual components, create new presentational components, remove obsolete presentational components, redesign the homepage, redesign header/footer/navigation, redesign responsive behavior, add appropriate frontend effects/transitions, and reorganize presentation hierarchy.
+- Protected backend/API/security/privacy/business contracts remain unchanged unless the user explicitly requests otherwise.
 
 ## 5. Working-tree and Git safety
 
@@ -93,7 +119,7 @@ Rules:
 - Report relevant pre-existing changes separately from task-created changes.
 - Do not amend, commit, push, merge, rebase, or create tags unless explicitly requested.
 - Do not drop or recreate a non-test database.
-- Do not modify `AGENTS.md` during an ordinary `RM-*` implementation task. It may change only when the user explicitly requests a repository-policy update; a prompt that merely requests code implementation does not authorize changing it.
+- Do not modify `AGENTS.md` during an ordinary `RM-*` implementation task or ordinary post-MVP implementation task. It may change only when the user explicitly requests a repository-policy update; a prompt that merely requests code implementation does not authorize changing it.
 - Frozen specifications and the implementation roadmap remain protected under their existing rules.
 
 Unless explicitly authorized, do not use destructive operations such as:
@@ -114,7 +140,7 @@ Classify possible changes as:
 2. Directly necessary support for the selected task
 3. Unrelated improvement
 
-Only the first two are allowed.
+For historical MVP roadmap work, only the first two are allowed. For post-MVP work, treat "selected task" as the user's explicitly scoped request and apply the same discipline: requested scope and directly necessary support only.
 
 Never broaden the selected task automatically. Directly necessary support must be small, inseparable from the selected task, and must not implement an independently valuable adjacent roadmap outcome.
 
@@ -295,7 +321,7 @@ Nominatim rules:
 
 ## 14. Testing and verification
 
-Tests accompany the selected task. Use the layers appropriate to its done condition:
+Tests accompany the selected task or post-MVP request when the change requires verification. Use the layers appropriate to its done condition:
 
 - Unit tests for pure helpers and policies
 - Service tests for business decisions
@@ -320,9 +346,9 @@ Never claim a check passed unless it was run successfully. If a check cannot run
 
 ## 15. Dependency management
 
-Do not install or upgrade packages unless the selected task requires it.
+Do not install or upgrade packages unless the selected task or explicitly scoped post-MVP request requires it.
 
-Use the package manager already established by the repository. Inspect package-manager metadata and existing lockfiles before running installation commands. During an ordinary roadmap task, do not switch between npm, pnpm, Yarn, or another package manager, and do not create a second competing lockfile. When a selected task requires a dependency, update only the repository’s existing correct lockfile.
+Use the package manager already established by the repository. Inspect package-manager metadata and existing lockfiles before running installation commands. During an ordinary roadmap task or post-MVP task, do not switch between npm, pnpm, Yarn, or another package manager, and do not create a second competing lockfile. When a selected task or post-MVP request requires a dependency, update only the repository's existing correct lockfile.
 
 Before adding a dependency:
 
@@ -353,7 +379,7 @@ Never perform broad dependency upgrades or automatic repair commands such as for
 
 ## 17. Definition of task completion
 
-A task is complete only when:
+A historical MVP roadmap task is complete only when:
 
 - The selected task’s done condition is satisfied.
 - Required tests are present.
@@ -366,9 +392,21 @@ A task is complete only when:
 
 Stop after completion and wait for another explicit task request.
 
+Post-MVP work is complete when the user's explicitly scoped request is satisfied, relevant checks pass or limitations are reported, the final diff has no unrelated changes, and protected contracts remain unchanged unless the user explicitly requested a deliberate V2 design change.
+
+## 17.1 Git commit messages after MVP
+
+Do not require RM-* or any other task ID in Git commit messages for post-MVP work. Commit messages may simply describe the actual change, for example:
+
+- `thiet ke lai giao dien trang chu`
+- `cai thien giao dien landlord va admin`
+- `them du lieu demo cho rentmate`
+
+Existing Git safety rules remain unchanged. Do not stage, commit, push, reset, or clean unless the user explicitly asks.
+
 ## 18. Required final response format
 
-Every implementation response must use this structure:
+Every historical MVP roadmap implementation response must use this structure:
 
 ## Task
 
@@ -416,3 +454,5 @@ If the task is blocked, partially implemented, has unresolved implementation fai
 `Current task remains open: RM-XXX`
 
 Do not recommend starting the next roadmap task while the current task remains incomplete. Report environment-only limitations honestly and distinguish whether they prevent confirmation of task completion.
+
+For post-MVP work, use a concise final report appropriate to the request. Include changed files, what was implemented, tests/checks run, contract notes, remaining issues, and git status when relevant. No task ID is required.

@@ -92,13 +92,13 @@ export function RadiusControls({
   };
 
   return (
-    <section aria-labelledby="radius-heading" className="rounded-xl border border-stone-200 bg-white p-5 shadow-sm">
+    <section aria-labelledby="radius-heading" className="rounded-card border border-rent-line bg-white p-5 sm:p-6">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <h2 id="radius-heading" className="font-semibold text-slate-950">
+          <h2 id="radius-heading" className="font-semibold text-rent-ink">
             Tìm theo bán kính
           </h2>
-          <p className="mt-1 text-sm text-slate-600">
+          <p className="mt-1 text-sm text-rent-secondary">
             Chọn tâm thủ công hoặc dùng vị trí hiện tại, sau đó chủ động bắt đầu tìm kiếm.
           </p>
         </div>
@@ -152,7 +152,7 @@ export function RadiusControls({
           {locationError}
         </p>
       ) : null}
-      <p className="mt-3 text-xs text-slate-500">
+      <p className="mt-3 text-xs text-rent-subtle">
         Vị trí chỉ được gửi trong truy vấn tìm kiếm sau khi bạn xác nhận; RentMate không lưu hoặc theo dõi vị trí nền.
       </p>
     </section>

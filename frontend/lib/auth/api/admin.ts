@@ -9,7 +9,7 @@ import type {
   ModerationHistoryItem,
   PaginationQuery,
   UserProfile
-} from "../../types/api";
+} from "../../../types/api";
 import type { ApiTransport } from "./transport";
 
 export function createAdminApi(transport: ApiTransport) {

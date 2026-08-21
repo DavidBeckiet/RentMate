@@ -8,6 +8,7 @@ const secondaryLinkClasses =
 export default function LoginPage() {
   return (
     <AuthPageShell
+      variant="login"
       title="Đăng nhập"
       description="Dùng email và mật khẩu của bạn để tiếp tục với RentMate."
       footer={

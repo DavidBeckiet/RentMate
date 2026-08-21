@@ -73,13 +73,14 @@ export default function LeafletMap({
   onViewportChange,
   onMapClick,
   onMarkerMove,
-  className = ""
+  className
 }: MapBaseProps) {
+  const containerClass = className ?? "h-80 w-full min-w-0 overflow-hidden rounded-xl border border-stone-300 sm:h-96 lg:h-[28rem]";
   return (
     <div
       role="region"
       aria-label={ariaLabel}
-      className={`h-80 w-full min-w-0 overflow-hidden rounded-xl border border-stone-300 sm:h-96 lg:h-[28rem] ${className}`}
+      className={containerClass}
     >
       <MapContainer center={[center.latitude, center.longitude]} zoom={zoom} scrollWheelZoom className="h-full w-full">
         <TileLayer

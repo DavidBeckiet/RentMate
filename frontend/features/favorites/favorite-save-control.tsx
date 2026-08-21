@@ -8,6 +8,7 @@ import { useAuth } from "../../lib/auth/auth-provider";
 
 export interface FavoriteSaveControlProps {
   readonly listingId: string;
+  readonly compact?: boolean;
 }
 
 type SaveOutcome = { readonly status: "idle" | "success" } | { readonly status: "error"; readonly message: string };
@@ -29,7 +30,7 @@ function saveErrorMessage(error: ApiError | null): string {
   return "Không thể lưu tin lúc này. Vui lòng thử lại.";
 }
 
-export function FavoriteSaveControl({ listingId }: FavoriteSaveControlProps) {
+export function FavoriteSaveControl({ listingId, compact = false }: FavoriteSaveControlProps) {
   const { status: authStatus, user, refresh } = useAuth();
   const [pending, setPending] = useState(false);
   const [outcome, setOutcome] = useState<SaveOutcome>({ status: "idle" });
@@ -98,6 +99,9 @@ export function FavoriteSaveControl({ listingId }: FavoriteSaveControlProps) {
   }
 
   if (authStatus === "anonymous") {
+    if (compact) {
+      return <Link className="grid h-10 w-10 place-items-center rounded-xl bg-white/95 text-xl text-slate-600 shadow-md transition hover:text-sky-600" href="/login" aria-label="Đăng nhập để lưu tin">♡</Link>;
+    }
     return (
       <p className="text-sm leading-6 text-slate-600">
         <Link className="font-semibold text-teal-800 underline decoration-2 underline-offset-4" href="/login">
@@ -109,6 +113,9 @@ export function FavoriteSaveControl({ listingId }: FavoriteSaveControlProps) {
   }
 
   if (authStatus === "error") {
+    if (compact) {
+      return <button type="button" className="grid h-10 w-10 place-items-center rounded-xl bg-white/95 text-xl text-rose-600 shadow-md" onClick={() => void refresh()} aria-label="Thử lại quyền lưu tin">!</button>;
+    }
     return (
       <div className="flex flex-wrap items-center gap-3" role="alert">
         <p className="text-sm text-red-700">Không thể kiểm tra quyền lưu tin lúc này.</p>
@@ -120,7 +127,23 @@ export function FavoriteSaveControl({ listingId }: FavoriteSaveControlProps) {
   }
 
   if (!user || user.role !== "TENANT") {
+    if (compact) return null;
     return <p className="text-sm text-slate-600">Chức năng lưu tin dành cho tài khoản người thuê.</p>;
+  }
+
+  if (compact) {
+    return (
+      <Button
+        pending={pending}
+        pendingLabel="Đang lưu…"
+        disabled={outcome.status === "success"}
+        onClick={() => void save()}
+        aria-label={outcome.status === "success" ? "Đã lưu tin" : "Lưu tin"}
+        className="!min-h-10 !min-w-10 !rounded-xl !p-0 text-xl"
+      >
+        {outcome.status === "success" ? "♥" : "♡"}
+      </Button>
+    );
   }
 
   return (

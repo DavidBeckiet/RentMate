@@ -37,7 +37,7 @@ export interface CheckboxGroupProps {
 }
 
 const controlClasses =
-  "min-h-11 w-full rounded-md border border-stone-300 bg-white px-3 py-2 text-base text-slate-950 shadow-sm outline-none placeholder:text-slate-400 focus:border-teal-700 focus:ring-2 focus:ring-teal-700/20 focus:ring-offset-2 disabled:cursor-not-allowed disabled:bg-stone-100 disabled:text-slate-500 aria-[invalid=true]:border-red-700 aria-[invalid=true]:focus:ring-red-700/20";
+  "min-h-11 w-full rounded-xl border border-slate-200 bg-white/90 px-4 py-2.5 text-base text-slate-800 shadow-sm outline-none placeholder:text-slate-400 transition-all duration-200 focus:border-sky-600 focus:bg-white focus:ring-4 focus:ring-sky-500/10 disabled:cursor-not-allowed disabled:border-slate-200 disabled:bg-slate-100 disabled:text-slate-400 aria-[invalid=true]:border-rose-600 aria-[invalid=true]:focus:ring-rose-500/10";
 
 function labelText(label: string, required?: boolean) {
   return (
@@ -76,7 +76,7 @@ function FieldMessage({ id, hint, error }: { id: string; hint?: ReactNode; error
 export function InputField({ id, name, label, hint, error, required, className = "", ...inputProps }: InputFieldProps) {
   return (
     <div className="space-y-2">
-      <label htmlFor={id} className="block text-sm font-medium text-slate-900">
+      <label htmlFor={id} className="block text-sm font-semibold text-rent-ink">
         {labelText(label, required)}
       </label>
       <input
@@ -105,7 +105,7 @@ export function TextareaField({
 }: TextareaFieldProps) {
   return (
     <div className="space-y-2">
-      <label htmlFor={id} className="block text-sm font-medium text-slate-900">
+      <label htmlFor={id} className="block text-sm font-semibold text-rent-ink">
         {labelText(label, required)}
       </label>
       <textarea
@@ -135,7 +135,7 @@ export function SelectField({
 }: SelectFieldProps) {
   return (
     <div className="space-y-2">
-      <label htmlFor={id} className="block text-sm font-medium text-slate-900">
+      <label htmlFor={id} className="block text-sm font-semibold text-rent-ink">
         {labelText(label, required)}
       </label>
       <select
@@ -166,7 +166,7 @@ export function CheckboxField({
 }: CheckboxFieldProps) {
   return (
     <div className="space-y-2">
-      <label htmlFor={id} className="flex min-h-11 cursor-pointer items-start gap-3 text-sm text-slate-900">
+      <label htmlFor={id} className="flex min-h-11 cursor-pointer items-start gap-3 text-sm text-rent-ink">
         <input
           {...checkboxProps}
           id={id}
@@ -175,7 +175,7 @@ export function CheckboxField({
           required={required}
           aria-invalid={error ? true : checkboxProps["aria-invalid"]}
           aria-describedby={descriptionId(id, hint, error, checkboxProps["aria-describedby"])}
-          className={`mt-1 h-5 w-5 shrink-0 rounded border-stone-400 text-teal-700 focus:ring-2 focus:ring-teal-700 focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60 ${className}`}
+          className={`mt-1 h-5 w-5 shrink-0 rounded border-stone-400 text-sky-700 focus:ring-2 focus:ring-sky-700 focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60 ${className}`}
         />
         <span className="pt-0.5">{labelText(label, required)}</span>
       </label>
@@ -195,7 +195,7 @@ export function CheckboxGroup({ id, legend, hint, error, required, disabled, chi
       aria-describedby={messageId}
       className="space-y-2"
     >
-      <legend className="text-sm font-medium text-slate-900">{labelText(legend, required)}</legend>
+      <legend className="text-sm font-semibold text-rent-ink">{labelText(legend, required)}</legend>
       <div className="space-y-1">{children}</div>
       <FieldMessage id={id} hint={hint} error={error} />
     </fieldset>

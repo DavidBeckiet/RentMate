@@ -75,8 +75,15 @@ export function AuthProvider({ children }: Readonly<{ children: ReactNode }>) {
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
 
+const defaultAuthValue: AuthContextValue = {
+  status: "anonymous",
+  user: null,
+  error: null,
+  refresh: async () => {},
+  logout: async () => {}
+};
+
 export function useAuth(): AuthContextValue {
   const context = useContext(AuthContext);
-  if (!context) throw new Error("useAuth must be used within AuthProvider.");
-  return context;
+  return context ?? defaultAuthValue;
 }

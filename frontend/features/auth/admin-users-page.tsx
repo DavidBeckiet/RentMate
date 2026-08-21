@@ -6,6 +6,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Button } from "../../components/ui/button";
 import { EmptyState, ErrorState, LoadingState } from "../../components/ui/feedback-states";
 import { SelectField } from "../../components/ui/form-controls";
+import { Pagination } from "../../components/ui/pagination";
 import { api, ApiError } from "../../lib/api/client";
 import { useAuth } from "../../lib/auth/auth-provider";
 import type { ApiPage, UserProfile, UserRole } from "../../types/api";
@@ -18,6 +19,7 @@ import {
   withAdminUserFilters,
   withAdminUserPage
 } from "./admin-user-query";
+import styles from "./admin-users-page.module.css";
 
 const roleLabels: Record<UserRole, string> = {
   TENANT: "Người thuê",
@@ -140,13 +142,13 @@ export function AdminUsersPage() {
   const selectedActivity = parsed.state.isActive === undefined ? "" : String(parsed.state.isActive);
 
   return (
-    <section className="space-y-8">
-      <header>
-        <p className="text-sm font-semibold uppercase tracking-[0.14em] text-teal-700">Quản trị</p>
-        <h1 className="mt-2 text-3xl font-bold tracking-tight text-slate-950 sm:text-4xl">Quản lý người dùng</h1>
-        <p className="mt-3 max-w-2xl text-slate-600">Lọc tài khoản theo vai trò và trạng thái hoạt động.</p>
+    <section className={`${styles.adminUsers} rm-workspace space-y-8`}>
+      <header className="border-b border-rent-line pb-6">
+        <p className="text-sm font-semibold text-teal-700">QUẢN TRỊ</p>
+        <h1 className="mt-2 text-3xl font-bold text-rent-ink sm:text-4xl">Quản lý người dùng</h1>
+        <p className="mt-3 max-w-2xl text-rent-secondary">Lọc tài khoản theo vai trò và trạng thái hoạt động.</p>
       </header>
-      <div className="grid gap-4 sm:grid-cols-2">
+      <div className="rm-toolbar">
         <SelectField
           id="admin-user-role"
           name="role"
@@ -184,7 +186,7 @@ export function AdminUsersPage() {
       {mutationMessage ? (
         <div
           role="status"
-          className={`rounded-lg border p-4 text-sm ${recoveryRequired ? "border-amber-300 bg-amber-50 text-amber-950" : "border-teal-200 bg-teal-50 text-teal-950"}`}
+          className={`rounded-control border p-4 text-sm ${recoveryRequired ? "border-amber-300 bg-amber-50 text-amber-950" : "border-teal-200 bg-teal-50 text-teal-950"}`}
         >
           <p>{mutationMessage}</p>
           {recoveryRequired ? (
@@ -197,7 +199,7 @@ export function AdminUsersPage() {
       {candidate ? (
         <section
           aria-label="Xác nhận thay đổi trạng thái tài khoản"
-          className="rounded-xl border border-amber-300 bg-amber-50 p-5 text-amber-950"
+          className="rounded-card border border-amber-300 bg-amber-50 p-5 text-amber-950"
         >
           <h2 className="font-semibold">Xác nhận thay đổi</h2>
           <p className="mt-2 text-sm">
@@ -238,7 +240,7 @@ export function AdminUsersPage() {
         <EmptyState title="Không có người dùng phù hợp" description="Hãy thay đổi bộ lọc hoặc quay lại sau." />
       ) : null}
       {loadState.status === "success" && loadState.result.data.length > 0 ? (
-        <div className="space-y-4">
+        <div className="rm-workspace-panel">
           {loadState.result.data.map((listedUser) => (
             <AdminUserCard
               key={listedUser.id}
@@ -253,27 +255,17 @@ export function AdminUsersPage() {
         </div>
       ) : null}
       {loadState.status === "success" ? (
-        <nav aria-label="Phân trang người dùng" className="flex items-center justify-between gap-4">
-          <Button
-            variant="secondary"
-            disabled={loadState.result.pagination.page <= 1}
-            onClick={() =>
-              router.push(adminUsersUrl(withAdminUserPage(parsed.state, loadState.result.pagination.page - 1)))
-            }
-          >
-            Trang trước
-          </Button>
-          <span className="text-sm text-slate-600">Trang {loadState.result.pagination.page}</span>
-          <Button
-            variant="secondary"
-            disabled={!loadState.result.pagination.hasNextPage}
-            onClick={() =>
-              router.push(adminUsersUrl(withAdminUserPage(parsed.state, loadState.result.pagination.page + 1)))
-            }
-          >
-            Trang sau
-          </Button>
-        </nav>
+        <Pagination
+          ariaLabel="Phân trang người dùng"
+          page={loadState.result.pagination.page}
+          hasNextPage={loadState.result.pagination.hasNextPage}
+          onPrevious={() =>
+            router.push(adminUsersUrl(withAdminUserPage(parsed.state, loadState.result.pagination.page - 1)))
+          }
+          onNext={() =>
+            router.push(adminUsersUrl(withAdminUserPage(parsed.state, loadState.result.pagination.page + 1)))
+          }
+        />
       ) : null}
     </section>
   );

@@ -5,11 +5,13 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { Button } from "../../components/ui/button";
 import { EmptyState, ErrorState, LoadingState } from "../../components/ui/feedback-states";
+import { Pagination } from "../../components/ui/pagination";
 import { api, ApiError } from "../../lib/api/client";
 import { useAuth } from "../../lib/auth/auth-provider";
 import type { ApiPage, PublicListingSummary } from "../../types/api";
 import { ListingCard } from "../listings/listing-card";
 import { FavoriteRemoveControl } from "./favorite-remove-control";
+import styles from "./favorites-page.module.css";
 
 type FavoritesStatus = "idle" | "loading" | "success" | "error";
 
@@ -61,7 +63,7 @@ function favoritesErrorMessage(error: ApiError | null): string {
 
 function PageHeader() {
   return (
-    <header className="max-w-3xl">
+    <header className="max-w-3xl border-b border-rent-line pb-6">
       <p className="text-sm font-semibold uppercase tracking-[0.16em] text-teal-700">Bộ sưu tập của bạn</p>
       <h1 id="favorites-heading" className="mt-2 text-3xl font-bold tracking-tight text-slate-950 sm:text-4xl">
         Tin đã lưu
@@ -219,12 +221,12 @@ export function FavoritesPage() {
             }
           />
         ) : (
-          <div className="space-y-5" aria-label="Tin đã lưu hiện đang công khai">
+          <div className="grid gap-6 sm:grid-cols-2 xl:grid-cols-3" aria-label="Tin đã lưu hiện đang công khai">
             {result.data.map((listing) => (
-              <div key={listing.id} className="space-y-2">
+              <div key={listing.id} className="flex flex-col justify-between gap-3">
                 <ListingCard listing={listing} />
                 <div
-                  className="flex justify-end rounded-lg border border-stone-200 bg-white p-3"
+                  className="flex justify-end border-t border-rent-line pt-3"
                   aria-label={`Thao tác cho ${listing.title}`}
                 >
                   <FavoriteRemoveControl listingId={listing.id} onRemoved={reconcileRemoval} />
@@ -234,32 +236,19 @@ export function FavoritesPage() {
           </div>
         )}
 
-        <nav
-          aria-label="Phân trang tin đã lưu"
-          className="flex items-center justify-between gap-3 rounded-lg border border-stone-200 bg-white p-3"
-        >
-          <Button
-            variant="secondary"
-            disabled={result.pagination.page <= 1}
-            onClick={() => push(favoritesUrl(result.pagination.page - 1, requestedPageSize))}
-          >
-            Trang trước
-          </Button>
-          <span className="text-sm font-semibold text-slate-700">Trang {result.pagination.page}</span>
-          <Button
-            variant="secondary"
-            disabled={!result.pagination.hasNextPage}
-            onClick={() => push(favoritesUrl(result.pagination.page + 1, requestedPageSize))}
-          >
-            Trang sau
-          </Button>
-        </nav>
+        <Pagination
+          ariaLabel="Phân trang tin đã lưu"
+          page={result.pagination.page}
+          hasNextPage={result.pagination.hasNextPage}
+          onPrevious={() => push(favoritesUrl(result.pagination.page - 1, requestedPageSize))}
+          onNext={() => push(favoritesUrl(result.pagination.page + 1, requestedPageSize))}
+        />
       </div>
     );
   }
 
   return (
-    <section aria-labelledby="favorites-heading" className="space-y-8">
+    <section aria-labelledby="favorites-heading" className={`${styles.favorites} rm-workspace space-y-8`}>
       <PageHeader />
       {content}
     </section>

@@ -1,0 +1,5 @@
+.search { display: grid; gap: 0.5rem; border: 1px solid #1e293b; border-radius: 1rem; background: rgb(15 23 42 / 0.95); padding: 0.75rem; box-shadow: 0 25px 50px -12px rgb(0 0 0 / 0.45); }
+
+@media (min-width: 640px) {
+  .search { grid-template-columns: minmax(0, 1fr) 10rem auto; }
+}

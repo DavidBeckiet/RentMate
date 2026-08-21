@@ -159,7 +159,7 @@ function commonState(params: SearchParamsReader): SearchStateBase {
     ...(code(params, "propertyType") ? { propertyType: code(params, "propertyType") } : {}),
     amenities: amenityCodes(params),
     page: positiveInteger(params, "page") ?? 1,
-    pageSize: positiveInteger(params, "pageSize", 100) ?? 20
+    pageSize: positiveInteger(params, "pageSize", 100) ?? 15
   };
 }
 
@@ -228,7 +228,7 @@ export function serializeSearchState(state: SearchQueryState): URLSearchParams {
   }
 
   if (state.page !== 1) appendNumber(params, "page", state.page);
-  if (state.pageSize !== 20) appendNumber(params, "pageSize", state.pageSize);
+  if (state.pageSize !== 15) appendNumber(params, "pageSize", state.pageSize);
   if (state.mode === "radius" || state.sort !== "newest") params.set("sort", state.sort);
   return params;
 }

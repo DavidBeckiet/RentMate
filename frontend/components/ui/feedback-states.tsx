@@ -6,12 +6,13 @@ export interface LoadingStateProps {
 
 export function LoadingState({ message = "Đang tải…" }: LoadingStateProps) {
   return (
-    <div role="status" aria-live="polite" className="flex min-h-32 items-center justify-center gap-3 text-slate-700">
-      <span
-        aria-hidden="true"
-        className="h-5 w-5 animate-spin rounded-full border-2 border-teal-700 border-r-transparent motion-reduce:animate-none"
-      />
-      <span>{message}</span>
+    <div
+      role="status"
+      aria-live="polite"
+      className="rm-feedback-state min-h-36"
+    >
+      <span aria-hidden="true" className="rm-loading-mark motion-reduce:animate-none"><span /></span>
+      <span className="font-medium text-rent-secondary">{message}</span>
     </div>
   );
 }
@@ -24,9 +25,10 @@ export interface EmptyStateProps {
 
 export function EmptyState({ title, description, action }: EmptyStateProps) {
   return (
-    <section className="rounded-xl border border-dashed border-stone-300 bg-stone-50 p-6 text-center">
-      <h2 className="text-lg font-semibold text-slate-950">{title}</h2>
-      {description ? <p className="mt-2 text-sm text-slate-600">{description}</p> : null}
+    <section className="rm-feedback-state border-dashed p-7 text-center sm:p-10">
+      <span aria-hidden="true" className="rm-feedback-icon">+</span>
+      <h2 className="text-lg font-semibold text-rent-ink">{title}</h2>
+      {description ? <p className="mt-2 text-sm leading-6 text-rent-secondary">{description}</p> : null}
       {action ? <div className="mt-4 flex justify-center">{action}</div> : null}
     </section>
   );
@@ -40,7 +42,8 @@ export interface ErrorStateProps {
 
 export function ErrorState({ message, requestId, action }: ErrorStateProps) {
   return (
-    <section role="alert" className="rounded-xl border border-red-200 bg-red-50 p-5 text-red-950">
+    <section role="alert" className="rm-feedback-state items-start border-red-200 bg-red-50 p-5 text-left text-red-950">
+      <span aria-hidden="true" className="rm-feedback-icon border-red-200 bg-white text-red-700">!</span>
       <h2 className="font-semibold">Không thể hoàn tất yêu cầu</h2>
       <p className="mt-1 text-sm">{message}</p>
       {requestId ? <p className="mt-2 text-xs text-red-800">Mã yêu cầu: {requestId}</p> : null}

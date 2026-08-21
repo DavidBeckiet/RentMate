@@ -386,14 +386,14 @@ export function OwnerImageManager({
   return (
     <section
       aria-labelledby="owner-images-heading"
-      className="space-y-5 rounded-xl border border-stone-200 bg-white p-6"
+      className="rm-workspace-panel space-y-6 p-5 sm:p-6"
     >
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <h2 id="owner-images-heading" className="text-xl font-semibold text-slate-950">
+          <h2 id="owner-images-heading" className="text-xl font-semibold text-rent-ink">
             Ảnh của tin
           </h2>
-          <p className="mt-1 text-sm text-slate-600">
+          <p className="mt-1 text-sm text-rent-secondary">
             {canonicalImages.length}/{maximumImageCount} ảnh · ảnh đầu tiên là ảnh bìa
           </p>
         </div>
@@ -401,7 +401,7 @@ export function OwnerImageManager({
       </div>
 
       {contentBlocked ? (
-        <p className="rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm text-amber-950">
+        <p className="rounded-control border border-amber-200 bg-amber-50 p-4 text-sm text-amber-950">
           Hãy lưu hoặc hoàn tác thay đổi nội dung trước khi quản lý ảnh.
         </p>
       ) : null}
@@ -409,7 +409,7 @@ export function OwnerImageManager({
       {feedback ? (
         <div
           role={feedback.kind === "error" ? "alert" : "status"}
-          className={`rounded-lg border p-4 text-sm ${
+          className={`rounded-control border p-4 text-sm ${
             feedback.kind === "error"
               ? "border-red-200 bg-red-50 text-red-950"
               : feedback.kind === "success"
@@ -434,8 +434,8 @@ export function OwnerImageManager({
         </div>
       ) : null}
 
-      <div className="space-y-4 rounded-lg border border-stone-200 bg-stone-50 p-4">
-        <h3 className="font-semibold text-slate-950">Thêm ảnh</h3>
+      <div className="space-y-4 rounded-control border border-dashed border-teal-300 bg-rent-primary-subtle/50 p-5">
+        <h3 className="font-semibold text-rent-ink">Thêm ảnh</h3>
         <div className="grid gap-4 sm:grid-cols-2">
           <div className="space-y-2">
             <label htmlFor="owner-image-file" className="block text-sm font-medium text-slate-900">
@@ -448,7 +448,7 @@ export function OwnerImageManager({
               accept="image/jpeg,image/png,image/webp"
               disabled={mutationBlocked || canonicalImages.length >= maximumImageCount}
               aria-describedby="owner-image-file-hint"
-              className="block min-h-11 w-full rounded-md border border-stone-300 bg-white px-3 py-2 text-sm text-slate-900 file:mr-3 file:rounded file:border-0 file:bg-teal-700 file:px-3 file:py-2 file:font-semibold file:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-700 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60"
+              className="block min-h-11 w-full rounded-control border border-rent-line bg-white px-3 py-2 text-sm text-rent-ink file:mr-3 file:rounded file:border-0 file:bg-teal-700 file:px-3 file:py-2 file:font-semibold file:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-700 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60"
               onChange={(event) => setSelectedFile(event.target.files?.[0] ?? null)}
             />
             <p id="owner-image-file-hint" className="text-xs text-slate-600">
@@ -485,8 +485,8 @@ export function OwnerImageManager({
             const deleteForbidden = detail.status !== "DRAFT" && canonicalImages.length === 1;
             const isConfirming = confirmingDelete?.imageId === image.id && !confirmingDelete.replacement;
             return (
-              <article key={image.id} className="space-y-3 rounded-lg border border-stone-200 p-3">
-                <div className="relative aspect-[4/3] overflow-hidden rounded-lg bg-stone-100">
+              <article key={image.id} className="group space-y-3 rounded-control border border-rent-line bg-white p-3 transition-[border-color,box-shadow,transform] duration-200 hover:-translate-y-0.5 hover:border-teal-300 hover:shadow-card-hover">
+                <div className="relative aspect-[4/3] overflow-hidden rounded-control bg-rent-surface-muted">
                   <Image
                     src={image.url}
                     alt={image.altText ?? `Ảnh ${index + 1} của ${detail.title ?? "tin đăng"}`}
@@ -495,8 +495,8 @@ export function OwnerImageManager({
                     className="object-cover"
                   />
                 </div>
-                <div className="text-sm text-slate-700">
-                  <p className="font-semibold text-slate-950">{index === 0 ? "Ảnh bìa" : `Ảnh ${index + 1}`}</p>
+                <div className="text-sm text-rent-secondary">
+                  <p className="font-semibold text-rent-ink">{index === 0 ? "Ảnh bìa" : `Ảnh ${index + 1}`}</p>
                   <p>Vị trí đã lưu: {image.displayOrder}</p>
                   {image.altText ? <p className="mt-1">{image.altText}</p> : null}
                 </div>
@@ -538,7 +538,7 @@ export function OwnerImageManager({
                   <p className="text-xs text-amber-900">Tin không phải bản nháp phải giữ ít nhất một ảnh.</p>
                 ) : null}
                 {isConfirming ? (
-                  <div className="space-y-2 rounded-lg border border-red-200 bg-red-50 p-3">
+                    <div className="space-y-2 rounded-control border border-red-200 bg-red-50 p-3">
                     <p className="text-sm font-semibold text-red-950">Xóa ảnh này?</p>
                     <div className="flex flex-wrap gap-2">
                       <Button variant="danger" pending={pendingAction === "delete"} onClick={confirmDelete}>
@@ -560,7 +560,7 @@ export function OwnerImageManager({
         </p>
       )}
 
-      <div className="flex flex-wrap gap-3 border-t border-stone-200 pt-4">
+      <div className="flex flex-wrap gap-3 border-t border-rent-line pt-4">
         <Button
           variant="secondary"
           pending={pendingAction === "reorder"}
@@ -584,7 +584,7 @@ export function OwnerImageManager({
       </div>
 
       {replacement ? (
-        <div className="space-y-4 rounded-lg border border-sky-200 bg-sky-50 p-4">
+        <div className="space-y-4 rounded-control border border-sky-200 bg-sky-50 p-4">
           <div>
             <h3 className="font-semibold text-sky-950">Thay ảnh</h3>
             <p className="mt-1 text-sm text-sky-950">

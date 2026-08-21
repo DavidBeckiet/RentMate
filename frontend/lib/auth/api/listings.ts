@@ -12,7 +12,7 @@ import type {
   PublicListingSummary,
   ReorderImagesBody,
   UploadImageInput
-} from "../../types/api";
+} from "../../../types/api";
 import type { ApiTransport } from "./transport";
 
 function imageFormData(input: UploadImageInput): FormData {

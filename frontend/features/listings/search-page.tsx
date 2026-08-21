@@ -4,16 +4,19 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { MapPoint, MapViewport } from "../../components/map/map-base";
 import { Button } from "../../components/ui/button";
-import { EmptyState, ErrorState, LoadingState } from "../../components/ui/feedback-states";
+import { ErrorState, LoadingState } from "../../components/ui/feedback-states";
 import { api, ApiError } from "../../lib/api/client";
 import type { Amenity, ApiPage, PropertyType, PublicListingSummary, PublicListingSort } from "../../types/api";
 import { ListingCard } from "./listing-card";
+import { MarketplaceHome } from "./marketplace-home";
 import { RadiusControls } from "./radius-controls";
 import { SearchFilters, type LookupResource } from "./search-filters";
 import { SearchMap } from "./search-map";
+import styles from "./search-page.module.css";
 import {
   applySearchFilters,
   parseSearchQuery,
+  searchFilterValues,
   serializeSearchState,
   toPublicListingSearchQuery,
   withBounds,
@@ -42,6 +45,10 @@ export function SearchPage() {
   const parsed = useMemo(() => parseSearchQuery(new URLSearchParams(rawQuery)), [rawQuery]);
   const committedIdentity = parsed.ok ? serializeSearchState(parsed.state).toString() : `invalid:${rawQuery}`;
   const [result, setResult] = useState<ApiPage<PublicListingSummary> | null>(null);
+  const [items, setItems] = useState<readonly PublicListingSummary[]>([]);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [hasNextPage, setHasNextPage] = useState(false);
+  const [loadingMore, setLoadingMore] = useState(false);
   const [searchStatus, setSearchStatus] = useState<SearchStatus>("idle");
   const [searchError, setSearchError] = useState<ApiError | null>(null);
   const [searchRetryKey, setSearchRetryKey] = useState(0);
@@ -55,6 +62,7 @@ export function SearchPage() {
   const [radiusResetKey, setRadiusResetKey] = useState(0);
   const [mobileMapOpen, setMobileMapOpen] = useState(false);
   const searchRequestIdentity = useRef(0);
+  const sentinelRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -106,6 +114,9 @@ export function SearchPage() {
     if (!parsed.ok) {
       ++searchRequestIdentity.current;
       setResult(null);
+      setItems([]);
+      setCurrentPage(1);
+      setHasNextPage(false);
       setSearchError(null);
       setSearchStatus("idle");
       return;
@@ -115,14 +126,20 @@ export function SearchPage() {
     const identity = ++searchRequestIdentity.current;
     let active = true;
     setResult(null);
+    setItems([]);
+    setCurrentPage(1);
+    setHasNextPage(false);
     setSearchError(null);
     setSearchStatus("loading");
 
     void api.listings
-      .searchPublic(toPublicListingSearchQuery(parsed.state), controller.signal)
+      .searchPublic({ ...toPublicListingSearchQuery(parsed.state), page: 1, pageSize: 15 }, controller.signal)
       .then((page) => {
         if (!active || controller.signal.aborted || identity !== searchRequestIdentity.current) return;
         setResult(page);
+        setItems(page.data);
+        setCurrentPage(1);
+        setHasNextPage(page.pagination.hasNextPage);
         setSearchStatus("success");
       })
       .catch((caught: unknown) => {
@@ -136,6 +153,51 @@ export function SearchPage() {
       controller.abort();
     };
   }, [committedIdentity, parsed, searchRetryKey]);
+
+  const loadMore = () => {
+    if (!hasNextPage || loadingMore || searchStatus === "loading" || !parsed.ok) return;
+    setLoadingMore(true);
+    const nextPage = currentPage + 1;
+    const query = {
+      ...toPublicListingSearchQuery(parsed.state),
+      page: nextPage,
+      pageSize: 15
+    };
+    void api.listings
+      .searchPublic(query)
+      .then((page) => {
+        setItems((prev) => {
+          const existingIds = new Set(prev.map((i) => i.id));
+          const newItems = page.data.filter((i) => !existingIds.has(i.id));
+          return [...prev, ...newItems];
+        });
+        setCurrentPage(page.pagination.page);
+        setHasNextPage(page.pagination.hasNextPage);
+      })
+      .catch(() => {
+        // keep current items on error
+      })
+      .finally(() => {
+        setLoadingMore(false);
+      });
+  };
+
+  useEffect(() => {
+    const sentinel = sentinelRef.current;
+    if (!sentinel || !hasNextPage || loadingMore || searchStatus !== "success") return;
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0]?.isIntersecting) {
+          loadMore();
+        }
+      },
+      { rootMargin: "350px" }
+    );
+
+    observer.observe(sentinel);
+    return () => observer.disconnect();
+  }, [hasNextPage, loadingMore, searchStatus, currentPage, committedIdentity]);
 
   const navigate = (state: SearchQueryState) => {
     const query = serializeSearchState(state).toString();
@@ -153,17 +215,23 @@ export function SearchPage() {
 
   if (!parsed.ok) {
     return (
-      <section aria-labelledby="search-heading" className="space-y-6">
-        <header>
-          <p className="text-sm font-semibold uppercase tracking-[0.16em] text-teal-700">Khám phá chỗ ở</p>
-          <h1 id="search-heading" className="mt-2 text-3xl font-bold tracking-tight text-slate-950 sm:text-4xl">
-            Tìm phòng phù hợp tại Thành phố Hồ Chí Minh
-          </h1>
-        </header>
-        <ErrorState
-          message={parsed.message}
-          action={<Button onClick={clearSearch}>Xóa bộ lọc và bắt đầu lại</Button>}
-        />
+      <section aria-labelledby="search-heading" className="min-h-screen bg-slate-50">
+        <div className="bg-heroDark-950 text-white py-10 px-4 sm:px-6 lg:px-8 bg-grid-pattern border-b border-slate-800">
+          <div className="rm-page-container">
+            <span className="text-xs font-bold text-sky-400 uppercase tracking-widest">
+              ✦ Khám phá chỗ ở
+            </span>
+            <h1 id="search-heading" className="mt-2 text-3xl sm:text-4xl font-extrabold tracking-tight">
+              Tìm <span className="text-brandBlue-500">Phòng Trọ</span>
+            </h1>
+          </div>
+        </div>
+        <div className="rm-page-container py-8">
+          <ErrorState
+            message={parsed.message}
+            action={<Button onClick={clearSearch}>Xóa bộ lọc và bắt đầu lại</Button>}
+          />
+        </div>
       </section>
     );
   }
@@ -175,137 +243,219 @@ export function SearchPage() {
     navigate(applySearchFilters(committed, values, sort));
   };
 
+  if (rawQuery.length === 0) {
+    return (
+      <MarketplaceHome
+        propertyTypes={propertyTypes.data}
+        propertyTypesLoading={propertyTypes.status === "loading"}
+        listings={result}
+        listingsStatus={searchStatus}
+        listingsError={searchStatus === "error" ? searchErrorMessage(searchError) : null}
+        onSearch={(values) => applyFilters(values, "newest")}
+        onRetryListings={() => setSearchRetryKey((key) => key + 1)}
+      />
+    );
+  }
+
   return (
-    <section aria-labelledby="search-heading" className="space-y-6">
-      <header className="max-w-3xl">
-        <p className="text-sm font-semibold uppercase tracking-[0.16em] text-teal-700">Khám phá chỗ ở</p>
-        <h1 id="search-heading" className="mt-2 text-3xl font-bold tracking-tight text-slate-950 sm:text-4xl">
-          Tìm phòng phù hợp tại Thành phố Hồ Chí Minh
-        </h1>
-        <p className="mt-3 leading-7 text-slate-600">
-          Tìm theo tên phòng, khu vực, tiện ích hoặc vị trí xấp xỉ trên bản đồ.
-        </p>
-      </header>
-
-      <SearchFilters
-        committed={committed}
-        propertyTypes={propertyTypes}
-        amenities={amenities}
-        onRetryPropertyTypes={() => setPropertyRetryKey((key) => key + 1)}
-        onRetryAmenities={() => setAmenityRetryKey((key) => key + 1)}
-        onApply={applyFilters}
-        onClear={clearSearch}
-      />
-
-      <RadiusControls
-        proposedCenter={proposedRadiusCenter}
-        selectingCenter={selectingRadiusCenter}
-        initialRadiusKm={committed.mode === "radius" ? committed.radiusKm : undefined}
-        resetKey={radiusResetKey}
-        onProposedCenterChange={setProposedRadiusCenter}
-        onSelectingCenterChange={setSelectingRadiusCenter}
-        onCommit={(center, radiusKm) => navigate(withRadius(committed, center, radiusKm))}
-      />
-
-      <div className="flex flex-wrap items-end justify-between gap-4 border-b border-stone-200 pb-4">
-        <div>
-          <h2 className="text-xl font-semibold text-slate-950">Kết quả tìm kiếm</h2>
-          <p className="mt-1 text-sm text-slate-600" aria-live="polite">
-            {result ? `Trang ${result.pagination.page}` : "Danh sách và bản đồ dùng chung một trang kết quả."}
+    <div className="min-h-screen flex flex-col bg-slate-50">
+      {/* Top Hero Dark Banner */}
+      <section className="bg-heroDark-950 text-white relative py-10 px-4 sm:px-6 lg:px-8 bg-grid-pattern border-b border-slate-800">
+        <div className="rm-page-container">
+          <span className="text-xs font-bold text-sky-400 uppercase tracking-widest">
+            ✦ Khám phá chỗ ở
+          </span>
+          <h1 id="search-heading" className="mt-2 text-3xl sm:text-4xl md:text-5xl font-extrabold tracking-tight">
+            Tìm <span className="text-brandBlue-500">Phòng Trọ</span>
+          </h1>
+          <p className="mt-2 text-slate-400 text-sm sm:text-base max-w-2xl font-normal">
+            Lựa chọn phòng trọ phù hợp với nhu cầu và ngân sách của bạn
           </p>
         </div>
-        <Button
-          variant="secondary"
-          className="lg:hidden"
-          aria-expanded={mobileMapOpen}
-          aria-controls="public-search-map-panel"
-          onClick={() => setMobileMapOpen((open) => !open)}
-        >
-          {mobileMapOpen ? "Ẩn bản đồ" : "Xem bản đồ"}
-        </Button>
-      </div>
+      </section>
 
-      <div className="grid min-w-0 gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(22rem,0.9fr)] lg:items-start">
-        <div className="min-w-0 space-y-4">
-          {searchStatus === "loading" ? <LoadingState message="Đang tìm tin đăng…" /> : null}
-          {searchStatus === "error" ? (
-            <ErrorState
-              message={searchErrorMessage(searchError)}
-              requestId={searchError?.requestId}
-              action={
-                <div className="flex flex-wrap gap-2">
-                  <Button onClick={() => setSearchRetryKey((key) => key + 1)}>Thử lại</Button>
-                  {searchError?.status === 422 ? (
-                    <Button variant="secondary" onClick={clearSearch}>
-                      Xóa bộ lọc
-                    </Button>
-                  ) : null}
+      {/* Main 2-Column Search Layout */}
+      <div className="rm-page-container py-8 w-full flex-1">
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+          {/* Left Sidebar Filter Column */}
+          <div className="lg:col-span-4 xl:col-span-3">
+            <SearchFilters
+              committed={committed}
+              propertyTypes={propertyTypes}
+              amenities={amenities}
+              onRetryPropertyTypes={() => setPropertyRetryKey((key) => key + 1)}
+              onRetryAmenities={() => setAmenityRetryKey((key) => key + 1)}
+              onApply={applyFilters}
+              onClear={clearSearch}
+            />
+          </div>
+
+          {/* Right Results Column */}
+          <main className="lg:col-span-8 xl:col-span-9 space-y-6">
+            {/* Results Summary & Sorting Bar */}
+            <div className="bg-white rounded-2xl p-4 border border-slate-200/80 shadow-sm flex flex-col sm:flex-row items-center justify-between gap-4">
+              <div className="flex items-center gap-2.5 text-slate-700 text-sm sm:text-base">
+                <span className="text-xl">🏠</span>
+                <span>
+                  Đang hiển thị{" "}
+                  <strong className="text-slate-900 font-extrabold text-lg">
+                    {items.length}
+                  </strong>{" "}
+                  phòng trọ
+                </span>
+              </div>
+
+              <div className="flex items-center gap-3 w-full sm:w-auto justify-end flex-wrap">
+                {/* Map Toggle Button */}
+                <button
+                  type="button"
+                  onClick={() => setMobileMapOpen(!mobileMapOpen)}
+                  className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-slate-50 px-3 py-1.5 text-xs font-bold text-slate-700 hover:bg-brandBlue-50 hover:text-brandBlue-600 transition"
+                >
+                  <span>🗺️</span>
+                  <span>{mobileMapOpen ? "Ẩn bản đồ" : "Xem bản đồ"}</span>
+                </button>
+
+                {/* Sort Selector */}
+                <div className="flex items-center gap-2">
+                  <span className="text-xs font-bold text-slate-500 whitespace-nowrap">Sắp xếp:</span>
+                  <select
+                    value={committed.mode === "radius" ? "distance_asc" : committed.sort}
+                    disabled={committed.mode === "radius"}
+                    onChange={(e) =>
+                      applyFilters(searchFilterValues(committed), e.target.value as PublicListingSort)
+                    }
+                    className="rounded-xl border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-800 focus:border-brandBlue-500 focus:outline-none"
+                  >
+                    {committed.mode === "radius" ? (
+                      <option value="distance_asc">Khoảng cách gần nhất</option>
+                    ) : (
+                      <>
+                        <option value="newest">Mới nhất</option>
+                        <option value="rent_asc">Giá thấp đến cao</option>
+                        <option value="rent_desc">Giá cao đến thấp</option>
+                      </>
+                    )}
+                  </select>
                 </div>
-              }
-            />
-          ) : null}
-          {searchStatus === "success" && result && listings.length === 0 ? (
-            <EmptyState
-              title="Chưa tìm thấy tin đăng phù hợp"
-              description="Hãy thử nới khoảng giá, diện tích, khu vực hoặc bán kính tìm kiếm."
-              action={
-                <Button variant="secondary" onClick={clearSearch}>
-                  Xóa bộ lọc
-                </Button>
-              }
-            />
-          ) : null}
-          {searchStatus === "success" && listings.length > 0 ? (
-            <div className="space-y-4">
-              {listings.map((listing) => (
-                <ListingCard key={listing.id} listing={listing} />
-              ))}
+              </div>
             </div>
-          ) : null}
 
-          {searchStatus === "success" && result ? (
-            <nav
-              aria-label="Phân trang kết quả"
-              className="flex items-center justify-between gap-3 rounded-lg border border-stone-200 bg-white p-3"
-            >
-              <Button
-                variant="secondary"
-                disabled={result.pagination.page <= 1}
-                onClick={() => navigate(withPage(committed, result.pagination.page - 1))}
-              >
-                Trang trước
-              </Button>
-              <span className="text-sm font-semibold text-slate-700">Trang {result.pagination.page}</span>
-              <Button
-                variant="secondary"
-                disabled={!result.pagination.hasNextPage}
-                onClick={() => navigate(withPage(committed, result.pagination.page + 1))}
-              >
-                Trang sau
-              </Button>
-            </nav>
-          ) : null}
-        </div>
+            {/* Optional Interactive Map Panel */}
+            {mobileMapOpen && (
+              <div className="space-y-4 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+                <RadiusControls
+                  proposedCenter={proposedRadiusCenter}
+                  selectingCenter={selectingRadiusCenter}
+                  initialRadiusKm={committed.mode === "radius" ? committed.radiusKm : undefined}
+                  resetKey={radiusResetKey}
+                  onProposedCenterChange={setProposedRadiusCenter}
+                  onSelectingCenterChange={setSelectingRadiusCenter}
+                  onCommit={(center, radiusKm) => navigate(withRadius(committed, center, radiusKm))}
+                />
+                <div className="h-[24rem] overflow-hidden rounded-xl border border-slate-100">
+                  <SearchMap
+                    listings={items}
+                    pendingViewport={pendingViewport}
+                    proposedRadiusCenter={proposedRadiusCenter}
+                    selectingRadiusCenter={selectingRadiusCenter}
+                    onViewportChange={setPendingViewport}
+                    onSearchBounds={(viewport) => navigate(withBounds(committed, viewport.bounds))}
+                    onRadiusCenterSelected={(point) => {
+                      if (!selectingRadiusCenter) return;
+                      setProposedRadiusCenter(point);
+                      setSelectingRadiusCenter(false);
+                    }}
+                  />
+                </div>
+              </div>
+            )}
 
-        <div
-          id="public-search-map-panel"
-          className={`${mobileMapOpen ? "block" : "hidden"} min-w-0 lg:block lg:sticky lg:top-6`}
-        >
-          <SearchMap
-            listings={listings}
-            pendingViewport={pendingViewport}
-            proposedRadiusCenter={proposedRadiusCenter}
-            selectingRadiusCenter={selectingRadiusCenter}
-            onViewportChange={setPendingViewport}
-            onSearchBounds={(viewport) => navigate(withBounds(committed, viewport.bounds))}
-            onRadiusCenterSelected={(point) => {
-              if (!selectingRadiusCenter) return;
-              setProposedRadiusCenter(point);
-              setSelectingRadiusCenter(false);
-            }}
-          />
+            {/* Feedback States */}
+            {searchStatus === "loading" && <LoadingState message="Đang tìm phòng trọ phù hợp…" />}
+
+            {searchStatus === "error" && (
+              <ErrorState
+                message={searchErrorMessage(searchError)}
+                requestId={searchError?.requestId}
+                action={
+                  <div className="flex flex-wrap gap-2">
+                    <Button onClick={() => setSearchRetryKey((key) => key + 1)}>Thử lại</Button>
+                    {searchError?.status === 422 ? (
+                      <Button variant="secondary" onClick={clearSearch}>
+                        Xóa bộ lọc
+                      </Button>
+                    ) : null}
+                  </div>
+                }
+              />
+            )}
+
+            {searchStatus === "success" && items.length === 0 && (
+              <div className="rounded-2xl border border-slate-200 bg-white p-12 text-center shadow-sm space-y-3">
+                <span className="text-4xl">📂</span>
+                <h3 className="text-lg font-bold text-slate-800">Không tìm thấy phòng phù hợp</h3>
+                <p className="text-sm text-slate-500">
+                  Vui lòng thử thay đổi từ khóa hoặc điều chỉnh lại bộ lọc bên trái
+                </p>
+                <button
+                  type="button"
+                  onClick={clearSearch}
+                  className="mt-2 inline-flex items-center gap-1 rounded-xl bg-brandBlue-500 px-4 py-2 text-xs font-bold text-white hover:bg-brandBlue-600 transition"
+                >
+                  Xóa bộ lọc và xem tất cả
+                </button>
+              </div>
+            )}
+
+            {/* 3-Column Listing Grid (3 cards per row, 5 rows = 15 per batch) */}
+            {items.length > 0 && (
+              <div className="space-y-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5">
+                  {items.map((listing) => (
+                    <ListingCard key={listing.id} listing={listing} showFavorite />
+                  ))}
+                </div>
+
+                {/* Infinite Scroll Sentinel Element */}
+                <div ref={sentinelRef} className="h-4 w-full" aria-hidden="true" />
+
+                {/* Loading More Indicator */}
+                {loadingMore && (
+                  <div className="flex items-center justify-center gap-3 py-6 text-sm font-bold text-slate-600">
+                    <div className="h-5 w-5 animate-spin rounded-full border-2 border-brandBlue-500 border-t-transparent" />
+                    <span>Đang tải thêm 15 phòng trọ tiếp theo...</span>
+                  </div>
+                )}
+
+                {/* Manual Load More Button as Fallback */}
+                {hasNextPage && !loadingMore && (
+                  <div className="flex justify-center pt-2">
+                    <button
+                      type="button"
+                      onClick={loadMore}
+                      className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-6 py-3 text-xs font-bold text-slate-700 shadow-sm transition hover:border-brandBlue-500 hover:text-brandBlue-600 hover:scale-[1.02] active:scale-95"
+                    >
+                      <span>Tải thêm phòng trọ</span>
+                      <svg aria-hidden="true" className="h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" d="m19.5 8.25-7.5 7.5-7.5-7.5" />
+                      </svg>
+                    </button>
+                  </div>
+                )}
+
+                {/* End of Results Indicator */}
+                {!hasNextPage && items.length > 0 && (
+                  <div className="rounded-2xl border border-slate-200/80 bg-white p-5 text-center text-xs font-bold text-slate-500 shadow-sm">
+                    <span>🎉 Bạn đã xem hết tất cả {items.length} phòng trọ phù hợp</span>
+                  </div>
+                )}
+              </div>
+            )}
+          </main>
         </div>
       </div>
-    </section>
+    </div>
   );
 }
+

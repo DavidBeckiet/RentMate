@@ -11,8 +11,10 @@ import { api, ApiError } from "../../lib/api/client";
 import { useAuth } from "../../lib/auth/auth-provider";
 import type { AdminListingDetail as AdminListingDetailDto } from "../../types/api";
 import { formatAreaSqm, formatVnd } from "./format";
+import { ListingAmenityChips, ListingPrice } from "./listing-presentation";
 import { ModerationActions } from "./moderation-actions";
 import { ModerationHistory, type HistoryRefreshInstruction } from "./moderation-history";
+import styles from "./admin-listing-detail.module.css";
 
 type DetailState =
   | { readonly status: "idle" | "loading" }
@@ -79,13 +81,13 @@ export function AdminListingDetail({ listingId: rawListingId }: { readonly listi
     setHistoryRefresh((current) => ({ token: (current?.token ?? 0) + 1, ...(resetToFirstPage ? { page: 1 } : {}) }));
 
   return (
-    <article className="space-y-10">
-      <header>
+    <article className={`${styles.adminDetail} rm-workspace space-y-10`}>
+      <header className="border-b border-rent-line pb-7">
         <Link href="/admin" className="text-sm font-semibold text-teal-800 underline decoration-2 underline-offset-4">
           ← Quay lại hàng đợi
         </Link>
-        <p className="mt-6 text-sm font-semibold uppercase tracking-[0.14em] text-teal-700">Chi tiết quản trị</p>
-        <h1 className="mt-2 text-3xl font-bold tracking-tight text-slate-950 sm:text-4xl">Tin #{listingId}</h1>
+        <p className="mt-6 text-sm font-semibold text-teal-700">CHI TIẾT QUẢN TRỊ</p>
+        <h1 className="mt-2 text-3xl font-bold text-rent-ink sm:text-4xl">Tin #{listingId}</h1>
       </header>
 
       {state.status === "idle" || state.status === "loading" ? <LoadingState message="Đang tải chi tiết tin…" /> : null}
@@ -124,68 +126,59 @@ function CanonicalDetail({
   const reasonLabel = detail.status === "REJECTED" ? "Lý do từ chối" : detail.status === "HIDDEN" ? "Lý do ẩn" : null;
   return (
     <div className="space-y-8">
-      <section className="rounded-xl border border-stone-200 bg-white p-6">
+      <section className="rounded-card border border-rent-line bg-white p-5 sm:p-6">
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div>
-            <h2 className="text-2xl font-semibold text-slate-950">{detail.title ?? "Chưa có tiêu đề"}</h2>
-            <p className="mt-2 text-sm text-slate-600">Cập nhật {new Date(detail.updatedAt).toLocaleString("vi-VN")}</p>
+            <h2 className="text-2xl font-semibold text-rent-ink">{detail.title ?? "Chưa có tiêu đề"}</h2>
+            <p className="mt-2 text-sm text-rent-secondary">Cập nhật {new Date(detail.updatedAt).toLocaleString("vi-VN")}</p>
           </div>
           <ListingStatusBadge status={detail.status} />
         </div>
         {reasonLabel && detail.currentModerationReason ? (
-          <div className="mt-5 rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-950">
+          <div className="mt-5 rounded-control border border-red-200 bg-red-50 p-4 text-sm text-red-950">
             <p className="font-semibold">{reasonLabel}</p>
             <p className="mt-1 whitespace-pre-wrap">{detail.currentModerationReason}</p>
           </div>
         ) : null}
-        <dl className="mt-6 grid gap-4 text-sm sm:grid-cols-2 lg:grid-cols-3">
+        <div className="mt-6"><ListingPrice monthlyRent={detail.monthlyRent} /></div>
+        <dl className="mt-5 grid gap-4 border-t border-rent-line pt-5 text-sm text-rent-secondary sm:grid-cols-2 lg:grid-cols-3">
           <div>
-            <dt className="font-semibold text-slate-900">Giá thuê</dt>
+            <dt className="font-semibold text-rent-ink">Giá thuê</dt>
             <dd>{detail.monthlyRent === null ? "Chưa có" : formatVnd(detail.monthlyRent)}</dd>
           </div>
           <div>
-            <dt className="font-semibold text-slate-900">Diện tích</dt>
+            <dt className="font-semibold text-rent-ink">Diện tích</dt>
             <dd>{detail.roomAreaSqm === null ? "Chưa có" : formatAreaSqm(detail.roomAreaSqm)}</dd>
           </div>
           <div>
-            <dt className="font-semibold text-slate-900">Loại hình</dt>
+            <dt className="font-semibold text-rent-ink">Loại hình</dt>
             <dd>{detail.propertyType?.label ?? "Chưa có"}</dd>
           </div>
           <div>
-            <dt className="font-semibold text-slate-900">Khu vực</dt>
+            <dt className="font-semibold text-rent-ink">Khu vực</dt>
             <dd>{detail.areaName ?? "Chưa có"}</dd>
           </div>
           <div className="sm:col-span-2">
-            <dt className="font-semibold text-slate-900">Địa chỉ chính xác</dt>
+            <dt className="font-semibold text-rent-ink">Địa chỉ chính xác</dt>
             <dd>{detail.addressText ?? "Chưa có"}</dd>
           </div>
         </dl>
         <div className="mt-6">
-          <h3 className="font-semibold text-slate-900">Mô tả</h3>
-          <p className="mt-2 whitespace-pre-wrap text-sm leading-6 text-slate-700">
+          <h3 className="font-semibold text-rent-ink">Mô tả</h3>
+          <p className="mt-2 whitespace-pre-wrap text-sm leading-6 text-rent-secondary">
             {detail.description ?? "Chưa có mô tả"}
           </p>
         </div>
         <div className="mt-6">
-          <h3 className="font-semibold text-slate-900">Tiện ích</h3>
-          <ul className="mt-2 flex flex-wrap gap-2">
-            {detail.amenities.length ? (
-              detail.amenities.map((amenity) => (
-                <li key={amenity.code} className="rounded-full bg-stone-100 px-3 py-1.5 text-sm">
-                  {amenity.label}
-                </li>
-              ))
-            ) : (
-              <li className="text-sm text-slate-600">Chưa có tiện ích</li>
-            )}
-          </ul>
+          <h3 className="font-semibold text-rent-ink">Tiện ích</h3>
+          {detail.amenities.length ? <div className="mt-2"><ListingAmenityChips amenities={detail.amenities} /></div> : <p className="mt-2 text-sm text-rent-secondary">Chưa có tiện ích</p>}
         </div>
       </section>
 
       {orderedImages.length ? (
         <section aria-label="Ảnh tin đăng" className="grid grid-cols-2 gap-3 sm:grid-cols-3">
           {orderedImages.map((image) => (
-            <div key={image.id} className="relative aspect-[4/3] overflow-hidden rounded-lg bg-stone-100">
+            <div key={image.id} className="relative aspect-[4/3] overflow-hidden rounded-control bg-rent-surface-muted">
               <Image
                 src={image.url}
                 alt={image.altText ?? `Ảnh tin ${detail.id}`}
@@ -199,8 +192,8 @@ function CanonicalDetail({
       ) : null}
 
       <div className="grid gap-8 lg:grid-cols-2">
-        <section className="rounded-xl border border-stone-200 bg-white p-5">
-          <h2 className="text-xl font-semibold text-slate-950">Người cho thuê</h2>
+          <section className="rounded-card border border-rent-line bg-white p-5">
+          <h2 className="text-xl font-semibold text-rent-ink">Người cho thuê</h2>
           <dl className="mt-4 space-y-3 text-sm">
             <div>
               <dt className="font-semibold">Email</dt>
@@ -216,9 +209,9 @@ function CanonicalDetail({
           </div>
         </section>
         {detail.latitude !== null && detail.longitude !== null ? (
-          <section className="rounded-xl border border-stone-200 bg-white p-4">
-            <h2 className="text-xl font-semibold text-slate-950">Vị trí chính xác</h2>
-            <p className="mb-4 mt-1 text-sm text-slate-600">
+          <section className="rounded-card border border-rent-line bg-white p-4 sm:p-5">
+            <h2 className="text-xl font-semibold text-rent-ink">Vị trí chính xác</h2>
+            <p className="mb-4 mt-1 text-sm text-rent-secondary">
               {detail.latitude}, {detail.longitude}
             </p>
             <MapBase

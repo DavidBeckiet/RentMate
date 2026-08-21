@@ -5,6 +5,7 @@ import { LoginForm } from "../../../../features/auth/login-form";
 export default function AdminLoginPage() {
   return (
     <AuthPageShell
+      variant="admin"
       title="Đăng nhập quản trị"
       description="Dùng tài khoản quản trị viên để kiểm duyệt RentMate."
       requiredRole="ADMIN"

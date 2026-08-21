@@ -1,0 +1,73 @@
+.marketplaceHome :global(.text-sky-300) { color: #7dd3fc !important; }
+.marketplaceHome :global(.text-sky-400),
+.marketplaceHome :global(.text-sky-500),
+.marketplaceHome :global(.text-sky-600) { color: #0ea5e9 !important; }
+.marketplaceHome :global(.bg-sky-500) { background-color: #0ea5e9 !important; }
+.marketplaceHome :global(.hover\:bg-sky-600:hover) { background-color: #0284c7 !important; }
+.marketplaceHome :global(.border-sky-500) { border-color: #0ea5e9 !important; }
+.marketplaceHome :global(.ring-sky-500) { --tw-ring-color: #0ea5e9 !important; }
+.marketplaceHome :global(.shadow-sky-500\/20) { --tw-shadow-color: rgb(14 165 233 / 0.2) !important; }
+
+.hero {
+  position: relative;
+  min-height: 654px;
+  overflow: hidden;
+  background-color: #020617;
+  color: white;
+  background-image: linear-gradient(to right, rgb(255 255 255 / 0.04) 1px, transparent 1px), linear-gradient(to bottom, rgb(255 255 255 / 0.04) 1px, transparent 1px);
+  background-size: 32px 32px;
+}
+
+.hero :global(.rm-page-container) { max-width: 98rem; }
+.search { display: grid; gap: 0.5rem; border: 1px solid #1e293b; border-radius: 1rem; background: rgb(15 23 42 / 0.95); padding: 0.75rem; box-shadow: 0 25px 50px -12px rgb(0 0 0 / 0.45); }
+.showcase { overflow: hidden; border-radius: 1rem; box-shadow: 0 25px 50px -12px rgb(0 0 0 / 0.45); }
+.floating { position: absolute; z-index: 20; display: flex; align-items: center; gap: 0.5rem; border: 1px solid #f1f5f9; border-radius: 1rem; background: rgb(255 255 255 / 0.95); padding: 0.5rem 0.875rem; color: #1e293b; font-size: 0.75rem; font-weight: 700; box-shadow: 0 20px 25px -5px rgb(0 0 0 / 0.15); backdrop-filter: blur(12px); }
+.floatingTop { top: 0; right: 0.5rem; }
+.floatingBottom { right: 0; bottom: 0; color: #0284c7; }
+.floatingLeft { bottom: 2rem; left: 0; color: #0284c7; }
+.category { display: inline-flex; min-height: 3rem; align-items: center; gap: 0.5rem; border: 1px solid #e2e8f0; border-radius: 1rem; background: white; padding: 0.75rem 1.25rem; color: #334155; font-size: 0.75rem; font-weight: 700; box-shadow: 0 1px 2px rgb(0 0 0 / 0.05); transition: background-color 200ms, border-color 200ms, color 200ms, transform 200ms, box-shadow 200ms; }
+.category:hover { transform: translateY(-2px); background: #f1f5f9; }
+.categoryActive { border-color: #0ea5e9; background: #0ea5e9; color: white; box-shadow: 0 10px 15px -3px rgb(14 165 233 / 0.2); }
+.categoryActive:hover { background: #0284c7; }
+.discoveryMark { display: grid; height: 2rem; width: 2rem; place-items: center; border-radius: 0.75rem; background: #f1f5f9; color: #0369a1; }
+.kicker { display: inline-flex; border-radius: 9999px; background: #e0f2fe; padding: 0.25rem 0.75rem; color: #0369a1; font-size: 0.6875rem; font-weight: 900; letter-spacing: 0.08em; text-transform: uppercase; }
+.heading { margin-top: 0.25rem; color: #0f172a; font-size: 1.5rem; font-weight: 900; }
+.heading span { color: #0ea5e9; }
+.outlineButton { display: inline-flex; align-items: center; gap: 0.25rem; border: 1px solid #0ea5e9; border-radius: 0.75rem; padding: 0.5rem 1rem; color: #0284c7; font-size: 0.75rem; font-weight: 700; }
+.outlineButton:hover { background: #0ea5e9; color: white; }
+.textLink { display: inline-flex; align-items: center; gap: 0.25rem; color: #0284c7; font-size: 0.75rem; font-weight: 700; }
+.card { display: flex; height: 100%; overflow: hidden; border: 1px solid #e2e8f0; border-radius: 0.5rem; background: white; box-shadow: 0 1px 2px rgb(0 0 0 / 0.05); transition: border-color 300ms, box-shadow 300ms, transform 300ms; }
+.card:hover { transform: translateY(-0.25rem); border-color: #38bdf8; box-shadow: 0 10px 25px -5px rgb(14 165 233 / 0.18); }
+.empty { border: 1px dashed #cbd5e1; border-radius: 1rem; background: white; padding: 3rem 1.5rem; text-align: center; color: #64748b; font-size: 0.875rem; font-weight: 600; }
+.darkSection { border-top: 1px solid #1e293b; border-bottom: 1px solid #1e293b; background-color: #020617; color: white; background-image: linear-gradient(to right, rgb(255 255 255 / 0.035) 1px, transparent 1px), linear-gradient(to bottom, rgb(255 255 255 / 0.035) 1px, transparent 1px); background-size: 32px 32px; }
+.landlord { position: relative; overflow: hidden; border: 1px solid #1e293b; border-radius: 1.5rem; background: rgb(15 23 42 / 0.9); padding: 2rem; box-shadow: 0 25px 50px -12px rgb(0 0 0 / 0.45); }
+.location { position: relative; display: flex; min-height: 12rem; cursor: pointer; align-items: flex-end; overflow: hidden; border: 1px solid #e2e8f0; border-radius: 1rem; background: #1e293b; text-align: left; box-shadow: 0 1px 2px rgb(0 0 0 / 0.05); }
+.location:focus-visible, .category:focus-visible, .outlineButton:focus-visible { outline: 2px solid #0ea5e9; outline-offset: 2px; }
+.step, .review, .guide { display: flex; height: 100%; flex-direction: column; gap: 0.75rem; border: 1px solid #e2e8f0; border-radius: 1.5rem; background: #f8fafc; padding: 1.5rem; }
+.step > span { display: grid; height: 2.5rem; width: 2.5rem; place-items: center; border-radius: 1rem; background: #0ea5e9; color: white; font-size: 0.875rem; font-weight: 900; box-shadow: 0 4px 6px -1px rgb(14 165 233 / 0.2); }
+.step h3 { color: #0f172a; font-size: 1rem; font-weight: 700; }
+.step p { color: #64748b; font-size: 0.75rem; line-height: 1.625; }
+.review { justify-content: space-between; background: white; box-shadow: 0 1px 2px rgb(0 0 0 / 0.05); }
+.guide { overflow: hidden; background: white; padding: 0; box-shadow: 0 1px 2px rgb(0 0 0 / 0.05); }
+.faq { overflow: hidden; border: 1px solid #e2e8f0; border-radius: 1rem; background: white; box-shadow: 0 1px 2px rgb(0 0 0 / 0.05); }
+.faq summary { display: flex; cursor: pointer; list-style: none; align-items: center; justify-content: space-between; gap: 1rem; padding: 1rem; color: #0f172a; font-size: 0.75rem; font-weight: 700; text-align: left; }
+.faq summary span { color: #0284c7; font-size: 1rem; font-weight: 800; }
+.faq p { border-top: 1px solid #f1f5f9; padding: 0.75rem 1rem 1rem; color: #475569; font-size: 0.75rem; line-height: 1.625; }
+.float { animation: marketplaceFloat 4s ease-in-out infinite; }
+.floatReverse { animation: marketplaceFloatReverse 5s ease-in-out infinite; }
+
+@keyframes marketplaceFloat { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-8px); } }
+@keyframes marketplaceFloatReverse { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(8px); } }
+
+@media (min-width: 640px) {
+  .floatingTop { right: 1.5rem; }
+  .floatingBottom { right: 1rem; }
+  .floatingLeft { left: 1rem; }
+  .heading { font-size: 1.875rem; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .float, .floatReverse { animation: none; }
+}
+
+@media (max-width: 767px) { .hero { min-height: 0; } }

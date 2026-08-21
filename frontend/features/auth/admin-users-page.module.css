@@ -1,0 +1,3 @@
+.adminUsers :global(.text-teal-700), .adminUsers :global(.text-teal-800), .adminUsers :global(.text-teal-900) { color: #0369a1 !important; }
+.adminUsers :global(.bg-teal-600), .adminUsers :global(.bg-teal-700) { background-color: #0284c7 !important; }
+.adminUsers :global(.rm-eyebrow) { color: #0369a1; background: #e0f2fe; border-color: #bae6fd; }

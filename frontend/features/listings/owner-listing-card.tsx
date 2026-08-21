@@ -1,8 +1,7 @@
-import Image from "next/image";
 import Link from "next/link";
 import { ListingStatusBadge } from "../../components/ui/status-badge";
 import type { OwnerListingSummary } from "../../types/api";
-import { formatVnd } from "./format";
+import { ListingCardShell, ListingImage, ListingMetadata, ListingPrice } from "./listing-presentation";
 
 const dateFormatter = new Intl.DateTimeFormat("vi-VN", { dateStyle: "medium", timeStyle: "short" });
 
@@ -18,51 +17,39 @@ export function OwnerListingCard({ listing }: { readonly listing: OwnerListingSu
   const reason = moderationReason(listing);
 
   return (
-    <article className="overflow-hidden rounded-xl border border-stone-200 bg-white shadow-sm">
+    <ListingCardShell>
       <Link
         href={`/landlord/listings/${listing.id}`}
-        className="group grid min-h-44 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-teal-700 sm:grid-cols-[12rem_1fr]"
+        className="grid min-h-44 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-teal-700 sm:grid-cols-[13rem_1fr]"
       >
-        <div className="relative aspect-[4/3] min-h-44 overflow-hidden bg-stone-100 sm:aspect-auto">
-          {listing.coverImage ? (
-            <Image
-              src={listing.coverImage.url}
-              alt={listing.coverImage.altText ?? `Ảnh của ${title}`}
-              fill
-              sizes="(min-width: 640px) 192px, 100vw"
-              className="object-cover transition-opacity group-hover:opacity-95"
-            />
-          ) : (
-            <div
-              role="img"
-              aria-label={`Chưa có ảnh cho ${title}`}
-              className="flex h-full min-h-44 items-center justify-center px-4 text-center text-sm font-medium text-slate-500"
-            >
-              Chưa có ảnh
-            </div>
-          )}
-        </div>
+        <ListingImage
+          image={listing.coverImage}
+          title={title}
+          sizes="(min-width: 640px) 208px, 100vw"
+          className="min-h-44 sm:aspect-auto"
+        />
 
-        <div className="min-w-0 space-y-3 p-5">
+        <div className="min-w-0 space-y-3 p-4 sm:p-5">
           <div className="flex flex-wrap items-start justify-between gap-3">
-            <h2 className="text-lg font-semibold leading-6 text-slate-950 group-hover:text-teal-800">{title}</h2>
+            <h2 className="text-lg font-semibold leading-6 text-rent-ink group-hover:text-teal-800">{title}</h2>
             <ListingStatusBadge status={listing.status} />
           </div>
-          <p className="text-xl font-bold text-teal-800">
-            {listing.monthlyRent === null ? "Chưa nhập giá" : formatVnd(listing.monthlyRent)}
-          </p>
-          <p className="text-sm text-slate-700">
+          <ListingPrice monthlyRent={listing.monthlyRent} />
+          <ListingMetadata>
             {listing.propertyType?.label ?? "Chưa chọn loại"} · {listing.areaName ?? "Chưa nhập khu vực"}
-          </p>
+          </ListingMetadata>
           {reason ? (
-            <div className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-950">
+            <div className="rounded-control border border-red-200 bg-red-50 p-3 text-sm text-red-950">
               <p className="font-semibold">{reason.label}</p>
               <p className="mt-1 whitespace-pre-wrap">{reason.value}</p>
             </div>
           ) : null}
-          <p className="text-xs text-slate-500">Cập nhật {dateFormatter.format(new Date(listing.updatedAt))}</p>
+          <div className="flex flex-wrap items-center justify-between gap-2 border-t border-rent-line pt-3">
+            <p className="text-xs text-rent-subtle">Cập nhật {dateFormatter.format(new Date(listing.updatedAt))}</p>
+            <span className="text-sm font-semibold text-teal-800">Quản lý tin</span>
+          </div>
         </div>
       </Link>
-    </article>
+    </ListingCardShell>
   );
 }

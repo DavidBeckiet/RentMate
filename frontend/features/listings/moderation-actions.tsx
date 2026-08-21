@@ -111,13 +111,13 @@ export function ModerationActions({ detail, onReloadDetail, onRefreshHistory }: 
   return (
     <section
       aria-labelledby="moderation-actions-heading"
-      className="space-y-4 rounded-xl border border-stone-200 bg-white p-6"
+      className="space-y-4 rounded-card border border-rent-line bg-white p-5 sm:p-6"
     >
       <div>
-        <h2 id="moderation-actions-heading" className="text-xl font-semibold text-slate-950">
+        <h2 id="moderation-actions-heading" className="text-xl font-semibold text-rent-ink">
           Hành động kiểm duyệt
         </h2>
-        <p className="mt-1 text-sm text-slate-600">Mỗi hành động sẽ được ghi vào lịch sử bất biến.</p>
+        <p className="mt-1 text-sm text-rent-secondary">Mỗi hành động sẽ được ghi vào lịch sử bất biến.</p>
       </div>
       {availableActions.length === 0 ? (
         <p className="text-sm text-slate-600">Không có hành động kiểm duyệt phù hợp với trạng thái hiện tại.</p>
@@ -141,7 +141,7 @@ export function ModerationActions({ detail, onReloadDetail, onRefreshHistory }: 
         </div>
       )}
       {selectedAction ? (
-        <div className="rounded-lg border border-amber-300 bg-amber-50 p-4">
+        <div className="rounded-control border border-amber-300 bg-amber-50 p-4">
           <h3 className="font-semibold text-amber-950">Xác nhận: {actionLabels[selectedAction]}</h3>
           <div className="mt-4">
             <TextareaField
@@ -180,7 +180,7 @@ export function ModerationActions({ detail, onReloadDetail, onRefreshHistory }: 
             action={<Button onClick={() => void recover()}>Tải lại trạng thái và lịch sử</Button>}
           />
         ) : (
-          <div role="status" className="rounded-lg border border-teal-200 bg-teal-50 p-4 text-sm text-teal-950">
+          <div role="status" className="rounded-control border border-teal-200 bg-teal-50 p-4 text-sm text-teal-950">
             {message}
           </div>
         )

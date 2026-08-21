@@ -6,6 +6,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { Button } from "../../components/ui/button";
 import { EmptyState, ErrorState, LoadingState } from "../../components/ui/feedback-states";
 import { SelectField } from "../../components/ui/form-controls";
+import { Pagination } from "../../components/ui/pagination";
 import { api, ApiError } from "../../lib/api/client";
 import { useAuth } from "../../lib/auth/auth-provider";
 import type { ApiPage, AdminListingSummary, ListingStatus } from "../../types/api";
@@ -18,6 +19,7 @@ import {
   withAdminListingPage,
   withAdminListingStatus
 } from "./admin-listing-query";
+import styles from "./admin-listings-page.module.css";
 
 const statusLabels: Record<ListingStatus, string> = {
   PENDING: "Chờ duyệt",
@@ -96,16 +98,18 @@ export function AdminListingsPage() {
   const updatePage = (page: number) => router.push(adminListingsUrl(withAdminListingPage(parsed.state, page)));
 
   return (
-    <section className="space-y-8">
-      <header>
-        <p className="text-sm font-semibold uppercase tracking-[0.14em] text-teal-700">Quản trị</p>
-        <h1 className="mt-2 text-3xl font-bold tracking-tight text-slate-950 sm:text-4xl">Hàng đợi kiểm duyệt</h1>
-        <p className="mt-3 max-w-2xl text-slate-600">
-          Đọc trạng thái hiện tại trước khi thực hiện một hành động kiểm duyệt.
-        </p>
+    <section className={`${styles.adminPage} rm-workspace space-y-8 my-4`}>
+      <header className="flex flex-col gap-4 rounded-3xl border border-slate-200/90 bg-white p-8 shadow-glass sm:flex-row sm:items-center sm:justify-between">
+        <div className="max-w-2xl space-y-2">
+          <span className="rm-eyebrow">QUẢN TRỊ VIÊN</span>
+          <h1 className="text-3xl font-black text-slate-900 sm:text-4xl tracking-tight">Hàng đợi kiểm duyệt</h1>
+          <p className="text-sm font-medium text-slate-600 leading-relaxed">
+            Đánh giá chất lượng hình ảnh, tiện ích và khu vực tin đăng trước khi duyệt hoặc từ chối.
+          </p>
+        </div>
       </header>
 
-      <div className="max-w-sm">
+      <div className="rounded-2xl border border-slate-200/80 bg-white/90 p-4 shadow-sm backdrop-blur-md max-w-xs">
         <SelectField
           id="admin-listing-status"
           name="status"
@@ -140,30 +144,20 @@ export function AdminListingsPage() {
         />
       ) : null}
       {loadState.status === "success" && loadState.result.data.length > 0 ? (
-        <div className="space-y-4">
+        <div className="rounded-3xl border border-slate-200/90 bg-white shadow-glass overflow-hidden divide-y divide-slate-100">
           {loadState.result.data.map((listing) => (
             <AdminListingCard key={listing.id} listing={listing} />
           ))}
         </div>
       ) : null}
       {loadState.status === "success" ? (
-        <nav aria-label="Phân trang hàng đợi kiểm duyệt" className="flex items-center justify-between gap-4">
-          <Button
-            variant="secondary"
-            disabled={loadState.result.pagination.page <= 1}
-            onClick={() => updatePage(loadState.result.pagination.page - 1)}
-          >
-            Trang trước
-          </Button>
-          <span className="text-sm text-slate-600">Trang {loadState.result.pagination.page}</span>
-          <Button
-            variant="secondary"
-            disabled={!loadState.result.pagination.hasNextPage}
-            onClick={() => updatePage(loadState.result.pagination.page + 1)}
-          >
-            Trang sau
-          </Button>
-        </nav>
+        <Pagination
+          ariaLabel="Phân trang hàng đợi kiểm duyệt"
+          page={loadState.result.pagination.page}
+          hasNextPage={loadState.result.pagination.hasNextPage}
+          onPrevious={() => updatePage(loadState.result.pagination.page - 1)}
+          onNext={() => updatePage(loadState.result.pagination.page + 1)}
+        />
       ) : null}
     </section>
   );

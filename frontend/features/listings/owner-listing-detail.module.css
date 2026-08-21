@@ -1,0 +1,3 @@
+.ownerDetail :global(.text-teal-700), .ownerDetail :global(.text-teal-800), .ownerDetail :global(.text-teal-900) { color: #0369a1 !important; }
+.ownerDetail :global(.bg-teal-600), .ownerDetail :global(.bg-teal-700) { background-color: #0284c7 !important; }
+.ownerDetail :global(.rm-eyebrow) { color: #0369a1; background: #e0f2fe; border-color: #bae6fd; }

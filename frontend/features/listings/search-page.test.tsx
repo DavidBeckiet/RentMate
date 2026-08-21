@@ -143,6 +143,7 @@ beforeEach(() => {
 
 describe("SearchPage", () => {
   it("makes one V1-09 call and feeds the same response to cards and map", async () => {
+    navigation.query = "sort=newest";
     apiMocks.searchPublic.mockResolvedValue(page([listing(1, "Phòng A"), listing(2, "Phòng B")]));
     render(<SearchPage />);
 
@@ -159,6 +160,7 @@ describe("SearchPage", () => {
   });
 
   it("does not search on map movement, then commits bounds and searches once after URL changes", async () => {
+    navigation.query = "sort=newest";
     apiMocks.searchPublic.mockResolvedValue(page([listing(1, "Phòng A")]));
     const view = render(<SearchPage />);
     await screen.findByText("card:Phòng A");
@@ -185,6 +187,7 @@ describe("SearchPage", () => {
   });
 
   it("renders empty, 422 recovery, explicit retry, and no total count", async () => {
+    navigation.query = "sort=newest";
     const validationError = new ApiError({
       status: 422,
       code: "VALIDATION_FAILED",

@@ -4,11 +4,16 @@ import type { UserProfile } from "../../types/api";
 import { ApiError } from "../../lib/api/transport";
 import type { AuthContextValue } from "../../lib/auth/auth-provider";
 
-const navigationMocks = vi.hoisted(() => ({ pathname: vi.fn(() => "/"), replace: vi.fn() }));
+const navigationMocks = vi.hoisted(() => ({
+  pathname: vi.fn(() => "/"),
+  searchParams: vi.fn(() => new URLSearchParams()),
+  replace: vi.fn()
+}));
 const useAuthMock = vi.hoisted(() => vi.fn<() => AuthContextValue>());
 
 vi.mock("next/navigation", () => ({
   usePathname: navigationMocks.pathname,
+  useSearchParams: navigationMocks.searchParams,
   useRouter: () => ({ replace: navigationMocks.replace })
 }));
 vi.mock("../../lib/auth/auth-provider", () => ({ useAuth: useAuthMock }));

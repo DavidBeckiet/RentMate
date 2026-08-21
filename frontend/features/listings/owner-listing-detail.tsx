@@ -11,6 +11,7 @@ import type { Amenity, OwnerListingDetail as OwnerDetail, PropertyType } from ".
 import { OwnerImageManager } from "./owner-image-manager";
 import { OwnerLifecycleActions } from "./owner-lifecycle-actions";
 import { OwnerListingEditor, type LookupResource, type OwnerEditorFeedback } from "./owner-listing-editor";
+import styles from "./owner-listing-detail.module.css";
 
 const maximumListingId = 2_147_483_647;
 const unavailableMessage = "Tin đăng không tồn tại hoặc bạn không thể truy cập.";
@@ -207,8 +208,8 @@ export function OwnerListingDetail({ listingId }: { readonly listingId: string }
   const blocked = editorDirty || editorBusy || imageBusy || imageOrderDirty;
 
   return (
-    <article className="space-y-8">
-      <header className="space-y-4">
+    <article className={`${styles.ownerDetail} rm-workspace space-y-8`}>
+      <header className="space-y-4 border-b border-rent-line pb-7">
         <Link
           href="/landlord"
           className="text-sm font-semibold text-teal-800 underline decoration-2 underline-offset-4"
@@ -217,16 +218,16 @@ export function OwnerListingDetail({ listingId }: { readonly listingId: string }
         </Link>
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div>
-            <p className="text-sm font-semibold uppercase tracking-[0.14em] text-teal-700">Tin của chủ nhà</p>
-            <h1 className="mt-2 text-3xl font-bold tracking-tight text-slate-950 sm:text-4xl">{title}</h1>
-            <p className="mt-2 text-sm text-slate-600">
+            <p className="text-sm font-semibold text-teal-700">TIN CỦA CHỦ NHÀ</p>
+            <h1 className="mt-2 text-3xl font-bold text-rent-ink sm:text-4xl">{title}</h1>
+            <p className="mt-2 text-sm text-rent-secondary">
               Cập nhật lần cuối: {new Date(detail.updatedAt).toLocaleString("vi-VN")}
             </p>
           </div>
           <ListingStatusBadge status={detail.status} />
         </div>
         {reasonLabel && detail.currentModerationReason ? (
-          <div className="rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-950">
+          <div className="rounded-control border border-red-200 bg-red-50 p-4 text-sm text-red-950">
             <p className="font-semibold">{reasonLabel}</p>
             <p className="mt-1 whitespace-pre-wrap">{detail.currentModerationReason}</p>
           </div>

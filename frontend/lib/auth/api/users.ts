@@ -1,4 +1,4 @@
-import type { UpdateCurrentUserBody, UserProfile } from "../../types/api";
+import type { UpdateCurrentUserBody, UserProfile } from "../../../types/api";
 import type { ApiTransport } from "./transport";
 
 export function createUsersApi(transport: ApiTransport) {

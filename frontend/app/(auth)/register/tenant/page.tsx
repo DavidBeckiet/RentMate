@@ -5,6 +5,7 @@ import { RegistrationForm } from "../../../../features/auth/registration-form";
 export default function TenantRegistrationPage() {
   return (
     <AuthPageShell
+      variant="tenant"
       title="Đăng ký tìm phòng"
       description="Tạo tài khoản người thuê để tìm chỗ ở và sử dụng các tiện ích dành cho người thuê."
       footer={

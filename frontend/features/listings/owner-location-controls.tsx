@@ -153,11 +153,11 @@ export function OwnerLocationControls({
   };
 
   return (
-    <div className="space-y-5 border-t border-stone-200 pt-5">
+    <div className="space-y-5 border-t border-rent-line pt-5">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h3 className="font-semibold text-slate-950">Tìm và điều chỉnh vị trí</h3>
-          <p className="mt-1 text-sm text-slate-600">
+          <h3 className="font-semibold text-rent-ink">Tìm và điều chỉnh vị trí</h3>
+          <p className="mt-1 text-sm text-rent-secondary">
             Tìm theo địa chỉ chỉ chạy khi bạn bấm nút. Bạn vẫn có thể đặt hoặc kéo ghim thủ công.
           </p>
         </div>
@@ -176,7 +176,7 @@ export function OwnerLocationControls({
       {feedback ? (
         <p
           role={feedback.kind === "error" ? "alert" : "status"}
-          className={`rounded-lg border p-3 text-sm ${
+          className={`rounded-control border p-3 text-sm ${
             feedback.kind === "error"
               ? "border-red-200 bg-red-50 text-red-950"
               : feedback.kind === "empty"
@@ -191,14 +191,14 @@ export function OwnerLocationControls({
 
       {candidates.length > 0 ? (
         <fieldset className="space-y-2">
-          <legend className="text-sm font-semibold text-slate-900">Kết quả địa chỉ</legend>
+          <legend className="text-sm font-semibold text-rent-ink">Kết quả địa chỉ</legend>
           <ul className="space-y-2">
             {candidates.map((candidate, index) => (
               <li key={`${candidate.latitude}:${candidate.longitude}:${index}`}>
                 <button
                   type="button"
                   disabled={disabled || pending}
-                  className="min-h-11 w-full rounded-lg border border-stone-300 bg-white px-4 py-3 text-left text-sm text-slate-900 transition-colors hover:border-teal-600 hover:bg-teal-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-700 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60"
+                  className="min-h-11 w-full rounded-control border border-rent-line bg-white px-4 py-3 text-left text-sm text-rent-ink transition-colors hover:border-teal-600 hover:bg-rent-primary-subtle focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-700 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60"
                   onClick={() => selectPoint(candidate)}
                 >
                   {candidate.displayName}
@@ -210,7 +210,7 @@ export function OwnerLocationControls({
       ) : null}
 
       <div className="space-y-2">
-        <p className="text-sm text-slate-600">
+        <p className="text-sm text-rent-secondary">
           {point
             ? "Kéo ghim hoặc bấm một điểm khác trên bản đồ để chỉnh tọa độ chính xác."
             : "Bấm trên bản đồ để đặt ghim, hoặc nhập trực tiếp cặp tọa độ ở trên."}

@@ -1,4 +1,4 @@
-import type { ApiPage, PaginationQuery, PublicListingSummary } from "../../types/api";
+import type { ApiPage, PaginationQuery, PublicListingSummary } from "../../../types/api";
 import type { ApiTransport } from "./transport";
 
 export function createFavoritesApi(transport: ApiTransport) {

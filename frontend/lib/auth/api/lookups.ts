@@ -1,4 +1,4 @@
-import type { Amenity, PropertyType } from "../../types/api";
+import type { Amenity, PropertyType } from "../../../types/api";
 import type { ApiTransport } from "./transport";
 
 export function createLookupsApi(transport: ApiTransport) {

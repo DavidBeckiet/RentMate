@@ -1,4 +1,4 @@
-import type { LandlordRegistrationBody, LoginBody, TenantRegistrationBody, UserProfile } from "../../types/api";
+import type { LandlordRegistrationBody, LoginBody, TenantRegistrationBody, UserProfile } from "../../../types/api";
 import type { ApiTransport } from "./transport";
 
 export function createAuthApi(transport: ApiTransport) {

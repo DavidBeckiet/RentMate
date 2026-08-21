@@ -6,6 +6,7 @@ import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } fro
 import { Button } from "../../components/ui/button";
 import { EmptyState, ErrorState, LoadingState } from "../../components/ui/feedback-states";
 import { SelectField } from "../../components/ui/form-controls";
+import { Pagination } from "../../components/ui/pagination";
 import { api, ApiError } from "../../lib/api/client";
 import { useAuth } from "../../lib/auth/auth-provider";
 import type { ApiPage, ListingStatus, OwnerListingSummary } from "../../types/api";
@@ -19,6 +20,7 @@ import {
   withOwnerPage,
   withOwnerStatus
 } from "./owner-query";
+import styles from "./owner-listings-page.module.css";
 
 type LoadStatus = "idle" | "loading" | "success" | "error";
 
@@ -209,26 +211,13 @@ export function OwnerListingsPage() {
           </div>
         )}
 
-        <nav
-          aria-label="Phân trang tin của tôi"
-          className="flex items-center justify-between gap-3 rounded-lg border border-stone-200 bg-white p-3"
-        >
-          <Button
-            variant="secondary"
-            disabled={result.pagination.page <= 1}
-            onClick={() => router.push(ownerListingsUrl(withOwnerPage(parsed.state, result.pagination.page - 1)))}
-          >
-            Trang trước
-          </Button>
-          <span className="text-sm font-semibold text-slate-700">Trang {result.pagination.page}</span>
-          <Button
-            variant="secondary"
-            disabled={!result.pagination.hasNextPage}
-            onClick={() => router.push(ownerListingsUrl(withOwnerPage(parsed.state, result.pagination.page + 1)))}
-          >
-            Trang sau
-          </Button>
-        </nav>
+        <Pagination
+          ariaLabel="Phân trang tin của tôi"
+          page={result.pagination.page}
+          hasNextPage={result.pagination.hasNextPage}
+          onPrevious={() => router.push(ownerListingsUrl(withOwnerPage(parsed.state, result.pagination.page - 1)))}
+          onNext={() => router.push(ownerListingsUrl(withOwnerPage(parsed.state, result.pagination.page + 1)))}
+        />
       </div>
     );
   }
@@ -236,26 +225,26 @@ export function OwnerListingsPage() {
   const committedState = parsed.ok ? parsed.state : { page: 1 };
 
   return (
-    <section aria-labelledby="owner-listings-heading" className="space-y-8">
-      <header className="flex flex-col gap-5 sm:flex-row sm:items-end sm:justify-between">
-        <div className="max-w-3xl">
-          <p className="text-sm font-semibold uppercase tracking-[0.16em] text-teal-700">Khu vực người cho thuê</p>
-          <h1 id="owner-listings-heading" className="mt-2 text-3xl font-bold tracking-tight text-slate-950 sm:text-4xl">
-            Tin của tôi
+    <section aria-labelledby="owner-listings-heading" className={`${styles.ownerPage} rm-workspace space-y-8 my-4`}>
+      <header className="flex flex-col gap-6 rounded-3xl border border-slate-200/90 bg-white p-8 shadow-glass sm:flex-row sm:items-center sm:justify-between">
+        <div className="max-w-2xl space-y-2">
+          <span className="rm-eyebrow">KHU VỰC CHỦ NHÀ</span>
+          <h1 id="owner-listings-heading" className="text-3xl font-black text-slate-900 sm:text-4xl tracking-tight">
+            Quản lý tin cho thuê
           </h1>
-          <p className="mt-3 leading-7 text-slate-600">
-            Theo dõi trạng thái, hoàn thiện bản nháp và quản lý vòng đời tin đăng.
+          <p className="text-sm font-medium text-slate-600 leading-relaxed">
+            Theo dõi trạng thái duyệt, chỉnh sửa chi tiết và cập nhật vòng đời tin đăng của bạn.
           </p>
         </div>
         {isLandlord ? (
-          <Button pending={createPending} pendingLabel="Đang tạo…" onClick={() => void createDraft()}>
-            Tạo tin mới
+          <Button pending={createPending} pendingLabel="Đang tạo…" onClick={() => void createDraft()} className="shrink-0 shadow-glow-teal">
+            + Tạo tin mới
           </Button>
         ) : null}
       </header>
 
       {isLandlord && parsed.ok ? (
-        <div className="max-w-sm">
+        <div className="rounded-2xl border border-slate-200/80 bg-white/90 p-4 shadow-sm backdrop-blur-md max-w-xs">
           <SelectField
             id="owner-status-filter"
             name="status"
@@ -277,7 +266,7 @@ export function OwnerListingsPage() {
       ) : null}
 
       {createFeedback ? (
-        <p role="alert" className="rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-950">
+        <p role="alert" className="rounded-2xl border border-rose-200 bg-rose-50 p-4 text-sm font-medium text-rose-950">
           {createFeedback}
         </p>
       ) : null}

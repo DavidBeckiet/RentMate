@@ -380,16 +380,16 @@ export function OwnerListingEditor({
   const warning = statusWarning(detail.status);
 
   return (
-    <form noValidate onSubmit={(event) => void save(event)} className="space-y-8">
+    <form noValidate onSubmit={(event) => void save(event)} className="rm-workspace-panel space-y-0">
       {warning ? (
-        <p className="rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm text-amber-950">{warning}</p>
+        <p className="rounded-control border border-amber-200 bg-amber-50 p-4 text-sm text-amber-950">{warning}</p>
       ) : null}
 
       <section
         aria-labelledby="owner-basic-heading"
-        className="space-y-5 rounded-xl border border-stone-200 bg-white p-6"
+        className="rm-editor-section"
       >
-        <h2 id="owner-basic-heading" className="text-xl font-semibold text-slate-950">
+        <h2 id="owner-basic-heading" className="text-xl font-semibold text-rent-ink">
           Thông tin cơ bản
         </h2>
         <InputField
@@ -416,9 +416,9 @@ export function OwnerListingEditor({
 
       <section
         aria-labelledby="owner-price-heading"
-        className="space-y-5 rounded-xl border border-stone-200 bg-white p-6"
+        className="rm-editor-section"
       >
-        <h2 id="owner-price-heading" className="text-xl font-semibold text-slate-950">
+        <h2 id="owner-price-heading" className="text-xl font-semibold text-rent-ink">
           Giá &amp; diện tích
         </h2>
         <div className="grid gap-5 sm:grid-cols-2">
@@ -453,9 +453,9 @@ export function OwnerListingEditor({
 
       <section
         aria-labelledby="owner-location-heading"
-        className="space-y-5 rounded-xl border border-stone-200 bg-white p-6"
+        className="rm-editor-section"
       >
-        <h2 id="owner-location-heading" className="text-xl font-semibold text-slate-950">
+        <h2 id="owner-location-heading" className="text-xl font-semibold text-rent-ink">
           Địa chỉ &amp; vị trí
         </h2>
         <InputField
@@ -515,9 +515,9 @@ export function OwnerListingEditor({
 
       <section
         aria-labelledby="owner-lookup-heading"
-        className="space-y-6 rounded-xl border border-stone-200 bg-white p-6"
+        className="rm-editor-section"
       >
-        <h2 id="owner-lookup-heading" className="text-xl font-semibold text-slate-950">
+        <h2 id="owner-lookup-heading" className="text-xl font-semibold text-rent-ink">
           Loại phòng &amp; tiện ích
         </h2>
         <SelectField
@@ -601,7 +601,7 @@ export function OwnerListingEditor({
       </section>
 
       {feedback.formMessage || externalFeedback?.formMessage ? (
-        <p role="alert" className="rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-950">
+        <p role="alert" className="rounded-control border border-red-200 bg-red-50 p-4 text-sm text-red-950">
           {feedback.formMessage ?? externalFeedback?.formMessage}
           {feedback.requestId || externalFeedback?.requestId
             ? ` Mã yêu cầu: ${feedback.requestId ?? externalFeedback?.requestId}`
@@ -609,15 +609,15 @@ export function OwnerListingEditor({
         </p>
       ) : null}
       {feedback.success ? (
-        <p aria-live="polite" className="text-sm font-medium text-teal-800">
+        <p aria-live="polite" className="rounded-control bg-rent-primary-subtle p-3 text-sm font-medium text-teal-900">
           {feedback.success}
         </p>
       ) : null}
       {dirty || pending ? (
-        <p className="text-sm text-amber-900">Bạn có thay đổi chưa lưu. Hãy lưu hoặc hoàn tác trước.</p>
+        <p className="rounded-control border border-amber-200 bg-amber-50 p-3 text-sm text-amber-950">Bạn có thay đổi chưa lưu. Hãy lưu hoặc hoàn tác trước.</p>
       ) : null}
 
-      <div className="flex flex-wrap gap-3">
+      <div className="flex flex-wrap gap-3 bg-rent-surface-muted/60 p-5 sm:p-6">
         <Button type="submit" pending={pending} pendingLabel="Đang lưu…" disabled={!dirty}>
           Lưu thay đổi
         </Button>
