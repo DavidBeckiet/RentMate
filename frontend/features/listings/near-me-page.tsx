@@ -278,7 +278,6 @@ export function NearMePage() {
                   role="combobox"
                   aria-expanded={dropdownOpen}
                   aria-controls="near-location-options"
-                  aria-autocomplete="list"
                   onFocus={() => setDropdownOpen(true)}
                   onChange={(event) => {
                     setLocationName(event.currentTarget.value);

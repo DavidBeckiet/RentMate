@@ -1,5 +1,5 @@
 import type { QueryResultRow } from "pg";
-import { queryOptional } from "../../db/repository-primitives.js";
+import { queryMany, queryOptional } from "../../db/repository-primitives.js";
 import type { SqlExecutor } from "../../db/sql-executor.js";
 import { isUserRole, type AuthenticationAccount, type UserRole } from "../../shared/types/authentication.js";
 import { mapUserProfileRow, type UserProfile, type UserProfileRow } from "./user-profile.js";
@@ -8,6 +8,8 @@ const maximumUserId = 2_147_483_647;
 
 export interface UsersRepository {
   readonly findAuthenticationAccountById: (userId: number) => Promise<AuthenticationAccount | null>;
+  readonly findActiveLandlordIds?: () => Promise<readonly number[]>;
+  readonly findProfilesByIds?: (userIds: readonly number[]) => Promise<readonly UserProfile[]>;
   readonly findProfileById: (userId: number) => Promise<UserProfile | null>;
   readonly updatePhone: (userId: number, phone: string | null) => Promise<UserProfile | null>;
 }
@@ -16,6 +18,10 @@ interface AuthenticationAccountRow extends QueryResultRow {
   readonly id: number;
   readonly role: UserRole;
   readonly is_active: boolean;
+}
+
+interface ActiveLandlordIdRow extends QueryResultRow {
+  readonly id: number;
 }
 
 function mapAuthenticationAccountRow(row: Readonly<AuthenticationAccountRow>): AuthenticationAccount {
@@ -51,6 +57,20 @@ const profileSelect = `
       LIMIT 1
     `;
 
+const profilesSelect = `
+      SELECT
+        id,
+        role,
+        email,
+        phone_e164,
+        is_active,
+        created_at,
+        updated_at
+      FROM users
+      WHERE id = ANY($1::integer[])
+      ORDER BY id ASC
+    `;
+
 export function createUsersRepository(executor: SqlExecutor): UsersRepository {
   const findProfileById = async (userId: number): Promise<UserProfile | null> =>
     queryOptional<UserProfileRow, UserProfile>(
@@ -79,6 +99,36 @@ export function createUsersRepository(executor: SqlExecutor): UsersRepository {
           values: [userId]
         },
         mapAuthenticationAccountRow
+      );
+    },
+
+    async findActiveLandlordIds(): Promise<readonly number[]> {
+      return Object.freeze(
+        await queryMany<ActiveLandlordIdRow, number>(
+          executor,
+          {
+            text: `
+              SELECT id
+              FROM users
+              WHERE role = 'LANDLORD'
+                AND is_active = true
+              ORDER BY id ASC
+            `,
+            values: []
+          },
+          (row) => row.id
+        )
+      );
+    },
+
+    async findProfilesByIds(userIds: readonly number[]): Promise<readonly UserProfile[]> {
+      if (userIds.length === 0) return Object.freeze([]);
+      return Object.freeze(
+        await queryMany<UserProfileRow, UserProfile>(
+          executor,
+          { text: profilesSelect, values: [[...userIds]] },
+          mapUserProfileRow
+        )
       );
     },
 

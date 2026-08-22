@@ -1,0 +1,22 @@
+{
+  "name": "rentmate-identity-service",
+  "version": "0.1.0",
+  "private": true,
+  "engines": {
+    "node": ">=22.15.1 <23"
+  },
+  "scripts": {
+    "dev": "tsx watch src/server.ts",
+    "start": "tsx src/server.ts",
+    "migrate": "tsx migrate.ts",
+    "backfill": "tsx backfill.ts"
+  },
+  "dependencies": {
+    "bcrypt": "6.0.0",
+    "jose": "6.2.6",
+    "tsx": "4.19.4"
+  },
+  "devDependencies": {
+    "@types/bcrypt": "6.0.0"
+  }
+}

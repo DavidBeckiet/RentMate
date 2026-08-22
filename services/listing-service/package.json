@@ -1,0 +1,21 @@
+{
+  "name": "rentmate-listing-service",
+  "version": "0.1.0",
+  "private": true,
+  "engines": {
+    "node": ">=22.15.1 <23"
+  },
+  "scripts": {
+    "dev": "tsx watch src/server.ts",
+    "start": "tsx src/server.ts",
+    "migrate": "tsx migrate.ts",
+    "backfill": "tsx backfill.ts"
+  },
+  "dependencies": {
+    "multer": "^2.2.0",
+    "tsx": "4.19.4"
+  },
+  "devDependencies": {
+    "@types/multer": "^2.2.0"
+  }
+}

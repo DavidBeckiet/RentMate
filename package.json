@@ -9,6 +9,7 @@
   "packageManager": "npm@10.9.2",
   "scripts": {
     "dev": "concurrently --names backend,frontend --prefix-colors blue,magenta \"npm --prefix backend run dev\" \"npm --prefix frontend run dev\"",
+    "dev:microservices": "node scripts/dev-microservices.mjs",
     "build": "npm run build:frontend && npm run build:backend",
     "build:frontend": "npm --prefix frontend run build",
     "build:backend": "npm --prefix backend run build",

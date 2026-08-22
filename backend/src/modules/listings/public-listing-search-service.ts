@@ -25,12 +25,17 @@ export interface PublicListingSearchService {
   readonly search: (query: PublicListingSearch) => Promise<PaginatedPublicListingSummaries>;
 }
 
+export interface PublicListingSearchDependencies {
+  readonly loadActiveLandlordIds?: () => Promise<readonly number[]>;
+}
+
 export function createPublicListingSearchService(
   repository: PublicListingSearchRepository,
   config: PublicListingSearchConfig = {
     deploymentRegion: deploymentRegions[0],
     maximumSearchRadiusKm
-  }
+  },
+  dependencies: PublicListingSearchDependencies = {}
 ): PublicListingSearchService {
   return Object.freeze({
     async search(query: PublicListingSearch): Promise<PaginatedPublicListingSummaries> {
@@ -58,17 +63,29 @@ export function createPublicListingSearchService(
       }
 
       let rows: readonly (PublicListingSummary | PublicRadiusListingSummary)[];
+      const activeLandlordIds = dependencies.loadActiveLandlordIds
+        ? await dependencies.loadActiveLandlordIds()
+        : undefined;
       if (query.mode === "ordinary") {
-        rows = await repository.findOrdinaryPage(query);
+        rows =
+          activeLandlordIds === undefined
+            ? await repository.findOrdinaryPage(query)
+            : await repository.findOrdinaryPage(query, activeLandlordIds);
       } else if (query.mode === "bounds") {
-        rows = await repository.findBoundsPage(query);
+        rows =
+          activeLandlordIds === undefined
+            ? await repository.findBoundsPage(query)
+            : await repository.findBoundsPage(query, activeLandlordIds);
       } else {
         const boundingBox: RadiusBoundingBox = calculateRadiusBoundingBox(
           query.centerLat,
           query.centerLng,
           query.radiusKm
         );
-        rows = await repository.findRadiusPage(query, boundingBox);
+        rows =
+          activeLandlordIds === undefined
+            ? await repository.findRadiusPage(query, boundingBox)
+            : await repository.findRadiusPage(query, boundingBox, activeLandlordIds);
       }
 
       return Object.freeze({

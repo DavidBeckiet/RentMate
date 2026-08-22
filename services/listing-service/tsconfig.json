@@ -1,0 +1,13 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "NodeNext",
+    "moduleResolution": "NodeNext",
+    "strict": true,
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "noEmit": true,
+    "typeRoots": ["../shared/node_modules/@types"]
+  },
+  "include": ["src/**/*.ts", "../shared/src/runtime/shared/types/express.d.ts"]
+}

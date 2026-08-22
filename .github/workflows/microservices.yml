@@ -1,0 +1,78 @@
+name: microservices
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+          cache-dependency-path: |
+            package-lock.json
+            backend/package-lock.json
+            frontend/package-lock.json
+            services/identity-service/package-lock.json
+            services/listing-service/package-lock.json
+            services/shared/package-lock.json
+            services/engagement-service/package-lock.json
+
+      - run: npm ci
+      - run: npm ci --prefix backend
+      - run: npm ci --prefix frontend
+      - run: npm ci --prefix services/identity-service
+      - run: npm ci --prefix services/listing-service
+      - run: npm ci --prefix services/engagement-service
+      - run: npm ci --prefix services/shared
+      - name: Audit production dependencies
+        shell: bash
+        run: |
+          npm audit --omit=dev --audit-level=high
+          npm audit --prefix backend --omit=dev --audit-level=high
+          npm audit --prefix frontend --omit=dev --audit-level=high
+          npm audit --prefix services/identity-service --omit=dev --audit-level=high
+          npm audit --prefix services/listing-service --omit=dev --audit-level=high
+          npm audit --prefix services/engagement-service --omit=dev --audit-level=high
+          npm audit --prefix services/shared --omit=dev --audit-level=high
+      - run: npm run typecheck
+      - run: npm run lint:frontend
+      - run: npm run lint:backend
+      - run: npm run test:backend
+      - run: npm run test:frontend
+      - run: npm --prefix services/api-gateway test
+      - run: ./services/shared/node_modules/.bin/tsc -p services/identity-service/tsconfig.json
+      - run: ./services/shared/node_modules/.bin/tsc -p services/listing-service/tsconfig.json
+      - run: ./services/shared/node_modules/.bin/tsc -p services/engagement-service/tsconfig.json
+      - run: npm --prefix services/shared run typecheck
+      - name: Verify service domain ownership
+        shell: bash
+        run: test -z "$(rg -n 'backend/src/modules' services || true)"
+
+      - name: Build frontend
+        env:
+          NODE_ENV: production
+          NEXT_PUBLIC_API_BASE_URL: https://api.rentmate.example
+        run: npm run build:frontend
+
+      - name: Validate compose topology
+        env:
+          POSTGRES_PASSWORD: ci-postgres-password
+          FRONTEND_ORIGIN: https://rentmate.example
+          JWT_SECRET: ci-jwt-secret-ci-jwt-secret
+          CLOUDINARY_CLOUD_NAME: ci-cloud
+          CLOUDINARY_API_KEY: ci-key
+          CLOUDINARY_API_SECRET: ci-secret
+          NOMINATIM_USER_AGENT: RentMate/ci
+          SERVICE_INTERNAL_TOKEN: ci-internal-token
+        run: docker compose -f docker-compose.microservices.yml config --quiet
+
+      - name: Build microservice images
+        run: docker compose -f docker-compose.microservices.yml build backend identity listing engagement gateway

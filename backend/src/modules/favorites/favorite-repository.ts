@@ -24,9 +24,31 @@ export interface EnsureFavoritePresentResult {
 }
 
 export interface FavoriteRepository {
-  readonly findPage: (input: FavoritePageInput) => Promise<readonly PublicListingSummary[]>;
-  readonly ensurePresent: (tenantId: number, listingId: number) => Promise<EnsureFavoritePresentResult>;
+  readonly findPage: (
+    input: FavoritePageInput,
+    activeLandlordIds?: readonly number[]
+  ) => Promise<readonly PublicListingSummary[]>;
+  readonly ensurePresent: (
+    tenantId: number,
+    listingId: number,
+    activeLandlordIds?: readonly number[]
+  ) => Promise<EnsureFavoritePresentResult>;
   readonly ensureAbsent: (tenantId: number, listingId: number) => Promise<number>;
+}
+
+export interface FavoriteRepositoryDependencies {
+  readonly loadPublicSummariesByIds?: (listingIds: readonly number[]) => Promise<readonly PublicListingSummary[]>;
+}
+
+interface FavoriteListingIdRow extends QueryResultRow {
+  readonly listing_id: unknown;
+}
+
+function mapFavoriteListingId(row: Readonly<FavoriteListingIdRow>): number {
+  if (!Number.isSafeInteger(row.listing_id) || (row.listing_id as number) < 1) {
+    throw new RepositoryInvariantError("Favorite listing identity is invalid.");
+  }
+  return row.listing_id as number;
 }
 
 interface EnsureFavoritePresentRow extends QueryResultRow {
@@ -41,9 +63,56 @@ function mapEnsureFavoritePresentRow(row: Readonly<EnsureFavoritePresentRow>): E
   return Object.freeze({ isVisible: row.is_visible, wasInserted: row.was_inserted });
 }
 
-export function createFavoriteRepository(executor: SqlExecutor): FavoriteRepository {
+export function createFavoriteRepository(
+  executor: SqlExecutor,
+  dependencies: FavoriteRepositoryDependencies = {}
+): FavoriteRepository {
   return Object.freeze({
-    async findPage(input: FavoritePageInput): Promise<readonly PublicListingSummary[]> {
+    async findPage(
+      input: FavoritePageInput,
+      activeLandlordIds?: readonly number[]
+    ): Promise<readonly PublicListingSummary[]> {
+      if (dependencies.loadPublicSummariesByIds) {
+        const visible: PublicListingSummary[] = [];
+        let offset = input.offset;
+        while (visible.length <= input.pageSize) {
+          const favoriteIds = await queryMany<FavoriteListingIdRow, number>(
+            executor,
+            {
+              text: `
+                SELECT listing_id
+                FROM favorites
+                WHERE tenant_id = $1
+                ORDER BY created_at DESC, listing_id DESC
+                LIMIT $2
+                OFFSET $3
+              `,
+              values: [input.tenantId, input.pageSize + 1, offset]
+            },
+            mapFavoriteListingId
+          );
+          if (favoriteIds.length === 0) break;
+
+          const summaries = await dependencies.loadPublicSummariesByIds(favoriteIds);
+          const summariesById = new Map(summaries.map((summary) => [summary.id, summary]));
+          for (const listingId of favoriteIds) {
+            const summary = summariesById.get(listingId);
+            if (summary !== undefined) visible.push(summary);
+          }
+          offset += favoriteIds.length;
+          if (favoriteIds.length < input.pageSize + 1) break;
+        }
+        return Object.freeze(visible.slice(0, input.pageSize + 1));
+      }
+
+      const visibilityJoin =
+        activeLandlordIds === undefined ? "JOIN users AS landlord ON landlord.id = l.landlord_id" : "";
+      const visibilityPredicate =
+        activeLandlordIds === undefined
+          ? "landlord.is_active = true"
+          : activeLandlordIds.length === 0
+            ? "FALSE"
+            : "l.landlord_id = ANY($4::integer[])";
       return Object.freeze(
         await queryMany<PublicListingSummaryRow, PublicListingSummary>(
           executor,
@@ -64,11 +133,11 @@ export function createFavoriteRepository(executor: SqlExecutor): FavoriteReposit
                   f.created_at AS favorite_created_at
                 FROM favorites AS f
                 JOIN listings AS l ON l.id = f.listing_id
-                JOIN users AS landlord ON landlord.id = l.landlord_id
+                ${visibilityJoin}
                 JOIN property_types AS pt ON pt.id = l.property_type_id
                 WHERE f.tenant_id = $1
                   AND l.status = 'APPROVED'
-                  AND landlord.is_active = true
+                  AND ${visibilityPredicate}
                 ORDER BY f.created_at DESC, f.listing_id DESC
                 LIMIT $2
                 OFFSET $3
@@ -107,14 +176,64 @@ export function createFavoriteRepository(executor: SqlExecutor): FavoriteReposit
               ) AS amenity_data ON true
               ORDER BY pc.favorite_created_at DESC, pc.id DESC
             `,
-            values: [input.tenantId, input.pageSize + 1, input.offset]
+            values:
+              activeLandlordIds === undefined
+                ? [input.tenantId, input.pageSize + 1, input.offset]
+                : [input.tenantId, input.pageSize + 1, input.offset, [...activeLandlordIds]]
           },
           mapPublicListingSummaryRow
         )
       );
     },
 
-    async ensurePresent(tenantId: number, listingId: number): Promise<EnsureFavoritePresentResult> {
+    async ensurePresent(
+      tenantId: number,
+      listingId: number,
+      activeLandlordIds?: readonly number[]
+    ): Promise<EnsureFavoritePresentResult> {
+      if (dependencies.loadPublicSummariesByIds) {
+        const affectedRows = await executeCommand(executor, {
+          text: `
+            INSERT INTO favorites (tenant_id, listing_id)
+            VALUES ($1, $2)
+            ON CONFLICT (tenant_id, listing_id)
+            DO NOTHING
+          `,
+          values: [tenantId, listingId]
+        });
+        const wasInserted = affectedRows === 1;
+        try {
+          const summaries = await dependencies.loadPublicSummariesByIds([listingId]);
+          if (summaries.some((summary) => summary.id === listingId)) {
+            return Object.freeze({ isVisible: true, wasInserted });
+          }
+
+          if (wasInserted) {
+            await executeCommand(executor, {
+              text: "DELETE FROM favorites WHERE tenant_id = $1 AND listing_id = $2",
+              values: [tenantId, listingId]
+            });
+          }
+          return Object.freeze({ isVisible: false, wasInserted: false });
+        } catch (error) {
+          if (wasInserted) {
+            await executeCommand(executor, {
+              text: "DELETE FROM favorites WHERE tenant_id = $1 AND listing_id = $2",
+              values: [tenantId, listingId]
+            });
+          }
+          throw error;
+        }
+      }
+
+      const visibilityJoin =
+        activeLandlordIds === undefined ? "JOIN users AS landlord ON landlord.id = l.landlord_id" : "";
+      const visibilityPredicate =
+        activeLandlordIds === undefined
+          ? "landlord.is_active = true"
+          : activeLandlordIds.length === 0
+            ? "FALSE"
+            : "l.landlord_id = ANY($3::integer[])";
       return queryExactlyOne<EnsureFavoritePresentRow, EnsureFavoritePresentResult>(
         executor,
         {
@@ -122,10 +241,10 @@ export function createFavoriteRepository(executor: SqlExecutor): FavoriteReposit
             WITH visible_target AS MATERIALIZED (
               SELECT l.id
               FROM listings AS l
-              JOIN users AS landlord ON landlord.id = l.landlord_id
+              ${visibilityJoin}
               WHERE l.id = $2
                 AND l.status = 'APPROVED'
-                AND landlord.is_active = true
+                AND ${visibilityPredicate}
             ),
             inserted AS (
               INSERT INTO favorites (tenant_id, listing_id)
@@ -139,7 +258,8 @@ export function createFavoriteRepository(executor: SqlExecutor): FavoriteReposit
               EXISTS (SELECT 1 FROM visible_target) AS is_visible,
               EXISTS (SELECT 1 FROM inserted) AS was_inserted
           `,
-          values: [tenantId, listingId]
+          values:
+            activeLandlordIds === undefined ? [tenantId, listingId] : [tenantId, listingId, [...activeLandlordIds]]
         },
         mapEnsureFavoritePresentRow
       );

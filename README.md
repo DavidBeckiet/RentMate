@@ -5,6 +5,11 @@ frontend, one Express/TypeScript modular monolith, and PostgreSQL accessed throu
 backend business modules are `auth`, `users`, `listings`, and `favorites`; Cloudinary and Nominatim remain backend
 integration clients.
 
+The repository also contains the first post-MVP microservices migration foundation: an independent API Gateway and
+Identity, Listing, and Engagement service entrypoints. The gateway keeps the monolith as the compatibility upstream
+until a boundary has completed its database and contract extraction. See
+[MICROSERVICES_MIGRATION.md](docs/architecture/MICROSERVICES_MIGRATION.md).
+
 Public users can search/filter approved listings in list/map/radius views and open privacy-safe detail. Tenants can
 register, authenticate, view landlord contact on currently public detail, and manage favorites. Landlords can manage
 profile, drafts, location, images, submission, and lifecycle. Admins can read moderation queues/history, perform the
@@ -28,6 +33,14 @@ npm.cmd run dev
 ```
 
 The frontend is available at `http://localhost:3000` and the local API at `http://localhost:4000`.
+
+To run the migration foundation with the frontend calling the gateway instead:
+
+```powershell
+npm.cmd run dev:microservices
+```
+
+The gateway listens on `http://localhost:4001` and forwards to the existing backend on port `4000`.
 
 ## Session and API usage
 

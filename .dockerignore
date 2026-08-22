@@ -1,0 +1,15 @@
+.git
+.github
+.codex
+node_modules
+**/node_modules
+frontend
+**/dist
+**/coverage
+**/*.zip
+backend/test
+backend/*.log
+docs
+.env
+.env.*
+*.local

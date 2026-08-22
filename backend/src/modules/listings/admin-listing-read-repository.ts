@@ -1,6 +1,7 @@
 import type { QueryResultRow } from "pg";
-import { queryMany, queryOptional } from "../../db/repository-primitives.js";
+import { queryMany, queryOptional, RepositoryInvariantError } from "../../db/repository-primitives.js";
 import type { SqlExecutor } from "../../db/sql-executor.js";
+import type { UserRole } from "../../shared/types/authentication.js";
 import {
   mapAdminListingDetailRow,
   type AdminListingDetailBase,
@@ -54,6 +55,18 @@ export interface AdminListingReadRepository {
   readonly findModerationHistoryPage: (input: ModerationHistoryPageInput) => Promise<readonly ModerationHistoryItem[]>;
 }
 
+export interface AdminListingLandlordProfile {
+  readonly id: number;
+  readonly role: UserRole;
+  readonly email: string;
+  readonly phone: string | null;
+  readonly isActive: boolean;
+}
+
+export interface AdminListingReadRepositoryDependencies {
+  readonly loadLandlordProfiles?: (userIds: readonly number[]) => Promise<readonly AdminListingLandlordProfile[]>;
+}
+
 function mapExistenceRow(row: Readonly<ListingExistenceRow>): number {
   if (!Number.isInteger(row.id) || (row.id as number) < 1 || (row.id as number) > 2_147_483_647) {
     throw new Error("Listing existence row is invalid.");
@@ -61,10 +74,62 @@ function mapExistenceRow(row: Readonly<ListingExistenceRow>): number {
   return row.id as number;
 }
 
-export function createAdminListingReadRepository(executor: SqlExecutor): AdminListingReadRepository {
+function landlordIdFromRow(row: Readonly<AdminListingSummaryRow | AdminListingDetailRow>): number {
+  if (!Number.isSafeInteger(row.landlord_id) || (row.landlord_id as number) < 1) {
+    throw new RepositoryInvariantError("Admin listing landlord identity is invalid.");
+  }
+  return row.landlord_id as number;
+}
+
+export function createAdminListingReadRepository(
+  executor: SqlExecutor,
+  dependencies: AdminListingReadRepositoryDependencies = {}
+): AdminListingReadRepository {
   const currentReasonRepository: CurrentModerationReasonRepository = createCurrentModerationReasonRepository(executor);
   return Object.freeze({
     async findListingPage(input: AdminListingPageInput): Promise<readonly AdminListingSummary[]> {
+      if (dependencies.loadLandlordProfiles) {
+        const rows = await queryMany<AdminListingSummaryRow, AdminListingSummaryRow>(
+          executor,
+          {
+            text: `
+              SELECT
+                l.id,
+                l.status,
+                l.title,
+                l.area_name,
+                l.updated_at,
+                l.landlord_id
+              FROM listings AS l
+              WHERE l.status = $1::listing_status
+              ORDER BY
+                l.updated_at DESC,
+                l.id DESC
+              LIMIT $2
+              OFFSET $3
+            `,
+            values: [input.status, input.limit, input.offset]
+          },
+          (row) => row
+        );
+        const profiles = await dependencies.loadLandlordProfiles(rows.map(landlordIdFromRow));
+        const profilesById = new Map(profiles.map((profile) => [profile.id, profile]));
+        return Object.freeze(
+          rows.map((row) => {
+            const profile = profilesById.get(landlordIdFromRow(row));
+            if (profile === undefined) {
+              throw new RepositoryInvariantError("Admin listing landlord profile is missing.");
+            }
+            return mapAdminListingSummaryRow({
+              ...row,
+              landlord_email: profile.email,
+              landlord_phone: profile.phone,
+              landlord_is_active: profile.isActive
+            });
+          })
+        );
+      }
+
       return Object.freeze(
         await queryMany<AdminListingSummaryRow, AdminListingSummary>(
           executor,
@@ -98,6 +163,50 @@ export function createAdminListingReadRepository(executor: SqlExecutor): AdminLi
     },
 
     async findListingDetailBase(listingId: number): Promise<AdminListingDetailBase | null> {
+      if (dependencies.loadLandlordProfiles) {
+        const row = await queryOptional<AdminListingDetailRow, AdminListingDetailRow>(
+          executor,
+          {
+            text: `
+              SELECT
+                l.id,
+                l.status,
+                l.title,
+                l.description,
+                l.monthly_rent,
+                l.room_area_sqm,
+                l.address_text,
+                l.area_name,
+                l.latitude,
+                l.longitude,
+                l.created_at,
+                l.updated_at,
+                property_type.code AS property_type_code,
+                property_type.label AS property_type_label,
+                l.landlord_id
+              FROM listings AS l
+              LEFT JOIN property_types AS property_type
+                ON property_type.id = l.property_type_id
+              WHERE l.id = $1
+              LIMIT 1
+            `,
+            values: [listingId]
+          },
+          (value) => value
+        );
+        if (row === null) return null;
+        const profiles = await dependencies.loadLandlordProfiles([landlordIdFromRow(row)]);
+        const profile = profiles.find((candidate) => candidate.id === landlordIdFromRow(row));
+        if (profile === undefined) return null;
+        return mapAdminListingDetailRow({
+          ...row,
+          landlord_role: profile.role,
+          landlord_email: profile.email,
+          landlord_phone: profile.phone,
+          landlord_is_active: profile.isActive
+        });
+      }
+
       return queryOptional<AdminListingDetailRow, AdminListingDetailBase>(
         executor,
         {

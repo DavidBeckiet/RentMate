@@ -1,0 +1,23 @@
+FROM node:22.15-alpine
+
+WORKDIR /app
+
+COPY services/identity-service/package.json services/identity-service/package-lock.json ./services/identity-service/
+RUN npm ci --omit=dev --prefix services/identity-service
+
+COPY services/listing-service/package.json services/listing-service/package-lock.json ./services/listing-service/
+RUN npm ci --omit=dev --prefix services/listing-service
+
+COPY services/engagement-service/package.json services/engagement-service/package-lock.json ./services/engagement-service/
+RUN npm ci --omit=dev --prefix services/engagement-service
+
+COPY services/shared/package.json services/shared/package-lock.json ./services/shared/
+RUN npm ci --omit=dev --prefix services/shared
+
+COPY services ./services
+
+ARG SERVICE
+ENV NODE_ENV=production
+ENV SERVICE_NAME=${SERVICE}
+
+CMD ["sh", "-c", "npm --prefix services/${SERVICE_NAME} run start"]

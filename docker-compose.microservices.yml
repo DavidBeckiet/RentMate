@@ -1,0 +1,156 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      # The init script creates the isolated databases for this fixed owner.
+      # Override the password only; changing the user would leave the bootstrap
+      # database ownership inconsistent.
+      POSTGRES_USER: rentmate
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}
+      POSTGRES_DB: rentmate
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    volumes:
+      - microservices_postgres_data:/var/lib/postgresql/data
+      - ./docker/postgres/init-microservices.sql:/docker-entrypoint-initdb.d/10-microservices.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+
+  identity:
+    build:
+      context: .
+      dockerfile: Dockerfile.microservices
+      args:
+        SERVICE: identity-service
+    environment: &service-environment
+      NODE_ENV: ${NODE_ENV:-production}
+      FRONTEND_ORIGIN: ${FRONTEND_ORIGIN:?FRONTEND_ORIGIN is required}
+      LOG_LEVEL: ${LOG_LEVEL:-info}
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_USER: rentmate
+      DB_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}
+      DB_POOL_MAX: ${DB_POOL_MAX:-10}
+      DB_CONNECTION_TIMEOUT_MS: ${DB_CONNECTION_TIMEOUT_MS:-5000}
+      DB_IDLE_TIMEOUT_MS: ${DB_IDLE_TIMEOUT_MS:-30000}
+      JWT_SECRET: ${JWT_SECRET:?JWT_SECRET is required}
+      JWT_EXPIRES_IN_SECONDS: "7200"
+      BCRYPT_COST: ${BCRYPT_COST:-12}
+      COOKIE_SECURE: "true"
+      MAX_IMAGES_PER_LISTING: "8"
+      MAX_IMAGE_BYTES: "5242880"
+      DEPLOYMENT_REGION: HO_CHI_MINH_CITY_VN
+      MAX_SEARCH_RADIUS_KM: "50"
+      CLOUDINARY_CLOUD_NAME: ${CLOUDINARY_CLOUD_NAME:?CLOUDINARY_CLOUD_NAME is required}
+      CLOUDINARY_API_KEY: ${CLOUDINARY_API_KEY:?CLOUDINARY_API_KEY is required}
+      CLOUDINARY_API_SECRET: ${CLOUDINARY_API_SECRET:?CLOUDINARY_API_SECRET is required}
+      NOMINATIM_BASE_URL: ${NOMINATIM_BASE_URL:-https://nominatim.openstreetmap.org}
+      NOMINATIM_USER_AGENT: ${NOMINATIM_USER_AGENT:?NOMINATIM_USER_AGENT is required}
+      SERVICE_INTERNAL_TOKEN: ${SERVICE_INTERNAL_TOKEN:?SERVICE_INTERNAL_TOKEN is required}
+      IDENTITY_DB_NAME: rentmate_identity
+      IDENTITY_SERVICE_PORT: 4100
+    command: ["sh", "-c", "npm --prefix services/identity-service run start"]
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -O - http://localhost:4100/api/health | grep -q 'status.*ok'"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile.backend
+    environment:
+      <<: *service-environment
+      DB_NAME: rentmate
+      PORT: 4000
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -O - http://localhost:4000/api/health | grep -q 'status.*ok'"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  listing:
+    build:
+      context: .
+      dockerfile: Dockerfile.microservices
+      args:
+        SERVICE: listing-service
+    environment:
+      <<: *service-environment
+      IDENTITY_SERVICE_URL: http://identity:4100
+      LISTING_DB_NAME: rentmate_listing
+      LISTING_SERVICE_PORT: 4200
+    command: ["sh", "-c", "npm --prefix services/listing-service run start"]
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -O - http://localhost:4200/api/health | grep -q 'status.*ok'"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+    depends_on:
+      identity:
+        condition: service_healthy
+
+  engagement:
+    build:
+      context: .
+      dockerfile: Dockerfile.microservices
+      args:
+        SERVICE: engagement-service
+    environment:
+      <<: *service-environment
+      IDENTITY_SERVICE_URL: http://identity:4100
+      LISTING_SERVICE_URL: http://listing:4200
+      ENGAGEMENT_DB_NAME: rentmate_engagement
+      ENGAGEMENT_SERVICE_PORT: 4300
+    command: ["sh", "-c", "npm --prefix services/engagement-service run start"]
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -O - http://localhost:4300/api/health | grep -q 'status.*ok'"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+    depends_on:
+      listing:
+        condition: service_healthy
+
+  gateway:
+    build:
+      context: .
+      dockerfile: Dockerfile.gateway
+    environment:
+      GATEWAY_PORT: 4001
+      BACKEND_URL: http://backend:4000
+      IDENTITY_SERVICE_URL: http://identity:4100
+      LISTING_SERVICE_URL: http://listing:4200
+      ENGAGEMENT_SERVICE_URL: http://engagement:4300
+      SERVICE_INTERNAL_TOKEN: ${SERVICE_INTERNAL_TOKEN:?SERVICE_INTERNAL_TOKEN is required}
+      GATEWAY_UPSTREAM_TIMEOUT_MS: ${GATEWAY_UPSTREAM_TIMEOUT_MS:-10000}
+    ports:
+      - "${GATEWAY_PORT:-4001}:4001"
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -O - http://localhost:4001/api/health | grep -q 'status.*ok'"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+    depends_on:
+      backend:
+        condition: service_healthy
+      identity:
+        condition: service_healthy
+      listing:
+        condition: service_healthy
+      engagement:
+        condition: service_healthy
+
+volumes:
+  microservices_postgres_data:

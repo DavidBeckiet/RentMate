@@ -1,0 +1,24 @@
+{
+  "name": "@rentmate/service-shared",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "typecheck": "tsc --noEmit -p tsconfig.json"
+  },
+  "dependencies": {
+    "cloudinary": "^2.10.0",
+    "cors": "2.8.5",
+    "dotenv": "16.5.0",
+    "express": "5.1.0",
+    "jose": "6.2.6",
+    "pg": "8.16.0"
+  },
+  "devDependencies": {
+    "@types/cors": "2.8.17",
+    "@types/express": "5.0.3",
+    "@types/node": "22.15.30",
+    "@types/pg": "8.15.4",
+    "tsx": "4.19.4",
+    "typescript": "5.8.3"
+  }
+}

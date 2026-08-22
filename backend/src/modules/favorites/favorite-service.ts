@@ -20,6 +20,10 @@ export interface FavoriteService {
   readonly ensureFavoriteAbsent: (principal: AuthenticatedPrincipal, listingId: number) => Promise<void>;
 }
 
+export interface FavoriteServiceDependencies {
+  readonly loadActiveLandlordIds?: () => Promise<readonly number[]>;
+}
+
 function requireTenant(principal: AuthenticatedPrincipal): number {
   if (principal.role !== "TENANT") {
     throw new ApplicationError("FORBIDDEN", forbiddenRoleMessage);
@@ -27,11 +31,20 @@ function requireTenant(principal: AuthenticatedPrincipal): number {
   return principal.userId;
 }
 
-export function createFavoriteService(repository: FavoriteRepository): FavoriteService {
+export function createFavoriteService(
+  repository: FavoriteRepository,
+  dependencies: FavoriteServiceDependencies = {}
+): FavoriteService {
   return Object.freeze({
     async listFavorites(principal: AuthenticatedPrincipal, query: FavoriteCollectionQuery): Promise<FavoritePage> {
       const tenantId = requireTenant(principal);
-      const rows = await repository.findPage({ tenantId, pageSize: query.pageSize, offset: query.offset });
+      const activeLandlordIds = dependencies.loadActiveLandlordIds
+        ? await dependencies.loadActiveLandlordIds()
+        : undefined;
+      const pageInput = { tenantId, pageSize: query.pageSize, offset: query.offset };
+      const rows = dependencies.loadActiveLandlordIds
+        ? await repository.findPage(pageInput, activeLandlordIds)
+        : await repository.findPage(pageInput);
       return Object.freeze({
         summaries: Object.freeze(rows.slice(0, query.pageSize)),
         page: query.page,
@@ -42,7 +55,12 @@ export function createFavoriteService(repository: FavoriteRepository): FavoriteS
 
     async ensureFavoritePresent(principal: AuthenticatedPrincipal, listingId: number): Promise<void> {
       const tenantId = requireTenant(principal);
-      const result = await repository.ensurePresent(tenantId, listingId);
+      const activeLandlordIds = dependencies.loadActiveLandlordIds
+        ? await dependencies.loadActiveLandlordIds()
+        : undefined;
+      const result = dependencies.loadActiveLandlordIds
+        ? await repository.ensurePresent(tenantId, listingId, activeLandlordIds)
+        : await repository.ensurePresent(tenantId, listingId);
       if (!result.isVisible) {
         throw new ApplicationError("RESOURCE_NOT_FOUND", resourceNotFoundMessage);
       }

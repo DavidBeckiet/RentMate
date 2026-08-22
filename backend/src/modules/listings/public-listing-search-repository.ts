@@ -35,11 +35,18 @@ export interface SearchCodeInput {
 
 export interface PublicListingSearchRepository {
   readonly findKnownSearchCodes: (input: SearchCodeInput) => Promise<KnownSearchCodes>;
-  readonly findOrdinaryPage: (search: OrdinaryPublicListingSearch) => Promise<readonly PublicListingSummary[]>;
-  readonly findBoundsPage: (search: BoundsPublicListingSearch) => Promise<readonly PublicListingSummary[]>;
+  readonly findOrdinaryPage: (
+    search: OrdinaryPublicListingSearch,
+    activeLandlordIds?: readonly number[]
+  ) => Promise<readonly PublicListingSummary[]>;
+  readonly findBoundsPage: (
+    search: BoundsPublicListingSearch,
+    activeLandlordIds?: readonly number[]
+  ) => Promise<readonly PublicListingSummary[]>;
   readonly findRadiusPage: (
     search: RadiusPublicListingSearch,
-    boundingBox: RadiusBoundingBox
+    boundingBox: RadiusBoundingBox,
+    activeLandlordIds?: readonly number[]
   ) => Promise<readonly PublicRadiusListingSummary[]>;
 }
 
@@ -136,9 +143,18 @@ function publicAggregateQuery(prefix: string, order: string, includeDistance: bo
     `;
 }
 
-function nonRadiusPageQuery(search: OrdinaryPublicListingSearch | BoundsPublicListingSearch): ParameterizedQuery {
+function ownerVisibilityPredicate(builder: QueryBuilder, activeLandlordIds: readonly number[] | undefined): string {
+  if (activeLandlordIds === undefined) return "landlord.is_active = true";
+  if (activeLandlordIds.length === 0) return "FALSE";
+  return `l.landlord_id = ANY(${builder.parameter([...activeLandlordIds])}::integer[])`;
+}
+
+function nonRadiusPageQuery(
+  search: OrdinaryPublicListingSearch | BoundsPublicListingSearch,
+  activeLandlordIds?: readonly number[]
+): ParameterizedQuery {
   const builder = createQueryBuilder();
-  const predicates = ["l.status = 'APPROVED'", "landlord.is_active = true"];
+  const predicates = ["l.status = 'APPROVED'", ownerVisibilityPredicate(builder, activeLandlordIds)];
   if (search.mode === "bounds") {
     predicates.push(`l.latitude >= ${builder.parameter(search.south)}`);
     predicates.push(`l.latitude <= ${builder.parameter(search.north)}`);
@@ -164,7 +180,7 @@ function nonRadiusPageQuery(search: OrdinaryPublicListingSearch | BoundsPublicLi
           pt.code AS property_type_code,
           pt.label AS property_type_label
         FROM listings AS l
-        JOIN users AS landlord ON landlord.id = l.landlord_id
+        ${activeLandlordIds === undefined ? "JOIN users AS landlord ON landlord.id = l.landlord_id" : ""}
         JOIN property_types AS pt ON pt.id = l.property_type_id
         WHERE ${predicates.join("\n          AND ")}
         ORDER BY ${order.candidate}
@@ -177,9 +193,13 @@ function nonRadiusPageQuery(search: OrdinaryPublicListingSearch | BoundsPublicLi
   };
 }
 
-function radiusPageQuery(search: RadiusPublicListingSearch, boundingBox: RadiusBoundingBox): ParameterizedQuery {
+function radiusPageQuery(
+  search: RadiusPublicListingSearch,
+  boundingBox: RadiusBoundingBox,
+  activeLandlordIds?: readonly number[]
+): ParameterizedQuery {
   const builder = createQueryBuilder();
-  const predicates = ["l.status = 'APPROVED'", "landlord.is_active = true"];
+  const predicates = ["l.status = 'APPROVED'", ownerVisibilityPredicate(builder, activeLandlordIds)];
   predicates.push(`l.latitude >= ${builder.parameter(boundingBox.south)}`);
   predicates.push(`l.latitude <= ${builder.parameter(boundingBox.north)}`);
   predicates.push(`l.longitude >= ${builder.parameter(boundingBox.west)}`);
@@ -217,7 +237,7 @@ function radiusPageQuery(search: RadiusPublicListingSearch, boundingBox: RadiusB
           pt.code AS property_type_code,
           pt.label AS property_type_label
         FROM listings AS l
-        JOIN users AS landlord ON landlord.id = l.landlord_id
+        ${activeLandlordIds === undefined ? "JOIN users AS landlord ON landlord.id = l.landlord_id" : ""}
         JOIN property_types AS pt ON pt.id = l.property_type_id
         WHERE ${predicates.join("\n          AND ")}
       ),
@@ -271,21 +291,27 @@ export function createPublicListingSearchRepository(executor: SqlExecutor): Publ
       return Object.freeze({ propertyTypes: Object.freeze(propertyTypes), amenities: Object.freeze(amenities) });
     },
 
-    async findOrdinaryPage(search: OrdinaryPublicListingSearch): Promise<readonly PublicListingSummary[]> {
+    async findOrdinaryPage(
+      search: OrdinaryPublicListingSearch,
+      activeLandlordIds?: readonly number[]
+    ): Promise<readonly PublicListingSummary[]> {
       return Object.freeze(
         await queryMany<PublicListingSummaryRow, PublicListingSummary>(
           executor,
-          nonRadiusPageQuery(search),
+          nonRadiusPageQuery(search, activeLandlordIds),
           mapPublicListingSummaryRow
         )
       );
     },
 
-    async findBoundsPage(search: BoundsPublicListingSearch): Promise<readonly PublicListingSummary[]> {
+    async findBoundsPage(
+      search: BoundsPublicListingSearch,
+      activeLandlordIds?: readonly number[]
+    ): Promise<readonly PublicListingSummary[]> {
       return Object.freeze(
         await queryMany<PublicListingSummaryRow, PublicListingSummary>(
           executor,
-          nonRadiusPageQuery(search),
+          nonRadiusPageQuery(search, activeLandlordIds),
           mapPublicListingSummaryRow
         )
       );
@@ -293,12 +319,13 @@ export function createPublicListingSearchRepository(executor: SqlExecutor): Publ
 
     async findRadiusPage(
       search: RadiusPublicListingSearch,
-      boundingBox: RadiusBoundingBox
+      boundingBox: RadiusBoundingBox,
+      activeLandlordIds?: readonly number[]
     ): Promise<readonly PublicRadiusListingSummary[]> {
       return Object.freeze(
         await queryMany<PublicRadiusListingSummaryRow, PublicRadiusListingSummary>(
           executor,
-          radiusPageQuery(search, boundingBox),
+          radiusPageQuery(search, boundingBox, activeLandlordIds),
           mapPublicRadiusListingSummaryRow
         )
       );

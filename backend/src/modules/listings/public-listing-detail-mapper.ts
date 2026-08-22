@@ -8,6 +8,7 @@ const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const phonePattern = /^\+[1-9][0-9]{7,14}$/;
 
 export interface PublicListingDetailRow extends QueryResultRow {
+  readonly landlord_id?: unknown;
   readonly id: unknown;
   readonly title: unknown;
   readonly description: unknown;
