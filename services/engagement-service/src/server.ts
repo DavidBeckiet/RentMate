@@ -4,9 +4,9 @@ import { checkDatabaseConnection, closeRuntimePool, getRuntimePool } from "../..
 import { createSqlExecutor } from "../../shared/src/runtime/db/sql-executor.js";
 import { createApp } from "../../shared/src/runtime/app.js";
 import { createSessionTokenService } from "../../shared/session-token.js";
-import { createFavoriteRepository } from "./domain/favorites/favorite-repository.js";
-import { createFavoriteService } from "./domain/favorites/favorite-service.js";
-import { registerFavoriteRoutes } from "./domain/favorites/routes.js";
+import { createFavoriteRepository } from "./modules/favorites/repositories/favorite-repository.js";
+import { createFavoriteService } from "./modules/favorites/services/favorite-service.js";
+import { registerFavoriteRoutes } from "./modules/favorites/routes.js";
 import { createLogger } from "../../shared/src/runtime/shared/logging/logger.js";
 import { createProtectedAuthenticationMiddleware } from "../../shared/src/runtime/shared/middleware/authentication.js";
 import { createRoleMiddleware } from "../../shared/src/runtime/shared/middleware/role.js";

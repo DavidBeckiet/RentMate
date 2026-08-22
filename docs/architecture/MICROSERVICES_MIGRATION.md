@@ -186,7 +186,8 @@ The current implementation is operationally cut over for all four existing MVP b
 - Docker Compose topology, production backend image, CI typecheck/build validation, and local smoke deployment: complete.
 
 The business domains are now service-owned: Identity auth/users, Listing lifecycle/search/moderation/images/geocoding,
-and Engagement favorites live under `services/*/src/domain`, and service entrypoints no longer import
+and Engagement favorites live under `services/*/src/modules`, with controllers, services, repositories, validations,
+and domain-specific support grouped inside each module. Service entrypoints no longer import
 `backend/src/modules`. Shared runtime infrastructure now lives under `services/shared/src/runtime`; each service
 installs and starts from its own package without importing `backend` at runtime. The backend remains available only as
 a separately built compatibility/rollback upstream with its own legacy runtime copy.

@@ -129,6 +129,7 @@ services:
       dockerfile: Dockerfile.gateway
     environment:
       GATEWAY_PORT: 4001
+      FRONTEND_ORIGIN: ${FRONTEND_ORIGIN:?FRONTEND_ORIGIN is required}
       BACKEND_URL: http://backend:4000
       IDENTITY_SERVICE_URL: http://identity:4100
       LISTING_SERVICE_URL: http://listing:4200

@@ -54,10 +54,45 @@ test("proxies API requests and preserves upstream response cookies", async () =>
       headers: { origin: "http://localhost:3000" }
     });
     assert.equal(result.status, 200);
+    assert.equal(result.headers.get("access-control-allow-origin"), "http://localhost:3000");
+    assert.equal(result.headers.get("access-control-allow-credentials"), "true");
     assert.deepEqual(result.headers.getSetCookie(), ["rentmate_session=test-cookie; HttpOnly; Path=/"]);
     assert.deepEqual(await result.json(), { data: { ok: true } });
   } finally {
     await close(gateway);
     await close(upstream);
+  }
+});
+
+test("handles allowed preflight and rejects unsafe requests from another origin", async () => {
+  const gateway = createGatewayServer({
+    BACKEND_URL: "http://127.0.0.1:1",
+    FRONTEND_ORIGIN: "http://localhost:3000"
+  });
+  const gatewayPort = await listen(gateway);
+
+  try {
+    const preflight = await fetch(`http://127.0.0.1:${gatewayPort}/api/v1/listings`, {
+      method: "OPTIONS",
+      headers: {
+        origin: "http://localhost:3000",
+        "access-control-request-method": "POST",
+        "access-control-request-headers": "content-type"
+      }
+    });
+    assert.equal(preflight.status, 204);
+    assert.equal(preflight.headers.get("access-control-allow-origin"), "http://localhost:3000");
+    assert.equal(preflight.headers.get("access-control-allow-credentials"), "true");
+
+    const rejected = await fetch(`http://127.0.0.1:${gatewayPort}/api/v1/listings`, {
+      method: "POST",
+      headers: { origin: "http://malicious.example" }
+    });
+    assert.equal(rejected.status, 403);
+    assert.deepEqual(await rejected.json(), {
+      error: { code: "ORIGIN_NOT_ALLOWED", message: "The request origin is not allowed." }
+    });
+  } finally {
+    await close(gateway);
   }
 });

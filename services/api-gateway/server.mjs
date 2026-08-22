@@ -13,6 +13,9 @@ const hopByHopHeaders = new Set([
   "upgrade"
 ]);
 
+const corsMethods = "GET, HEAD, POST, PUT, PATCH, DELETE, OPTIONS";
+const corsHeaders = "Content-Type";
+
 function readPort(value, fallback) {
   const port = Number(value ?? fallback);
   if (!Number.isInteger(port) || port < 1 || port > 65535) {
@@ -50,8 +53,17 @@ function normalizeBaseUrl(value, name) {
   return parsed;
 }
 
+function normalizeOrigin(value, name) {
+  const parsed = requireHttpUrl(value, name);
+  if (parsed.pathname !== "/" || parsed.search || parsed.hash || parsed.username || parsed.password) {
+    throw new Error(`${name} must contain only an HTTP or HTTPS origin.`);
+  }
+  return parsed.origin;
+}
+
 export function createRouteTable(environment = process.env) {
   const backendUrl = normalizeBaseUrl(environment.BACKEND_URL ?? "http://localhost:4000", "BACKEND_URL");
+  const frontendOrigin = normalizeOrigin(environment.FRONTEND_ORIGIN ?? "http://localhost:3000", "FRONTEND_ORIGIN");
   const optionalUrl = (key) => {
     const value = environment[key]?.trim();
     return value ? normalizeBaseUrl(value, key) : null;
@@ -59,6 +71,7 @@ export function createRouteTable(environment = process.env) {
 
   return Object.freeze({
     backend: backendUrl,
+    frontendOrigin,
     identity: optionalUrl("IDENTITY_SERVICE_URL"),
     listing: optionalUrl("LISTING_SERVICE_URL"),
     engagement: optionalUrl("ENGAGEMENT_SERVICE_URL"),
@@ -111,11 +124,28 @@ function copyRequestHeaders(request, upstream, internalServiceToken) {
 function copyResponseHeaders(headers) {
   const result = {};
   for (const [name, value] of Object.entries(headers)) {
-    if (value !== undefined && !hopByHopHeaders.has(name)) {
+    if (value !== undefined && !hopByHopHeaders.has(name) && !name.toLowerCase().startsWith("access-control-")) {
       result[name] = value;
     }
   }
   return result;
+}
+
+function setCorsHeaders(request, response, frontendOrigin) {
+  if (request.headers.origin !== frontendOrigin) {
+    return false;
+  }
+
+  response.setHeader("Access-Control-Allow-Origin", frontendOrigin);
+  response.setHeader("Access-Control-Allow-Credentials", "true");
+  response.setHeader("Access-Control-Allow-Methods", corsMethods);
+  response.setHeader("Access-Control-Allow-Headers", corsHeaders);
+  response.setHeader("Vary", "Origin");
+  return true;
+}
+
+function isUnsafeMethod(method) {
+  return method !== "GET" && method !== "HEAD" && method !== "OPTIONS";
 }
 
 function sendGatewayError(response, statusCode, code, message) {
@@ -159,6 +189,23 @@ export function createGatewayServer(environment = process.env) {
   const routes = createRouteTable(environment);
   const server = http.createServer((request, response) => {
     const pathname = new URL(request.url ?? "/", "http://gateway.local").pathname;
+    const origin = request.headers.origin;
+    const originAllowed = !origin || setCorsHeaders(request, response, routes.frontendOrigin);
+
+    if (!originAllowed && (request.method === "OPTIONS" || isUnsafeMethod(request.method ?? "GET"))) {
+      sendGatewayError(response, 403, "ORIGIN_NOT_ALLOWED", "The request origin is not allowed.");
+      return;
+    }
+
+    if (request.method === "OPTIONS") {
+      if (originAllowed) {
+        response.writeHead(204);
+        response.end();
+      } else {
+        sendGatewayError(response, 403, "ORIGIN_NOT_ALLOWED", "The request origin is not allowed.");
+      }
+      return;
+    }
 
     if (!pathname.startsWith("/api/")) {
       sendGatewayError(response, 404, "NOT_FOUND", "The requested route was not found.");

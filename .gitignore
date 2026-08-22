@@ -6,11 +6,21 @@ node_modules/
 dist/
 *.tsbuildinfo
 
+# Test and browser artifacts
+coverage/
+playwright-report/
+test-results/
+blob-report/
+
+# Next.js generated agent metadata
+/frontend/AGENTS.md
+/frontend/CLAUDE.md
+
 # Environment files
 .env
-.env.local
-.env.*.local
+.env.*
 !.env.example
+!.env.*.example
 
 # Logs
 *.log
@@ -23,8 +33,3 @@ Thumbs.db
 # Python generated cache
 __pycache__/
 *.py[cod]
-
-# Playwright artifacts
-/frontend/test-results/
-/frontend/playwright-report/
-/frontend/blob-report/
