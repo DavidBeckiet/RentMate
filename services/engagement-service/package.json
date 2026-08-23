@@ -8,6 +8,7 @@
   "scripts": {
     "dev": "tsx watch src/server.ts",
     "start": "tsx src/server.ts",
+    "test": "node --import tsx --test test/*.test.ts",
     "migrate": "tsx migrate.ts",
     "backfill": "tsx backfill.ts"
   },

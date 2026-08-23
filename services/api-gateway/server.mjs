@@ -98,7 +98,14 @@ export function resolveUpstream(pathname, routes) {
   ) {
     return routes.listing;
   }
-  if (routes.engagement && pathname.startsWith("/api/v1/favorites")) {
+  if (
+    routes.engagement &&
+    (pathname.startsWith("/api/v1/favorites") ||
+      pathname.startsWith("/api/v1/inquiries") ||
+      pathname.startsWith("/api/v1/tenant/inquiries") ||
+      pathname.startsWith("/api/v1/landlord/inquiries") ||
+      pathname.startsWith("/api/v1/notifications"))
+  ) {
     return routes.engagement;
   }
   return routes.backend;

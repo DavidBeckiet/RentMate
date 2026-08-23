@@ -1,6 +1,8 @@
 export type UserRole = "TENANT" | "LANDLORD" | "ADMIN";
 
 export type ListingStatus = "DRAFT" | "PENDING" | "APPROVED" | "REJECTED" | "INACTIVE" | "HIDDEN";
+export type InquiryStatus = "NEW" | "CONTACTED" | "CLOSED";
+export type NotificationEventType = "INQUIRY_CREATED" | "MESSAGE_CREATED" | "INQUIRY_STATUS_CHANGED";
 
 export type ModerationAction = "APPROVE" | "REJECT" | "HIDE" | "RESTORE";
 
@@ -243,6 +245,41 @@ export interface AdminUserQuery extends PaginationQuery {
 
 export interface ActivationBody {
   readonly isActive: boolean;
+}
+
+export interface InquiryMessage {
+  readonly id: number;
+  readonly senderRole: "TENANT" | "LANDLORD";
+  readonly body: string;
+  readonly isRead: boolean;
+  readonly createdAt: string;
+}
+
+export interface Inquiry {
+  readonly id: number;
+  readonly listingId: number;
+  readonly status: InquiryStatus;
+  readonly contactPhone: string | null;
+  readonly preferredContactAt: string | null;
+  readonly createdAt: string;
+  readonly updatedAt: string;
+  readonly messages: readonly InquiryMessage[];
+}
+
+export interface CreateInquiryBody {
+  readonly listingId: number;
+  readonly message: string;
+  readonly contactPhone?: string | null;
+  readonly preferredContactAt?: string | null;
+}
+
+export interface Notification {
+  readonly id: number;
+  readonly eventType: NotificationEventType;
+  readonly inquiryId: number;
+  readonly resourcePath: string;
+  readonly isRead: boolean;
+  readonly createdAt: string;
 }
 
 export interface HealthResponse {

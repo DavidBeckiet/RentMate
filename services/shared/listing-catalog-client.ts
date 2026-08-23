@@ -1,4 +1,5 @@
 import type { PublicListingSummary } from "./public-listing-summary.js";
+import { assertPublicInquiryTarget, type PublicInquiryTarget } from "./public-inquiry-target.js";
 
 export interface ListingCatalogClientOptions {
   readonly baseUrl: string;
@@ -8,6 +9,7 @@ export interface ListingCatalogClientOptions {
 
 export interface ListingCatalogClient {
   readonly loadPublicSummariesByIds: (listingIds: readonly number[]) => Promise<readonly PublicListingSummary[]>;
+  readonly loadPublicInquiryTarget: (listingId: number) => Promise<PublicInquiryTarget | null>;
 }
 
 function normalizeBaseUrl(value: string): string {
@@ -68,6 +70,40 @@ export function createListingCatalogClient(options: ListingCatalogClientOptions)
         throw new Error("Listing service catalog response is invalid.");
       }
       return Object.freeze([...summaries]);
+    },
+
+    async loadPublicInquiryTarget(listingId: number): Promise<PublicInquiryTarget | null> {
+      let response: Response;
+      try {
+        const query = new URLSearchParams({ ids: String(listingId) });
+        response = await fetcher(`${baseUrl}/internal/v1/listings/public-inquiry-targets?${query.toString()}`, {
+          method: "GET",
+          headers: { "x-rentmate-internal-token": options.internalToken }
+        });
+      } catch {
+        throw new Error("Listing service inquiry target lookup failed.");
+      }
+
+      if (!response.ok) throw new Error("Listing service inquiry target lookup failed.");
+      let payload: unknown;
+      try {
+        payload = await response.json();
+      } catch {
+        throw new Error("Listing service inquiry target response is invalid.");
+      }
+      if (typeof payload !== "object" || payload === null || !("data" in payload)) {
+        throw new Error("Listing service inquiry target response is invalid.");
+      }
+      const targets = (payload as { readonly data: unknown }).data;
+      if (!Array.isArray(targets)) throw new Error("Listing service inquiry target response is invalid.");
+      const target = targets.find((value) => {
+        try {
+          return assertPublicInquiryTarget(value).listingId === listingId;
+        } catch {
+          return false;
+        }
+      });
+      return target === undefined ? null : assertPublicInquiryTarget(target);
     }
   });
 }

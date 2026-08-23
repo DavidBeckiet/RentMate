@@ -2,6 +2,7 @@ import type { HealthResponse } from "../../types/api";
 import { createAdminApi } from "./admin";
 import { createAuthApi } from "./auth";
 import { createFavoritesApi } from "./favorites";
+import { createContactApi } from "./contact";
 import { createListingsApi } from "./listings";
 import { createLookupsApi } from "./lookups";
 import { createTransport, type ApiTransport } from "./transport";
@@ -17,6 +18,7 @@ export function createApiClient(transport: ApiTransport = createTransport()) {
     lookups: createLookupsApi(transport),
     listings: createListingsApi(transport),
     favorites: createFavoritesApi(transport),
+    contact: createContactApi(transport),
     admin: createAdminApi(transport)
   } as const;
 }

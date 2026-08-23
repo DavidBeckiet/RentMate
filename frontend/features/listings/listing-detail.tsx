@@ -4,6 +4,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { MapBase } from "../../components/map/map-base";
+import { InquiryForm } from "../contact/inquiry-form";
 import { Button } from "../../components/ui/button";
 import { ErrorState, LoadingState } from "../../components/ui/feedback-states";
 import { Icon } from "../../components/ui/icon";
@@ -319,6 +320,9 @@ export function ListingDetail({ listingId, actions }: ListingDetailProps) {
             ) : (
               <p className="text-xs font-medium text-slate-500">Thông tin liên hệ không có trong phản hồi hiện tại.</p>
             )}
+            <div className="border-t-2 border-heroDark-950 pt-4">
+              <InquiryForm listingId={detail.id} />
+            </div>
           </section>
         </aside>
       </div>

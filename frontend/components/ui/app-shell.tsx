@@ -141,13 +141,22 @@ export function AppShell({ children }: Readonly<{ children: ReactNode }>) {
               </Link>
 
               {status === "authenticated" && user?.role === "TENANT" ? (
-                <Link
-                  href="/favorites"
-                  aria-current={pathname === "/favorites" ? "page" : undefined}
-                  className={navLink}
-                >
-                  Tin đã lưu
-                </Link>
+                <>
+                  <Link
+                    href="/favorites"
+                    aria-current={pathname === "/favorites" ? "page" : undefined}
+                    className={navLink}
+                  >
+                    Tin đã lưu
+                  </Link>
+                  <Link
+                    href="/inquiries"
+                    aria-current={pathname === "/inquiries" || pathname.startsWith("/inquiries/") ? "page" : undefined}
+                    className={navLink}
+                  >
+                    Yêu cầu
+                  </Link>
+                </>
               ) : null}
 
               {status === "authenticated" && user?.role === "LANDLORD" ? (
@@ -168,7 +177,24 @@ export function AppShell({ children }: Readonly<{ children: ReactNode }>) {
                   >
                     Hồ sơ
                   </Link>
+                  <Link
+                    href="/landlord/inquiries"
+                    aria-current={pathname.startsWith("/landlord/inquiries") ? "page" : undefined}
+                    className={navLink}
+                  >
+                    Yêu cầu
+                  </Link>
                 </>
+              ) : null}
+
+              {status === "authenticated" ? (
+                <Link
+                  href="/notifications"
+                  aria-current={pathname.startsWith("/notifications") ? "page" : undefined}
+                  className={navLink}
+                >
+                  Thông báo
+                </Link>
               ) : null}
 
               {status === "authenticated" && user?.role === "ADMIN" ? (

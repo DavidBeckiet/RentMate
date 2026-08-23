@@ -14,6 +14,10 @@ import { createShutdownHandler } from "../../shared/src/runtime/shutdown.js";
 import { applyDatabaseOverrides } from "../../shared/database-overrides.js";
 import { createIdentityAccountClient } from "../../shared/identity-account-client.js";
 import { createListingCatalogClient } from "../../shared/listing-catalog-client.js";
+import { withTransaction } from "../../shared/src/runtime/db/transaction.js";
+import { createContactRepository } from "./modules/contact/repositories/contact-repository.js";
+import { createContactService } from "./modules/contact/services/contact-service.js";
+import { registerContactRoutes } from "./modules/contact/routes.js";
 
 function listen(server: Server, port: number): Promise<void> {
   return new Promise((resolve, reject) => {
@@ -68,6 +72,15 @@ async function startEngagementService(): Promise<void> {
     baseUrl: listingServiceUrl,
     internalToken: process.env.SERVICE_INTERNAL_TOKEN ?? ""
   });
+  const contactRepository = createContactRepository();
+  const contactService = createContactService({
+    repository: contactRepository,
+    listingCatalogClient,
+    identityAccountClient,
+    transactionRunner: {
+      run: (operation) => withTransaction(databasePool, logger, operation)
+    }
+  });
   const loadAuthenticationAccount = identityAccountClient.loadAuthenticationAccount;
   const requiredAuthentication = createProtectedAuthenticationMiddleware({
     verifySessionToken: sessionTokenService.verify,
@@ -88,6 +101,12 @@ async function startEngagementService(): Promise<void> {
           }),
           { loadActiveLandlordIds: identityAccountClient.loadActiveLandlordIds }
         )
+      });
+      registerContactRoutes(router, {
+        authenticationMiddleware: requiredAuthentication,
+        tenantRoleMiddleware: tenantRole,
+        landlordRoleMiddleware: createRoleMiddleware(["LANDLORD"]),
+        contactService
       });
     }
   });

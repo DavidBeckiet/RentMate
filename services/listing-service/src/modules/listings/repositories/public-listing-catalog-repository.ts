@@ -12,6 +12,10 @@ export interface PublicListingCatalogRepository {
     listingIds: readonly number[],
     activeLandlordIds?: readonly number[]
   ) => Promise<readonly PublicListingSummary[]>;
+  readonly findPublicInquiryTargets: (
+    listingIds: readonly number[],
+    activeLandlordIds?: readonly number[]
+  ) => Promise<readonly { readonly listingId: number; readonly landlordId: number }[]>;
 }
 
 interface CatalogRow extends PublicListingSummaryRow, QueryResultRow {}
@@ -78,6 +82,38 @@ export function createPublicListingCatalogRepository(executor: SqlExecutor): Pub
           },
           mapPublicListingSummaryRow
         )
+      );
+    },
+
+    async findPublicInquiryTargets(
+      listingIds: readonly number[],
+      activeLandlordIds?: readonly number[]
+    ): Promise<readonly { readonly listingId: number; readonly landlordId: number }[]> {
+      if (listingIds.length === 0 || activeLandlordIds?.length === 0) return Object.freeze([]);
+      const values: unknown[] = [[...listingIds]];
+      const visibility =
+        activeLandlordIds === undefined
+          ? "landlord.is_active = true"
+          : `l.landlord_id = ANY($${values.push([...activeLandlordIds])}::integer[])`;
+      const result = await executor.query<QueryResultRow & { listing_id: unknown; landlord_id: unknown }>({
+        text: `
+          SELECT l.id AS listing_id, l.landlord_id
+          FROM listings AS l
+          ${activeLandlordIds === undefined ? "JOIN users AS landlord ON landlord.id = l.landlord_id" : ""}
+          WHERE l.id = ANY($1::integer[])
+            AND l.status = 'APPROVED'
+            AND ${visibility}
+          ORDER BY l.id ASC
+        `,
+        values
+      });
+      return Object.freeze(
+        result.rows.map((row) => {
+          if (!Number.isSafeInteger(row.listing_id) || !Number.isSafeInteger(row.landlord_id)) {
+            throw new Error("Public inquiry target representation is invalid.");
+          }
+          return Object.freeze({ listingId: row.listing_id as number, landlordId: row.landlord_id as number });
+        })
       );
     }
   });

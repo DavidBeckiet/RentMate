@@ -18,7 +18,10 @@ import { createListingImageOrderService } from "./modules/listings/services/list
 import { createListingImageUploadRepository } from "./modules/listings/repositories/listing-image-upload-repository.js";
 import { createListingImageUploadService } from "./modules/listings/services/listing-image-upload-service.js";
 import { createListingLifecycleActionService } from "./modules/listings/services/listing-lifecycle-action-service.js";
-import { createListingCreateService, type TransactionRunner } from "./modules/listings/services/listing-create-service.js";
+import {
+  createListingCreateService,
+  type TransactionRunner
+} from "./modules/listings/services/listing-create-service.js";
 import { createListingSubmitService } from "./modules/listings/services/listing-submit-service.js";
 import { createListingUpdateService } from "./modules/listings/services/listing-update-service.js";
 import { createLookupRepository } from "./modules/listings/repositories/lookup-repository.js";
@@ -196,6 +199,34 @@ async function startListingService(): Promise<void> {
           .then((summaries) => response.status(200).json({ data: summaries }))
           .catch(next);
       });
+      internalApp.get(
+        "/internal/v1/listings/public-inquiry-targets",
+        internalServiceGuard,
+        (request, response, next) => {
+          const rawIds = request.query.ids;
+          if (typeof rawIds !== "string" || rawIds.length === 0) {
+            response.status(400).end();
+            return;
+          }
+          const listingIds = rawIds.split(",").map((value) => Number(value));
+          if (
+            listingIds.length === 0 ||
+            listingIds.length > 100 ||
+            listingIds.some((id) => !Number.isSafeInteger(id) || id < 1 || id > 2_147_483_647)
+          ) {
+            response.status(400).end();
+            return;
+          }
+
+          void identityAccountClient
+            .loadActiveLandlordIds()
+            .then((activeLandlordIds) =>
+              publicListingCatalogRepository.findPublicInquiryTargets([...new Set(listingIds)], activeLandlordIds)
+            )
+            .then((targets) => response.status(200).json({ data: targets }))
+            .catch(next);
+        }
+      );
     }
   });
   const server = createServer(app);
