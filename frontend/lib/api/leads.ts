@@ -1,4 +1,4 @@
-import type { ApiPage, LandlordLead, LeadNoteState, LeadQuery } from "../../types/api";
+import type { ApiPage, LandlordLead, LeadNoteState, LeadQuery, LeadReminderState } from "../../types/api";
 import type { ApiTransport } from "./transport";
 
 export function createLeadsApi(transport: ApiTransport) {
@@ -9,6 +9,12 @@ export function createLeadsApi(transport: ApiTransport) {
       transport.object(`/api/v1/landlord/leads/${inquiryId}/note`, {
         method: "PATCH",
         json: { note },
+        signal
+      }),
+    saveReminder: (inquiryId: number, remindAt: string | null, signal?: AbortSignal): Promise<LeadReminderState> =>
+      transport.object(`/api/v1/landlord/leads/${inquiryId}/reminder`, {
+        method: "PATCH",
+        json: { remindAt },
         signal
       })
   } as const;

@@ -2,12 +2,13 @@ import type { Request, RequestHandler } from "express";
 import { ApplicationError } from "../../../../../shared/src/runtime/shared/errors/application-error.js";
 import { sendObject, sendPaginated } from "../../../../../shared/src/runtime/shared/http/responses.js";
 import { authenticationRequiredMessage } from "../../../../../shared/src/runtime/shared/middleware/authentication.js";
-import type { LandlordLead, LeadNoteState } from "../repositories/lead-repository.js";
+import type { LandlordLead, LeadNoteState, LeadReminderState } from "../repositories/lead-repository.js";
 import type { LeadService } from "../services/lead-service.js";
 import {
   parseLeadInquiryId,
   validateLeadCollectionQuery,
-  validateLeadNoteBody
+  validateLeadNoteBody,
+  validateLeadReminderBody
 } from "../validations/lead-validation.js";
 
 function principal(request: Request): NonNullable<Request["auth"]> {
@@ -28,8 +29,14 @@ function leadDto(lead: LandlordLead) {
     needsReply: lead.needsReply,
     hasUnreadTenantMessages: lead.hasUnreadTenantMessages,
     note: lead.note,
-    noteUpdatedAt: lead.noteUpdatedAt
+    noteUpdatedAt: lead.noteUpdatedAt,
+    reminderAt: lead.reminderAt,
+    reminderUpdatedAt: lead.reminderUpdatedAt
   };
+}
+
+function reminderDto(reminder: LeadReminderState) {
+  return { inquiryId: reminder.inquiryId, remindAt: reminder.remindAt, updatedAt: reminder.updatedAt };
 }
 
 function noteDto(note: LeadNoteState) {
@@ -50,6 +57,19 @@ export function createSaveLeadNoteHandler(service: LeadService): RequestHandler 
     void service
       .saveNote(principal(request), parseLeadInquiryId(request.params.inquiryId), validateLeadNoteBody(request.body))
       .then((note) => sendObject(response, noteDto(note)))
+      .catch(next);
+  };
+}
+
+export function createSaveLeadReminderHandler(service: LeadService): RequestHandler {
+  return (request, response, next) => {
+    void service
+      .saveReminder(
+        principal(request),
+        parseLeadInquiryId(request.params.inquiryId),
+        validateLeadReminderBody(request.body)
+      )
+      .then((reminder) => sendObject(response, reminderDto(reminder)))
       .catch(next);
   };
 }

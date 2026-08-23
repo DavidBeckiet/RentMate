@@ -28,11 +28,19 @@ export interface LandlordLead {
   readonly hasUnreadTenantMessages: boolean;
   readonly note: string | null;
   readonly noteUpdatedAt: string | null;
+  readonly reminderAt: string | null;
+  readonly reminderUpdatedAt: string | null;
 }
 
 export interface LeadNoteState {
   readonly inquiryId: number;
   readonly note: string | null;
+  readonly updatedAt: string | null;
+}
+
+export interface LeadReminderState {
+  readonly inquiryId: number;
+  readonly remindAt: string | null;
   readonly updatedAt: string | null;
 }
 
@@ -50,6 +58,8 @@ interface LeadRow extends QueryResultRow {
   has_unread_tenant_messages: unknown;
   note: unknown;
   note_updated_at: unknown;
+  reminder_at: unknown;
+  reminder_updated_at: unknown;
 }
 
 interface InquiryOwnerRow extends QueryResultRow {
@@ -59,6 +69,12 @@ interface InquiryOwnerRow extends QueryResultRow {
 interface NoteRow extends QueryResultRow {
   inquiry_id: unknown;
   note: unknown;
+  updated_at: unknown;
+}
+
+interface ReminderRow extends QueryResultRow {
+  inquiry_id: unknown;
+  remind_at: unknown;
   updated_at: unknown;
 }
 
@@ -126,7 +142,17 @@ function mapLead(row: Readonly<LeadRow>): LandlordLead {
     needsReply: row.status !== "CLOSED" && lastMessage?.senderRole === "TENANT",
     hasUnreadTenantMessages: row.has_unread_tenant_messages,
     note: nullableText(row.note, "lead.note"),
-    noteUpdatedAt: nullableTimestamp(row.note_updated_at, "lead.noteUpdatedAt")
+    noteUpdatedAt: nullableTimestamp(row.note_updated_at, "lead.noteUpdatedAt"),
+    reminderAt: nullableTimestamp(row.reminder_at, "lead.reminderAt"),
+    reminderUpdatedAt: nullableTimestamp(row.reminder_updated_at, "lead.reminderUpdatedAt")
+  });
+}
+
+function mapReminder(row: Readonly<ReminderRow>): LeadReminderState {
+  return Object.freeze({
+    inquiryId: positiveInteger(row.inquiry_id, "leadReminder.inquiryId"),
+    remindAt: nullableTimestamp(row.remind_at, "leadReminder.remindAt"),
+    updatedAt: nullableTimestamp(row.updated_at, "leadReminder.updatedAt")
   });
 }
 
@@ -140,6 +166,7 @@ function mapNote(row: Readonly<NoteRow>): LeadNoteState {
 
 const viewConditions: Readonly<Record<LeadView, string>> = Object.freeze({
   NEEDS_REPLY: "i.status <> 'CLOSED' AND latest.sender_role = 'TENANT'",
+  REMINDERS: "reminders.inquiry_id IS NOT NULL",
   NEW: "i.status = 'NEW'",
   ACTIVE: "i.status = 'CONTACTED' AND latest.sender_role = 'LANDLORD'",
   CLOSED: "i.status = 'CLOSED'",
@@ -162,12 +189,24 @@ export interface LeadRepository {
     note: string
   ) => Promise<LeadNoteState>;
   readonly deleteNote: (executor: SqlExecutor, landlordId: number, inquiryId: number) => Promise<void>;
+  readonly upsertReminder: (
+    executor: SqlExecutor,
+    landlordId: number,
+    inquiryId: number,
+    remindAt: string
+  ) => Promise<LeadReminderState>;
+  readonly deleteReminder: (executor: SqlExecutor, landlordId: number, inquiryId: number) => Promise<void>;
 }
 
 export function createLeadRepository(): LeadRepository {
   const repository: LeadRepository = {
     list(executor, landlordId, view, limit, offset) {
-      const order = view === "NEEDS_REPLY" ? "latest.created_at ASC, i.id ASC" : "i.updated_at DESC, i.id DESC";
+      const order =
+        view === "NEEDS_REPLY"
+          ? "latest.created_at ASC, i.id ASC"
+          : view === "REMINDERS"
+            ? "reminders.remind_at ASC, i.id ASC"
+            : "i.updated_at DESC, i.id DESC";
       return queryMany<LeadRow, LandlordLead>(
         executor,
         {
@@ -178,7 +217,8 @@ export function createLeadRepository(): LeadRepository {
               SELECT 1 FROM inquiry_messages AS unread
               WHERE unread.inquiry_id = i.id AND unread.sender_role = 'TENANT' AND unread.landlord_read_at IS NULL
             ) AS has_unread_tenant_messages,
-            notes.note, notes.updated_at AS note_updated_at
+            notes.note, notes.updated_at AS note_updated_at,
+            reminders.remind_at AS reminder_at, reminders.updated_at AS reminder_updated_at
             FROM listing_inquiries AS i
             LEFT JOIN LATERAL (
               SELECT sender_role, left(body, 240) AS snippet, created_at
@@ -186,6 +226,8 @@ export function createLeadRepository(): LeadRepository {
               ORDER BY created_at DESC, id DESC LIMIT 1
             ) AS latest ON TRUE
             LEFT JOIN landlord_lead_notes AS notes ON notes.inquiry_id = i.id AND notes.landlord_id = i.landlord_id
+            LEFT JOIN landlord_lead_reminders AS reminders
+              ON reminders.inquiry_id = i.id AND reminders.landlord_id = i.landlord_id
             WHERE i.landlord_id = $1 AND ${viewConditions[view]}
             ORDER BY ${order} LIMIT $2 OFFSET $3`,
           values: [landlordId, limit, offset]
@@ -221,6 +263,27 @@ export function createLeadRepository(): LeadRepository {
     async deleteNote(executor, landlordId, inquiryId) {
       await executeCommand(executor, {
         text: "DELETE FROM landlord_lead_notes WHERE inquiry_id = $1 AND landlord_id = $2",
+        values: [inquiryId, landlordId]
+      });
+    },
+    upsertReminder(executor, landlordId, inquiryId, remindAt) {
+      return queryExactlyOne<ReminderRow, LeadReminderState>(
+        executor,
+        {
+          text: `INSERT INTO landlord_lead_reminders (inquiry_id, landlord_id, remind_at)
+            VALUES ($1, $2, $3)
+            ON CONFLICT (inquiry_id) DO UPDATE
+            SET landlord_id = EXCLUDED.landlord_id, remind_at = EXCLUDED.remind_at,
+              updated_at = CURRENT_TIMESTAMP
+            RETURNING inquiry_id, remind_at, updated_at`,
+          values: [inquiryId, landlordId, remindAt]
+        },
+        mapReminder
+      );
+    },
+    async deleteReminder(executor, landlordId, inquiryId) {
+      await executeCommand(executor, {
+        text: "DELETE FROM landlord_lead_reminders WHERE inquiry_id = $1 AND landlord_id = $2",
         values: [inquiryId, landlordId]
       });
     }

@@ -481,7 +481,7 @@ export interface ModerateReviewBody {
   readonly note: string;
 }
 
-export type LeadView = "NEEDS_REPLY" | "NEW" | "ACTIVE" | "CLOSED" | "ALL";
+export type LeadView = "NEEDS_REPLY" | "REMINDERS" | "NEW" | "ACTIVE" | "CLOSED" | "ALL";
 
 export interface LeadQuery extends PaginationQuery {
   readonly view?: LeadView;
@@ -504,11 +504,19 @@ export interface LandlordLead {
   readonly hasUnreadTenantMessages: boolean;
   readonly note: string | null;
   readonly noteUpdatedAt: string | null;
+  readonly reminderAt: string | null;
+  readonly reminderUpdatedAt: string | null;
 }
 
 export interface LeadNoteState {
   readonly inquiryId: number;
   readonly note: string | null;
+  readonly updatedAt: string | null;
+}
+
+export interface LeadReminderState {
+  readonly inquiryId: number;
+  readonly remindAt: string | null;
   readonly updatedAt: string | null;
 }
 

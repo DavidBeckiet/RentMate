@@ -1,5 +1,9 @@
 import type { RequestHandler, Router } from "express";
-import { createListLeadsHandler, createSaveLeadNoteHandler } from "./controllers/lead-controller.js";
+import {
+  createListLeadsHandler,
+  createSaveLeadNoteHandler,
+  createSaveLeadReminderHandler
+} from "./controllers/lead-controller.js";
 import type { LeadService } from "./services/lead-service.js";
 
 export function registerLeadRoutes(
@@ -21,5 +25,11 @@ export function registerLeadRoutes(
     dependencies.authenticationMiddleware,
     dependencies.landlordRoleMiddleware,
     createSaveLeadNoteHandler(dependencies.service)
+  );
+  router.patch(
+    "/landlord/leads/:inquiryId/reminder",
+    dependencies.authenticationMiddleware,
+    dependencies.landlordRoleMiddleware,
+    createSaveLeadReminderHandler(dependencies.service)
   );
 }

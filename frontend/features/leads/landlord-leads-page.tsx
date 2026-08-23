@@ -12,6 +12,7 @@ import type { ApiPage, LandlordLead, LeadView } from "../../types/api";
 
 const views: readonly { readonly value: LeadView; readonly label: string }[] = [
   { value: "NEEDS_REPLY", label: "Cần phản hồi" },
+  { value: "REMINDERS", label: "Nhắc việc" },
   { value: "NEW", label: "Mới" },
   { value: "ACTIVE", label: "Đang xử lý" },
   { value: "CLOSED", label: "Đã đóng" },
@@ -24,14 +25,30 @@ const statusLabels: Record<LandlordLead["status"], string> = {
   CLOSED: "Đã đóng"
 };
 
+function toDateTimeLocalValue(value: Date): string {
+  const part = (number: number) => String(number).padStart(2, "0");
+  return `${value.getFullYear()}-${part(value.getMonth() + 1)}-${part(value.getDate())}T${part(value.getHours())}:${part(value.getMinutes())}`;
+}
+
+function defaultReminderValue(): string {
+  return toDateTimeLocalValue(new Date(Date.now() + 24 * 60 * 60 * 1_000));
+}
+
 function LeadCard({
   lead,
-  onNoteChanged
-}: Readonly<{ lead: LandlordLead; onNoteChanged: (lead: LandlordLead) => void }>) {
+  onLeadChanged
+}: Readonly<{ lead: LandlordLead; onLeadChanged: (lead: LandlordLead) => void }>) {
   const [editing, setEditing] = useState(false);
   const [note, setNote] = useState(lead.note ?? "");
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [editingReminder, setEditingReminder] = useState(false);
+  const [reminderValue, setReminderValue] = useState(() =>
+    lead.reminderAt ? toDateTimeLocalValue(new Date(lead.reminderAt)) : defaultReminderValue()
+  );
+  const [reminderPending, setReminderPending] = useState(false);
+  const [reminderError, setReminderError] = useState<string | null>(null);
+  const [renderedAt] = useState(() => Date.now());
 
   const save = async (nextNote: string | null) => {
     if (pending) return;
@@ -43,7 +60,7 @@ function LeadCard({
     setError(null);
     try {
       const state = await api.leads.saveNote(lead.inquiryId, nextNote === null ? null : nextNote.trim());
-      onNoteChanged({ ...lead, note: state.note, noteUpdatedAt: state.updatedAt });
+      onLeadChanged({ ...lead, note: state.note, noteUpdatedAt: state.updatedAt });
       setNote(state.note ?? "");
       setEditing(false);
     } catch (caught) {
@@ -55,6 +72,40 @@ function LeadCard({
       setPending(false);
     }
   };
+
+  const saveReminder = async (nextValue: string | null) => {
+    if (reminderPending) return;
+    let normalized: string | null = null;
+    if (nextValue !== null) {
+      const parsed = new Date(nextValue);
+      if (!nextValue || Number.isNaN(parsed.getTime()) || parsed.getTime() <= Date.now()) {
+        setReminderError("Thời gian nhắc phải nằm trong tương lai.");
+        return;
+      }
+      normalized = parsed.toISOString();
+    }
+    setReminderPending(true);
+    setReminderError(null);
+    try {
+      const state = await api.leads.saveReminder(lead.inquiryId, normalized);
+      onLeadChanged({ ...lead, reminderAt: state.remindAt, reminderUpdatedAt: state.updatedAt });
+      setReminderValue(state.remindAt ? toDateTimeLocalValue(new Date(state.remindAt)) : defaultReminderValue());
+      setEditingReminder(false);
+    } catch (caught) {
+      const apiError = caught instanceof ApiError ? caught : null;
+      setReminderError(
+        apiError?.status === 404
+          ? "Lead không còn tồn tại hoặc không thuộc tài khoản này."
+          : apiError?.status === 422
+            ? "Thời gian nhắc phải trong tương lai và không quá 365 ngày."
+            : "Chưa thể lưu nhắc việc."
+      );
+    } finally {
+      setReminderPending(false);
+    }
+  };
+
+  const reminderDue = lead.reminderAt !== null && new Date(lead.reminderAt).getTime() <= renderedAt;
 
   return (
     <article className="border-2 border-heroDark-950 bg-rent-surface p-5 shadow-glass-sm">
@@ -165,6 +216,93 @@ function LeadCard({
         {error ? (
           <p role="alert" className="mt-3 border-l-4 border-red-700 pl-3 text-sm font-bold text-red-800">
             {error}
+          </p>
+        ) : null}
+      </section>
+
+      <section className="mt-4 border-t-2 border-heroDark-950 pt-4" aria-label={`Nhắc việc lead ${lead.inquiryId}`}>
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div className="flex flex-wrap items-center gap-2">
+            <h3 className="font-display text-sm font-bold uppercase">Nhắc việc</h3>
+            {lead.reminderAt ? (
+              <span
+                className={`border-2 border-heroDark-950 px-2 py-1 text-[0.65rem] font-extrabold uppercase ${
+                  reminderDue ? "bg-rent-coral" : "bg-[#e5eefc]"
+                }`}
+              >
+                {reminderDue ? "Đã đến hạn" : "Đã lên lịch"}
+              </span>
+            ) : null}
+          </div>
+          {!editingReminder ? (
+            <button
+              type="button"
+              onClick={() => {
+                setReminderValue(
+                  lead.reminderAt ? toDateTimeLocalValue(new Date(lead.reminderAt)) : defaultReminderValue()
+                );
+                setReminderError(null);
+                setEditingReminder(true);
+              }}
+              className="cursor-pointer text-xs font-extrabold underline decoration-2 underline-offset-4 focus-visible:ring-4 focus-visible:ring-blue-300"
+            >
+              {lead.reminderAt ? "Đổi thời gian" : "Thêm nhắc việc"}
+            </button>
+          ) : null}
+        </div>
+
+        {!editingReminder ? (
+          <p className="mt-2 text-sm font-medium text-slate-700">
+            {lead.reminderAt
+              ? `${reminderDue ? "Đến hạn" : "Nhắc lúc"} ${new Date(lead.reminderAt).toLocaleString("vi-VN")}`
+              : "Chưa có mốc theo dõi tiếp theo. Nhắc việc này chỉ chủ trọ nhìn thấy."}
+          </p>
+        ) : (
+          <div className="mt-3 grid gap-3">
+            <label htmlFor={`lead-reminder-${lead.inquiryId}`} className="text-xs font-extrabold text-slate-700">
+              Thời gian nhắc
+            </label>
+            <input
+              id={`lead-reminder-${lead.inquiryId}`}
+              type="datetime-local"
+              required
+              value={reminderValue}
+              onChange={(event) => setReminderValue(event.target.value)}
+              aria-describedby={`lead-reminder-help-${lead.inquiryId}`}
+              className="min-h-11 border-2 border-heroDark-950 bg-white px-3 text-sm font-bold outline-none focus-visible:ring-4 focus-visible:ring-blue-300"
+            />
+            <p id={`lead-reminder-help-${lead.inquiryId}`} className="text-xs font-medium text-slate-600">
+              Dùng giờ trên thiết bị của bạn. Reminder sẽ hiện trong bộ lọc Nhắc việc, không gửi push notification.
+            </p>
+            <div className="flex flex-wrap gap-3">
+              <Button
+                pending={reminderPending}
+                pendingLabel="Đang lưu…"
+                onClick={() => void saveReminder(reminderValue)}
+              >
+                Lưu nhắc việc
+              </Button>
+              <Button
+                variant="secondary"
+                disabled={reminderPending}
+                onClick={() => {
+                  setEditingReminder(false);
+                  setReminderError(null);
+                }}
+              >
+                Hủy
+              </Button>
+              {lead.reminderAt ? (
+                <Button variant="danger" pending={reminderPending} onClick={() => void saveReminder(null)}>
+                  Xóa nhắc việc
+                </Button>
+              ) : null}
+            </div>
+          </div>
+        )}
+        {reminderError ? (
+          <p role="alert" className="mt-3 border-l-4 border-red-700 pl-3 text-sm font-bold text-red-800">
+            {reminderError}
           </p>
         ) : null}
       </section>
@@ -296,7 +434,7 @@ export function LandlordLeadsPage() {
               <LeadCard
                 key={lead.inquiryId}
                 lead={lead}
-                onNoteChanged={(updated) =>
+                onLeadChanged={(updated) =>
                   setResult((current) =>
                     current
                       ? {
