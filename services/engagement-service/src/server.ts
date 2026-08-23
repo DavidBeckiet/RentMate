@@ -27,6 +27,9 @@ import { registerReviewRoutes } from "./modules/reviews/routes.js";
 import { createLeadRepository } from "./modules/leads/repositories/lead-repository.js";
 import { createLeadService } from "./modules/leads/services/lead-service.js";
 import { registerLeadRoutes } from "./modules/leads/routes.js";
+import { createAnalyticsRepository } from "./modules/analytics/repositories/analytics-repository.js";
+import { createAnalyticsService } from "./modules/analytics/services/analytics-service.js";
+import { registerAnalyticsRoutes } from "./modules/analytics/routes.js";
 
 function listen(server: Server, port: number): Promise<void> {
   return new Promise((resolve, reject) => {
@@ -117,6 +120,12 @@ async function startEngagementService(): Promise<void> {
       run: (operation) => withTransaction(databasePool, logger, operation)
     }
   });
+  const analyticsService = createAnalyticsService({
+    repository: createAnalyticsRepository(),
+    transactionRunner: {
+      run: (operation) => withTransaction(databasePool, logger, operation)
+    }
+  });
   const app = createApp({
     frontendOrigin: config.frontendOrigin,
     logger,
@@ -153,6 +162,11 @@ async function startEngagementService(): Promise<void> {
         authenticationMiddleware: requiredAuthentication,
         landlordRoleMiddleware: landlordRole,
         service: leadService
+      });
+      registerAnalyticsRoutes(router, {
+        authenticationMiddleware: requiredAuthentication,
+        landlordRoleMiddleware: landlordRole,
+        service: analyticsService
       });
     }
   });

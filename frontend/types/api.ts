@@ -512,6 +512,36 @@ export interface LeadNoteState {
   readonly updatedAt: string | null;
 }
 
+export type AnalyticsPeriod = "7D" | "30D" | "90D";
+
+export interface AnalyticsDailyPoint {
+  readonly date: string;
+  readonly inquiries: number;
+  readonly firstResponses: number;
+}
+
+export interface AnalyticsListingRank {
+  readonly listingId: number;
+  readonly inquiries: number;
+}
+
+export interface LandlordAnalytics {
+  readonly period: AnalyticsPeriod;
+  readonly sinceAt: string;
+  readonly measuredAt: string;
+  readonly inquiries: number;
+  readonly uniqueTenants: number;
+  readonly respondedInquiries: number;
+  readonly respondedWithin24Hours: number;
+  readonly responseRate: number;
+  readonly responseWithin24HoursRate: number;
+  readonly averageFirstResponseMinutes: number | null;
+  readonly closedInquiries: number;
+  readonly needsReplyNow: number;
+  readonly daily: readonly AnalyticsDailyPoint[];
+  readonly topListings: readonly AnalyticsListingRank[];
+}
+
 export interface HealthResponse {
   readonly status: "ok" | "error";
   readonly database: "connected" | "unavailable";

@@ -198,6 +198,13 @@ export function AppShell({ children }: Readonly<{ children: ReactNode }>) {
                   >
                     Khách quan tâm
                   </Link>
+                  <Link
+                    href="/landlord/analytics"
+                    aria-current={pathname.startsWith("/landlord/analytics") ? "page" : undefined}
+                    className={navLink}
+                  >
+                    Thống kê
+                  </Link>
                 </>
               ) : null}
 
