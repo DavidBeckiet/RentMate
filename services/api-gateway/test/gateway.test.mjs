@@ -28,6 +28,8 @@ test("keeps the monolith as the default upstream and switches configured boundar
   assert.equal(resolveUpstream("/api/v1/notifications", routes).hostname, "engagement");
   assert.equal(resolveUpstream("/api/v1/admin/reports", routes).hostname, "listing");
   assert.equal(resolveUpstream("/api/v1/saved-searches", routes).hostname, "engagement");
+  assert.equal(resolveUpstream("/api/v1/listings/12/reviews", routes).hostname, "engagement");
+  assert.equal(resolveUpstream("/api/v1/admin/reviews", routes).hostname, "engagement");
   assert.equal(resolveUpstream("/api/v1/admin/listings", routes).hostname, "listing");
   assert.equal(resolveUpstream("/api/v1/admin/users", routes).hostname, "identity");
   assert.equal(resolveUpstream("/api/v1/admin/verifications", routes).hostname, "identity");

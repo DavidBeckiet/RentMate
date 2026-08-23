@@ -234,6 +234,13 @@ export function AppShell({ children }: Readonly<{ children: ReactNode }>) {
                   >
                     Xác minh
                   </Link>
+                  <Link
+                    href="/admin/reviews"
+                    aria-current={pathname.startsWith("/admin/reviews") ? "page" : undefined}
+                    className={navLink}
+                  >
+                    Đánh giá
+                  </Link>
                 </>
               ) : null}
 

@@ -1,11 +1,14 @@
 import type {
+  ApiPage,
   CreateInquiryBody,
+  CreateReviewBody,
   Inquiry,
   InquiryMessage,
+  InquiryStatus,
+  ListingReview,
   Notification,
   PaginationQuery,
-  ApiPage,
-  InquiryStatus
+  ReviewEligibility
 } from "../../types/api";
 import type { ApiTransport } from "./transport";
 
@@ -28,6 +31,10 @@ export function createContactApi(transport: ApiTransport) {
     markNotificationRead: (notificationId: number, signal?: AbortSignal): Promise<void> =>
       transport.void(`/api/v1/notifications/${notificationId}/read`, { method: "PATCH", signal }),
     markAllNotificationsRead: (signal?: AbortSignal): Promise<void> =>
-      transport.void("/api/v1/notifications/read-all", { method: "POST", signal })
+      transport.void("/api/v1/notifications/read-all", { method: "POST", signal }),
+    getReviewEligibility: (inquiryId: number, signal?: AbortSignal): Promise<ReviewEligibility> =>
+      transport.object(`/api/v1/inquiries/${inquiryId}/review`, { signal }),
+    createReview: (inquiryId: number, body: CreateReviewBody, signal?: AbortSignal): Promise<ListingReview> =>
+      transport.object(`/api/v1/inquiries/${inquiryId}/review`, { method: "POST", json: body, signal })
   } as const;
 }

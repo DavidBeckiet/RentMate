@@ -91,6 +91,9 @@ export function resolveUpstream(pathname, routes) {
   ) {
     return routes.identity;
   }
+  if (routes.engagement && /^\/api\/v1\/listings\/[1-9][0-9]*\/reviews(?:\/|$)/.test(pathname)) {
+    return routes.engagement;
+  }
   if (
     routes.listing &&
     (pathname.startsWith("/api/v1/listings") ||
@@ -108,7 +111,8 @@ export function resolveUpstream(pathname, routes) {
       pathname.startsWith("/api/v1/tenant/inquiries") ||
       pathname.startsWith("/api/v1/landlord/inquiries") ||
       pathname.startsWith("/api/v1/notifications") ||
-      pathname.startsWith("/api/v1/saved-searches"))
+      pathname.startsWith("/api/v1/saved-searches") ||
+      pathname.startsWith("/api/v1/admin/reviews"))
   ) {
     return routes.engagement;
   }

@@ -15,6 +15,7 @@ import { formatAreaSqm } from "./format";
 import { ListingAmenityChips, ListingPrice } from "./listing-presentation";
 import styles from "./listing-detail.module.css";
 import { ReportListingControl } from "../reports/report-listing-control";
+import { ListingReviews } from "../reviews/listing-reviews";
 
 const maximumListingId = 2_147_483_647;
 
@@ -271,6 +272,7 @@ export function ListingDetail({ listingId, actions }: ListingDetailProps) {
               />
             </div>
           </section>
+          <ListingReviews listingId={detail.id} />
         </div>
 
         {/* Sticky Contact Sidebar Card */}

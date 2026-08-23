@@ -426,6 +426,61 @@ export interface UpdateReportStatusBody {
   readonly note?: string | null;
 }
 
+export type ReviewStatus = "PENDING" | "APPROVED" | "REJECTED";
+export type ReviewEligibilityReason = "INQUIRY_OPEN" | "NO_LANDLORD_REPLY" | "ALREADY_REVIEWED";
+
+export interface ListingReview {
+  readonly id: number;
+  readonly inquiryId: number;
+  readonly listingId: number;
+  readonly overallRating: number;
+  readonly accuracyRating: number;
+  readonly responsivenessRating: number;
+  readonly comment: string;
+  readonly status: ReviewStatus;
+  readonly moderationNote: string | null;
+  readonly createdAt: string;
+  readonly reviewedAt: string | null;
+}
+
+export interface ReviewEligibility {
+  readonly eligible: boolean;
+  readonly reason: ReviewEligibilityReason | null;
+  readonly review: ListingReview | null;
+}
+
+export interface CreateReviewBody {
+  readonly overallRating: number;
+  readonly accuracyRating: number;
+  readonly responsivenessRating: number;
+  readonly comment: string;
+}
+
+export interface PublicListingReview {
+  readonly id: number;
+  readonly overallRating: number;
+  readonly accuracyRating: number;
+  readonly responsivenessRating: number;
+  readonly comment: string;
+  readonly createdAt: string;
+  readonly verifiedInteraction: true;
+}
+
+export interface AdminListingReview extends ListingReview {
+  readonly tenantId: number;
+  readonly reviewedByAdminId: number | null;
+  readonly updatedAt: string;
+}
+
+export interface AdminReviewQuery extends PaginationQuery {
+  readonly status?: ReviewStatus;
+}
+
+export interface ModerateReviewBody {
+  readonly status: Exclude<ReviewStatus, "PENDING">;
+  readonly note: string;
+}
+
 export interface HealthResponse {
   readonly status: "ok" | "error";
   readonly database: "connected" | "unavailable";

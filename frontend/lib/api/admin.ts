@@ -1,13 +1,16 @@
 import type {
   ActivationBody,
   AdminLandlordVerification,
+  AdminListingReview,
   AdminListingReport,
   AdminReportQuery,
   AdminListingDetail,
   AdminListingQuery,
   AdminListingSummary,
   AdminUserQuery,
+  AdminReviewQuery,
   ApiPage,
+  ModerateReviewBody,
   ModerationBody,
   ModerationHistoryItem,
   PaginationQuery,
@@ -76,6 +79,15 @@ export function createAdminApi(transport: ApiTransport) {
         method: "PATCH",
         json: body,
         signal
-      })
+      }),
+
+    listReviews: (query: AdminReviewQuery = {}, signal?: AbortSignal): Promise<ApiPage<AdminListingReview>> =>
+      transport.page("/api/v1/admin/reviews", { query, signal }),
+
+    getReview: (reviewId: number, signal?: AbortSignal): Promise<AdminListingReview> =>
+      transport.object(`/api/v1/admin/reviews/${reviewId}`, { signal }),
+
+    moderateReview: (reviewId: number, body: ModerateReviewBody, signal?: AbortSignal): Promise<AdminListingReview> =>
+      transport.object(`/api/v1/admin/reviews/${reviewId}/status`, { method: "PATCH", json: body, signal })
   } as const;
 }

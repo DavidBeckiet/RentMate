@@ -3,12 +3,12 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { AuthContextValue } from "../../lib/auth/auth-provider";
 import type { PublicListingDetail, UserProfile } from "../../types/api";
 
-const apiMocks = vi.hoisted(() => ({ getPublicDetail: vi.fn() }));
+const apiMocks = vi.hoisted(() => ({ getPublicDetail: vi.fn(), listReviews: vi.fn() }));
 const useAuthMock = vi.hoisted(() => vi.fn<() => AuthContextValue>());
 
 vi.mock("../../lib/api/client", async () => {
   const actual = await vi.importActual<typeof import("../../lib/api/client")>("../../lib/api/client");
-  return { ...actual, api: { listings: { getPublicDetail: apiMocks.getPublicDetail } } };
+  return { ...actual, api: { listings: apiMocks } };
 });
 vi.mock("../../lib/auth/auth-provider", () => ({ useAuth: useAuthMock }));
 vi.mock("next/image", () => ({
@@ -76,6 +76,7 @@ function backendError(status: number): ApiError {
 
 beforeEach(() => {
   apiMocks.getPublicDetail.mockReset();
+  apiMocks.listReviews.mockResolvedValue({ data: [], pagination: { page: 1, pageSize: 10, hasNextPage: false } });
   useAuthMock.mockReturnValue(authValue());
 });
 

@@ -21,6 +21,9 @@ import { registerContactRoutes } from "./modules/contact/routes.js";
 import { createSavedSearchRepository } from "./modules/saved-searches/repositories/saved-search-repository.js";
 import { registerSavedSearchRoutes } from "./modules/saved-searches/routes.js";
 import { createSavedSearchService } from "./modules/saved-searches/services/saved-search-service.js";
+import { createReviewRepository } from "./modules/reviews/repositories/review-repository.js";
+import { createReviewService } from "./modules/reviews/services/review-service.js";
+import { registerReviewRoutes } from "./modules/reviews/routes.js";
 
 function listen(server: Server, port: number): Promise<void> {
   return new Promise((resolve, reject) => {
@@ -90,8 +93,16 @@ async function startEngagementService(): Promise<void> {
     loadAuthenticationAccount
   });
   const tenantRole = createRoleMiddleware(["TENANT"]);
+  const adminRole = createRoleMiddleware(["ADMIN"]);
   const savedSearchService = createSavedSearchService({
     repository: createSavedSearchRepository(),
+    transactionRunner: {
+      run: (operation) => withTransaction(databasePool, logger, operation)
+    }
+  });
+  const reviewService = createReviewService({
+    repository: createReviewRepository(),
+    listingCatalogClient,
     transactionRunner: {
       run: (operation) => withTransaction(databasePool, logger, operation)
     }
@@ -121,6 +132,12 @@ async function startEngagementService(): Promise<void> {
         authenticationMiddleware: requiredAuthentication,
         tenantRoleMiddleware: tenantRole,
         service: savedSearchService
+      });
+      registerReviewRoutes(router, {
+        authenticationMiddleware: requiredAuthentication,
+        tenantRoleMiddleware: tenantRole,
+        adminRoleMiddleware: adminRole,
+        service: reviewService
       });
     }
   });

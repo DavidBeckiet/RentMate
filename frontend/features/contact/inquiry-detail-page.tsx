@@ -7,6 +7,7 @@ import { ErrorState, LoadingState } from "../../components/ui/feedback-states";
 import { api, ApiError } from "../../lib/api/client";
 import { useAuth } from "../../lib/auth/auth-provider";
 import type { Inquiry } from "../../types/api";
+import { TenantReviewPanel } from "../reviews/tenant-review-panel";
 
 function parseId(value: string): number | null {
   const parsed = Number(value);
@@ -174,6 +175,7 @@ export function InquiryDetailPage({ inquiryId }: Readonly<{ inquiryId: string }>
           </Button>
         </form>
       )}
+      {!isLandlord && inquiry.status === "CLOSED" ? <TenantReviewPanel inquiryId={inquiry.id} /> : null}
     </section>
   );
 }

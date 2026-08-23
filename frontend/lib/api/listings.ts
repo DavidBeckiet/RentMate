@@ -8,7 +8,9 @@ import type {
   OwnerImage,
   OwnerListingDetail,
   OwnerListingSummary,
+  PaginationQuery,
   PublicListingDetail,
+  PublicListingReview,
   PublicListingSearchQuery,
   PublicListingSummary,
   ReorderImagesBody,
@@ -36,6 +38,13 @@ export function createListingsApi(transport: ApiTransport) {
 
     report: (listingId: number, body: CreateListingReportBody, signal?: AbortSignal): Promise<ListingReportReceipt> =>
       transport.object(`/api/v1/listings/${listingId}/reports`, { method: "POST", json: body, signal }),
+
+    listReviews: (
+      listingId: number,
+      query: PaginationQuery = {},
+      signal?: AbortSignal
+    ): Promise<ApiPage<PublicListingReview>> =>
+      transport.page(`/api/v1/listings/${listingId}/reviews`, { query, signal }),
 
     createDraft: (body: ListingContentBody = {}, signal?: AbortSignal): Promise<OwnerListingDetail> =>
       transport.object("/api/v1/landlord/listings", { method: "POST", json: body, signal }),

@@ -157,7 +157,8 @@ describe("AppShell", () => {
     ["/admin/listings/42", "Kiểm duyệt"],
     ["/admin/users", "Người dùng"],
     ["/admin/reports", "Báo cáo"],
-    ["/admin/verifications", "Xác minh"]
+    ["/admin/verifications", "Xác minh"],
+    ["/admin/reviews", "Đánh giá"]
   ])("shows admin navigation with the correct current item at %s", (pathname, currentLabel) => {
     navigationMocks.pathname.mockReturnValue(pathname);
     useAuthMock.mockReturnValue(authValue({ status: "authenticated", user: { ...tenant, role: "ADMIN" } }));
@@ -165,6 +166,7 @@ describe("AppShell", () => {
     expect(screen.getByRole("link", { name: "Kiểm duyệt" })).toHaveAttribute("href", "/admin");
     expect(screen.getByRole("link", { name: "Người dùng" })).toHaveAttribute("href", "/admin/users");
     expect(screen.getByRole("link", { name: "Xác minh" })).toHaveAttribute("href", "/admin/verifications");
+    expect(screen.getByRole("link", { name: "Đánh giá" })).toHaveAttribute("href", "/admin/reviews");
     expect(screen.getByRole("link", { name: currentLabel })).toHaveAttribute("aria-current", "page");
   });
 
