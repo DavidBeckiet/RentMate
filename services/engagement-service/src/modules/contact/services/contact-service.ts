@@ -191,10 +191,10 @@ export function createContactService(dependencies: {
         if (!inquiry || inquiry.landlordId !== landlordId)
           throw new ApplicationError("RESOURCE_NOT_FOUND", notFoundMessage);
         if (inquiry.status === status) return inquiry;
-        if (inquiry.status === "NEW" && status !== "CONTACTED") {
-          throw invalidTransition("A new inquiry must be marked contacted before it can be closed.");
-        }
-        if (inquiry.status !== "CONTACTED" || (status !== "CLOSED" && status !== "CONTACTED")) {
+        const isAllowedTransition =
+          (inquiry.status === "NEW" && status === "CONTACTED") ||
+          (inquiry.status === "CONTACTED" && (status === "CONTACTED" || status === "CLOSED"));
+        if (!isAllowedTransition) {
           throw invalidTransition("The inquiry status transition is not allowed.");
         }
         const updated = await repository.updateStatus(executor, inquiryId, status);
