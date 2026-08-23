@@ -1,0 +1,68 @@
+import type { SqlExecutor } from "../../../../../shared/src/runtime/db/sql-executor.js";
+import { ApplicationError } from "../../../../../shared/src/runtime/shared/errors/application-error.js";
+import { forbiddenRoleMessage } from "../../../../../shared/src/runtime/shared/middleware/role.js";
+import type { AuthenticatedPrincipal } from "../../../../../shared/src/runtime/shared/types/authentication.js";
+import type { LandlordLead, LeadNoteState, LeadRepository } from "../repositories/lead-repository.js";
+import type { LeadCollectionQuery, LeadNoteInput } from "../validations/lead-validation.js";
+
+const notFoundMessage = "The requested resource was not found.";
+
+export interface LeadTransactionRunner {
+  readonly run: <Value>(operation: (executor: SqlExecutor) => Promise<Value>) => Promise<Value>;
+}
+
+export interface LeadPage {
+  readonly data: readonly LandlordLead[];
+  readonly page: number;
+  readonly pageSize: number;
+  readonly hasNextPage: boolean;
+}
+
+export interface LeadService {
+  readonly list: (principal: AuthenticatedPrincipal, query: LeadCollectionQuery) => Promise<LeadPage>;
+  readonly saveNote: (
+    principal: AuthenticatedPrincipal,
+    inquiryId: number,
+    input: LeadNoteInput
+  ) => Promise<LeadNoteState>;
+}
+
+function landlordId(principal: AuthenticatedPrincipal): number {
+  if (principal.role !== "LANDLORD") throw new ApplicationError("FORBIDDEN", forbiddenRoleMessage);
+  return principal.userId;
+}
+
+export function createLeadService(dependencies: {
+  readonly repository: LeadRepository;
+  readonly transactionRunner: LeadTransactionRunner;
+}): LeadService {
+  const { repository, transactionRunner } = dependencies;
+  const service: LeadService = {
+    async list(principal, query) {
+      const ownerId = landlordId(principal);
+      const rows = await transactionRunner.run((executor) =>
+        repository.list(executor, ownerId, query.view, query.pageSize + 1, query.offset)
+      );
+      return Object.freeze({
+        data: Object.freeze(rows.slice(0, query.pageSize)),
+        page: query.page,
+        pageSize: query.pageSize,
+        hasNextPage: rows.length > query.pageSize
+      });
+    },
+    async saveNote(principal, inquiryId, input) {
+      const ownerId = landlordId(principal);
+      return transactionRunner.run(async (executor) => {
+        if (!(await repository.lockOwnedInquiry(executor, ownerId, inquiryId))) {
+          throw new ApplicationError("RESOURCE_NOT_FOUND", notFoundMessage);
+        }
+        if (input.note === null) {
+          await repository.deleteNote(executor, ownerId, inquiryId);
+          return Object.freeze({ inquiryId, note: null, updatedAt: null });
+        }
+        return repository.upsertNote(executor, ownerId, inquiryId, input.note);
+      });
+    }
+  };
+  return Object.freeze(service);
+}

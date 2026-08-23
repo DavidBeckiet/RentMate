@@ -24,6 +24,9 @@ import { createSavedSearchService } from "./modules/saved-searches/services/save
 import { createReviewRepository } from "./modules/reviews/repositories/review-repository.js";
 import { createReviewService } from "./modules/reviews/services/review-service.js";
 import { registerReviewRoutes } from "./modules/reviews/routes.js";
+import { createLeadRepository } from "./modules/leads/repositories/lead-repository.js";
+import { createLeadService } from "./modules/leads/services/lead-service.js";
+import { registerLeadRoutes } from "./modules/leads/routes.js";
 
 function listen(server: Server, port: number): Promise<void> {
   return new Promise((resolve, reject) => {
@@ -94,6 +97,7 @@ async function startEngagementService(): Promise<void> {
   });
   const tenantRole = createRoleMiddleware(["TENANT"]);
   const adminRole = createRoleMiddleware(["ADMIN"]);
+  const landlordRole = createRoleMiddleware(["LANDLORD"]);
   const savedSearchService = createSavedSearchService({
     repository: createSavedSearchRepository(),
     transactionRunner: {
@@ -103,6 +107,12 @@ async function startEngagementService(): Promise<void> {
   const reviewService = createReviewService({
     repository: createReviewRepository(),
     listingCatalogClient,
+    transactionRunner: {
+      run: (operation) => withTransaction(databasePool, logger, operation)
+    }
+  });
+  const leadService = createLeadService({
+    repository: createLeadRepository(),
     transactionRunner: {
       run: (operation) => withTransaction(databasePool, logger, operation)
     }
@@ -125,7 +135,7 @@ async function startEngagementService(): Promise<void> {
       registerContactRoutes(router, {
         authenticationMiddleware: requiredAuthentication,
         tenantRoleMiddleware: tenantRole,
-        landlordRoleMiddleware: createRoleMiddleware(["LANDLORD"]),
+        landlordRoleMiddleware: landlordRole,
         contactService
       });
       registerSavedSearchRoutes(router, {
@@ -138,6 +148,11 @@ async function startEngagementService(): Promise<void> {
         tenantRoleMiddleware: tenantRole,
         adminRoleMiddleware: adminRole,
         service: reviewService
+      });
+      registerLeadRoutes(router, {
+        authenticationMiddleware: requiredAuthentication,
+        landlordRoleMiddleware: landlordRole,
+        service: leadService
       });
     }
   });

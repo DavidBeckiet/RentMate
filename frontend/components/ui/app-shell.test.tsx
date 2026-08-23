@@ -127,7 +127,8 @@ describe("AppShell", () => {
   it.each([
     ["/landlord", "Tin của tôi"],
     ["/landlord/listings/42", "Tin của tôi"],
-    ["/landlord/profile", "Hồ sơ"]
+    ["/landlord/profile", "Hồ sơ"],
+    ["/landlord/leads", "Khách quan tâm"]
   ])("shows landlord navigation with the correct current item at %s", (pathname, currentLabel) => {
     navigationMocks.pathname.mockReturnValue(pathname);
     useAuthMock.mockReturnValue(
@@ -137,6 +138,7 @@ describe("AppShell", () => {
 
     expect(screen.getByRole("link", { name: "Tin của tôi" })).toHaveAttribute("href", "/landlord");
     expect(screen.getByRole("link", { name: "Hồ sơ" })).toHaveAttribute("href", "/landlord/profile");
+    expect(screen.getByRole("link", { name: "Khách quan tâm" })).toHaveAttribute("href", "/landlord/leads");
     expect(screen.getByRole("link", { name: currentLabel })).toHaveAttribute("aria-current", "page");
     expect(screen.queryByRole("link", { name: "Tin đã lưu" })).not.toBeInTheDocument();
   });

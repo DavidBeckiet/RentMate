@@ -481,6 +481,37 @@ export interface ModerateReviewBody {
   readonly note: string;
 }
 
+export type LeadView = "NEEDS_REPLY" | "NEW" | "ACTIVE" | "CLOSED" | "ALL";
+
+export interface LeadQuery extends PaginationQuery {
+  readonly view?: LeadView;
+}
+
+export interface LandlordLead {
+  readonly inquiryId: number;
+  readonly listingId: number;
+  readonly status: InquiryStatus;
+  readonly contactPhone: string | null;
+  readonly preferredContactAt: string | null;
+  readonly createdAt: string;
+  readonly updatedAt: string;
+  readonly lastMessage: {
+    readonly senderRole: "TENANT" | "LANDLORD";
+    readonly snippet: string;
+    readonly createdAt: string;
+  } | null;
+  readonly needsReply: boolean;
+  readonly hasUnreadTenantMessages: boolean;
+  readonly note: string | null;
+  readonly noteUpdatedAt: string | null;
+}
+
+export interface LeadNoteState {
+  readonly inquiryId: number;
+  readonly note: string | null;
+  readonly updatedAt: string | null;
+}
+
 export interface HealthResponse {
   readonly status: "ok" | "error";
   readonly database: "connected" | "unavailable";
