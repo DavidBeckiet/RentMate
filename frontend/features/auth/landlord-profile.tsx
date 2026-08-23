@@ -9,6 +9,7 @@ import { api, ApiError } from "../../lib/api/client";
 import { useAuth } from "../../lib/auth/auth-provider";
 import { mapApiErrorToFields } from "../../lib/validation/api-field-errors";
 import styles from "./landlord-profile.module.css";
+import { LandlordVerificationPanel } from "./landlord-verification-panel";
 
 const e164Phone = /^\+[1-9][0-9]{7,14}$/;
 
@@ -128,7 +129,10 @@ export function LandlordProfile() {
   };
 
   return (
-    <section aria-labelledby="landlord-profile-heading" className={`${styles.profile} rm-workspace grid gap-8 lg:grid-cols-[0.72fr_1.28fr] lg:items-start`}>
+    <section
+      aria-labelledby="landlord-profile-heading"
+      className={`${styles.profile} rm-workspace grid gap-8 lg:grid-cols-[0.72fr_1.28fr] lg:items-start`}
+    >
       <header className="border-b border-rent-line pb-6">
         <p className="text-sm font-semibold text-teal-700">TÀI KHOẢN NGƯỜI CHO THUÊ</p>
         <h1 id="landlord-profile-heading" className="mt-2 text-3xl font-bold text-rent-ink sm:text-4xl">
@@ -139,10 +143,7 @@ export function LandlordProfile() {
         </p>
       </header>
 
-      <form
-        onSubmit={(event) => void submit(event)}
-        className="rm-workspace-panel space-y-6 p-5 sm:p-7"
-      >
+      <form onSubmit={(event) => void submit(event)} className="rm-workspace-panel space-y-6 p-5 sm:p-7">
         <InputField id="landlord-email" name="email" label="Email" type="email" value={user.email} readOnly />
         <InputField
           id="landlord-phone"
@@ -172,7 +173,10 @@ export function LandlordProfile() {
           </p>
         ) : null}
         {feedback.success ? (
-          <p aria-live="polite" className="rounded-control bg-rent-primary-subtle p-3 text-sm font-medium text-teal-900">
+          <p
+            aria-live="polite"
+            className="rounded-control bg-rent-primary-subtle p-3 text-sm font-medium text-teal-900"
+          >
             {feedback.success}
           </p>
         ) : null}
@@ -181,6 +185,9 @@ export function LandlordProfile() {
           Lưu hồ sơ
         </Button>
       </form>
+      <div className="lg:col-start-2">
+        <LandlordVerificationPanel />
+      </div>
     </section>
   );
 }

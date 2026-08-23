@@ -286,6 +286,11 @@ export function ListingDetail({ listingId, actions }: ListingDetailProps) {
           <section className="space-y-4 border-2 border-heroDark-950 bg-rent-surface p-6 shadow-glass">
             <span className="rm-eyebrow">THÔNG TIN LIÊN HỆ</span>
             <h2 className="text-lg font-extrabold text-slate-900">Thông tin liên hệ</h2>
+            {detail.landlordVerified ? (
+              <p className="inline-flex items-center gap-2 border-2 border-heroDark-950 bg-[#c9f269] px-3 py-2 text-xs font-extrabold shadow-glass-sm">
+                <Icon name="check" className="h-4 w-4" /> Hồ sơ chủ trọ đã được RentMate duyệt
+              </p>
+            ) : null}
             {detail.landlordContact ? (
               <dl className="space-y-4 text-sm font-medium text-slate-700">
                 <div className="border-2 border-heroDark-950 bg-[#e5eefc] p-3.5">

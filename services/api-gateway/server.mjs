@@ -85,7 +85,9 @@ export function resolveUpstream(pathname, routes) {
     routes.identity &&
     (pathname.startsWith("/api/v1/auth") ||
       pathname.startsWith("/api/v1/users") ||
-      pathname.startsWith("/api/v1/admin/users"))
+      pathname.startsWith("/api/v1/admin/users") ||
+      pathname.startsWith("/api/v1/admin/verifications") ||
+      pathname.startsWith("/api/v1/landlord/verifications"))
   ) {
     return routes.identity;
   }

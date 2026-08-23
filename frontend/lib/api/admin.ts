@@ -1,5 +1,6 @@
 import type {
   ActivationBody,
+  AdminLandlordVerification,
   AdminListingReport,
   AdminReportQuery,
   AdminListingDetail,
@@ -10,8 +11,10 @@ import type {
   ModerationBody,
   ModerationHistoryItem,
   PaginationQuery,
+  ReviewVerificationBody,
   UpdateReportStatusBody,
-  UserProfile
+  UserProfile,
+  VerificationQuery
 } from "../../types/api";
 import type { ApiTransport } from "./transport";
 
@@ -54,6 +57,25 @@ export function createAdminApi(transport: ApiTransport) {
       body: UpdateReportStatusBody,
       signal?: AbortSignal
     ): Promise<AdminListingReport> =>
-      transport.object(`/api/v1/admin/reports/${reportId}/status`, { method: "PATCH", json: body, signal })
+      transport.object(`/api/v1/admin/reports/${reportId}/status`, { method: "PATCH", json: body, signal }),
+
+    listVerifications: (
+      query: VerificationQuery = {},
+      signal?: AbortSignal
+    ): Promise<ApiPage<AdminLandlordVerification>> => transport.page("/api/v1/admin/verifications", { query, signal }),
+
+    getVerification: (verificationId: number, signal?: AbortSignal): Promise<AdminLandlordVerification> =>
+      transport.object(`/api/v1/admin/verifications/${verificationId}`, { signal }),
+
+    reviewVerification: (
+      verificationId: number,
+      body: ReviewVerificationBody,
+      signal?: AbortSignal
+    ): Promise<AdminLandlordVerification> =>
+      transport.object(`/api/v1/admin/verifications/${verificationId}/status`, {
+        method: "PATCH",
+        json: body,
+        signal
+      })
   } as const;
 }

@@ -142,7 +142,8 @@ async function startListingService(): Promise<void> {
         ),
         publicListingDetailService: createPublicListingDetailService(
           createPublicListingDetailRepository(sqlExecutor, {
-            loadLandlordProfiles: identityAccountClient.loadProfilesByIds
+            loadLandlordProfiles: identityAccountClient.loadProfilesByIds,
+            loadVerifiedLandlordIds: identityAccountClient.loadVerifiedLandlordIds
           })
         ),
         listingUpdateService: createListingUpdateService({ transactionRunner }),

@@ -64,6 +64,7 @@ function detail(overrides: Partial<PublicListingDetail> = {}): PublicListingDeta
       { url: "https://res.cloudinary.com/rentmate/image/upload/second.webp", altText: "Ảnh thứ hai", displayOrder: 2 },
       { url: "https://res.cloudinary.com/rentmate/image/upload/first.webp", altText: null, displayOrder: 1 }
     ],
+    landlordVerified: false,
     updatedAt: "2026-08-01T00:00:00.000Z",
     ...overrides
   };
@@ -130,6 +131,13 @@ describe("ListingDetail", () => {
       "mailto:owner@example.com"
     );
     expect(screen.getByRole("link", { name: "+84901234567" })).toHaveAttribute("href", "tel:+84901234567");
+  });
+
+  it("renders only the public verification badge when the landlord is verified", async () => {
+    apiMocks.getPublicDetail.mockResolvedValue(detail({ landlordVerified: true }));
+    render(<ListingDetail listingId="42" />);
+    expect(await screen.findByText("Hồ sơ chủ trọ đã được RentMate duyệt")).toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: /@/ })).not.toBeInTheDocument();
   });
 
   it("does not fabricate contact for an authenticated tenant when the response omits it", async () => {

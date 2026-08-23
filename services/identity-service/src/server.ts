@@ -24,6 +24,10 @@ import { createRoleMiddleware } from "../../shared/src/runtime/shared/middleware
 import { createShutdownHandler } from "../../shared/src/runtime/shutdown.js";
 import { applyDatabaseOverrides } from "../../shared/database-overrides.js";
 import { createInternalServiceGuard } from "../../shared/internal-service-auth.js";
+import { createVerificationRepository } from "./modules/verifications/repositories/verification-repository.js";
+import { createVerificationService } from "./modules/verifications/services/verification-service.js";
+import { registerVerificationRoutes } from "./modules/verifications/routes.js";
+import type { TransactionRunner } from "./shared/transaction.js";
 
 function listen(server: Server, port: number): Promise<void> {
   return new Promise((resolve, reject) => {
@@ -74,15 +78,19 @@ async function startIdentityService(): Promise<void> {
     missingAccountPasswordHash
   });
   const usersService = createUsersService(usersRepository);
+  const verificationRepository = createVerificationRepository();
+  const transactionRunner: TransactionRunner = (operation) => withTransaction(databasePool, logger, operation);
   const adminUserService = createAdminUserService({
     repository: createAdminUserRepository(sqlExecutor),
-    transactionRunner: (operation) => withTransaction(databasePool, logger, operation)
+    transactionRunner
   });
+  const verificationService = createVerificationService({ repository: verificationRepository, transactionRunner });
   const requiredAuthentication = createProtectedAuthenticationMiddleware({
     verifySessionToken: sessionTokenService.verify,
     loadAuthenticationAccount: usersRepository.findAuthenticationAccountById
   });
   const adminRole = createRoleMiddleware(["ADMIN"]);
+  const landlordRole = createRoleMiddleware(["LANDLORD"]);
   const authRateLimitStore = new InMemoryRateLimitStore();
   const internalServiceGuard = createInternalServiceGuard(process.env.SERVICE_INTERNAL_TOKEN);
   const app = createApp({
@@ -103,6 +111,12 @@ async function startIdentityService(): Promise<void> {
         adminRoleMiddleware: adminRole,
         adminUserService,
         usersService
+      });
+      registerVerificationRoutes(router, {
+        authenticationMiddleware: requiredAuthentication,
+        landlordRoleMiddleware: landlordRole,
+        adminRoleMiddleware: adminRole,
+        service: verificationService
       });
     },
     registerInternalRoutes: (internalApp) => {
@@ -161,6 +175,26 @@ async function startIdentityService(): Promise<void> {
         }
         void findActiveLandlordIds()
           .then((ids) => response.status(200).json({ data: ids }))
+          .catch(next);
+      });
+      internalApp.get("/internal/v1/landlords/verified-ids", internalServiceGuard, (request, response, next) => {
+        const rawIds = request.query.ids;
+        if (typeof rawIds !== "string" || rawIds.length === 0) {
+          response.status(400).end();
+          return;
+        }
+        const ids = [...new Set(rawIds.split(",").map((value) => Number(value)))];
+        if (
+          ids.length === 0 ||
+          ids.length > 100 ||
+          ids.some((id) => !Number.isSafeInteger(id) || id < 1 || id > 2_147_483_647)
+        ) {
+          response.status(400).end();
+          return;
+        }
+        void verificationRepository
+          .findVerifiedLandlordIds(sqlExecutor, ids)
+          .then((verifiedIds) => response.status(200).json({ data: verifiedIds }))
           .catch(next);
       });
     }

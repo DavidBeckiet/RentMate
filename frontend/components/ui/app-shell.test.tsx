@@ -155,13 +155,16 @@ describe("AppShell", () => {
   it.each([
     ["/admin", "Kiểm duyệt"],
     ["/admin/listings/42", "Kiểm duyệt"],
-    ["/admin/users", "Người dùng"]
+    ["/admin/users", "Người dùng"],
+    ["/admin/reports", "Báo cáo"],
+    ["/admin/verifications", "Xác minh"]
   ])("shows admin navigation with the correct current item at %s", (pathname, currentLabel) => {
     navigationMocks.pathname.mockReturnValue(pathname);
     useAuthMock.mockReturnValue(authValue({ status: "authenticated", user: { ...tenant, role: "ADMIN" } }));
     render(<AppShell>Nội dung trang</AppShell>);
     expect(screen.getByRole("link", { name: "Kiểm duyệt" })).toHaveAttribute("href", "/admin");
     expect(screen.getByRole("link", { name: "Người dùng" })).toHaveAttribute("href", "/admin/users");
+    expect(screen.getByRole("link", { name: "Xác minh" })).toHaveAttribute("href", "/admin/verifications");
     expect(screen.getByRole("link", { name: currentLabel })).toHaveAttribute("aria-current", "page");
   });
 

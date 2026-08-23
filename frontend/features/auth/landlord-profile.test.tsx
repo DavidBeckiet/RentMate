@@ -3,12 +3,16 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { AuthContextValue } from "../../lib/auth/auth-provider";
 import type { UserProfile } from "../../types/api";
 
-const apiMocks = vi.hoisted(() => ({ updateCurrent: vi.fn() }));
+const apiMocks = vi.hoisted(() => ({
+  updateCurrent: vi.fn(),
+  getCurrentVerification: vi.fn(),
+  submitVerification: vi.fn()
+}));
 const useAuthMock = vi.hoisted(() => vi.fn<() => AuthContextValue>());
 
 vi.mock("../../lib/api/client", async () => {
   const actual = await vi.importActual<typeof import("../../lib/api/client")>("../../lib/api/client");
-  return { ...actual, api: { users: { updateCurrent: apiMocks.updateCurrent } } };
+  return { ...actual, api: { users: apiMocks } };
 });
 vi.mock("../../lib/auth/auth-provider", () => ({ useAuth: useAuthMock }));
 
@@ -52,6 +56,9 @@ function backendError(status: number, details: ConstructorParameters<typeof ApiE
 describe("LandlordProfile", () => {
   beforeEach(() => {
     apiMocks.updateCurrent.mockReset();
+    apiMocks.getCurrentVerification.mockReset();
+    apiMocks.submitVerification.mockReset();
+    apiMocks.getCurrentVerification.mockResolvedValue(null);
     refresh.mockReset();
     refresh.mockResolvedValue();
     useAuthMock.mockReturnValue(authValue());

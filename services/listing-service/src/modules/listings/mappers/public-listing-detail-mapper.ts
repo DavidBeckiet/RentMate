@@ -61,6 +61,7 @@ export interface PublicListingDetail {
   readonly propertyType: PublicDetailLookupValue;
   readonly amenities: readonly PublicDetailLookupValue[];
   readonly images: readonly PublicDetailImage[];
+  readonly landlordVerified: boolean;
   readonly updatedAt: string;
 }
 
@@ -166,6 +167,7 @@ export function mapPublicListingDetailRow(row: Readonly<PublicListingDetailRow>)
     propertyType: lookupValue({ code: row.property_type_code, label: row.property_type_label }),
     amenities: mapAmenities(row.amenities),
     images: mapImages(row.images),
+    landlordVerified: false,
     updatedAt: formatApiTimestamp(mapPgTimestamptz(row.updated_at, "public_listing_detail.updated_at"))
   });
 }
@@ -202,6 +204,7 @@ export function enrichPublicListingDetail(
     propertyType: detail.propertyType,
     amenities: detail.amenities,
     images: detail.images,
+    landlordVerified: detail.landlordVerified,
     updatedAt: detail.updatedAt,
     landlordContact: contact
   });

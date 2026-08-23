@@ -64,6 +64,7 @@ export interface LandlordContact {
 export interface PublicListingDetail extends Omit<PublicListingSummary, "coverImage"> {
   readonly description: string;
   readonly images: readonly PublicImage[];
+  readonly landlordVerified: boolean;
   readonly landlordContact?: LandlordContact;
 }
 
@@ -245,6 +246,43 @@ export interface AdminUserQuery extends PaginationQuery {
 
 export interface ActivationBody {
   readonly isActive: boolean;
+}
+
+export type VerificationStatus = "PENDING" | "APPROVED" | "REJECTED";
+
+export interface LandlordVerification {
+  readonly id: number;
+  readonly displayName: string;
+  readonly requestNote: string | null;
+  readonly status: VerificationStatus;
+  readonly decisionNote: string | null;
+  readonly submittedAt: string;
+  readonly reviewedAt: string | null;
+}
+
+export interface AdminLandlordVerification extends LandlordVerification {
+  readonly landlord: {
+    readonly id: number;
+    readonly email: string;
+    readonly phone: string | null;
+    readonly isActive: boolean;
+  };
+  readonly reviewedByAdminId: number | null;
+  readonly updatedAt: string;
+}
+
+export interface CreateVerificationBody {
+  readonly displayName: string;
+  readonly note?: string | null;
+}
+
+export interface VerificationQuery extends PaginationQuery {
+  readonly status?: VerificationStatus;
+}
+
+export interface ReviewVerificationBody {
+  readonly status: Exclude<VerificationStatus, "PENDING">;
+  readonly note: string;
 }
 
 export interface InquiryMessage {

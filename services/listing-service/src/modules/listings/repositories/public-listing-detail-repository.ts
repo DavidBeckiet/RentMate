@@ -28,6 +28,7 @@ export interface PublicListingDetailRepositoryDependencies {
   readonly loadLandlordProfiles?: (
     userIds: readonly number[]
   ) => Promise<readonly PublicListingDetailLandlordProfile[]>;
+  readonly loadVerifiedLandlordIds?: (userIds: readonly number[]) => Promise<readonly number[]>;
 }
 
 const publicProjection = `
@@ -156,13 +157,20 @@ export function createPublicListingDetailRepository(
         if (row === null || !Number.isSafeInteger(row.landlord_id) || (row.landlord_id as number) < 1) return null;
         const landlordId = row.landlord_id as number;
 
-        const profiles = await dependencies.loadLandlordProfiles([landlordId]);
+        const [profiles, verifiedLandlordIds] = await Promise.all([
+          dependencies.loadLandlordProfiles([landlordId]),
+          dependencies.loadVerifiedLandlordIds?.([landlordId]) ?? Promise.resolve(Object.freeze([]))
+        ]);
         const landlord = profiles.find((profile) => profile.id === landlordId);
         if (landlord === undefined || !landlord.isActive || landlord.role !== "LANDLORD") return null;
 
         const mapped = mapBasePublicListingDetailResult(row);
+        const detail = Object.freeze({
+          ...mapped.detail,
+          landlordVerified: verifiedLandlordIds.includes(landlordId)
+        });
         return Object.freeze({
-          detail: mapped.detail,
+          detail,
           landlordContact:
             includeContact && landlord.phone !== null
               ? Object.freeze({ email: landlord.email, phone: landlord.phone })

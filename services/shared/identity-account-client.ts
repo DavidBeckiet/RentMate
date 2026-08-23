@@ -14,6 +14,7 @@ export interface IdentityAccountClient {
   readonly loadAuthenticationAccount: LoadAuthenticationAccount;
   readonly loadActiveLandlordIds: () => Promise<readonly number[]>;
   readonly loadProfilesByIds: (userIds: readonly number[]) => Promise<readonly IdentityUserProfile[]>;
+  readonly loadVerifiedLandlordIds: (userIds: readonly number[]) => Promise<readonly number[]>;
 }
 
 export interface IdentityUserProfile {
@@ -148,5 +149,41 @@ export function createIdentityAccountClient(options: IdentityAccountClientOption
     return Object.freeze([...profiles]);
   };
 
-  return Object.freeze({ loadAuthenticationAccount, loadActiveLandlordIds, loadProfilesByIds });
+  const loadVerifiedLandlordIds = async (userIds: readonly number[]): Promise<readonly number[]> => {
+    if (userIds.length === 0) return Object.freeze([]);
+    let response: Response;
+    try {
+      const query = new URLSearchParams({ ids: [...userIds].join(",") });
+      response = await fetcher(`${baseUrl}/internal/v1/landlords/verified-ids?${query.toString()}`, {
+        method: "GET",
+        headers: { "x-rentmate-internal-token": options.internalToken }
+      });
+    } catch {
+      throw new Error("Identity service verification lookup failed.");
+    }
+
+    if (!response.ok) throw new Error("Identity service verification lookup failed.");
+    let payload: unknown;
+    try {
+      payload = await response.json();
+    } catch {
+      throw new Error("Identity service verification response is invalid.");
+    }
+
+    if (typeof payload !== "object" || payload === null || !("data" in payload)) {
+      throw new Error("Identity service verification response is invalid.");
+    }
+    const ids = (payload as { readonly data: unknown }).data;
+    if (!Array.isArray(ids) || ids.some((id) => !Number.isSafeInteger(id) || id < 1)) {
+      throw new Error("Identity service verification response is invalid.");
+    }
+    return Object.freeze([...ids] as number[]);
+  };
+
+  return Object.freeze({
+    loadAuthenticationAccount,
+    loadActiveLandlordIds,
+    loadProfilesByIds,
+    loadVerifiedLandlordIds
+  });
 }
