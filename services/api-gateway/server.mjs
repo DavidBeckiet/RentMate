@@ -175,7 +175,7 @@ function sendGatewayError(response, statusCode, code, message) {
   response.end(JSON.stringify({ error: { code, message } }));
 }
 
-function proxyRequest(request, response, upstream, internalServiceToken, upstreamTimeoutMs) {
+function proxyRequest(request, response, upstream, internalServiceToken, upstreamTimeoutMs, streamingResponse) {
   const target = new URL(request.url ?? "/", upstream);
   const transport = target.protocol === "https:" ? https : http;
   const proxy = transport.request(
@@ -185,6 +185,7 @@ function proxyRequest(request, response, upstream, internalServiceToken, upstrea
       headers: copyRequestHeaders(request, upstream, internalServiceToken)
     },
     (upstreamResponse) => {
+      if (streamingResponse) proxy.setTimeout(0);
       response.writeHead(upstreamResponse.statusCode ?? 502, copyResponseHeaders(upstreamResponse.headers));
       upstreamResponse.pipe(response);
     }
@@ -198,6 +199,9 @@ function proxyRequest(request, response, upstream, internalServiceToken, upstrea
   proxy.on("error", () => {
     sendGatewayError(response, 502, "UPSTREAM_UNAVAILABLE", "The requested service is unavailable.");
   });
+  if (streamingResponse) {
+    response.once("close", () => proxy.destroy());
+  }
   request.on("aborted", () => proxy.destroy());
   request.pipe(proxy);
 }
@@ -231,12 +235,14 @@ export function createGatewayServer(environment = process.env) {
 
     const upstream = resolveUpstream(pathname, routes);
     const isServiceUpstream = upstream !== routes.backend;
+    const streamingResponse = /^\/api\/v1\/inquiries\/[1-9][0-9]*\/events$/.test(pathname);
     proxyRequest(
       request,
       response,
       upstream,
       isServiceUpstream ? routes.internalServiceToken : null,
-      routes.upstreamTimeoutMs
+      routes.upstreamTimeoutMs,
+      streamingResponse
     );
   });
 

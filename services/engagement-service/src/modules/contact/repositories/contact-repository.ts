@@ -154,6 +154,7 @@ export interface ContactRepository {
     }
   ) => Promise<Inquiry>;
   readonly findOpenInquiry: (executor: SqlExecutor, tenantId: number, listingId: number) => Promise<Inquiry | null>;
+  readonly findInquiryById: (executor: SqlExecutor, inquiryId: number) => Promise<Inquiry | null>;
   readonly findInquiryForUpdate: (executor: SqlExecutor, inquiryId: number) => Promise<Inquiry | null>;
   readonly listInquiries: (
     executor: SqlExecutor,
@@ -231,6 +232,17 @@ export function createContactRepository(): ContactRepository {
         {
           text: `${inquirySelect} WHERE tenant_id = $1 AND listing_id = $2 AND status <> 'CLOSED'`,
           values: [tenantId, listingId]
+        },
+        (row) => mapInquiry(row)
+      );
+    },
+
+    async findInquiryById(executor, inquiryId) {
+      return queryOptional<InquiryRow, Inquiry>(
+        executor,
+        {
+          text: `${inquirySelect} WHERE id = $1`,
+          values: [inquiryId]
         },
         (row) => mapInquiry(row)
       );

@@ -82,6 +82,11 @@ function createContactHarness(): ContactHarness {
       return inquiry ? cloneInquiry(inquiry) : null;
     },
 
+    async findInquiryById(_executor, inquiryId) {
+      const inquiry = inquiries.get(inquiryId);
+      return inquiry ? cloneInquiry(inquiry) : null;
+    },
+
     async findInquiryForUpdate(_executor, inquiryId) {
       const inquiry = inquiries.get(inquiryId);
       return inquiry ? cloneInquiry(inquiry) : null;
@@ -236,6 +241,12 @@ test("completes the tenant-landlord inquiry, message, status and notification fl
 
   const landlordView = await harness.service.getInquiry(landlord, created.id);
   assert.equal(landlordView.messages[0]?.isRead, true);
+  await harness.service.authorizeRealtime(tenant, created.id);
+  await harness.service.authorizeRealtime(landlord, created.id);
+  await assert.rejects(
+    () => harness.service.authorizeRealtime(unrelatedTenant, created.id),
+    (error: unknown) => error instanceof ApplicationError && error.code === "RESOURCE_NOT_FOUND"
+  );
 
   const landlordReply = await harness.service.sendMessage(landlord, created.id, "Phòng vẫn còn bạn nhé.");
   assert.equal(landlordReply.senderRole, "LANDLORD");

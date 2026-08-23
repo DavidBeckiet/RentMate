@@ -1,8 +1,9 @@
-import type { Request, RequestHandler } from "express";
+import type { Request, RequestHandler, Response } from "express";
 import { ApplicationError } from "../../../../../shared/src/runtime/shared/errors/application-error.js";
 import { authenticationRequiredMessage } from "../../../../../shared/src/runtime/shared/middleware/authentication.js";
 import { sendNoContent, sendObject, sendPaginated } from "../../../../../shared/src/runtime/shared/http/responses.js";
 import type { Inquiry, InquiryMessage, Notification } from "../repositories/contact-repository.js";
+import type { InquiryRealtimeEvent, InquiryRealtimeHub } from "../realtime/inquiry-realtime-hub.js";
 import type { ContactService } from "../services/contact-service.js";
 import {
   parseContactId,
@@ -52,6 +53,16 @@ function notificationDto(notification: Notification) {
   };
 }
 
+function writeRealtimeEvent(response: Response, event: InquiryRealtimeEvent): void {
+  response.write(`data: ${JSON.stringify(event)}\n\n`);
+}
+
+export const inquiryRealtimePolicy = Object.freeze({
+  heartbeatIntervalMs: 5_000,
+  connectionLifetimeMs: 45_000,
+  reconnectDelayMs: 2_000
+});
+
 export function createCreateInquiryHandler(service: ContactService): RequestHandler {
   return (request, response, next) => {
     void (async () => {
@@ -96,31 +107,73 @@ export function createGetInquiryHandler(service: ContactService): RequestHandler
   };
 }
 
-export function createSendMessageHandler(service: ContactService): RequestHandler {
+export function createSendMessageHandler(service: ContactService, realtimeHub: InquiryRealtimeHub): RequestHandler {
   return (request, response, next) => {
     void (async () => {
       const { body } = validateMessageBody(request.body);
-      sendObject(
-        response,
-        messageDto(
-          await service.sendMessage(requirePrincipal(request), parseContactId(request.params.inquiryId), body)
-        ),
-        201
-      );
+      const inquiryId = parseContactId(request.params.inquiryId);
+      const message = await service.sendMessage(requirePrincipal(request), inquiryId, body);
+      realtimeHub.publish(Object.freeze({ type: "MESSAGE_CREATED", inquiryId, message }));
+      sendObject(response, messageDto(message), 201);
     })().catch(next);
   };
 }
 
-export function createUpdateInquiryStatusHandler(service: ContactService): RequestHandler {
+export function createUpdateInquiryStatusHandler(
+  service: ContactService,
+  realtimeHub: InquiryRealtimeHub
+): RequestHandler {
   return (request, response, next) => {
     void (async () => {
       const { status } = validateStatusBody(request.body);
-      sendObject(
-        response,
-        inquiryDto(
-          await service.updateStatus(requirePrincipal(request), parseContactId(request.params.inquiryId), status)
-        )
+      const inquiryId = parseContactId(request.params.inquiryId);
+      const inquiry = await service.updateStatus(requirePrincipal(request), inquiryId, status);
+      realtimeHub.publish(
+        Object.freeze({ type: "STATUS_CHANGED", inquiryId, status: inquiry.status, updatedAt: inquiry.updatedAt })
       );
+      sendObject(response, inquiryDto(inquiry));
+    })().catch(next);
+  };
+}
+
+export function createStreamInquiryEventsHandler(
+  service: ContactService,
+  realtimeHub: InquiryRealtimeHub
+): RequestHandler {
+  return (request, response, next) => {
+    void (async () => {
+      const inquiryId = parseContactId(request.params.inquiryId);
+      await service.authorizeRealtime(requirePrincipal(request), inquiryId);
+      if (response.destroyed) return;
+
+      response.status(200);
+      response.setHeader("Content-Type", "text/event-stream; charset=utf-8");
+      response.setHeader("Cache-Control", "no-cache, no-transform");
+      response.setHeader("Connection", "keep-alive");
+      response.setHeader("X-Accel-Buffering", "no");
+      response.flushHeaders();
+      response.write(`retry: ${inquiryRealtimePolicy.reconnectDelayMs}\n\n`);
+      writeRealtimeEvent(response, Object.freeze({ type: "CONNECTED", inquiryId }));
+
+      let closed = false;
+      const unsubscribe = realtimeHub.subscribe(inquiryId, (event) => {
+        if (!closed && !response.destroyed) writeRealtimeEvent(response, event);
+      });
+      const heartbeat = setInterval(() => {
+        if (!closed && !response.destroyed) response.write(": heartbeat\n\n");
+      }, inquiryRealtimePolicy.heartbeatIntervalMs);
+      heartbeat.unref();
+      const lifetime = setTimeout(() => response.end(), inquiryRealtimePolicy.connectionLifetimeMs);
+      lifetime.unref();
+
+      const cleanup = () => {
+        if (closed) return;
+        closed = true;
+        clearInterval(heartbeat);
+        clearTimeout(lifetime);
+        unsubscribe();
+      };
+      response.once("close", cleanup);
     })().catch(next);
   };
 }

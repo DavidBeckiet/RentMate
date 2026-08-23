@@ -105,3 +105,50 @@ test("handles allowed preflight and rejects unsafe requests from another origin"
     await close(gateway);
   }
 });
+
+test("keeps an authorized inquiry event stream open beyond the ordinary upstream timeout", async () => {
+  let resolveUpstreamClosed;
+  const upstreamClosed = new Promise((resolve) => {
+    resolveUpstreamClosed = resolve;
+  });
+  const upstream = http.createServer((request, response) => {
+    assert.equal(request.url, "/api/v1/inquiries/7/events");
+    response.once("close", resolveUpstreamClosed);
+    response.writeHead(200, {
+      "content-type": "text/event-stream; charset=utf-8",
+      "cache-control": "no-cache"
+    });
+    response.write('data: {"type":"CONNECTED","inquiryId":7}\n\n');
+    setTimeout(() => response.write(": heartbeat\n\n"), 150);
+  });
+  const upstreamPort = await listen(upstream);
+  const gateway = createGatewayServer({
+    BACKEND_URL: "http://127.0.0.1:1",
+    ENGAGEMENT_SERVICE_URL: `http://127.0.0.1:${upstreamPort}`,
+    SERVICE_INTERNAL_TOKEN: "test-internal-token",
+    GATEWAY_UPSTREAM_TIMEOUT_MS: "100"
+  });
+  const gatewayPort = await listen(gateway);
+
+  try {
+    const result = await fetch(`http://127.0.0.1:${gatewayPort}/api/v1/inquiries/7/events`, {
+      headers: { origin: "http://localhost:3000" }
+    });
+    assert.equal(result.status, 200);
+    assert.match(result.headers.get("content-type") ?? "", /^text\/event-stream/);
+    const reader = result.body.getReader();
+    const firstChunk = await reader.read();
+    const secondChunk = await reader.read();
+    const body = new TextDecoder().decode(firstChunk.value) + new TextDecoder().decode(secondChunk.value);
+    assert.match(body, /"type":"CONNECTED"/);
+    assert.match(body, /heartbeat/);
+    await reader.cancel();
+    await Promise.race([
+      upstreamClosed,
+      new Promise((_, reject) => setTimeout(() => reject(new Error("Upstream SSE connection was not closed.")), 1000))
+    ]);
+  } finally {
+    await close(gateway);
+    await close(upstream);
+  }
+});

@@ -5,6 +5,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { Button } from "../../components/ui/button";
 import { ErrorState, LoadingState } from "../../components/ui/feedback-states";
 import { api, ApiError } from "../../lib/api/client";
+import { connectInquiryRealtime, type InquiryRealtimeConnectionStatus } from "../../lib/api/inquiry-realtime";
 import { useAuth } from "../../lib/auth/auth-provider";
 import type { Inquiry } from "../../types/api";
 import { TenantReviewPanel } from "../reviews/tenant-review-panel";
@@ -18,6 +19,21 @@ function statusLabel(status: Inquiry["status"]): string {
   return status === "NEW" ? "Mới" : status === "CONTACTED" ? "Đang trao đổi" : "Đã đóng";
 }
 
+function mergeMessages(...collections: readonly (readonly Inquiry["messages"][number][])[]): Inquiry["messages"] {
+  const messages = new Map<number, Inquiry["messages"][number]>();
+  for (const collection of collections) {
+    for (const message of collection) messages.set(message.id, message);
+  }
+  return Object.freeze([...messages.values()].sort((left, right) => left.id - right.id));
+}
+
+const realtimeStatusLabels: Readonly<Record<InquiryRealtimeConnectionStatus, string>> = Object.freeze({
+  connecting: "Đang kết nối trực tiếp…",
+  connected: "Đã kết nối trực tiếp — tin mới sẽ tự xuất hiện",
+  reconnecting: "Mất kết nối — đang thử kết nối lại…",
+  unsupported: "Trình duyệt không hỗ trợ kết nối trực tiếp; bạn vẫn có thể gửi tin"
+});
+
 export function InquiryDetailPage({ inquiryId }: Readonly<{ inquiryId: string }>) {
   const id = useMemo(() => parseId(inquiryId), [inquiryId]);
   const { status: authStatus, user } = useAuth();
@@ -27,6 +43,7 @@ export function InquiryDetailPage({ inquiryId }: Readonly<{ inquiryId: string }>
   const [message, setMessage] = useState("");
   const [pending, setPending] = useState(false);
   const [statusPending, setStatusPending] = useState(false);
+  const [realtimeStatus, setRealtimeStatus] = useState<InquiryRealtimeConnectionStatus>("connecting");
 
   const load = useCallback(() => {
     if (id === null) return;
@@ -50,6 +67,41 @@ export function InquiryDetailPage({ inquiryId }: Readonly<{ inquiryId: string }>
   }, [id]);
 
   useEffect(() => load(), [load]);
+
+  const synchronize = useCallback(async () => {
+    if (id === null) return;
+    try {
+      const fresh = await api.contact.getInquiry(id);
+      setInquiry((current) =>
+        current === null ? fresh : { ...fresh, messages: mergeMessages(current.messages, fresh.messages) }
+      );
+    } catch {
+      // EventSource continues reconnecting; the ordinary page controls remain usable.
+    }
+  }, [id]);
+
+  useEffect(() => {
+    if (id === null || authStatus !== "authenticated" || !user || state !== "success") return;
+    const connection = connectInquiryRealtime(id, {
+      onStatusChange: setRealtimeStatus,
+      onEvent: (event) => {
+        if (event.inquiryId !== id) return;
+        if (event.type === "MESSAGE_CREATED") {
+          setInquiry((current) =>
+            current === null ? current : { ...current, messages: mergeMessages(current.messages, [event.message]) }
+          );
+          if (event.message.senderRole !== user.role) void synchronize();
+        } else if (event.type === "STATUS_CHANGED") {
+          setInquiry((current) =>
+            current === null ? current : { ...current, status: event.status, updatedAt: event.updatedAt }
+          );
+        } else {
+          void synchronize();
+        }
+      }
+    });
+    return () => connection.close();
+  }, [authStatus, id, state, synchronize, user]);
 
   if (authStatus === "loading" || state === "loading") return <LoadingState message="Đang mở cuộc trò chuyện…" />;
   if (authStatus !== "authenticated" || !user)
@@ -80,9 +132,11 @@ export function InquiryDetailPage({ inquiryId }: Readonly<{ inquiryId: string }>
     if (pending || !message.trim()) return;
     setPending(true);
     try {
-      await api.contact.sendMessage(inquiry.id, message.trim());
+      const sent = await api.contact.sendMessage(inquiry.id, message.trim());
+      setInquiry((current) =>
+        current === null ? current : { ...current, messages: mergeMessages(current.messages, [sent]) }
+      );
       setMessage("");
-      load();
     } catch (caught: unknown) {
       setError(caught instanceof ApiError ? caught : null);
     } finally {
@@ -93,7 +147,10 @@ export function InquiryDetailPage({ inquiryId }: Readonly<{ inquiryId: string }>
   const changeStatus = async (nextStatus: "CONTACTED" | "CLOSED") => {
     setStatusPending(true);
     try {
-      setInquiry(await api.contact.updateInquiryStatus(inquiry.id, nextStatus));
+      const updated = await api.contact.updateInquiryStatus(inquiry.id, nextStatus);
+      setInquiry((current) =>
+        current === null ? updated : { ...updated, messages: mergeMessages(current.messages, updated.messages) }
+      );
     } catch (caught: unknown) {
       setError(caught instanceof ApiError ? caught : null);
     } finally {
@@ -117,6 +174,23 @@ export function InquiryDetailPage({ inquiryId }: Readonly<{ inquiryId: string }>
             Tin đăng #{inquiry.listingId}
           </h1>
           <p className="mt-2 text-sm font-bold">Trạng thái: {statusLabel(inquiry.status)}</p>
+          <p
+            role="status"
+            aria-live="polite"
+            className="mt-3 inline-flex items-center gap-2 border-2 border-heroDark-950 bg-white px-3 py-2 text-xs font-extrabold"
+          >
+            <span
+              aria-hidden="true"
+              className={`h-2.5 w-2.5 rounded-full border border-heroDark-950 ${
+                realtimeStatus === "connected"
+                  ? "bg-[#22c55e]"
+                  : realtimeStatus === "reconnecting"
+                    ? "bg-rent-coral"
+                    : "bg-rent-yellow"
+              }`}
+            />
+            {realtimeStatusLabels[realtimeStatus]}
+          </p>
         </div>
         {isLandlord && inquiry.status !== "CLOSED" ? (
           <div className="flex flex-wrap gap-3">
@@ -134,7 +208,12 @@ export function InquiryDetailPage({ inquiryId }: Readonly<{ inquiryId: string }>
           Không thể cập nhật cuộc trò chuyện. Vui lòng thử lại.
         </p>
       ) : null}
-      <div className="space-y-4" aria-label="Tin nhắn trong cuộc trò chuyện">
+      <div
+        className="space-y-4"
+        aria-label="Tin nhắn trong cuộc trò chuyện"
+        aria-live="polite"
+        aria-relevant="additions text"
+      >
         {inquiry.messages.map((item) => (
           <article
             key={item.id}

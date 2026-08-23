@@ -32,6 +32,7 @@ export interface ContactService {
     query: ContactCollectionQuery
   ) => Promise<ContactPage<Inquiry>>;
   readonly getInquiry: (principal: AuthenticatedPrincipal, inquiryId: number) => Promise<Inquiry>;
+  readonly authorizeRealtime: (principal: AuthenticatedPrincipal, inquiryId: number) => Promise<void>;
   readonly sendMessage: (principal: AuthenticatedPrincipal, inquiryId: number, body: string) => Promise<InquiryMessage>;
   readonly updateStatus: (
     principal: AuthenticatedPrincipal,
@@ -160,6 +161,14 @@ export function createContactService(dependencies: {
         await repository.markMessagesRead(executor, inquiryId, viewerRole);
         const messages = await repository.listMessages(executor, inquiryId, viewerRole);
         return Object.freeze({ ...inquiry, messages });
+      });
+    },
+
+    async authorizeRealtime(principal, inquiryId) {
+      await transactionRunner.run(async (executor) => {
+        const inquiry = await repository.findInquiryById(executor, inquiryId);
+        if (!inquiry) throw new ApplicationError("RESOURCE_NOT_FOUND", notFoundMessage);
+        requireParticipant(principal, inquiry);
       });
     },
 

@@ -18,6 +18,7 @@ import { withTransaction } from "../../shared/src/runtime/db/transaction.js";
 import { createContactRepository } from "./modules/contact/repositories/contact-repository.js";
 import { createContactService } from "./modules/contact/services/contact-service.js";
 import { registerContactRoutes } from "./modules/contact/routes.js";
+import { createInquiryRealtimeHub } from "./modules/contact/realtime/inquiry-realtime-hub.js";
 import { createSavedSearchRepository } from "./modules/saved-searches/repositories/saved-search-repository.js";
 import { registerSavedSearchRoutes } from "./modules/saved-searches/routes.js";
 import { createSavedSearchService } from "./modules/saved-searches/services/saved-search-service.js";
@@ -85,6 +86,7 @@ async function startEngagementService(): Promise<void> {
     internalToken: process.env.SERVICE_INTERNAL_TOKEN ?? ""
   });
   const contactRepository = createContactRepository();
+  const inquiryRealtimeHub = createInquiryRealtimeHub();
   const contactService = createContactService({
     repository: contactRepository,
     listingCatalogClient,
@@ -145,7 +147,8 @@ async function startEngagementService(): Promise<void> {
         authenticationMiddleware: requiredAuthentication,
         tenantRoleMiddleware: tenantRole,
         landlordRoleMiddleware: landlordRole,
-        contactService
+        contactService,
+        realtimeHub: inquiryRealtimeHub
       });
       registerSavedSearchRoutes(router, {
         authenticationMiddleware: requiredAuthentication,

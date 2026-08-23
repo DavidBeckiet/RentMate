@@ -8,8 +8,10 @@ import {
   createMarkAllNotificationsReadHandler,
   createMarkNotificationReadHandler,
   createSendMessageHandler,
+  createStreamInquiryEventsHandler,
   createUpdateInquiryStatusHandler
 } from "./controllers/contact-controller.js";
+import type { InquiryRealtimeHub } from "./realtime/inquiry-realtime-hub.js";
 import type { ContactService } from "./services/contact-service.js";
 import {
   createRateLimitMiddleware,
@@ -23,6 +25,7 @@ export interface ContactRouteDependencies {
   readonly tenantRoleMiddleware: RequestHandler;
   readonly landlordRoleMiddleware: RequestHandler;
   readonly contactService: ContactService;
+  readonly realtimeHub: InquiryRealtimeHub;
   readonly inquiryRateLimitStore?: RateLimitStore;
   readonly messageRateLimitStore?: RateLimitStore;
   readonly rateLimitClock?: Clock;
@@ -67,17 +70,22 @@ export function registerContactRoutes(router: Router, dependencies: ContactRoute
     dependencies.authenticationMiddleware,
     createGetInquiryHandler(dependencies.contactService)
   );
+  router.get(
+    "/inquiries/:inquiryId/events",
+    dependencies.authenticationMiddleware,
+    createStreamInquiryEventsHandler(dependencies.contactService, dependencies.realtimeHub)
+  );
   router.post(
     "/inquiries/:inquiryId/messages",
     dependencies.authenticationMiddleware,
     messageRateLimiter,
-    createSendMessageHandler(dependencies.contactService)
+    createSendMessageHandler(dependencies.contactService, dependencies.realtimeHub)
   );
   router.patch(
     "/inquiries/:inquiryId/status",
     dependencies.authenticationMiddleware,
     dependencies.landlordRoleMiddleware,
-    createUpdateInquiryStatusHandler(dependencies.contactService)
+    createUpdateInquiryStatusHandler(dependencies.contactService, dependencies.realtimeHub)
   );
   router.get(
     "/notifications",
