@@ -23,6 +23,9 @@ vi.mock("../../components/map/map-base", () => ({
     </div>
   )
 }));
+vi.mock("../comparison/comparison-toggle", () => ({ ComparisonToggle: () => <button>So sánh</button> }));
+vi.mock("../comparison/share-listing-control", () => ({ ShareListingControl: () => <button>Chia sẻ</button> }));
+vi.mock("../comparison/listing-note-editor", () => ({ ListingNoteEditor: () => <div>Ghi chú riêng</div> }));
 
 import { ApiError } from "../../lib/api/client";
 import { ListingDetail } from "./listing-detail";

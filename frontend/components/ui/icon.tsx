@@ -8,6 +8,7 @@ export type IconName =
   | "chevronDown"
   | "close"
   | "compass"
+  | "compare"
   | "heart"
   | "home"
   | "key"
@@ -15,10 +16,12 @@ export type IconName =
   | "map"
   | "menu"
   | "minus"
+  | "note"
   | "pin"
   | "plus"
   | "ruler"
   | "search"
+  | "share"
   | "shield"
   | "sliders"
   | "sparkles"
@@ -47,6 +50,13 @@ const paths: Record<IconName, ReactNode> = {
       <path d="m15.5 8.5-2 5-5 2 2-5 5-2Z" />
     </>
   ),
+  compare: (
+    <>
+      <rect x="3" y="4" width="7" height="16" rx="1" />
+      <rect x="14" y="4" width="7" height="16" rx="1" />
+      <path d="M6.5 8h0M17.5 8h0M6.5 12h0M17.5 12h0" />
+    </>
+  ),
   heart: (
     <path d="M20.8 5.7a5.5 5.5 0 0 0-7.8 0L12 6.8l-1.1-1.1a5.5 5.5 0 0 0-7.8 7.8l1.1 1.1L12 22l7.8-7.4 1.1-1.1a5.5 5.5 0 0 0-.1-7.8Z" />
   ),
@@ -71,6 +81,12 @@ const paths: Record<IconName, ReactNode> = {
   ),
   menu: <path d="M4 7h16M4 12h16M4 17h16" />,
   minus: <path d="M5 12h14" />,
+  note: (
+    <>
+      <path d="M5 3h14a2 2 0 0 1 2 2v11l-5 5H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2Z" />
+      <path d="M16 21v-5h5M7 8h10M7 12h7" />
+    </>
+  ),
   pin: (
     <>
       <path d="M20 10c0 6-8 12-8 12S4 16 4 10a8 8 0 1 1 16 0Z" />
@@ -83,6 +99,14 @@ const paths: Record<IconName, ReactNode> = {
     <>
       <circle cx="11" cy="11" r="7" />
       <path d="m20 20-4-4" />
+    </>
+  ),
+  share: (
+    <>
+      <circle cx="18" cy="5" r="3" />
+      <circle cx="6" cy="12" r="3" />
+      <circle cx="18" cy="19" r="3" />
+      <path d="m8.6 10.5 6.8-4M8.6 13.5l6.8 4" />
     </>
   ),
   shield: (

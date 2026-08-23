@@ -2,6 +2,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { Icon } from "../../components/ui/icon";
 import { ListingSaveControl } from "../../components/ui/listing-save-control";
+import { ComparisonToggle } from "../comparison/comparison-toggle";
 import type { PublicListingSummary } from "../../types/api";
 import { formatAreaSqm, formatDistanceKm, formatVnd } from "./format";
 import styles from "./listing-card.module.css";
@@ -91,11 +92,10 @@ export function ListingCard({ listing, showFavorite = true, href, variant = "def
         </div>
       </Link>
 
-      {showFavorite ? (
-        <div className="absolute right-3 top-3 z-20">
-          <ListingSaveControl listingId={String(listing.id)} compact />
-        </div>
-      ) : null}
+      <div className="absolute right-3 top-3 z-20 flex flex-col gap-2">
+        {showFavorite ? <ListingSaveControl listingId={String(listing.id)} compact /> : null}
+        <ComparisonToggle listingId={listing.id} compact />
+      </div>
     </article>
   );
 }

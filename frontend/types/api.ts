@@ -351,6 +351,13 @@ export interface SavedSearch {
   readonly updatedAt: string;
 }
 
+export interface ListingNote {
+  readonly listingId: number;
+  readonly note: string;
+  readonly createdAt: string;
+  readonly updatedAt: string;
+}
+
 export interface CreateSavedSearchBody {
   readonly name?: string | null;
   readonly isActive?: boolean;

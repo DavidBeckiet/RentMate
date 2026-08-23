@@ -16,6 +16,9 @@ import { ListingAmenityChips, ListingPrice } from "./listing-presentation";
 import styles from "./listing-detail.module.css";
 import { ReportListingControl } from "../reports/report-listing-control";
 import { ListingReviews } from "../reviews/listing-reviews";
+import { ComparisonToggle } from "../comparison/comparison-toggle";
+import { ListingNoteEditor } from "../comparison/listing-note-editor";
+import { ShareListingControl } from "../comparison/share-listing-control";
 
 const maximumListingId = 2_147_483_647;
 
@@ -282,7 +285,18 @@ export function ListingDetail({ listingId, actions }: ListingDetailProps) {
             <div>
               <ListingPrice monthlyRent={detail.monthlyRent} emphasis="prominent" />
             </div>
-            {actions ? <div className="border-t-2 border-heroDark-950 pt-4">{actions}</div> : null}
+            <div className="space-y-4 border-t-2 border-heroDark-950 pt-4">
+              {actions}
+              <div className="flex flex-wrap gap-3">
+                <ComparisonToggle listingId={detail.id} />
+                <ShareListingControl listingId={detail.id} title={detail.title} />
+              </div>
+            </div>
+          </section>
+
+          <section className="space-y-4 border-2 border-heroDark-950 bg-[#e5eefc] p-6 shadow-glass">
+            <span className="rm-eyebrow">GHI CHÚ CỦA BẠN</span>
+            <ListingNoteEditor listingId={detail.id} />
           </section>
 
           <section className="space-y-4 border-2 border-heroDark-950 bg-rent-surface p-6 shadow-glass">

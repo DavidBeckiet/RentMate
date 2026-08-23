@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useId, useState, type ReactNode } from "react";
 import { useAuth } from "../../lib/auth/auth-provider";
+import { useComparisonSelection } from "../../features/comparison/comparison-store";
 import { Icon } from "./icon";
 import { RentMateMark } from "./rentmate-mark";
 import styles from "./app-shell.module.css";
@@ -29,6 +30,7 @@ export function AppShell({ children }: Readonly<{ children: ReactNode }>) {
   const [logoutRequested, setLogoutRequested] = useState(false);
   const [mounted, setMounted] = useState(false);
   const { status: authStatus, user, error: authError, logout, refresh } = useAuth();
+  const comparison = useComparisonSelection();
   const status = mounted ? authStatus : "loading";
   const landlordHref = status === "authenticated" && user?.role === "LANDLORD" ? "/landlord" : "/register/landlord";
 
@@ -129,6 +131,17 @@ export function AppShell({ children }: Readonly<{ children: ReactNode }>) {
               </Link>
               <Link href="/search" aria-current={listingCurrent} className={navLink}>
                 Tìm phòng
+              </Link>
+              <Link href="/compare" aria-current={pathname === "/compare" ? "page" : undefined} className={navLink}>
+                <span className="inline-flex items-center gap-2">
+                  <Icon name="compare" className="h-4 w-4" />
+                  So sánh
+                </span>
+                {comparison.count > 0 ? (
+                  <span className="grid h-5 min-w-5 place-items-center border border-heroDark-950 bg-rent-yellow px-1 text-[10px]">
+                    {comparison.count}
+                  </span>
+                ) : null}
               </Link>
               <Link href="/near-me" aria-current={pathname === "/near-me" ? "page" : undefined} className={navLink}>
                 <span className="inline-flex items-center gap-2">

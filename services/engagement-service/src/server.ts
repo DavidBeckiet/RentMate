@@ -31,6 +31,9 @@ import { registerLeadRoutes } from "./modules/leads/routes.js";
 import { createAnalyticsRepository } from "./modules/analytics/repositories/analytics-repository.js";
 import { createAnalyticsService } from "./modules/analytics/services/analytics-service.js";
 import { registerAnalyticsRoutes } from "./modules/analytics/routes.js";
+import { createListingNoteRepository } from "./modules/listing-notes/repositories/listing-note-repository.js";
+import { createListingNoteService } from "./modules/listing-notes/services/listing-note-service.js";
+import { registerListingNoteRoutes } from "./modules/listing-notes/routes.js";
 
 function listen(server: Server, port: number): Promise<void> {
   return new Promise((resolve, reject) => {
@@ -128,6 +131,13 @@ async function startEngagementService(): Promise<void> {
       run: (operation) => withTransaction(databasePool, logger, operation)
     }
   });
+  const listingNoteService = createListingNoteService({
+    repository: createListingNoteRepository(),
+    loadPublicSummariesByIds: listingCatalogClient.loadPublicSummariesByIds,
+    transactionRunner: {
+      run: (operation) => withTransaction(databasePool, logger, operation)
+    }
+  });
   const app = createApp({
     frontendOrigin: config.frontendOrigin,
     logger,
@@ -170,6 +180,11 @@ async function startEngagementService(): Promise<void> {
         authenticationMiddleware: requiredAuthentication,
         landlordRoleMiddleware: landlordRole,
         service: analyticsService
+      });
+      registerListingNoteRoutes(router, {
+        authenticationMiddleware: requiredAuthentication,
+        tenantRoleMiddleware: tenantRole,
+        service: listingNoteService
       });
     }
   });
