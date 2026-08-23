@@ -150,6 +150,13 @@ export function AppShell({ children }: Readonly<{ children: ReactNode }>) {
                     Tin đã lưu
                   </Link>
                   <Link
+                    href="/saved-searches"
+                    aria-current={pathname === "/saved-searches" ? "page" : undefined}
+                    className={navLink}
+                  >
+                    Bộ lọc đã lưu
+                  </Link>
+                  <Link
                     href="/inquiries"
                     aria-current={pathname === "/inquiries" || pathname.startsWith("/inquiries/") ? "page" : undefined}
                     className={navLink}

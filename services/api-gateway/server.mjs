@@ -104,7 +104,8 @@ export function resolveUpstream(pathname, routes) {
       pathname.startsWith("/api/v1/inquiries") ||
       pathname.startsWith("/api/v1/tenant/inquiries") ||
       pathname.startsWith("/api/v1/landlord/inquiries") ||
-      pathname.startsWith("/api/v1/notifications"))
+      pathname.startsWith("/api/v1/notifications") ||
+      pathname.startsWith("/api/v1/saved-searches"))
   ) {
     return routes.engagement;
   }

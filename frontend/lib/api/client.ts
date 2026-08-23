@@ -7,6 +7,7 @@ import { createListingsApi } from "./listings";
 import { createLookupsApi } from "./lookups";
 import { createTransport, type ApiTransport } from "./transport";
 import { createUsersApi } from "./users";
+import { createSavedSearchApi } from "./saved-searches";
 
 export function createApiClient(transport: ApiTransport = createTransport()) {
   return {
@@ -19,6 +20,7 @@ export function createApiClient(transport: ApiTransport = createTransport()) {
     listings: createListingsApi(transport),
     favorites: createFavoritesApi(transport),
     contact: createContactApi(transport),
+    savedSearches: createSavedSearchApi(transport),
     admin: createAdminApi(transport)
   } as const;
 }

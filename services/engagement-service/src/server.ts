@@ -18,6 +18,9 @@ import { withTransaction } from "../../shared/src/runtime/db/transaction.js";
 import { createContactRepository } from "./modules/contact/repositories/contact-repository.js";
 import { createContactService } from "./modules/contact/services/contact-service.js";
 import { registerContactRoutes } from "./modules/contact/routes.js";
+import { createSavedSearchRepository } from "./modules/saved-searches/repositories/saved-search-repository.js";
+import { registerSavedSearchRoutes } from "./modules/saved-searches/routes.js";
+import { createSavedSearchService } from "./modules/saved-searches/services/saved-search-service.js";
 
 function listen(server: Server, port: number): Promise<void> {
   return new Promise((resolve, reject) => {
@@ -87,6 +90,12 @@ async function startEngagementService(): Promise<void> {
     loadAuthenticationAccount
   });
   const tenantRole = createRoleMiddleware(["TENANT"]);
+  const savedSearchService = createSavedSearchService({
+    repository: createSavedSearchRepository(),
+    transactionRunner: {
+      run: (operation) => withTransaction(databasePool, logger, operation)
+    }
+  });
   const app = createApp({
     frontendOrigin: config.frontendOrigin,
     logger,
@@ -107,6 +116,11 @@ async function startEngagementService(): Promise<void> {
         tenantRoleMiddleware: tenantRole,
         landlordRoleMiddleware: createRoleMiddleware(["LANDLORD"]),
         contactService
+      });
+      registerSavedSearchRoutes(router, {
+        authenticationMiddleware: requiredAuthentication,
+        tenantRoleMiddleware: tenantRole,
+        service: savedSearchService
       });
     }
   });

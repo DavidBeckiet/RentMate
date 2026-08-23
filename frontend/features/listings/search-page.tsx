@@ -27,6 +27,7 @@ import {
   type SearchQueryState
 } from "./search-query";
 import styles from "./search-page.module.css";
+import { SaveSearchControl } from "../saved-searches/save-search-control";
 
 type SearchStatus = "idle" | "loading" | "success" | "error";
 
@@ -210,8 +211,8 @@ export function SearchPage() {
             </h1>
           </div>
           <p>
-            Tập trung vào phòng phù hợp, ngân sách vừa tầm và khu vực bạn muốn sống. Bản đồ chỉ mở khi bạn
-            cần kiểm tra vị trí.
+            Tập trung vào phòng phù hợp, ngân sách vừa tầm và khu vực bạn muốn sống. Bản đồ chỉ mở khi bạn cần kiểm tra
+            vị trí.
           </p>
         </header>
 
@@ -250,6 +251,7 @@ export function SearchPage() {
               </div>
 
               <div className={styles.toolbarActions}>
+                <SaveSearchControl search={committed} />
                 <button
                   type="button"
                   aria-expanded={mobileFiltersOpen}

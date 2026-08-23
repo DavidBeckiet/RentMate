@@ -282,6 +282,49 @@ export interface Notification {
   readonly createdAt: string;
 }
 
+export type SavedSearchMode = "ordinary" | "bounds" | "radius";
+
+export interface SavedSearchQuery {
+  readonly q: string | null;
+  readonly areaName: string | null;
+  readonly minMonthlyRent: number | null;
+  readonly maxMonthlyRent: number | null;
+  readonly minRoomAreaSqm: number | null;
+  readonly maxRoomAreaSqm: number | null;
+  readonly propertyType: string | null;
+  readonly amenities: readonly string[];
+  readonly mode: SavedSearchMode;
+  readonly north: number | null;
+  readonly south: number | null;
+  readonly east: number | null;
+  readonly west: number | null;
+  readonly centerLat: number | null;
+  readonly centerLng: number | null;
+  readonly radiusKm: number | null;
+  readonly sort: PublicListingSort;
+}
+
+export interface SavedSearch {
+  readonly id: number;
+  readonly name: string | null;
+  readonly isActive: boolean;
+  readonly query: SavedSearchQuery;
+  readonly createdAt: string;
+  readonly updatedAt: string;
+}
+
+export interface CreateSavedSearchBody {
+  readonly name?: string | null;
+  readonly isActive?: boolean;
+  readonly query: SavedSearchQuery;
+}
+
+export interface UpdateSavedSearchBody {
+  readonly name?: string | null;
+  readonly isActive?: boolean;
+  readonly query?: SavedSearchQuery;
+}
+
 export interface HealthResponse {
   readonly status: "ok" | "error";
   readonly database: "connected" | "unavailable";
