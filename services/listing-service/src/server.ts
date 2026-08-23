@@ -45,6 +45,9 @@ import { createShutdownHandler } from "../../shared/src/runtime/shutdown.js";
 import { applyDatabaseOverrides } from "../../shared/database-overrides.js";
 import { createIdentityAccountClient } from "../../shared/identity-account-client.js";
 import { createInternalServiceGuard } from "../../shared/internal-service-auth.js";
+import { createReportRepository } from "./modules/reports/repositories/report-repository.js";
+import { registerReportRoutes } from "./modules/reports/routes.js";
+import { createReportService } from "./modules/reports/services/report-service.js";
 
 function listen(server: Server, port: number): Promise<void> {
   return new Promise((resolve, reject) => {
@@ -171,6 +174,16 @@ async function startListingService(): Promise<void> {
         ),
         geocodingUserRateLimitStore: new InMemoryRateLimitStore(),
         nominatimProviderRateLimitStore: new InMemoryRateLimitStore()
+      });
+      registerReportRoutes(router, {
+        authenticationMiddleware: requiredAuthentication,
+        tenantRoleMiddleware: createRoleMiddleware(["TENANT"]),
+        adminRoleMiddleware: adminRole,
+        service: createReportService({
+          repository: createReportRepository(),
+          transactionRunner,
+          identityAccountClient
+        })
       });
     },
     registerInternalRoutes: (internalApp) => {

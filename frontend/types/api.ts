@@ -325,6 +325,69 @@ export interface UpdateSavedSearchBody {
   readonly query?: SavedSearchQuery;
 }
 
+export type ReportCategory =
+  | "PRICE_INCORRECT"
+  | "LOCATION_INCORRECT"
+  | "IMAGE_INCORRECT"
+  | "ALREADY_RENTED"
+  | "FRAUD"
+  | "INAPPROPRIATE";
+
+export type ReportStatus = "OPEN" | "INVESTIGATING" | "RESOLVED" | "DISMISSED";
+
+export interface CreateListingReportBody {
+  readonly category: ReportCategory;
+  readonly details?: string | null;
+}
+
+export interface ListingReportReceipt {
+  readonly id: number;
+  readonly listingId: number;
+  readonly category: ReportCategory;
+  readonly status: "OPEN";
+  readonly createdAt: string;
+}
+
+export interface AdminReportEvent {
+  readonly id: number;
+  readonly actorId: number;
+  readonly actorRole: "TENANT" | "ADMIN";
+  readonly previousStatus: ReportStatus | null;
+  readonly newStatus: ReportStatus;
+  readonly note: string | null;
+  readonly createdAt: string;
+}
+
+export interface AdminListingReport {
+  readonly id: number;
+  readonly listing: {
+    readonly id: number;
+    readonly title: string | null;
+    readonly areaName: string | null;
+    readonly status: ListingStatus;
+  };
+  readonly reporter: { readonly id: number; readonly email: string; readonly isActive: boolean };
+  readonly category: ReportCategory;
+  readonly details: string | null;
+  readonly status: ReportStatus;
+  readonly resolutionNote: string | null;
+  readonly assignedAdminId: number | null;
+  readonly createdAt: string;
+  readonly updatedAt: string;
+  readonly resolvedAt: string | null;
+  readonly events?: readonly AdminReportEvent[];
+}
+
+export interface AdminReportQuery extends PaginationQuery {
+  readonly status?: ReportStatus;
+  readonly category?: ReportCategory;
+}
+
+export interface UpdateReportStatusBody {
+  readonly status: Exclude<ReportStatus, "OPEN">;
+  readonly note?: string | null;
+}
+
 export interface HealthResponse {
   readonly status: "ok" | "error";
   readonly database: "connected" | "unavailable";

@@ -1,5 +1,7 @@
 import type {
   ActivationBody,
+  AdminListingReport,
+  AdminReportQuery,
   AdminListingDetail,
   AdminListingQuery,
   AdminListingSummary,
@@ -8,6 +10,7 @@ import type {
   ModerationBody,
   ModerationHistoryItem,
   PaginationQuery,
+  UpdateReportStatusBody,
   UserProfile
 } from "../../types/api";
 import type { ApiTransport } from "./transport";
@@ -38,6 +41,19 @@ export function createAdminApi(transport: ApiTransport) {
       transport.page("/api/v1/admin/users", { query, signal }),
 
     setActivation: (userId: number, body: ActivationBody, signal?: AbortSignal): Promise<UserProfile> =>
-      transport.object(`/api/v1/admin/users/${userId}/activation`, { method: "PATCH", json: body, signal })
+      transport.object(`/api/v1/admin/users/${userId}/activation`, { method: "PATCH", json: body, signal }),
+
+    listReports: (query: AdminReportQuery = {}, signal?: AbortSignal): Promise<ApiPage<AdminListingReport>> =>
+      transport.page("/api/v1/admin/reports", { query, signal }),
+
+    getReport: (reportId: number, signal?: AbortSignal): Promise<AdminListingReport> =>
+      transport.object(`/api/v1/admin/reports/${reportId}`, { signal }),
+
+    updateReportStatus: (
+      reportId: number,
+      body: UpdateReportStatusBody,
+      signal?: AbortSignal
+    ): Promise<AdminListingReport> =>
+      transport.object(`/api/v1/admin/reports/${reportId}/status`, { method: "PATCH", json: body, signal })
   } as const;
 }

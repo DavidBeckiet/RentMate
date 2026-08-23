@@ -220,6 +220,13 @@ export function AppShell({ children }: Readonly<{ children: ReactNode }>) {
                   >
                     Người dùng
                   </Link>
+                  <Link
+                    href="/admin/reports"
+                    aria-current={pathname.startsWith("/admin/reports") ? "page" : undefined}
+                    className={navLink}
+                  >
+                    Báo cáo
+                  </Link>
                 </>
               ) : null}
 

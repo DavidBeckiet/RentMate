@@ -93,6 +93,7 @@ export function resolveUpstream(pathname, routes) {
     routes.listing &&
     (pathname.startsWith("/api/v1/listings") ||
       pathname.startsWith("/api/v1/admin/listings") ||
+      pathname.startsWith("/api/v1/admin/reports") ||
       pathname.startsWith("/api/v1/lookups") ||
       pathname.startsWith("/api/v1/geocoding"))
   ) {

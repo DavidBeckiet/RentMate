@@ -14,6 +14,7 @@ import type { PublicListingDetail } from "../../types/api";
 import { formatAreaSqm } from "./format";
 import { ListingAmenityChips, ListingPrice } from "./listing-presentation";
 import styles from "./listing-detail.module.css";
+import { ReportListingControl } from "../reports/report-listing-control";
 
 const maximumListingId = 2_147_483_647;
 
@@ -322,6 +323,9 @@ export function ListingDetail({ listingId, actions }: ListingDetailProps) {
             )}
             <div className="border-t-2 border-heroDark-950 pt-4">
               <InquiryForm listingId={detail.id} />
+            </div>
+            <div className="border-t-2 border-heroDark-950 pt-4">
+              <ReportListingControl listingId={detail.id} />
             </div>
           </section>
         </aside>

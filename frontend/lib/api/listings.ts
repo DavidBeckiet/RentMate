@@ -1,5 +1,6 @@
 import type {
   ApiPage,
+  CreateListingReportBody,
   ForwardGeocodeBody,
   GeocodingCandidate,
   ListingContentBody,
@@ -11,7 +12,8 @@ import type {
   PublicListingSearchQuery,
   PublicListingSummary,
   ReorderImagesBody,
-  UploadImageInput
+  UploadImageInput,
+  ListingReportReceipt
 } from "../../types/api";
 import type { ApiTransport } from "./transport";
 
@@ -31,6 +33,9 @@ export function createListingsApi(transport: ApiTransport) {
 
     getPublicDetail: (listingId: number, signal?: AbortSignal): Promise<PublicListingDetail> =>
       transport.object(`/api/v1/listings/${listingId}`, { signal }),
+
+    report: (listingId: number, body: CreateListingReportBody, signal?: AbortSignal): Promise<ListingReportReceipt> =>
+      transport.object(`/api/v1/listings/${listingId}/reports`, { method: "POST", json: body, signal }),
 
     createDraft: (body: ListingContentBody = {}, signal?: AbortSignal): Promise<OwnerListingDetail> =>
       transport.object("/api/v1/landlord/listings", { method: "POST", json: body, signal }),
