@@ -16,6 +16,7 @@ const logout = vi.fn<() => Promise<void>>();
 function profile(role: UserRole): UserProfile {
   return {
     id: 1,
+    displayName: null,
     role,
     email: `${role.toLowerCase()}@example.com`,
     phone: null,

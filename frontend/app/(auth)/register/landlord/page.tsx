@@ -7,17 +7,16 @@ export default function LandlordRegistrationPage() {
     <AuthPageShell
       variant="landlord"
       title="Đăng ký cho thuê"
-      description="Tạo tài khoản chủ trọ để chuẩn bị đăng và quản lý thông tin chỗ ở của bạn."
+      description="Tạo tài khoản để đăng và quản lý phòng cho thuê."
       footer={
-        <p>
-          Đã có tài khoản?{" "}
-          <Link
-            href="/login"
-            className="font-semibold text-teal-800 underline decoration-2 underline-offset-4 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-700 focus-visible:ring-offset-2"
-          >
-            Đăng nhập
-          </Link>
-        </p>
+        <div className="space-y-2">
+          <p>
+            Bạn đang tìm phòng? <Link href="/register/tenant">Đăng ký tài khoản người thuê</Link>
+          </p>
+          <p>
+            Đã có tài khoản? <Link href="/login">Đăng nhập</Link>
+          </p>
+        </div>
       }
     >
       <RegistrationForm mode="landlord" />

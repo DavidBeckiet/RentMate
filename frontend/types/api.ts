@@ -9,6 +9,7 @@ export type ModerationAction = "APPROVE" | "REJECT" | "HIDE" | "RESTORE";
 export interface UserProfile {
   readonly id: number;
   readonly role: UserRole;
+  readonly displayName: string | null;
   readonly email: string;
   readonly phone: string | null;
   readonly isActive: boolean;
@@ -154,12 +155,14 @@ export interface ApiErrorDetail {
 }
 
 export interface TenantRegistrationBody {
+  readonly displayName: string;
   readonly email: string;
   readonly password: string;
   readonly phone?: string | null;
 }
 
 export interface LandlordRegistrationBody {
+  readonly displayName: string;
   readonly email: string;
   readonly password: string;
   readonly phone: string;
@@ -171,7 +174,8 @@ export interface LoginBody {
 }
 
 export interface UpdateCurrentUserBody {
-  readonly phone: string | null;
+  readonly displayName?: string;
+  readonly phone?: string | null;
 }
 
 export interface PaginationQuery {

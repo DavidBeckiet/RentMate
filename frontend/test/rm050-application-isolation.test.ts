@@ -7,6 +7,7 @@ const browserTestPackageImport =
   /(?:from\s+|import\s*(?:\(\s*)?|require\s*\(\s*)["'](?:@playwright\/test|playwright(?:-core)?)(?:\/[^"']*)?["']/;
 const production = [
   "features/auth/landlord-profile.tsx",
+  "features/auth/account-profile-form.tsx",
   "features/listings/owner-query.ts",
   "features/listings/owner-listing-card.tsx",
   "features/listings/owner-listings-page.tsx",

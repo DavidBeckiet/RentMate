@@ -48,6 +48,7 @@ describe("LandlordLeadsPage", () => {
       status: "authenticated",
       user: {
         id: 20,
+        displayName: null,
         role: "LANDLORD",
         email: "landlord@example.com",
         phone: "+84910000001",

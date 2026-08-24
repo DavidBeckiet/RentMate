@@ -20,6 +20,7 @@ const refresh = vi.fn<() => Promise<void>>();
 function profile(role: UserRole): UserProfile {
   return {
     id: 7,
+    displayName: null,
     role,
     email: `${role.toLowerCase()}@example.com`,
     phone: role === "LANDLORD" ? "+84901234567" : null,

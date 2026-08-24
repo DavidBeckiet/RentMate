@@ -35,6 +35,25 @@ describe("shared form controls", () => {
     expect(screen.queryByText("Nhập số liên hệ.")).not.toBeInTheDocument();
   });
 
+  it("supports a muted leading icon and visually quiet required indicator without replacing the label", () => {
+    render(
+      <InputField
+        id="auth-email"
+        name="email"
+        label="Email"
+        required
+        requiredIndicator="sr-only"
+        leadingIcon={<span data-testid="mail-icon">icon</span>}
+      />
+    );
+
+    const input = screen.getByLabelText("Email (bắt buộc)");
+    expect(input).toBeRequired();
+    expect(input).toHaveClass("pl-10");
+    expect(screen.getByText("(bắt buộc)")).toHaveClass("sr-only");
+    expect(screen.getByTestId("mail-icon").parentElement).toHaveAttribute("aria-hidden", "true");
+  });
+
   it("lets a standalone Field associate an Input with its label, hint, and error", () => {
     const view = render(
       <Field id="title" label="Tiêu đề" hint="Mô tả ngắn gọn.">

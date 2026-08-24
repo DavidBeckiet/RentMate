@@ -4,6 +4,7 @@ import { AdminUserCard } from "./admin-user-card";
 
 const base = {
   id: 1,
+  displayName: null,
   email: "user@example.com",
   phone: null,
   isActive: true,

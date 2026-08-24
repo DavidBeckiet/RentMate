@@ -5,10 +5,13 @@ import { useState, type FormEvent } from "react";
 import { Button } from "../../components/ui/button";
 import { ErrorState } from "../../components/ui/feedback-states";
 import { InputField } from "../../components/ui/form-controls";
+import { Icon } from "../../components/ui/icon";
+import { PasswordField } from "../../components/ui/password-field";
 import { api, ApiError } from "../../lib/api/client";
 import { useAuth } from "../../lib/auth/auth-provider";
 import { mapApiErrorToFields } from "../../lib/validation/api-field-errors";
 import type { UserRole } from "../../types/api";
+import { GoogleAuthSeam } from "./google-auth-seam";
 import { validateLoginInput } from "./validation";
 
 type LoginField = "email" | "password";
@@ -47,7 +50,20 @@ function feedbackFor(error: unknown): LoginFeedback {
     };
   }
 
-  return mapApiErrorToFields(error, ["email", "password"] as const);
+  const mapped = mapApiErrorToFields(error, ["email", "password"] as const);
+  return {
+    ...mapped,
+    formMessage: mapped.formMessage ? "Không thể đăng nhập. Vui lòng kiểm tra email và mật khẩu." : null,
+    fieldErrors: {
+      ...(mapped.fieldErrors.email ? { email: "Email chưa đúng định dạng." } : {}),
+      ...(mapped.fieldErrors.password ? { password: "Mật khẩu chưa hợp lệ. Vui lòng kiểm tra lại." } : {})
+    }
+  };
+}
+
+function focusFirstInvalidField(fieldErrors: LoginFeedback["fieldErrors"]): void {
+  const field = (["email", "password"] as const).find((candidate) => fieldErrors[candidate]);
+  if (field) document.getElementById(`login-${field}`)?.focus();
 }
 
 export interface LoginFormProps {
@@ -77,11 +93,13 @@ export function LoginForm({ requiredRole, successDestination = "/" }: LoginFormP
 
     const validation = validateLoginInput({ email, password });
     if (!validation.valid) {
+      const fieldErrors = validation.errors as Partial<Record<LoginField, string>>;
       setFeedback({
-        fieldErrors: validation.errors as Partial<Record<LoginField, string>>,
+        fieldErrors,
         formMessage: null,
         requestId: null
       });
+      focusFirstInvalidField(fieldErrors);
       return;
     }
 
@@ -100,14 +118,16 @@ export function LoginForm({ requiredRole, successDestination = "/" }: LoginFormP
       }
       router.replace(successDestination);
     } catch (error) {
-      setFeedback(feedbackFor(error));
+      const nextFeedback = feedbackFor(error);
+      setFeedback(nextFeedback);
+      focusFirstInvalidField(nextFeedback.fieldErrors);
     } finally {
       setPending(false);
     }
   };
 
   return (
-    <form noValidate className="space-y-6" onSubmit={(event) => void handleSubmit(event)}>
+    <form noValidate aria-busy={pending} className="space-y-3" onSubmit={(event) => void handleSubmit(event)}>
       <InputField
         id="login-email"
         name="email"
@@ -115,6 +135,9 @@ export function LoginForm({ requiredRole, successDestination = "/" }: LoginFormP
         type="email"
         autoComplete="email"
         required
+        requiredIndicator="sr-only"
+        leadingIcon={<Icon name="mail" className="h-4 w-4" />}
+        className="rm-auth-control"
         value={email}
         error={feedback.fieldErrors.email}
         onChange={(event) => {
@@ -122,13 +145,15 @@ export function LoginForm({ requiredRole, successDestination = "/" }: LoginFormP
           clearFieldError("email");
         }}
       />
-      <InputField
+      <PasswordField
         id="login-password"
         name="password"
         label="Mật khẩu"
-        type="password"
         autoComplete="current-password"
         required
+        requiredIndicator="sr-only"
+        leadingIcon={<Icon name="lock" className="h-4 w-4" />}
+        className="rm-auth-control"
         value={password}
         error={feedback.fieldErrors.password}
         onChange={(event) => {
@@ -137,9 +162,11 @@ export function LoginForm({ requiredRole, successDestination = "/" }: LoginFormP
         }}
       />
       {feedback.formMessage ? <ErrorState message={feedback.formMessage} requestId={feedback.requestId} /> : null}
-      <Button type="submit" pending={pending} pendingLabel="Đang đăng nhập…" className="w-full">
+      <Button type="submit" pending={pending} pendingLabel="Đang đăng nhập…" className="rm-auth-primary w-full">
+        <Icon name="logIn" className="h-4 w-4" />
         Đăng nhập
       </Button>
+      <GoogleAuthSeam mode="login" />
     </form>
   );
 }

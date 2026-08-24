@@ -16,6 +16,13 @@ export interface NavigationItem {
 
 const marketplaceItems: readonly NavigationItem[] = [
   {
+    key: "home",
+    label: "Trang chủ",
+    href: "/",
+    icon: "home",
+    exactPaths: ["/"]
+  },
+  {
     key: "search",
     label: "Tìm phòng",
     href: "/search",
@@ -49,17 +56,11 @@ const tenantPrimaryItems: readonly NavigationItem[] = [
     exactPaths: ["/inquiries"],
     pathPrefixes: ["/inquiries/"]
   },
-  {
-    key: "notifications",
-    label: "Thông báo",
-    href: "/notifications",
-    icon: "bell",
-    exactPaths: ["/notifications"]
-  }
 ];
 
 const landlordMarketplaceItems: readonly NavigationItem[] = [
   marketplaceItems[0],
+  marketplaceItems[1],
   {
     key: "landlord-workspace",
     label: "Không gian cho thuê",
@@ -71,6 +72,7 @@ const landlordMarketplaceItems: readonly NavigationItem[] = [
 
 const adminMarketplaceItems: readonly NavigationItem[] = [
   marketplaceItems[0],
+  marketplaceItems[1],
   {
     key: "admin-workspace",
     label: "Khu vực quản trị",
@@ -198,7 +200,13 @@ export function isNavigationItemActive(item: NavigationItem, pathname: string): 
 }
 
 export function resolveShellKind(pathname: string, actor: NavigationActor): ShellKind {
-  if (pathname === "/login" || pathname.startsWith("/register/") || pathname === "/admin/login") return "auth";
+  if (
+    pathname === "/login" ||
+    pathname === "/register" ||
+    pathname.startsWith("/register/") ||
+    pathname === "/admin/login"
+  )
+    return "auth";
 
   const requestedWorkspace: WorkspaceActor | null = pathname.startsWith("/landlord")
     ? "landlord"

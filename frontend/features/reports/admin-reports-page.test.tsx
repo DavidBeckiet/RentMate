@@ -45,6 +45,7 @@ describe("AdminReportsPage", () => {
       status: "authenticated",
       user: {
         id: 1,
+        displayName: null,
         role: "ADMIN",
         email: "admin@example.com",
         phone: null,

@@ -32,6 +32,7 @@ import { ListingDetail } from "./listing-detail";
 
 const tenant: UserProfile = {
   id: 7,
+  displayName: null,
   role: "TENANT",
   email: "tenant@example.com",
   phone: null,

@@ -24,6 +24,7 @@ import { AuthProvider, useAuth } from "./auth-provider";
 function user(role: UserRole): UserProfile {
   return {
     id: 17,
+    displayName: null,
     role,
     email: `${role.toLowerCase()}@example.com`,
     phone: role === "LANDLORD" ? "+84901234567" : null,
@@ -44,18 +45,22 @@ function backendError(status: number, code = "AUTHENTICATION_REQUIRED"): ApiErro
 }
 
 function AuthConsumer() {
-  const { status, user: currentUser, error, refresh, logout } = useAuth();
+  const { status, user: currentUser, error, refresh, updateUser, logout } = useAuth();
   return (
     <div>
       <span data-testid="public-child">Nội dung công khai</span>
       <span data-testid="status">{status}</span>
       {currentUser && <span data-testid="role">{currentUser.role}</span>}
+      {currentUser && <span data-testid="display-name">{String(currentUser.displayName)}</span>}
       {error && <span data-testid="error">{error.code}</span>}
       <button type="button" onClick={() => void refresh()}>
         Refresh
       </button>
       <button type="button" onClick={() => void logout()}>
         Logout
+      </button>
+      <button type="button" onClick={() => currentUser && updateUser?.({ ...currentUser, displayName: "Tên mới" })}>
+        Update user
       </button>
     </div>
   );
@@ -139,6 +144,33 @@ describe("AuthProvider", () => {
     fireEvent.click(screen.getByRole("button", { name: "Refresh" }));
     expect(await screen.findByTestId("status")).toHaveTextContent("authenticated");
     expect(apiMocks.getCurrent).toHaveBeenCalledTimes(2);
+  });
+
+  it("refresh replaces a previous display name with the latest canonical profile", async () => {
+    apiMocks.getCurrent
+      .mockResolvedValueOnce({ ...user("TENANT"), displayName: "Tên cũ" })
+      .mockResolvedValueOnce({ ...user("TENANT"), displayName: "Tên mới" });
+    render(
+      <AuthProvider>
+        <AuthConsumer />
+      </AuthProvider>
+    );
+    expect(await screen.findByTestId("display-name")).toHaveTextContent("Tên cũ");
+    fireEvent.click(screen.getByRole("button", { name: "Refresh" }));
+    expect(await screen.findByTestId("display-name")).toHaveTextContent("Tên mới");
+  });
+
+  it("keeps legacy null profiles and replaces the canonical user immediately", async () => {
+    apiMocks.getCurrent.mockResolvedValue(user("TENANT"));
+    render(
+      <AuthProvider>
+        <AuthConsumer />
+      </AuthProvider>
+    );
+    expect(await screen.findByTestId("display-name")).toHaveTextContent("null");
+    fireEvent.click(screen.getByRole("button", { name: "Update user" }));
+    expect(screen.getByTestId("display-name")).toHaveTextContent("Tên mới");
+    expect(apiMocks.getCurrent).toHaveBeenCalledTimes(1);
   });
 
   it("becomes anonymous after successful logout", async () => {

@@ -47,7 +47,7 @@ export function LandlordVerificationPanel() {
   const submit = async () => {
     const normalizedName = displayName.trim();
     if (normalizedName.length < 2) {
-      setError("Tên hiển thị cần có ít nhất 2 ký tự.");
+      setError("Tên trong hồ sơ xác minh cần có ít nhất 2 ký tự.");
       return;
     }
     setPending(true);
@@ -98,7 +98,7 @@ export function LandlordVerificationPanel() {
             <Icon name={verification.status === "APPROVED" ? "check" : "shield"} className="h-4 w-4" />
             {statusLabels[verification.status]}
           </p>
-          <p className="text-sm font-bold">Tên hiển thị: {verification.displayName}</p>
+          <p className="text-sm font-bold">Tên trong hồ sơ xác minh: {verification.displayName}</p>
           {verification.decisionNote ? (
             <p className="text-sm leading-6">Phản hồi: {verification.decisionNote}</p>
           ) : null}
@@ -108,7 +108,7 @@ export function LandlordVerificationPanel() {
       {loadState === "success" && verification?.status !== "PENDING" && verification?.status !== "APPROVED" ? (
         <div className="space-y-4">
           <label className="block text-sm font-extrabold" htmlFor="verification-display-name">
-            Tên chủ trọ muốn hiển thị
+            Tên trong hồ sơ xác minh
           </label>
           <input
             id="verification-display-name"

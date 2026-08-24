@@ -19,6 +19,7 @@ export interface FieldProps {
   readonly hint?: ReactNode;
   readonly error?: string;
   readonly required?: boolean;
+  readonly requiredIndicator?: "text" | "sr-only";
   readonly describedBy?: string;
   readonly children: (controlProps: FieldControlAccessibilityProps) => ReactNode;
 }
@@ -33,7 +34,10 @@ interface FieldPresentationProps {
 
 export interface InputFieldProps
   extends FieldPresentationProps,
-    Omit<InputHTMLAttributes<HTMLInputElement>, "id" | "name"> {}
+    Omit<InputHTMLAttributes<HTMLInputElement>, "id" | "name"> {
+  readonly leadingIcon?: ReactNode;
+  readonly requiredIndicator?: "text" | "sr-only";
+}
 
 export interface TextareaFieldProps
   extends FieldPresentationProps,
@@ -60,16 +64,16 @@ export interface CheckboxGroupProps {
 }
 
 const controlClasses =
-  "min-h-11 w-full max-w-full rounded-control border border-border-strong bg-surface px-3 py-2 text-ui-base font-medium text-foreground shadow-surface outline-none transition-[background-color,border-color,box-shadow] duration-fast ease-standard placeholder:font-normal placeholder:text-muted-foreground focus:border-primary focus:ring-2 focus:ring-primary/20 disabled:cursor-not-allowed disabled:border-border disabled:bg-disabled disabled:text-muted-foreground disabled:shadow-none aria-[invalid=true]:border-danger aria-[invalid=true]:bg-danger-subtle aria-[invalid=true]:focus:ring-danger/20";
+  "min-h-12 w-full max-w-full border-2 border-heroDark-950 bg-rent-surface px-4 py-2.5 text-base font-semibold text-rent-ink shadow-glass-sm outline-none placeholder:font-normal placeholder:text-rent-subtle transition-[background-color,box-shadow,transform] duration-200 focus:-translate-x-0.5 focus:-translate-y-0.5 focus:bg-white focus:shadow-glass disabled:cursor-not-allowed disabled:bg-[#dfddd5] disabled:text-rent-subtle aria-[invalid=true]:border-rose-700 aria-[invalid=true]:bg-rose-50";
 
-function labelText(label: string, required?: boolean) {
+function labelText(label: string, required?: boolean, requiredIndicator: "text" | "sr-only" = "text") {
   return (
     <>
       {label}
       {required ? (
         <>
           {" "}
-          <span className="text-danger">(bắt buộc)</span>
+          <span className={requiredIndicator === "sr-only" ? "sr-only" : "text-danger"}>(bắt buộc)</span>
         </>
       ) : null}
     </>
@@ -83,25 +87,28 @@ function descriptionId(id: string, hint: ReactNode, error: string | undefined, e
 function FieldMessage({ id, hint, error }: { id: string; hint?: ReactNode; error?: string }) {
   if (error) {
     return (
-      <p id={`${id}-error`} role="alert" className="flex items-start gap-2 text-ui-sm font-semibold text-danger">
-        <span aria-hidden="true">!</span>
+      <p
+        id={`${id}-error`}
+        role="alert"
+        className="border-l-4 border-rose-700 pl-2 text-sm font-semibold text-rose-800"
+      >
         {error}
       </p>
     );
   }
 
   return hint ? (
-    <p id={`${id}-hint`} className="text-ui-sm text-muted-foreground">
+    <p id={`${id}-hint`} className="text-sm text-rent-secondary">
       {hint}
     </p>
   ) : null;
 }
 
-export function Field({ id, label, hint, error, required, describedBy, children }: FieldProps) {
+export function Field({ id, label, hint, error, required, requiredIndicator, describedBy, children }: FieldProps) {
   return (
     <div className="space-y-2">
       <label htmlFor={id} className="block text-ui-sm font-semibold text-foreground">
-        {labelText(label, required)}
+        {labelText(label, required, requiredIndicator)}
       </label>
       {children({
         id,
@@ -138,7 +145,18 @@ export const Select = forwardRef<HTMLSelectElement, SelectHTMLAttributes<HTMLSel
   );
 });
 
-export function InputField({ id, name, label, hint, error, required, className = "", ...inputProps }: InputFieldProps) {
+export function InputField({
+  id,
+  name,
+  label,
+  hint,
+  error,
+  required,
+  requiredIndicator,
+  leadingIcon,
+  className = "",
+  ...inputProps
+}: InputFieldProps) {
   return (
     <Field
       id={id}
@@ -146,18 +164,35 @@ export function InputField({ id, name, label, hint, error, required, className =
       hint={hint}
       error={error}
       required={required}
+      requiredIndicator={requiredIndicator}
       describedBy={inputProps["aria-describedby"]}
     >
-      {(controlProps) => (
-        <Input
-          {...inputProps}
-          {...controlProps}
-          name={name}
-          required={required}
-          aria-invalid={error ? true : inputProps["aria-invalid"]}
-          className={className}
-        />
-      )}
+      {(controlProps) => {
+        const input = (
+          <Input
+            {...inputProps}
+            {...controlProps}
+            name={name}
+            required={required}
+            aria-invalid={error ? true : inputProps["aria-invalid"]}
+            className={cx(leadingIcon ? "pl-10" : undefined, className)}
+          />
+        );
+
+        return leadingIcon ? (
+          <div className="group relative">
+            <span
+              aria-hidden="true"
+              className="pointer-events-none absolute inset-y-0 left-0 grid w-10 place-items-center text-muted-foreground transition-colors duration-fast group-hover:text-foreground-soft group-focus-within:text-primary"
+            >
+              {leadingIcon}
+            </span>
+            {input}
+          </div>
+        ) : (
+          input
+        );
+      }}
     </Field>
   );
 }

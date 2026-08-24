@@ -10,6 +10,7 @@ import {
 describe("actor-aware navigation model", () => {
   it("uses only existing route URLs for every actor model", () => {
     const existingRoutes = new Set([
+      "/",
       "/search",
       "/near-me",
       "/favorites",
@@ -31,6 +32,7 @@ describe("actor-aware navigation model", () => {
       ...consumerNavigationItems("tenant"),
       ...consumerNavigationItems("landlord"),
       ...consumerNavigationItems("admin"),
+      ...consumerNavigationItems("anonymous"),
       ...landlordNavigationItems,
       ...adminNavigationItems
     ]) {
@@ -38,8 +40,16 @@ describe("actor-aware navigation model", () => {
     }
   });
 
+  it("keeps home in the shared header and reserves notifications for the account area", () => {
+    for (const actor of ["anonymous", "tenant", "landlord", "admin"] as const) {
+      expect(consumerNavigationItems(actor).some((item) => item.key === "home")).toBe(true);
+      expect(consumerNavigationItems(actor).some((item) => item.key === "notifications")).toBe(false);
+    }
+  });
+
   it("resolves route-owned, shared, auth, and wrong-role shells without treating role UX as authorization", () => {
     expect(resolveShellKind("/login", "anonymous")).toBe("auth");
+    expect(resolveShellKind("/register", "anonymous")).toBe("auth");
     expect(resolveShellKind("/landlord", "landlord")).toBe("landlord");
     expect(resolveShellKind("/landlord", "loading")).toBe("landlord");
     expect(resolveShellKind("/landlord", "tenant")).toBe("restricted");

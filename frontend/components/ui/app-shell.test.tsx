@@ -23,9 +23,10 @@ import { AppShell } from "./app-shell";
 const refresh = vi.fn<() => Promise<void>>();
 const logout = vi.fn<() => Promise<void>>();
 
-function user(role: UserRole): UserProfile {
+function user(role: UserRole, displayName: string | null = null): UserProfile {
   return {
     id: 17,
+    displayName,
     role,
     email: `${role.toLowerCase()}@example.com`,
     phone: role === "LANDLORD" ? "+84901234567" : null,
@@ -39,8 +40,8 @@ function authValue(value: Partial<AuthContextValue> = {}): AuthContextValue {
   return { status: "anonymous", user: null, error: null, refresh, logout, ...value };
 }
 
-function authenticate(role: UserRole) {
-  useAuthMock.mockReturnValue(authValue({ status: "authenticated", user: user(role) }));
+function authenticate(role: UserRole, displayName: string | null = null) {
+  useAuthMock.mockReturnValue(authValue({ status: "authenticated", user: user(role, displayName) }));
 }
 
 describe("AppShell", () => {
@@ -60,11 +61,25 @@ describe("AppShell", () => {
     expect(screen.getByRole("main")).toHaveAttribute("id", "main-content");
     expect(screen.getByRole("link", { name: "Bỏ qua đến nội dung chính" })).toHaveAttribute("href", "#main-content");
     expect(within(header).getByRole("link", { name: "RentMate — về trang chủ" })).toHaveAttribute("href", "/");
+    expect(within(navigation).getByRole("link", { name: "Trang chủ" })).toHaveAttribute("href", "/");
     expect(within(navigation).getByRole("link", { name: "Tìm phòng" })).toHaveAttribute("href", "/search");
     expect(within(navigation).getByRole("link", { name: "Gần tôi" })).toHaveAttribute("href", "/near-me");
     expect(within(header).getByRole("link", { name: "Đăng nhập" })).toHaveAttribute("href", "/login");
-    expect(within(header).getByRole("link", { name: "Cho thuê phòng" })).toHaveAttribute("href", "/register/landlord");
+    expect(within(header).getByRole("link", { name: "Đăng ký" })).toHaveAttribute("href", "/register");
     expect(within(navigation).queryByRole("link", { name: "Yêu thích" })).not.toBeInTheDocument();
+  });
+
+  it("keeps every anonymous route and auth action accessible in the mobile drawer", () => {
+    render(<AppShell>Nội dung trang</AppShell>);
+    fireEvent.click(screen.getByRole("button", { name: "Mở menu điều hướng" }));
+
+    const dialog = screen.getByRole("dialog", { name: "Điều hướng RentMate" });
+    const navigation = within(dialog).getByRole("navigation", { name: "Điều hướng marketplace trên di động" });
+    expect(within(navigation).getByRole("link", { name: "Trang chủ" })).toHaveAttribute("href", "/");
+    expect(within(navigation).getByRole("link", { name: "Tìm phòng" })).toHaveAttribute("href", "/search");
+    expect(within(navigation).getByRole("link", { name: "Gần tôi" })).toHaveAttribute("href", "/near-me");
+    expect(within(dialog).getByRole("link", { name: "Đăng nhập" })).toHaveAttribute("href", "/login");
+    expect(within(dialog).getByRole("link", { name: "Đăng ký" })).toHaveAttribute("href", "/register");
   });
 
   it("shows tenant priorities and marks the current consumer route", () => {
@@ -75,9 +90,33 @@ describe("AppShell", () => {
     const navigation = screen.getByRole("navigation", { name: "Điều hướng marketplace" });
     expect(within(navigation).getByRole("link", { name: "Yêu thích" })).toHaveAttribute("aria-current", "page");
     expect(within(navigation).getByRole("link", { name: "Tin nhắn" })).toHaveAttribute("href", "/inquiries");
-    expect(within(navigation).getByRole("link", { name: "Thông báo" })).toHaveAttribute("href", "/notifications");
-    expect(within(screen.getByRole("banner")).queryByRole("link", { name: "Cho thuê phòng" })).not.toBeInTheDocument();
+    expect(within(navigation).queryByRole("link", { name: "Thông báo" })).not.toBeInTheDocument();
+    expect(within(screen.getByRole("banner")).getByRole("link", { name: "Thông báo" })).toHaveAttribute(
+      "href",
+      "/notifications"
+    );
+    expect(within(screen.getByRole("banner")).queryByRole("link", { name: "Đăng ký" })).not.toBeInTheDocument();
     expect(screen.getByText("tenant@example.com")).toBeInTheDocument();
+  });
+
+  it("prefers the display name and provides a keyboard-accessible role-aware account menu", async () => {
+    authenticate("TENANT", "Nguyễn Văn An");
+    render(<AppShell>Nội dung trang</AppShell>);
+    const trigger = screen.getByRole("button", { name: /Nguyễn Văn An/ });
+    fireEvent.keyDown(trigger, { key: "ArrowDown" });
+    const menu = await screen.findByRole("menu", { name: "Tài khoản" });
+    expect(within(menu).getByRole("menuitem", { name: "Hồ sơ của tôi" })).toHaveAttribute("href", "/profile");
+    expect(within(menu).getByRole("menuitem", { name: "Thông báo" })).toHaveAttribute("href", "/notifications");
+    await waitFor(() => expect(within(menu).getByRole("menuitem", { name: "Hồ sơ của tôi" })).toHaveFocus());
+    fireEvent.keyDown(menu, { key: "Escape" });
+    expect(screen.queryByRole("menu", { name: "Tài khoản" })).not.toBeInTheDocument();
+    expect(trigger).toHaveFocus();
+  });
+
+  it("falls back to email for a legacy null account", () => {
+    authenticate("TENANT");
+    render(<AppShell>Nội dung trang</AppShell>);
+    expect(screen.getByRole("button", { name: /tenant@example.com/ })).toBeInTheDocument();
   });
 
   it.each([
@@ -93,14 +132,41 @@ describe("AppShell", () => {
     expect(within(navigation).queryByRole("link", { name: "Tin nhắn" })).not.toBeInTheDocument();
   });
 
-  it("uses a focused auth shell without marketplace navigation or marketing footer", () => {
+  it("uses a compact public auth header without authenticated-only navigation", () => {
     navigationMocks.pathname.mockReturnValue("/login");
     render(<AppShell>Biểu mẫu đăng nhập</AppShell>);
 
+    const header = screen.getByRole("banner");
+    const navigation = within(header).getByRole("navigation", { name: "Điều hướng công khai" });
     expect(screen.getByRole("main")).toHaveTextContent("Biểu mẫu đăng nhập");
-    expect(screen.getByRole("link", { name: "Về marketplace" })).toHaveAttribute("href", "/search");
-    expect(screen.queryByRole("navigation", { name: "Điều hướng marketplace" })).not.toBeInTheDocument();
+    expect(within(header).getByRole("link", { name: "RentMate — về trang chủ" })).toHaveAttribute("href", "/");
+    expect(within(navigation).getByRole("link", { name: "Trang chủ" })).toHaveAttribute("href", "/");
+    expect(within(navigation).getByRole("link", { name: "Tìm phòng" })).toHaveAttribute("href", "/search");
+    expect(within(navigation).getByRole("link", { name: "Gần tôi" })).toHaveAttribute("href", "/near-me");
+    const login = within(header).getByRole("link", { name: "Đăng nhập" });
+    const register = within(header).getByRole("link", { name: "Đăng ký" });
+    expect(login).toHaveAttribute("href", "/login");
+    expect(login).toHaveAttribute("aria-current", "page");
+    expect(login.querySelector("svg")).toHaveAttribute("aria-hidden", "true");
+    expect(register).toHaveAttribute("href", "/register");
+    expect(register.querySelector("svg")).toHaveAttribute("aria-hidden", "true");
+    expect(within(header).queryByText(/Yêu thích|Tin nhắn|Thông báo/)).not.toBeInTheDocument();
     expect(screen.queryByRole("contentinfo")).not.toBeInTheDocument();
+  });
+
+  it("keeps the anonymous auth routes and actions accessible in the mobile drawer", () => {
+    navigationMocks.pathname.mockReturnValue("/register/tenant");
+    render(<AppShell>Biểu mẫu đăng ký</AppShell>);
+    fireEvent.click(screen.getByRole("button", { name: "Mở menu điều hướng" }));
+
+    const dialog = screen.getByRole("dialog", { name: "Điều hướng RentMate" });
+    const navigation = within(dialog).getByRole("navigation", { name: "Điều hướng công khai trên di động" });
+    expect(within(navigation).getByRole("link", { name: "Trang chủ" })).toHaveAttribute("href", "/");
+    expect(within(navigation).getByRole("link", { name: "Tìm phòng" })).toHaveAttribute("href", "/search");
+    expect(within(navigation).getByRole("link", { name: "Gần tôi" })).toHaveAttribute("href", "/near-me");
+    expect(within(dialog).getByRole("link", { name: "Đăng nhập" })).toHaveAttribute("href", "/login");
+    expect(within(dialog).getByRole("link", { name: "Đăng ký" })).toHaveAttribute("aria-current", "page");
+    expect(within(dialog).queryByText(/Yêu thích|Tin nhắn|Thông báo/)).not.toBeInTheDocument();
   });
 
   it.each([
@@ -214,7 +280,8 @@ describe("AppShell", () => {
     logout.mockResolvedValue();
     const view = render(<AppShell>Nội dung trang</AppShell>);
 
-    fireEvent.click(screen.getByRole("button", { name: "Đăng xuất" }));
+    fireEvent.click(screen.getByRole("button", { name: /tenant@example.com/ }));
+    fireEvent.click(screen.getByRole("menuitem", { name: "Đăng xuất" }));
     await waitFor(() => expect(logout).toHaveBeenCalledTimes(1));
     expect(navigationMocks.replace).not.toHaveBeenCalled();
 

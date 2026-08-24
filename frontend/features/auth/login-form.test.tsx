@@ -18,6 +18,7 @@ import { LoginForm } from "./login-form";
 
 const admin: UserProfile = {
   id: 7,
+  displayName: null,
   role: "ADMIN",
   email: "admin@example.com",
   phone: null,
@@ -100,8 +101,28 @@ describe("LoginForm", () => {
     fillLogin("user@example.com", "password");
     fireEvent.click(screen.getByRole("button", { name: "Đăng nhập" }));
 
-    expect(await screen.findByText("Email needs review.")).toBeInTheDocument();
+    expect(await screen.findByText("Email chưa đúng định dạng.")).toBeInTheDocument();
+    expect(screen.queryByText("Email needs review.")).not.toBeInTheDocument();
     expect(screen.getByLabelText("Email (bắt buộc)")).toHaveAttribute("aria-invalid", "true");
+  });
+
+  it("never renders a raw backend validation fallback", async () => {
+    apiMocks.login.mockRejectedValue(
+      new ApiError({
+        status: 400,
+        code: "VALIDATION_FAILED",
+        message: "Invalid payload at auth.login",
+        category: "backend"
+      })
+    );
+    render(<LoginForm />);
+    fillLogin("user@example.com", "password");
+    fireEvent.click(screen.getByRole("button", { name: "Đăng nhập" }));
+
+    expect(await screen.findByRole("alert")).toHaveTextContent(
+      "Không thể đăng nhập. Vui lòng kiểm tra email và mật khẩu."
+    );
+    expect(screen.queryByText("Invalid payload at auth.login")).not.toBeInTheDocument();
   });
 
   it.each([
@@ -151,11 +172,44 @@ describe("LoginForm", () => {
     fillLogin("admin@example.com", "password");
 
     fireEvent.click(screen.getByRole("button", { name: "Đăng nhập" }));
-    expect(await screen.findByRole("button", { name: "Đang đăng nhập…" })).toBeDisabled();
+    const pendingButton = await screen.findByRole("button", { name: "Đang đăng nhập…" });
+    expect(pendingButton).toBeDisabled();
+    expect(pendingButton.closest("form")).toHaveAttribute("aria-busy", "true");
     fireEvent.click(screen.getByRole("button", { name: "Đang đăng nhập…" }));
     expect(apiMocks.login).toHaveBeenCalledTimes(1);
 
     resolveLogin(admin);
     await waitFor(() => expect(navigationMocks.replace).toHaveBeenCalledWith("/"));
+  });
+
+  it("keeps the keyboard-accessible password toggle available", () => {
+    render(<LoginForm />);
+    const email = screen.getByLabelText("Email (bắt buộc)");
+    const password = screen.getByLabelText("Mật khẩu (bắt buộc)");
+    const toggle = screen.getByRole("button", { name: "Hiện mật khẩu" });
+
+    expect(email).toHaveClass("pl-10");
+    expect(password).toHaveClass("pl-10", "pr-12");
+    expect(toggle).toHaveClass("min-h-11", "w-11");
+    expect(password).toHaveAttribute("type", "password");
+    fireEvent.click(toggle);
+    expect(password).toHaveAttribute("type", "text");
+    expect(screen.getByRole("button", { name: "Ẩn mật khẩu" })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Ẩn mật khẩu" }));
+    expect(password).toHaveAttribute("type", "password");
+    expect(screen.getByRole("button", { name: "Hiện mật khẩu" })).toBeInTheDocument();
+    expect(screen.queryByText(/Quên mật khẩu|Ghi nhớ đăng nhập/i)).not.toBeInTheDocument();
+  });
+
+  it("shows Google as a disabled future option without login or navigation", () => {
+    render(<LoginForm />);
+
+    const google = screen.getByRole("button", { name: "Đăng nhập nhanh bằng Google" });
+    expect(google).toBeDisabled();
+    expect(screen.getByText("Sắp hỗ trợ")).toBeInTheDocument();
+    fireEvent.click(google);
+    expect(apiMocks.login).not.toHaveBeenCalled();
+    expect(authMocks.refresh).not.toHaveBeenCalled();
+    expect(navigationMocks.replace).not.toHaveBeenCalled();
   });
 });

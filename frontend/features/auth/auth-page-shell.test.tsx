@@ -17,6 +17,7 @@ const refresh = vi.fn<() => Promise<void>>();
 const logout = vi.fn<() => Promise<void>>();
 const tenant: UserProfile = {
   id: 1,
+  displayName: null,
   role: "TENANT",
   email: "tenant@example.com",
   phone: null,
@@ -55,7 +56,9 @@ describe("AuthPageShell", () => {
 
     const heading = screen.getByRole("heading", { level: 1, name: "Đăng nhập" });
     expect(heading).toBeInTheDocument();
-    expect(heading.closest("section")).toHaveClass("max-w-md");
+    expect(heading.closest("section")).toHaveAttribute("data-auth-variant", "login");
+    expect(heading.closest("section")?.querySelector("[data-auth-brand]")).toHaveTextContent("RentMate");
+    expect(screen.queryByRole("heading", { level: 2 })).not.toBeInTheDocument();
     expect(screen.getByRole("form", { name: "Biểu mẫu đăng nhập" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Đăng nhập" })).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Đăng ký tìm phòng" })).toHaveAttribute("href", "/register/tenant");

@@ -24,6 +24,7 @@ import { OwnerImageManager } from "./owner-image-manager";
 
 const landlord: UserProfile = {
   id: 7,
+  displayName: null,
   role: "LANDLORD",
   email: "owner@example.com",
   phone: "+84901234567",

@@ -6,14 +6,14 @@
   /* Semantic color tokens are stored as RGB channels so Tailwind opacity modifiers remain available. */
   --color-background: 244 241 232;
   --color-surface: 255 253 247;
-  --color-surface-subtle: 247 246 241;
+  --color-surface-subtle: 240 238 230;
   --color-foreground: 9 43 39;
   --color-foreground-soft: 18 58 51;
   --color-muted: 236 233 223;
   --color-muted-foreground: 56 86 79;
   --color-subtle-foreground: 83 108 101;
-  --color-border: 221 220 210;
-  --color-border-strong: 185 190 181;
+  --color-border: 9 43 39;
+  --color-border-strong: 9 43 39;
 
   --color-primary-50: 238 247 241;
   --color-primary-100: 220 239 227;
@@ -23,7 +23,7 @@
   --color-primary-hover: 15 87 62;
   --color-primary-700: 12 69 51;
   --color-primary-foreground: 255 255 255;
-  --color-primary-subtle: 229 243 235;
+  --color-primary-subtle: 238 249 207;
 
   --color-success: 31 122 83;
   --color-success-foreground: 16 89 58;
@@ -38,8 +38,8 @@
   --color-info: 23 92 211;
   --color-info-foreground: 24 73 169;
   --color-info-subtle: 239 248 255;
-  --color-focus-ring: 37 99 235;
-  --color-control-disabled: 231 230 224;
+  --color-focus-ring: 255 118 87;
+  --color-control-disabled: 223 221 213;
 
   --color-accent: 201 242 105;
   --color-accent-hover: 184 230 83;
@@ -72,12 +72,12 @@
   --space-12: 3rem;
   --space-16: 4rem;
 
-  --radius-control: 0.5rem;
-  --radius-card: 0.75rem;
-  --radius-overlay: 1rem;
-  --shadow-surface: 0 1px 2px rgb(9 43 39 / 0.08);
-  --shadow-raised: 0 8px 24px rgb(9 43 39 / 0.12);
-  --shadow-overlay: 0 18px 48px rgb(9 43 39 / 0.18);
+  --radius-control: 0;
+  --radius-card: 0;
+  --radius-overlay: 0;
+  --shadow-surface: 3px 3px 0 rgb(9 43 39);
+  --shadow-raised: 10px 10px 0 rgb(9 43 39);
+  --shadow-overlay: 12px 12px 0 rgb(9 43 39 / 0.96);
   --motion-fast: 150ms;
   --motion-standard: 200ms;
   --rm-ease-out: cubic-bezier(0.16, 1, 0.3, 1);

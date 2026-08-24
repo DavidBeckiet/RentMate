@@ -16,6 +16,7 @@ const auth: AuthContextValue = {
   status: "authenticated",
   user: {
     id: 7,
+    displayName: null,
     role: "LANDLORD",
     email: "owner@example.com",
     phone: "+84901234567",
@@ -47,7 +48,7 @@ describe("LandlordVerificationPanel", () => {
       reviewedAt: null
     });
     render(<LandlordVerificationPanel />);
-    fireEvent.change(await screen.findByLabelText("Tên chủ trọ muốn hiển thị"), { target: { value: "Nguyễn Văn An" } });
+    fireEvent.change(await screen.findByLabelText("Tên trong hồ sơ xác minh"), { target: { value: "Nguyễn Văn An" } });
     fireEvent.click(screen.getByRole("button", { name: "Gửi yêu cầu xác minh" }));
     await waitFor(() =>
       expect(apiMocks.submitVerification).toHaveBeenCalledWith({ displayName: "Nguyễn Văn An", note: null })

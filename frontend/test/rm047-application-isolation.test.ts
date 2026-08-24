@@ -11,18 +11,35 @@ function read(path: string): string {
 }
 
 describe("RM-047 application isolation", () => {
-  it("creates only the frozen public auth routes and never an admin registration or logout page", () => {
+  it("keeps the public auth routes and adds only a role chooser entry route", () => {
     const authRoot = join(frontendRoot, "app", "(auth)");
     expect(existsSync(join(authRoot, "login", "page.tsx"))).toBe(true);
     expect(existsSync(join(authRoot, "register", "tenant", "page.tsx"))).toBe(true);
     expect(existsSync(join(authRoot, "register", "landlord", "page.tsx"))).toBe(true);
     expect(existsSync(join(authRoot, "register", "admin", "page.tsx"))).toBe(false);
     expect(existsSync(join(authRoot, "logout", "page.tsx"))).toBe(false);
-    expect(existsSync(join(authRoot, "register", "page.tsx"))).toBe(false);
+    expect(existsSync(join(authRoot, "register", "page.tsx"))).toBe(true);
+
+    const loginPage = read("app/(auth)/login/page.tsx");
+    const tenantPage = read("app/(auth)/register/tenant/page.tsx");
+    const landlordPage = read("app/(auth)/register/landlord/page.tsx");
+    expect(loginPage).toContain('href="/register"');
+    expect(loginPage).not.toMatch(/Quên mật khẩu|Ghi nhớ đăng nhập/);
+    expect(tenantPage).toContain('href="/register/landlord"');
+    expect(tenantPage).toContain('href="/login"');
+    expect(landlordPage).toContain('href="/register/tenant"');
+    expect(landlordPage).toContain('href="/login"');
   });
 
   it("keeps auth production on shared API/provider/UI seams without raw transport or backend imports", () => {
-    const authSources = ["auth-page-shell", "login-form", "registration-form", "validation"]
+    const authSources = [
+      "auth-page-shell",
+      "google-auth-seam",
+      "login-form",
+      "registration-form",
+      "registration-chooser",
+      "validation"
+    ]
       .map((name) => read(`features/auth/${name}${name === "validation" ? ".ts" : ".tsx"}`))
       .join("\n");
 
@@ -38,8 +55,10 @@ describe("RM-047 application isolation", () => {
   it("keeps tokens, cookies, storage, sensitive URLs, and credential logging outside auth production", () => {
     const authProduction = [
       "features/auth/auth-page-shell.tsx",
+      "features/auth/google-auth-seam.tsx",
       "features/auth/login-form.tsx",
       "features/auth/registration-form.tsx",
+      "features/auth/registration-chooser.tsx",
       "features/auth/validation.ts",
       "components/ui/app-shell.tsx"
     ]

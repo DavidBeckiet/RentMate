@@ -24,6 +24,7 @@ import { RegistrationForm } from "./registration-form";
 
 const tenant: UserProfile = {
   id: 1,
+  displayName: null,
   role: "TENANT",
   email: "tenant@example.com",
   phone: null,
@@ -34,8 +35,10 @@ const tenant: UserProfile = {
 const landlord: UserProfile = { ...tenant, id: 2, role: "LANDLORD", email: "owner@example.com", phone: "+84901234567" };
 
 function fillCommon(email = "  TENANT@Example.COM ", password = "  pass word  ") {
+  fireEvent.change(screen.getByLabelText("Họ và tên (bắt buộc)"), { target: { value: "  Nguyễn Văn An  " } });
   fireEvent.change(screen.getByLabelText("Email (bắt buộc)"), { target: { value: email } });
   fireEvent.change(screen.getByLabelText("Mật khẩu (bắt buộc)"), { target: { value: password } });
+  fireEvent.change(screen.getByLabelText("Nhập lại mật khẩu (bắt buộc)"), { target: { value: password } });
 }
 
 describe("RegistrationForm", () => {
@@ -46,18 +49,45 @@ describe("RegistrationForm", () => {
     navigationMocks.replace.mockReset();
   });
 
+  it("requires a human-friendly name and avoids technical validation language", () => {
+    render(<RegistrationForm mode="tenant" />);
+    const name = screen.getByLabelText("Họ và tên (bắt buộc)");
+    expect(name).toBeRequired();
+    expect(name).toHaveAttribute("placeholder", "Nguyễn Văn A");
+    expect(name).toHaveValue("");
+    expect(screen.getByText("Từ 8 ký tự trở lên.")).toBeInTheDocument();
+    expect(screen.getByText("Không bắt buộc")).toBeInTheDocument();
+    expect(screen.getByLabelText("Số điện thoại")).toHaveAttribute("placeholder", "0912345678");
+    for (const indicator of screen.getAllByText("(bắt buộc)")) expect(indicator).toHaveClass("sr-only");
+    expect(document.body).not.toHaveTextContent(/displayName|E\.164|UTF-8|72 byte/);
+    expect(document.body).not.toHaveTextContent(/\+849/);
+  });
+
+  it.each(["tenant", "landlord"] as const)("renders a disabled Google seam for %s without calling an API", (mode) => {
+    render(<RegistrationForm mode={mode} />);
+
+    const google = screen.getByRole("button", { name: "Đăng ký nhanh bằng Google" });
+    expect(google).toBeDisabled();
+    expect(screen.getByText("Sắp hỗ trợ")).toBeInTheDocument();
+    fireEvent.click(google);
+    expect(apiMocks.registerTenant).not.toHaveBeenCalled();
+    expect(apiMocks.registerLandlord).not.toHaveBeenCalled();
+    expect(navigationMocks.replace).not.toHaveBeenCalled();
+  });
+
   it("submits normalized tenant data while omitting a blank optional phone", async () => {
     apiMocks.registerTenant.mockResolvedValue(tenant);
     authMocks.refresh.mockResolvedValue();
     render(<RegistrationForm mode="tenant" />);
 
-    expect(screen.getByLabelText("Số điện thoại (không bắt buộc)")).not.toBeRequired();
+    expect(screen.getByLabelText("Số điện thoại")).not.toBeRequired();
     fillCommon();
-    fireEvent.change(screen.getByLabelText("Số điện thoại (không bắt buộc)"), { target: { value: "   " } });
+    fireEvent.change(screen.getByLabelText("Số điện thoại"), { target: { value: "   " } });
     fireEvent.click(screen.getByRole("button", { name: "Đăng ký tìm phòng" }));
 
     await waitFor(() => expect(apiMocks.registerTenant).toHaveBeenCalledTimes(1));
     expect(apiMocks.registerTenant).toHaveBeenCalledWith({
+      displayName: "Nguyễn Văn An",
       email: "tenant@example.com",
       password: "  pass word  "
     });
@@ -78,11 +108,16 @@ describe("RegistrationForm", () => {
     expect(await screen.findByText("Vui lòng nhập số điện thoại.")).toBeInTheDocument();
     expect(apiMocks.registerLandlord).not.toHaveBeenCalled();
 
-    fireEvent.change(phone, { target: { value: " +84901234567 " } });
+    fireEvent.change(phone, { target: { value: " 0912345678 " } });
     fireEvent.click(screen.getByRole("button", { name: "Đăng ký cho thuê" }));
     await waitFor(() => expect(apiMocks.registerLandlord).toHaveBeenCalledTimes(1));
     const body = apiMocks.registerLandlord.mock.calls[0]?.[0];
-    expect(body).toEqual({ email: "owner@example.com", password: "password", phone: "+84901234567" });
+    expect(body).toEqual({
+      displayName: "Nguyễn Văn An",
+      email: "owner@example.com",
+      password: "password",
+      phone: "+84912345678"
+    });
     expect(body).not.toHaveProperty("role");
     expect(apiMocks.registerTenant).not.toHaveBeenCalled();
     expect(authMocks.refresh).toHaveBeenCalledTimes(1);
@@ -102,13 +137,32 @@ describe("RegistrationForm", () => {
     );
     render(<RegistrationForm mode="tenant" />);
     fillCommon("tenant@example.com", "password");
-    fireEvent.change(screen.getByLabelText("Số điện thoại (không bắt buộc)"), { target: { value: "+84901234567" } });
+    fireEvent.change(screen.getByLabelText("Số điện thoại"), { target: { value: "+84901234567" } });
     fireEvent.click(screen.getByRole("button", { name: "Đăng ký tìm phòng" }));
 
-    expect(await screen.findByText("Phone is invalid.")).toBeInTheDocument();
-    fireEvent.change(screen.getByLabelText("Số điện thoại (không bắt buộc)"), { target: { value: "+84901111111" } });
-    expect(screen.queryByText("Phone is invalid.")).not.toBeInTheDocument();
+    expect(await screen.findByText("Số điện thoại chưa đúng. Vui lòng kiểm tra lại.")).toBeInTheDocument();
+    fireEvent.change(screen.getByLabelText("Số điện thoại"), { target: { value: "+84901111111" } });
+    expect(screen.queryByText("Số điện thoại chưa đúng. Vui lòng kiểm tra lại.")).not.toBeInTheDocument();
     expect(apiMocks.registerTenant).toHaveBeenCalledTimes(1);
+  });
+
+  it("never renders a raw backend validation fallback", async () => {
+    apiMocks.registerTenant.mockRejectedValue(
+      new ApiError({
+        status: 400,
+        code: "VALIDATION_FAILED",
+        message: "Invalid payload at users.create",
+        category: "backend"
+      })
+    );
+    render(<RegistrationForm mode="tenant" />);
+    fillCommon("tenant@example.com", "password");
+    fireEvent.click(screen.getByRole("button", { name: "Đăng ký tìm phòng" }));
+
+    expect(await screen.findByRole("alert")).toHaveTextContent(
+      "Không thể tạo tài khoản. Vui lòng kiểm tra thông tin và thử lại."
+    );
+    expect(screen.queryByText("Invalid payload at users.create")).not.toBeInTheDocument();
   });
 
   it("keeps duplicate email at form level and offers a login recovery link", async () => {
@@ -179,11 +233,48 @@ describe("RegistrationForm", () => {
 
     const submit = screen.getByRole("button", { name: "Đăng ký tìm phòng" });
     fireEvent.click(submit);
-    expect(await screen.findByRole("button", { name: "Đang đăng ký…" })).toBeDisabled();
+    const pendingButton = await screen.findByRole("button", { name: "Đang đăng ký…" });
+    expect(pendingButton).toBeDisabled();
+    expect(pendingButton.closest("form")).toHaveAttribute("aria-busy", "true");
     fireEvent.click(screen.getByRole("button", { name: "Đang đăng ký…" }));
     expect(apiMocks.registerTenant).toHaveBeenCalledTimes(1);
 
     resolveRegistration(tenant);
     await waitFor(() => expect(navigationMocks.replace).toHaveBeenCalledWith("/"));
+  });
+
+  it("keeps both accessible password toggles available while switching visibility", () => {
+    render(<RegistrationForm mode="tenant" />);
+
+    const password = screen.getByLabelText("Mật khẩu (bắt buộc)");
+    const confirmation = screen.getByLabelText("Nhập lại mật khẩu (bắt buộc)");
+    const toggles = screen.getAllByRole("button", { name: "Hiện mật khẩu" });
+    expect(toggles).toHaveLength(2);
+    expect(password).toHaveClass("pl-10", "pr-12");
+    expect(confirmation).toHaveClass("pl-10", "pr-12");
+    expect(toggles[0]).toHaveClass("min-h-11", "w-11");
+    fireEvent.click(toggles[0]!);
+    expect(password).toHaveAttribute("type", "text");
+    expect(screen.getByRole("button", { name: "Ẩn mật khẩu" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Hiện mật khẩu" })).toBeInTheDocument();
+    expect(confirmation).toHaveAttribute("type", "password");
+  });
+
+  it("requires matching confirmation and never sends it to the API", async () => {
+    apiMocks.registerTenant.mockResolvedValue(tenant);
+    authMocks.refresh.mockResolvedValue();
+    render(<RegistrationForm mode="tenant" />);
+
+    fillCommon("tenant@example.com", "password");
+    fireEvent.change(screen.getByLabelText("Nhập lại mật khẩu (bắt buộc)"), { target: { value: "different" } });
+    fireEvent.click(screen.getByRole("button", { name: "Đăng ký tìm phòng" }));
+    expect(await screen.findByText("Mật khẩu nhập lại chưa khớp.")).toBeInTheDocument();
+    expect(apiMocks.registerTenant).not.toHaveBeenCalled();
+    expect(screen.getByLabelText("Nhập lại mật khẩu (bắt buộc)")).toHaveFocus();
+
+    fireEvent.change(screen.getByLabelText("Nhập lại mật khẩu (bắt buộc)"), { target: { value: "password" } });
+    fireEvent.click(screen.getByRole("button", { name: "Đăng ký tìm phòng" }));
+    await waitFor(() => expect(apiMocks.registerTenant).toHaveBeenCalledTimes(1));
+    expect(apiMocks.registerTenant.mock.calls[0]?.[0]).not.toHaveProperty("confirmPassword");
   });
 });

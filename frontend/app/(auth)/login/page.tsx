@@ -10,19 +10,14 @@ export default function LoginPage() {
     <AuthPageShell
       variant="login"
       title="Đăng nhập"
-      description="Dùng email và mật khẩu của bạn để tiếp tục với RentMate."
+      description="Chào mừng bạn quay lại."
       footer={
-        <div className="space-y-3">
-          <p>Chưa có tài khoản?</p>
-          <div className="flex flex-col items-start gap-3 sm:flex-row sm:gap-5">
-            <Link href="/register/tenant" className={secondaryLinkClasses}>
-              Đăng ký tìm phòng
-            </Link>
-            <Link href="/register/landlord" className={secondaryLinkClasses}>
-              Đăng ký cho thuê
-            </Link>
-          </div>
-        </div>
+        <p>
+          Chưa có tài khoản?{" "}
+          <Link href="/register" className={secondaryLinkClasses}>
+            Đăng ký
+          </Link>
+        </p>
       }
     >
       <LoginForm />

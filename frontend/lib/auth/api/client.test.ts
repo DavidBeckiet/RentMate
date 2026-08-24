@@ -38,14 +38,24 @@ describe("shared API client endpoint inventory", () => {
     const inventory = [
       { run: () => client.health.check(), mode: "raw", method: "GET", path: "/api/health" },
       {
-        run: () => client.auth.registerTenant({ email: "tenant@example.com", password: "password" }),
+        run: () =>
+          client.auth.registerTenant({
+            displayName: "Nguyễn Văn An",
+            email: "tenant@example.com",
+            password: "password"
+          }),
         mode: "object",
         method: "POST",
         path: "/api/v1/auth/register/tenant"
       },
       {
         run: () =>
-          client.auth.registerLandlord({ email: "owner@example.com", password: "password", phone: "+84901234567" }),
+          client.auth.registerLandlord({
+            displayName: "Nguyễn Văn An",
+            email: "owner@example.com",
+            password: "password",
+            phone: "+84901234567"
+          }),
         mode: "object",
         method: "POST",
         path: "/api/v1/auth/register/landlord"

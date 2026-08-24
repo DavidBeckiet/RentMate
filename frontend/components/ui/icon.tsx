@@ -12,9 +12,14 @@ export type IconName =
   | "close"
   | "compass"
   | "compare"
+  | "eye"
+  | "eyeOff"
   | "heart"
   | "home"
   | "key"
+  | "lock"
+  | "logIn"
+  | "mail"
   | "flag"
   | "logout"
   | "map"
@@ -23,6 +28,7 @@ export type IconName =
   | "minus"
   | "note"
   | "pin"
+  | "phone"
   | "plus"
   | "ruler"
   | "search"
@@ -34,6 +40,7 @@ export type IconName =
   | "target"
   | "refresh"
   | "user"
+  | "userPlus"
   | "users"
   | "wifi";
 
@@ -75,6 +82,17 @@ const paths: Record<IconName, ReactNode> = {
       <path d="M6.5 8h0M17.5 8h0M6.5 12h0M17.5 12h0" />
     </>
   ),
+  eye: (
+    <>
+      <path d="M2.5 12s3.5-6 9.5-6 9.5 6 9.5 6-3.5 6-9.5 6-9.5-6-9.5-6Z" />
+      <circle cx="12" cy="12" r="2.5" />
+    </>
+  ),
+  eyeOff: (
+    <>
+      <path d="m3 3 18 18M10.6 6.2A10.7 10.7 0 0 1 12 6c6 0 9.5 6 9.5 6a16 16 0 0 1-2.1 2.8M6.6 6.6C4 8.3 2.5 12 2.5 12s3.5 6 9.5 6a9.8 9.8 0 0 0 3.4-.6M10.2 10.2a2.5 2.5 0 0 0 3.6 3.6" />
+    </>
+  ),
   heart: (
     <path d="M20.8 5.7a5.5 5.5 0 0 0-7.8 0L12 6.8l-1.1-1.1a5.5 5.5 0 0 0-7.8 7.8l1.1 1.1L12 22l7.8-7.4 1.1-1.1a5.5 5.5 0 0 0-.1-7.8Z" />
   ),
@@ -89,6 +107,19 @@ const paths: Record<IconName, ReactNode> = {
     <>
       <circle cx="8" cy="15" r="4" />
       <path d="m11 12 8-8m-3 3 3 3m-6 0 3 3" />
+    </>
+  ),
+  lock: (
+    <>
+      <rect x="4" y="10" width="16" height="11" rx="2" />
+      <path d="M8 10V7a4 4 0 0 1 8 0v3M12 14v3" />
+    </>
+  ),
+  logIn: <path d="m10 17 5-5-5-5m5 5H3m9-9h7a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-7" />,
+  mail: (
+    <>
+      <rect x="3" y="5" width="18" height="14" rx="2" />
+      <path d="m3 7 9 6 9-6" />
     </>
   ),
   logout: <path d="M10 17l5-5-5-5m5 5H3m9-9h7a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-7" />,
@@ -117,6 +148,9 @@ const paths: Record<IconName, ReactNode> = {
       <path d="M20 10c0 6-8 12-8 12S4 16 4 10a8 8 0 1 1 16 0Z" />
       <circle cx="12" cy="10" r="2.5" />
     </>
+  ),
+  phone: (
+    <path d="M22 16.9v3a2 2 0 0 1-2.2 2 19.8 19.8 0 0 1-8.6-3.1 19.5 19.5 0 0 1-6-6A19.8 19.8 0 0 1 2.1 4.2 2 2 0 0 1 4.1 2h3a2 2 0 0 1 2 1.7c.1 1 .4 2 .7 2.9a2 2 0 0 1-.5 2.1L8.1 9.9a16 16 0 0 0 6 6l1.2-1.2a2 2 0 0 1 2.1-.5c.9.3 1.9.6 2.9.7a2 2 0 0 1 1.7 2Z" />
   ),
   plus: <path d="M12 5v14M5 12h14" />,
   ruler: <path d="m4 17 13-13 3 3L7 20l-3-3Zm9-9 3 3m-6 0 2 2m-5 1 3 3" />,
@@ -157,6 +191,12 @@ const paths: Record<IconName, ReactNode> = {
     <>
       <circle cx="12" cy="8" r="4" />
       <path d="M4 21a8 8 0 0 1 16 0" />
+    </>
+  ),
+  userPlus: (
+    <>
+      <circle cx="9" cy="8" r="4" />
+      <path d="M2 21a7 7 0 0 1 14 0M19 8v6m-3-3h6" />
     </>
   ),
   users: (

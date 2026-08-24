@@ -4,11 +4,16 @@ export type ButtonVariant = "primary" | "secondary" | "outline" | "ghost" | "dan
 export type ButtonSize = "sm" | "md" | "lg";
 
 const variantClasses: Record<ButtonVariant, string> = {
-  primary: "border-primary bg-primary text-primary-foreground hover:border-primary-hover hover:bg-primary-hover",
-  secondary: "border-primary/15 bg-primary-subtle text-primary-hover hover:border-primary/30 hover:bg-primary/15",
-  outline: "border-border-strong bg-surface text-foreground hover:border-primary/50 hover:bg-surface-subtle",
-  ghost: "border-transparent bg-transparent text-foreground shadow-none hover:bg-muted",
-  danger: "border-danger bg-danger text-danger-foreground hover:border-danger-hover hover:bg-danger-hover"
+  primary:
+    "border-2 border-heroDark-950 bg-rent-accent text-heroDark-950 shadow-glass-sm hover:-translate-x-0.5 hover:-translate-y-0.5 hover:shadow-glass",
+  secondary:
+    "border-2 border-heroDark-950 bg-rent-surface text-heroDark-950 shadow-glass-sm hover:-translate-x-0.5 hover:-translate-y-0.5 hover:bg-[#e5eefc] hover:shadow-glass",
+  outline:
+    "border-2 border-heroDark-950 bg-rent-surface text-heroDark-950 shadow-glass-sm hover:-translate-x-0.5 hover:-translate-y-0.5 hover:bg-rent-accent hover:shadow-glass",
+  ghost:
+    "border-2 border-transparent bg-transparent text-heroDark-950 shadow-none hover:border-heroDark-950 hover:bg-rent-accent",
+  danger:
+    "border-2 border-heroDark-950 bg-rent-coral text-heroDark-950 shadow-glass-sm hover:-translate-x-0.5 hover:-translate-y-0.5 hover:shadow-glass"
 };
 
 const buttonSizeClasses: Record<ButtonSize, string> = {
@@ -24,11 +29,11 @@ const iconButtonSizeClasses: Record<ButtonSize, string> = {
 };
 
 const sharedClasses =
-  "rounded-control border shadow-surface transition-[background-color,border-color,color,box-shadow] duration-fast ease-standard disabled:cursor-not-allowed disabled:border-border disabled:bg-disabled disabled:text-muted-foreground disabled:shadow-none";
+  "font-display font-bold tracking-tight transition-[background-color,border-color,color,box-shadow,transform] duration-200 disabled:translate-x-0 disabled:translate-y-0 disabled:cursor-not-allowed disabled:border-heroDark-950/40 disabled:bg-[#dfddd5] disabled:text-rent-subtle disabled:shadow-none";
 
 export function buttonClassName(variant: ButtonVariant, size: ButtonSize, className?: string): string {
   return cx(
-    "inline-flex max-w-full items-center justify-center gap-2 font-sans font-semibold",
+    "inline-flex max-w-full items-center justify-center gap-2",
     sharedClasses,
     buttonSizeClasses[size],
     variantClasses[variant],

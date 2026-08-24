@@ -28,6 +28,7 @@ import { AdminListingDetail } from "./admin-listing-detail";
 
 const admin: UserProfile = {
   id: 1,
+  displayName: null,
   role: "ADMIN",
   email: "admin@example.com",
   phone: null,

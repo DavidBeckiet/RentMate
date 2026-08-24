@@ -6,6 +6,8 @@ import { useCallback, useEffect, useRef, useState, type ReactNode } from "react"
 import { useComparisonSelection } from "../../features/comparison/comparison-store";
 import { useAuth } from "../../lib/auth/auth-provider";
 import type { UserProfile } from "../../types/api";
+import { accountInitials, accountPrimaryIdentity, accountRoleLabels } from "./account-identity";
+import { AccountMenu } from "./account-menu";
 import { Button } from "./button";
 import { buttonClassName } from "./button-styles";
 import { cx } from "./class-names";
@@ -28,37 +30,34 @@ import { RentMateMark } from "./rentmate-mark";
 import { Skeleton } from "./skeleton";
 
 const desktopNavLink =
-  "relative inline-flex min-h-11 items-center gap-2 rounded-control px-3 text-ui-sm font-semibold text-muted-foreground transition-colors duration-fast hover:bg-surface-subtle hover:text-foreground aria-[current=page]:bg-primary-subtle aria-[current=page]:text-primary-hover aria-[current=page]:after:absolute aria-[current=page]:after:inset-x-3 aria-[current=page]:after:bottom-1 aria-[current=page]:after:h-0.5 aria-[current=page]:after:rounded-full aria-[current=page]:after:bg-primary";
+  "relative inline-flex min-h-11 items-center gap-2 border-2 border-transparent px-3.5 font-display text-sm font-bold text-heroDark-950 transition-[background-color,border-color,transform] duration-200 hover:-translate-y-0.5 hover:border-heroDark-950 hover:bg-rent-accent aria-[current=page]:border-heroDark-950 aria-[current=page]:bg-rent-accent aria-[current=page]:shadow-glass-sm";
+
+const authHeaderMotion =
+  "transition-[background-color,border-color,color,box-shadow,transform] duration-200 hover:-translate-y-0.5 active:translate-y-0 motion-reduce:transform-none";
 
 const drawerNavLink =
-  "flex min-h-12 items-center gap-3 rounded-control border border-transparent px-3 py-2.5 text-ui-sm font-semibold text-foreground transition-colors duration-fast hover:border-border hover:bg-surface-subtle aria-[current=page]:border-primary/20 aria-[current=page]:bg-primary-subtle aria-[current=page]:text-primary-hover";
+  "flex min-h-12 items-center gap-3 border-2 border-transparent px-3 py-2.5 text-sm font-bold text-heroDark-950 transition-[background-color,border-color,transform] duration-200 hover:border-heroDark-950 hover:bg-rent-accent aria-[current=page]:border-heroDark-950 aria-[current=page]:bg-rent-accent";
 
 const workspaceNavLink =
-  "group relative flex min-h-12 items-center gap-3 rounded-control border border-transparent px-3 py-2.5 text-ui-sm font-semibold text-muted-foreground transition-colors duration-fast hover:border-border hover:bg-surface hover:text-foreground aria-[current=page]:border-primary/20 aria-[current=page]:bg-primary-subtle aria-[current=page]:font-bold aria-[current=page]:text-primary-hover aria-[current=page]:before:absolute aria-[current=page]:before:bottom-2 aria-[current=page]:before:left-0 aria-[current=page]:before:top-2 aria-[current=page]:before:w-1 aria-[current=page]:before:rounded-full aria-[current=page]:before:bg-primary";
-
-const roleLabels = {
-  TENANT: "Người thuê",
-  LANDLORD: "Chủ nhà",
-  ADMIN: "Quản trị viên"
-} as const;
+  "group relative flex min-h-12 items-center gap-3 border-2 border-transparent px-3 py-2.5 text-sm font-bold text-heroDark-950 transition-[background-color,border-color,transform] duration-200 hover:border-heroDark-950 hover:bg-rent-accent aria-[current=page]:border-heroDark-950 aria-[current=page]:bg-rent-accent";
 
 function Brand({ compact = false }: Readonly<{ compact?: boolean }>) {
   return (
     <Link
       href="/"
       aria-label="RentMate — về trang chủ"
-      className="inline-flex min-h-11 shrink-0 items-center gap-2 rounded-control text-foreground"
+      className="inline-flex min-h-11 shrink-0 items-center gap-2 text-heroDark-950"
     >
       <span
         className={cx(
-          "grid place-items-center rounded-control bg-primary-subtle text-primary",
+          "grid place-items-center border-2 border-heroDark-950 bg-rent-accent text-heroDark-950 shadow-glass-sm",
           compact ? "h-9 w-9" : "h-10 w-10"
         )}
       >
         <RentMateMark className={compact ? "h-7 w-7" : "h-8 w-8"} />
       </span>
-      <span className={cx("font-display font-semibold tracking-[-0.04em]", compact ? "text-lg" : "text-xl")}>
-        RentMate
+      <span className={cx("font-display font-bold tracking-[-0.05em]", compact ? "text-lg" : "text-xl")}>
+        RENT<span className="text-brandBlue-500">MATE</span>
       </span>
     </Link>
   );
@@ -104,15 +103,34 @@ function AccountSummary({ user }: Readonly<{ user: UserProfile }>) {
     <div className="flex min-w-0 items-center gap-3">
       <span
         aria-hidden="true"
-        className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-primary-subtle font-display text-ui-sm font-bold text-primary-hover"
+        className="grid h-10 w-10 shrink-0 place-items-center border-2 border-heroDark-950 bg-rent-accent font-display text-sm font-bold text-heroDark-950"
       >
-        {user.email.charAt(0).toUpperCase()}
+        {accountInitials(user)}
       </span>
       <span className="min-w-0">
-        <span className="block truncate text-ui-sm font-semibold text-foreground">{user.email}</span>
-        <span className="block text-ui-xs text-muted-foreground">{roleLabels[user.role]}</span>
+        <span className="block truncate text-ui-sm font-semibold text-foreground">{accountPrimaryIdentity(user)}</span>
+        {user.displayName ? (
+          <span className="block truncate text-ui-xs text-muted-foreground">{user.email}</span>
+        ) : null}
+        <span className="block text-ui-xs text-muted-foreground">{accountRoleLabels[user.role]}</span>
       </span>
     </div>
+  );
+}
+
+function NotificationLink({ pathname }: Readonly<{ pathname: string }>) {
+  return (
+    <Link
+      href="/notifications"
+      aria-label="Thông báo"
+      aria-current={pathname === "/notifications" ? "page" : undefined}
+      className={cx(
+        buttonClassName("ghost", "sm"),
+        "w-11 px-0 aria-[current=page]:bg-rent-accent aria-[current=page]:text-heroDark-950"
+      )}
+    >
+      <Icon name="bell" />
+    </Link>
   );
 }
 
@@ -186,9 +204,9 @@ function ConsumerShell({
   const fullBleed = pathname === "/" || pathname === "/search" || pathname === "/near-me";
 
   return (
-    <div className="flex min-h-screen flex-col bg-background text-foreground">
+    <div className="flex min-h-screen flex-col bg-rent-canvas text-heroDark-950">
       <SkipLink />
-      <header className="sticky top-0 z-50 border-b border-border bg-surface/95 shadow-surface backdrop-blur">
+      <header className="sticky top-0 z-50 border-b-2 border-heroDark-950 bg-rent-surface shadow-none backdrop-blur">
         <div className="rm-page-container flex min-h-16 items-center gap-3">
           <Brand compact />
 
@@ -208,25 +226,13 @@ function ConsumerShell({
                 <Link href="/login" className={buttonClassName("ghost", "sm")}>
                   Đăng nhập
                 </Link>
-                <Link href="/register/landlord" className={buttonClassName("primary", "sm")}>
-                  Cho thuê phòng
+                <Link href="/register" className={buttonClassName("primary", "sm")}>
+                  Đăng ký
                 </Link>
               </>
             ) : null}
-            {user ? (
-              <>
-                <AccountSummary user={user} />
-                <IconButton
-                  label="Đăng xuất"
-                  pending={logoutPending}
-                  pendingLabel="Đang đăng xuất…"
-                  variant="ghost"
-                  onClick={onLogout}
-                >
-                  <Icon name="logout" />
-                </IconButton>
-              </>
-            ) : null}
+            {user ? <NotificationLink pathname={pathname} /> : null}
+            {user ? <AccountMenu user={user} logoutPending={logoutPending} onLogout={onLogout} /> : null}
           </div>
 
           <IconButton
@@ -280,6 +286,18 @@ function ConsumerShell({
           {user ? (
             <div className="space-y-3">
               <AccountSummary user={user} />
+              {user.role === "TENANT" ? (
+                <Link href="/profile" className={drawerNavLink} onClick={closeMenu}>
+                  <Icon name="user" />
+                  Hồ sơ của tôi
+                </Link>
+              ) : null}
+              {user.role === "LANDLORD" ? (
+                <Link href="/landlord/profile" className={drawerNavLink} onClick={closeMenu}>
+                  <Icon name="user" />
+                  Hồ sơ
+                </Link>
+              ) : null}
               <Button
                 variant="outline"
                 className="w-full"
@@ -301,8 +319,8 @@ function ConsumerShell({
               <Link href="/login" className={buttonClassName("outline", "md")} onClick={closeMenu}>
                 Đăng nhập
               </Link>
-              <Link href="/register/landlord" className={buttonClassName("primary", "md")} onClick={closeMenu}>
-                Cho thuê phòng
+              <Link href="/register" className={buttonClassName("primary", "md")} onClick={closeMenu}>
+                Đăng ký
               </Link>
             </div>
           )}
@@ -344,9 +362,9 @@ function WorkspaceShell({
   );
 
   return (
-    <div className="min-h-screen bg-surface-subtle text-foreground lg:grid lg:grid-cols-[16.5rem_minmax(0,1fr)]">
+    <div className="min-h-screen bg-rent-canvas text-heroDark-950 lg:grid lg:grid-cols-[16.5rem_minmax(0,1fr)]">
       <SkipLink />
-      <aside className="sticky top-0 hidden h-screen flex-col border-r border-border bg-surface p-4 lg:flex">
+      <aside className="sticky top-0 hidden h-screen flex-col border-r-2 border-heroDark-950 bg-rent-surface p-4 lg:flex">
         <Brand />
         <div className="mt-7 px-2">
           <p className="text-ui-xs font-bold uppercase tracking-[0.14em] text-muted-foreground">Workspace</p>
@@ -367,7 +385,7 @@ function WorkspaceShell({
       </aside>
 
       <div className="min-w-0">
-        <header className="sticky top-0 z-50 border-b border-border bg-surface/95 backdrop-blur">
+        <header className="sticky top-0 z-50 border-b-2 border-heroDark-950 bg-rent-surface backdrop-blur">
           <div className="flex min-h-16 items-center gap-3 px-4 sm:px-6 lg:min-h-[4.5rem] lg:px-8">
             <div className="lg:hidden">
               <Brand compact />
@@ -377,18 +395,16 @@ function WorkspaceShell({
               <p className="truncate font-display text-ui-base font-semibold text-foreground">{title}</p>
             </div>
             <div className="ml-auto flex items-center gap-2">
+              <Link href="/" className={buttonClassName("ghost", "sm")}>
+                Trang chủ
+              </Link>
               {ready ? (
-                <Link
-                  href="/notifications"
-                  aria-label="Thông báo"
-                  aria-current={pathname === "/notifications" ? "page" : undefined}
-                  className={cx(
-                    buttonClassName("ghost", "sm"),
-                    "w-11 px-0 aria-[current=page]:bg-primary-subtle aria-[current=page]:text-primary-hover"
-                  )}
-                >
-                  <Icon name="bell" />
-                </Link>
+                <NotificationLink pathname={pathname} />
+              ) : null}
+              {ready && user ? (
+                <div className="hidden lg:block">
+                  <AccountMenu user={user} logoutPending={logoutPending} onLogout={onLogout} />
+                </div>
               ) : null}
               <IconButton
                 ref={triggerRef}
@@ -420,6 +436,12 @@ function WorkspaceShell({
         {user ? (
           <div className="mt-auto space-y-3 border-t border-border pt-4">
             <AccountSummary user={user} />
+            {user.role === "LANDLORD" ? (
+              <Link href="/landlord/profile" className={drawerNavLink} onClick={closeMenu}>
+                <Icon name="user" />
+                Hồ sơ
+              </Link>
+            ) : null}
             <Button variant="outline" className="w-full" pending={logoutPending} onClick={onLogout}>
               <Icon name="logout" />
               Đăng xuất
@@ -433,47 +455,105 @@ function WorkspaceShell({
 
 function AuthShell({
   children,
+  pathname,
   authStatus,
-  user,
   authError,
-  logoutPending,
-  onLogout,
   onRefresh
-}: Omit<SharedShellProps, "actor" | "pathname">) {
+}: Pick<SharedShellProps, "children" | "pathname" | "authStatus" | "authError" | "onRefresh">) {
+  const [menuOpen, setMenuOpen] = useState(false);
+  const triggerRef = useRef<HTMLButtonElement>(null);
+  const publicItems = consumerNavigationItems("anonymous");
+  const closeMenu = useCallback(() => setMenuOpen(false), []);
+  const loginCurrent = pathname === "/login" ? "page" : undefined;
+  const registerCurrent = pathname === "/register" || pathname.startsWith("/register/") ? "page" : undefined;
+
+  useEffect(() => closeMenu(), [closeMenu, pathname]);
+
   return (
-    <div className="flex min-h-screen flex-col bg-background text-foreground">
+    <div className="flex min-h-screen flex-col bg-rent-canvas text-heroDark-950">
       <SkipLink />
-      <header className="border-b border-border bg-surface">
-        <div className="rm-page-container flex min-h-16 items-center justify-between gap-3">
+      <header className="border-b-2 border-heroDark-950 bg-rent-surface shadow-none backdrop-blur">
+        <div className="rm-page-container flex min-h-14 items-center gap-3">
           <Brand compact />
-          <div className="flex items-center gap-2">
-            {user ? (
-              <div className="hidden sm:block">
-                <AccountSummary user={user} />
-              </div>
-            ) : null}
-            {user ? (
-              <IconButton
-                label="Đăng xuất"
-                pending={logoutPending}
-                pendingLabel="Đang đăng xuất…"
-                variant="ghost"
-                onClick={onLogout}
-              >
-                <Icon name="logout" />
-              </IconButton>
-            ) : null}
-            <Link href="/search" className={buttonClassName("ghost", "sm")}>
-              <Icon name="arrow" className="h-4 w-4 rotate-180" />
-              Về marketplace
+
+          <nav aria-label="Điều hướng công khai" className="ml-auto hidden items-center gap-1 lg:flex">
+            <NavigationLinks
+              items={publicItems}
+              pathname={pathname}
+              linkClassName={cx(desktopNavLink, authHeaderMotion)}
+            />
+          </nav>
+
+          <div className="ml-auto hidden items-center gap-2 lg:flex">
+            <Link
+              href="/login"
+              aria-current={loginCurrent}
+              className={buttonClassName("ghost", "sm", authHeaderMotion)}
+            >
+              <Icon name="logIn" className="h-4 w-4" />
+              Đăng nhập
+            </Link>
+            <Link
+              href="/register"
+              aria-current={registerCurrent}
+              className={buttonClassName("primary", "sm", authHeaderMotion)}
+            >
+              <Icon name="userPlus" className="h-4 w-4" />
+              Đăng ký
             </Link>
           </div>
+
+          <IconButton
+            ref={triggerRef}
+            label="Mở menu điều hướng"
+            variant="ghost"
+            className="ml-auto lg:hidden"
+            aria-expanded={menuOpen}
+            aria-controls="auth-mobile-navigation"
+            onClick={() => setMenuOpen(true)}
+          >
+            <Icon name="menu" />
+          </IconButton>
         </div>
       </header>
       <AuthFeedback status={authStatus} logoutFailed={authError} onRefresh={onRefresh} />
-      <main id="main-content" className="rm-page-container flex flex-1 items-center py-6 sm:py-10">
+      <main
+        id="main-content"
+        className="relative flex flex-1 items-center overflow-hidden px-4 py-4 sm:px-6 sm:py-6 lg:px-8"
+      >
         {children}
       </main>
+
+      <NavigationOverlay open={menuOpen} title="Điều hướng RentMate" triggerRef={triggerRef} onClose={closeMenu}>
+        <nav id="auth-mobile-navigation" aria-label="Điều hướng công khai trên di động" className="mt-4">
+          <NavigationLinks
+            items={publicItems}
+            pathname={pathname}
+            linkClassName={drawerNavLink}
+            onNavigate={closeMenu}
+          />
+        </nav>
+        <div className="mt-auto grid gap-2 border-t border-border pt-4">
+          <Link
+            href="/login"
+            aria-current={loginCurrent}
+            className={buttonClassName("outline", "md")}
+            onClick={closeMenu}
+          >
+            <Icon name="logIn" className="h-4 w-4" />
+            Đăng nhập
+          </Link>
+          <Link
+            href="/register"
+            aria-current={registerCurrent}
+            className={buttonClassName("primary", "md")}
+            onClick={closeMenu}
+          >
+            <Icon name="userPlus" className="h-4 w-4" />
+            Đăng ký
+          </Link>
+        </div>
+      </NavigationOverlay>
     </div>
   );
 }
@@ -488,9 +568,9 @@ function RestrictedShell({ children, user }: Readonly<{ children: ReactNode; use
         : "Về marketplace";
 
   return (
-    <div className="flex min-h-screen flex-col bg-surface-subtle text-foreground">
+    <div className="flex min-h-screen flex-col bg-rent-canvas text-heroDark-950">
       <SkipLink />
-      <header className="border-b border-border bg-surface">
+      <header className="border-b-2 border-heroDark-950 bg-rent-surface">
         <div className="rm-page-container flex min-h-16 items-center justify-between gap-3">
           <Brand compact />
           <Link href={destination} className={buttonClassName("outline", "sm")}>
@@ -516,53 +596,50 @@ function PublicFooter({ actor }: Readonly<{ actor: NavigationActor }>) {
           : null;
 
   return (
-    <footer className="mt-16 border-t border-border bg-surface">
+    <footer className="mt-16 border-t-2 border-heroDark-950 bg-heroDark-950 text-white">
       <div className="rm-page-container grid gap-8 py-10 sm:grid-cols-[1.4fr_1fr_1fr]">
         <div className="max-w-md">
           <Brand compact />
-          <p className="mt-4 text-ui-sm leading-6 text-muted-foreground">
+          <p className="mt-4 text-ui-sm leading-6 text-[#d8e5df]">
             Marketplace tìm phòng minh bạch, tập trung vào vị trí và nhu cầu sống thực tế tại Việt Nam.
           </p>
         </div>
         <nav aria-label="Khám phá RentMate" className="flex flex-col items-start gap-2 text-ui-sm">
-          <p className="mb-1 font-semibold text-foreground">Khám phá</p>
-          <Link href="/search" className="min-h-11 py-2 text-muted-foreground hover:text-primary-hover">
+          <p className="mb-1 font-semibold text-rent-accent">Khám phá</p>
+          <Link href="/search" className="min-h-11 py-2 text-[#d8e5df] hover:text-rent-accent">
             Tìm phòng
           </Link>
-          <Link href="/near-me" className="min-h-11 py-2 text-muted-foreground hover:text-primary-hover">
+          <Link href="/near-me" className="min-h-11 py-2 text-[#d8e5df] hover:text-rent-accent">
             Gần tôi
           </Link>
-          <Link href="/compare" className="min-h-11 py-2 text-muted-foreground hover:text-primary-hover">
+          <Link href="/compare" className="min-h-11 py-2 text-[#d8e5df] hover:text-rent-accent">
             So sánh tin
           </Link>
         </nav>
         <nav aria-label="Tài khoản RentMate" className="flex flex-col items-start gap-2 text-ui-sm">
-          <p className="mb-1 font-semibold text-foreground">Tài khoản</p>
+          <p className="mb-1 font-semibold text-rent-accent">Tài khoản</p>
           {authenticatedAccountLink ? (
-            <Link
-              href={authenticatedAccountLink.href}
-              className="min-h-11 py-2 text-muted-foreground hover:text-primary-hover"
-            >
+            <Link href={authenticatedAccountLink.href} className="min-h-11 py-2 text-[#d8e5df] hover:text-rent-accent">
               {authenticatedAccountLink.label}
             </Link>
           ) : (
-            <Link href="/login" className="min-h-11 py-2 text-muted-foreground hover:text-primary-hover">
+            <Link href="/login" className="min-h-11 py-2 text-[#d8e5df] hover:text-rent-accent">
               Đăng nhập
             </Link>
           )}
           {actor === "anonymous" || actor === "error" ? (
-            <Link href="/register/landlord" className="min-h-11 py-2 text-muted-foreground hover:text-primary-hover">
+            <Link href="/register/landlord" className="min-h-11 py-2 text-[#d8e5df] hover:text-rent-accent">
               Cho thuê phòng
             </Link>
           ) : (
-            <Link href="/notifications" className="min-h-11 py-2 text-muted-foreground hover:text-primary-hover">
+            <Link href="/notifications" className="min-h-11 py-2 text-[#d8e5df] hover:text-rent-accent">
               Thông báo
             </Link>
           )}
         </nav>
       </div>
-      <div className="border-t border-border">
-        <div className="rm-page-container flex flex-col gap-1 py-4 text-ui-xs text-muted-foreground sm:flex-row sm:justify-between">
+      <div className="border-t-2 border-[#31564e]">
+        <div className="rm-page-container flex flex-col gap-1 py-4 text-ui-xs text-[#a9c0b9] sm:flex-row sm:justify-between">
           <p>© {new Date().getFullYear()} RentMate.</p>
           <p>Vị trí công khai luôn là vị trí xấp xỉ.</p>
         </div>

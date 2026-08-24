@@ -67,7 +67,7 @@ export function NavigationOverlay({ open, title, triggerRef, onClose, children }
       <button
         type="button"
         aria-label={`Đóng ${title.toLowerCase()}`}
-        className="absolute inset-0 cursor-default bg-foreground/35"
+        className="absolute inset-0 cursor-default bg-heroDark-950/70"
         onClick={onClose}
       />
       <div
@@ -75,10 +75,10 @@ export function NavigationOverlay({ open, title, triggerRef, onClose, children }
         role="dialog"
         aria-modal="true"
         aria-labelledby={titleId}
-        className="absolute inset-y-0 right-0 flex w-[min(88vw,22rem)] flex-col overflow-y-auto border-l border-border bg-surface p-4 shadow-overlay-soft motion-safe:animate-[shell-panel-in_200ms_var(--rm-ease-out)]"
+        className="absolute inset-y-0 right-0 flex w-[min(88vw,22rem)] flex-col overflow-y-auto border-l-2 border-heroDark-950 bg-rent-surface p-4 shadow-card-elevated motion-safe:animate-[shell-panel-in_200ms_var(--rm-ease-out)]"
       >
-        <div className="flex min-h-12 items-center justify-between gap-3 border-b border-border pb-3">
-          <h2 id={titleId} className="font-display text-heading-sm font-semibold text-foreground">
+        <div className="flex min-h-12 items-center justify-between gap-3 border-b-2 border-heroDark-950 pb-3">
+          <h2 id={titleId} className="font-display text-heading-sm font-bold text-heroDark-950">
             {title}
           </h2>
           <IconButton label={`Đóng ${title.toLowerCase()}`} variant="ghost" onClick={onClose}>

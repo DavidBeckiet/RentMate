@@ -15,6 +15,7 @@ export interface AuthContextValue {
   readonly user: UserProfile | null;
   readonly error: ApiError | null;
   readonly refresh: () => Promise<void>;
+  readonly updateUser?: (user: UserProfile) => void;
   readonly logout: () => Promise<void>;
 }
 
@@ -57,6 +58,11 @@ export function AuthProvider({ children }: Readonly<{ children: ReactNode }>) {
     }
   }, []);
 
+  const updateUser = useCallback((user: UserProfile) => {
+    setActionError(null);
+    setState({ status: "authenticated", user });
+  }, []);
+
   useEffect(() => {
     void refresh();
   }, [refresh]);
@@ -67,9 +73,10 @@ export function AuthProvider({ children }: Readonly<{ children: ReactNode }>) {
       user: state.status === "authenticated" ? state.user : null,
       error: actionError ?? (state.status === "error" ? state.error : null),
       refresh,
+      updateUser,
       logout
     }),
-    [actionError, logout, refresh, state]
+    [actionError, logout, refresh, state, updateUser]
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
@@ -80,6 +87,7 @@ const defaultAuthValue: AuthContextValue = {
   user: null,
   error: null,
   refresh: async () => {},
+  updateUser: () => {},
   logout: async () => {}
 };
 

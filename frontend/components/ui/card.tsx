@@ -20,7 +20,7 @@ export function Card({ padding = "md", subtle = false, className, ...cardProps }
     <div
       {...cardProps}
       className={cx(
-        "rounded-card border border-border bg-surface shadow-surface",
+        "overflow-hidden border-2 border-heroDark-950 bg-rent-surface shadow-glass",
         subtle && "bg-surface-subtle",
         paddingClasses[padding],
         className

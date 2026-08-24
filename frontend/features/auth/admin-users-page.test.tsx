@@ -22,6 +22,7 @@ import { AdminUsersPage } from "./admin-users-page";
 const refresh = vi.fn<() => Promise<void>>();
 const admin: UserProfile = {
   id: 1,
+  displayName: null,
   role: "ADMIN",
   email: "admin@example.com",
   phone: null,

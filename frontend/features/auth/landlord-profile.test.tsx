@@ -20,8 +20,10 @@ import { ApiError } from "../../lib/api/client";
 import { LandlordProfile } from "./landlord-profile";
 
 const refresh = vi.fn<() => Promise<void>>();
+const updateUser = vi.fn<(user: UserProfile) => void>();
 const landlord: UserProfile = {
   id: 7,
+  displayName: "Nguyễn Văn An",
   role: "LANDLORD",
   email: "owner@example.com",
   phone: "+84901234567",
@@ -31,7 +33,7 @@ const landlord: UserProfile = {
 };
 
 function authValue(overrides: Partial<AuthContextValue> = {}): AuthContextValue {
-  return { status: "authenticated", user: landlord, error: null, refresh, logout: vi.fn(), ...overrides };
+  return { status: "authenticated", user: landlord, error: null, refresh, updateUser, logout: vi.fn(), ...overrides };
 }
 
 function changePhone(value: string) {
@@ -60,6 +62,7 @@ describe("LandlordProfile", () => {
     apiMocks.submitVerification.mockReset();
     apiMocks.getCurrentVerification.mockResolvedValue(null);
     refresh.mockReset();
+    updateUser.mockReset();
     refresh.mockResolvedValue();
     useAuthMock.mockReturnValue(authValue());
   });
@@ -90,21 +93,26 @@ describe("LandlordProfile", () => {
     expect(apiMocks.updateCurrent).not.toHaveBeenCalled();
   });
 
-  it("keeps email read-only and PATCHes only the trimmed E.164 phone", async () => {
+  it("keeps email read-only and PATCHes the account name with the trimmed phone", async () => {
     apiMocks.updateCurrent.mockResolvedValue({
       ...landlord,
       phone: "+84909999999",
       updatedAt: "2026-08-02T00:00:00.000Z"
     });
     render(<LandlordProfile />);
-    expect(screen.getByLabelText("Email")).toHaveValue("owner@example.com");
-    expect(screen.getByLabelText("Email")).toHaveAttribute("readonly");
+    expect(screen.getByLabelText("Email đăng nhập")).toHaveValue("owner@example.com");
+    expect(screen.getByLabelText("Email đăng nhập")).toHaveAttribute("readonly");
+    fireEvent.change(screen.getByLabelText("Họ và tên (bắt buộc)"), { target: { value: "  Nguyễn Văn Bình  " } });
     changePhone("  +84909999999  ");
     submit();
     await waitFor(() => expect(apiMocks.updateCurrent).toHaveBeenCalledOnce());
-    expect(apiMocks.updateCurrent).toHaveBeenCalledWith({ phone: "+84909999999" }, expect.any(AbortSignal));
+    expect(apiMocks.updateCurrent).toHaveBeenCalledWith(
+      { displayName: "Nguyễn Văn Bình", phone: "+84909999999" },
+      expect.any(AbortSignal)
+    );
     expect(await screen.findByText("Đã cập nhật hồ sơ.")).toBeInTheDocument();
-    expect(refresh).toHaveBeenCalledOnce();
+    expect(updateUser).toHaveBeenCalledWith(expect.objectContaining({ phone: "+84909999999" }));
+    expect(refresh).not.toHaveBeenCalled();
   });
 
   it.each(["", "84901234567", "+012345678", "+8490", "+8490123456789012"])(
@@ -113,7 +121,7 @@ describe("LandlordProfile", () => {
       render(<LandlordProfile />);
       changePhone(phone);
       submit();
-      expect(screen.getByText(/định dạng E\.164/)).toBeInTheDocument();
+      expect(screen.getByText(/Vui lòng nhập số điện thoại|\+84901234567/)).toBeInTheDocument();
       expect(apiMocks.updateCurrent).not.toHaveBeenCalled();
     }
   );
@@ -123,7 +131,8 @@ describe("LandlordProfile", () => {
     render(<LandlordProfile />);
     submit();
     expect(await screen.findByText("Không có thay đổi cần lưu.")).toBeInTheDocument();
-    expect(refresh).toHaveBeenCalledOnce();
+    expect(updateUser).toHaveBeenCalledWith(landlord);
+    expect(refresh).not.toHaveBeenCalled();
   });
 
   it("blocks duplicate submissions while PATCH is pending", async () => {
@@ -153,7 +162,9 @@ describe("LandlordProfile", () => {
     render(<LandlordProfile />);
     changePhone("+84909999999");
     submit();
-    expect(await screen.findByText("Số điện thoại chưa hợp lệ.")).toBeInTheDocument();
+    expect(
+      await screen.findByText("Số điện thoại chưa đúng. Vui lòng nhập theo ví dụ +84901234567.")
+    ).toBeInTheDocument();
     expect(document.body).not.toHaveTextContent("private role detail");
   });
 
@@ -162,7 +173,7 @@ describe("LandlordProfile", () => {
     [backendError(403), "Bạn không có quyền cập nhật hồ sơ", false],
     [
       new ApiError({ status: null, code: "NETWORK_ERROR", message: "private", category: "network" }),
-      "Không thể xác nhận việc cập nhật hồ sơ",
+      "Không thể xác nhận việc cập nhật",
       false
     ]
   ] as const)("handles safe mutation failures without replay", async (error, message, shouldRefresh) => {

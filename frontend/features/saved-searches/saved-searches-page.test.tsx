@@ -16,6 +16,7 @@ import { SavedSearchesPage } from "./saved-searches-page";
 
 const tenant: UserProfile = {
   id: 7,
+  displayName: null,
   role: "TENANT",
   email: "tenant@example.com",
   phone: null,

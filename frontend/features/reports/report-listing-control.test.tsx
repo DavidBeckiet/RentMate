@@ -18,6 +18,7 @@ describe("ReportListingControl", () => {
       status: "authenticated",
       user: {
         id: 7,
+        displayName: null,
         role: "TENANT",
         email: "tenant@example.com",
         phone: null,

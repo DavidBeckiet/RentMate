@@ -16,6 +16,7 @@ import { LandlordAnalyticsPage } from "./landlord-analytics-page";
 
 const landlord: UserProfile = {
   id: 19,
+  displayName: null,
   role: "LANDLORD",
   email: "landlord@example.com",
   phone: "+84901234567",
