@@ -1,4 +1,4 @@
-import type { ButtonHTMLAttributes, ReactNode } from "react";
+import { forwardRef, type ButtonHTMLAttributes, type ReactNode } from "react";
 import type { ButtonSize, ButtonVariant } from "./button";
 import { iconButtonClassName } from "./button-styles";
 
@@ -11,21 +11,25 @@ export interface IconButtonProps extends Omit<ButtonHTMLAttributes<HTMLButtonEle
   readonly pendingLabel?: string;
 }
 
-export function IconButton({
-  type = "button",
-  label,
-  variant = "ghost",
-  size = "md",
-  pending = false,
-  pendingLabel = "Đang xử lý…",
-  disabled,
-  className,
-  children,
-  ...buttonProps
-}: IconButtonProps) {
+export const IconButton = forwardRef<HTMLButtonElement, IconButtonProps>(function IconButton(
+  {
+    type = "button",
+    label,
+    variant = "ghost",
+    size = "md",
+    pending = false,
+    pendingLabel = "Đang xử lý…",
+    disabled,
+    className,
+    children,
+    ...buttonProps
+  },
+  ref
+) {
   return (
     <button
       {...buttonProps}
+      ref={ref}
       type={type}
       aria-label={pending ? pendingLabel : label}
       aria-busy={pending || undefined}
@@ -43,4 +47,4 @@ export function IconButton({
       )}
     </button>
   );
-}
+});

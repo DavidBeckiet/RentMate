@@ -3,18 +3,23 @@ import type { ReactNode } from "react";
 export type IconName =
   | "arrow"
   | "arrowUpRight"
+  | "bell"
   | "building"
+  | "chart"
   | "check"
   | "chevronDown"
+  | "clipboard"
   | "close"
   | "compass"
   | "compare"
   | "heart"
   | "home"
   | "key"
+  | "flag"
   | "logout"
   | "map"
   | "menu"
+  | "message"
   | "minus"
   | "note"
   | "pin"
@@ -35,14 +40,27 @@ export type IconName =
 const paths: Record<IconName, ReactNode> = {
   arrow: <path d="M5 12h14m-5-5 5 5-5 5" />,
   arrowUpRight: <path d="M7 17 17 7M8 7h9v9" />,
+  bell: (
+    <>
+      <path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9" />
+      <path d="M10 21h4" />
+    </>
+  ),
   building: (
     <>
       <path d="M5 21V4a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v17" />
       <path d="M3 21h18M9 6h2m2 0h2M9 10h2m2 0h2M9 14h2m2 0h2" />
     </>
   ),
+  chart: <path d="M4 20V10m6 10V4m6 16v-7m4 7H2" />,
   check: <path d="m5 12 4 4L19 6" />,
   chevronDown: <path d="m6 9 6 6 6-6" />,
+  clipboard: (
+    <>
+      <rect x="4" y="4" width="16" height="17" rx="2" />
+      <path d="M9 4V2h6v2M8 10h8m-8 4h8" />
+    </>
+  ),
   close: <path d="M6 6 18 18M18 6 6 18" />,
   compass: (
     <>
@@ -60,6 +78,7 @@ const paths: Record<IconName, ReactNode> = {
   heart: (
     <path d="M20.8 5.7a5.5 5.5 0 0 0-7.8 0L12 6.8l-1.1-1.1a5.5 5.5 0 0 0-7.8 7.8l1.1 1.1L12 22l7.8-7.4 1.1-1.1a5.5 5.5 0 0 0-.1-7.8Z" />
   ),
+  flag: <path d="M5 22V4m0 1h11l-2 4 2 4H5" />,
   home: (
     <>
       <path d="m3 10 9-7 9 7v10a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V10Z" />
@@ -80,6 +99,12 @@ const paths: Record<IconName, ReactNode> = {
     </>
   ),
   menu: <path d="M4 7h16M4 12h16M4 17h16" />,
+  message: (
+    <>
+      <path d="M4 5h16v12H8l-4 4V5Z" />
+      <path d="M8 9h8m-8 4h5" />
+    </>
+  ),
   minus: <path d="M5 12h14" />,
   note: (
     <>
