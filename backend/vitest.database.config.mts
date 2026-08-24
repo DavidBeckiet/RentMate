@@ -46,8 +46,7 @@ export default defineConfig({
       "test/rm044-moderation-concurrency.database.integration.test.ts",
       "test/rm044-activation-visibility.database.integration.test.ts",
       "test/rm053-fresh-backend.database.integration.test.ts",
-      "test/rm053-lifecycle-visibility.database.integration.test.ts",
-      "test/profile-identity-data-foundation.database.integration.test.ts"
+      "test/rm053-lifecycle-visibility.database.integration.test.ts"
     ],
     exclude: ["node_modules/**", "dist/**", "coverage/**"],
     clearMocks: true,

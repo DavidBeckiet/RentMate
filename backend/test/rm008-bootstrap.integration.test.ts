@@ -133,7 +133,7 @@ async function expectVerifierFailure(mutate: () => Promise<void>, restore: () =>
   await expect(verifyFinalSchema(pool)).resolves.toMatchObject({
     enumCount: 2,
     tableCount: 8,
-    constraintCount: 53,
+    constraintCount: 52,
     explicitIndexCount: 10,
     propertyTypeCount: 5,
     amenityCount: 12
@@ -163,12 +163,12 @@ describe("RM-008 clean bootstrap and controlled admin provisioning", () => {
     });
 
     expect(result).toMatchObject({
-      appliedMigrationCount: 13,
-      lastAppliedMigrationVersion: 13,
+      appliedMigrationCount: 12,
+      lastAppliedMigrationVersion: 12,
       schema: {
         enumCount: 2,
         tableCount: 8,
-        constraintCount: 53,
+        constraintCount: 52,
         explicitIndexCount: 10,
         propertyTypeCount: 5,
         amenityCount: 12
@@ -386,7 +386,7 @@ describe("RM-008 clean bootstrap and controlled admin provisioning", () => {
     await expect(verifyFinalSchema(guardedReadOnlyPool)).resolves.toMatchObject({
       enumCount: 2,
       tableCount: 8,
-      constraintCount: 53,
+      constraintCount: 52,
       explicitIndexCount: 10
     });
     expect(mutatingQueryCount).toBe(0);

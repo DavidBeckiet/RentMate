@@ -76,7 +76,7 @@ interface DeferrableConstraintRow extends QueryResultRow {
 export interface FinalSchemaVerificationResult {
   readonly enumCount: 2;
   readonly tableCount: 8;
-  readonly constraintCount: 53;
+  readonly constraintCount: 52;
   readonly explicitIndexCount: 10;
   readonly propertyTypeCount: 5;
   readonly amenityCount: 12;
@@ -382,7 +382,7 @@ export async function verifyFinalSchema(pool: Pick<Pool, "connect">): Promise<Fi
     return {
       enumCount: 2,
       tableCount: 8,
-      constraintCount: 53,
+      constraintCount: 52,
       explicitIndexCount: 10,
       propertyTypeCount: 5,
       amenityCount: 12

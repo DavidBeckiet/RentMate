@@ -104,12 +104,12 @@ describe("RM-053 fresh migrated backend journey", () => {
     const configuredTestDatabaseName = decodeURIComponent(new URL(readTestDatabaseUrl()).pathname.slice(1));
     expect(await fixture.currentDatabaseName()).toBe(configuredTestDatabaseName);
     await expect(fixture.bootstrap()).resolves.toMatchObject({
-      appliedMigrationCount: 13,
-      lastAppliedMigrationVersion: 13,
+      appliedMigrationCount: 12,
+      lastAppliedMigrationVersion: 12,
       schema: {
         enumCount: 2,
         tableCount: 8,
-        constraintCount: 53,
+        constraintCount: 52,
         explicitIndexCount: 10,
         propertyTypeCount: 5,
         amenityCount: 12
