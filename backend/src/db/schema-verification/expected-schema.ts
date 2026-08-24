@@ -73,7 +73,8 @@ export const expectedColumnSignatures = [
   "users|5|password_hash|character varying|varchar|100|-|NO|NO|-|-",
   "users|6|is_active|boolean|bool|-|-|NO|NO|-|true",
   "users|7|created_at|timestamp with time zone|timestamptz|-|-|NO|NO|-|CURRENT_TIMESTAMP",
-  "users|8|updated_at|timestamp with time zone|timestamptz|-|-|NO|NO|-|CURRENT_TIMESTAMP"
+  "users|8|updated_at|timestamp with time zone|timestamptz|-|-|NO|NO|-|CURRENT_TIMESTAMP",
+  "users|9|display_name|character varying|varchar|120|-|YES|NO|-|-"
 ] as const;
 
 export const expectedNamedConstraints = [
@@ -124,6 +125,7 @@ export const expectedNamedConstraints = [
   ["property_types", "pk_property_types", "p"],
   ["property_types", "uq_property_types_code", "u"],
   ["property_types", "uq_property_types_label", "u"],
+  ["users", "ck_users_display_name", "c"],
   ["users", "ck_users_email_normalized", "c"],
   ["users", "ck_users_landlord_phone", "c"],
   ["users", "ck_users_phone_e164", "c"],
@@ -257,4 +259,4 @@ export const expectedAmenities = [
   ["WIFI", "Wi-Fi"]
 ] as const;
 
-export const highestExpectedMigrationVersion = 12;
+export const highestExpectedMigrationVersion = 13;

@@ -19,8 +19,8 @@ interface DatabaseObjectCountRow extends QueryResultRow {
 }
 
 export interface DatabaseBootstrapResult {
-  readonly appliedMigrationCount: 12;
-  readonly lastAppliedMigrationVersion: 12;
+  readonly appliedMigrationCount: 13;
+  readonly lastAppliedMigrationVersion: 13;
   readonly schema: FinalSchemaVerificationResult;
   readonly admin: AdminProvisioningResult;
 }
@@ -105,15 +105,15 @@ export async function bootstrapDatabase(options: {
   const expectedVersions = Array.from({ length: highestExpectedMigrationVersion }, (_, index) => index + 1);
 
   if (JSON.stringify(versions) !== JSON.stringify(expectedVersions)) {
-    throw new DatabaseBootstrapError("The migration inventory must contain exactly versions 0001 through 0012.");
+    throw new DatabaseBootstrapError("The migration inventory must contain exactly versions 0001 through 0013.");
   }
 
   const migrationResult = await executeMigrationPlan(options.pool, createMigrationPlan("clean", migrations));
   const appliedMigrationCount = migrationResult.completedMigrations.length;
   const lastAppliedMigrationVersion = migrationResult.lastSuccessfulMigration?.version;
 
-  if (appliedMigrationCount !== 12 || lastAppliedMigrationVersion !== 12) {
-    throw new DatabaseBootstrapError("Clean bootstrap did not apply exactly migrations 0001 through 0012.");
+  if (appliedMigrationCount !== 13 || lastAppliedMigrationVersion !== 13) {
+    throw new DatabaseBootstrapError("Clean bootstrap did not apply exactly migrations 0001 through 0013.");
   }
 
   const firstVerification = await verifyFinalSchema(options.pool);

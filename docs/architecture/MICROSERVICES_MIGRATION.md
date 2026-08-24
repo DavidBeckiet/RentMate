@@ -33,13 +33,23 @@ the service continues to use the compatibility database. When they are present, 
 
 ```powershell
 $env:IDENTITY_DB_NAME = "rentmate_identity"
-npm.cmd --prefix services/identity-service run migrate
+npm.cmd --prefix services/identity-service run migrate -- clean
 npm.cmd --prefix services/identity-service run start
 ```
 
-The first service migration creates only the `user_role` enum and `users` table. It does not alter, drop, or recreate the
-existing `rentmate` database. Data copy and cutover are intentionally separate from schema creation and require a tested
-backfill plan before enabling the isolated database in a shared environment.
+Identity migration mode is mandatory. `clean` selects the complete ordered inventory for an empty Identity database.
+For an existing Identity database, use an operator-owned external version record and preview the selection before
+execution:
+
+```powershell
+npm.cmd --prefix services/identity-service run migrate -- existing --manifest .\identity-version.json --plan-only
+npm.cmd --prefix services/identity-service run migrate -- existing --manifest .\identity-version.json
+```
+
+The runner does not create a migration bookkeeping table and does not update the manifest. Advance the external record
+only after the selected migrations and schema checks succeed. Migration `0001` creates the `user_role` enum and `users`
+table; later forward migrations extend the service-owned schema without altering, dropping, or recreating the existing
+`rentmate` database. Data copy and cutover remain separate operations.
 
 Backfill existing users while preserving IDs with:
 
@@ -112,7 +122,7 @@ expanded configuration, then run each service migration as a release step before
 docker compose -f docker-compose.microservices.yml config --quiet
 docker compose -f docker-compose.microservices.yml up -d postgres
 docker compose -f docker-compose.microservices.yml run --rm backend node dist/db/bootstrap/cli.js
-docker compose -f docker-compose.microservices.yml run --rm --no-deps identity npm --prefix services/identity-service run migrate
+docker compose -f docker-compose.microservices.yml run --rm --no-deps identity npm --prefix services/identity-service run migrate -- clean
 docker compose -f docker-compose.microservices.yml run --rm --no-deps listing npm --prefix services/listing-service run migrate
 docker compose -f docker-compose.microservices.yml run --rm --no-deps engagement npm --prefix services/engagement-service run migrate
 docker compose -f docker-compose.microservices.yml up -d --build identity listing engagement gateway
@@ -154,7 +164,7 @@ For a clean service database, apply each service migration once before starting 
 already-applied migration against a shared database:
 
 ```powershell
-docker compose -f docker-compose.microservices.yml run --rm --no-deps identity npm --prefix services/identity-service run migrate
+docker compose -f docker-compose.microservices.yml run --rm --no-deps identity npm --prefix services/identity-service run migrate -- clean
 docker compose -f docker-compose.microservices.yml run --rm --no-deps listing npm --prefix services/listing-service run migrate
 docker compose -f docker-compose.microservices.yml run --rm --no-deps engagement npm --prefix services/engagement-service run migrate
 ```

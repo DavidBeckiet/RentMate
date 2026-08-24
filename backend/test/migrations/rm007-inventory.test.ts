@@ -53,9 +53,13 @@ function createdObjectNames(sql: string, objectType: "TABLE" | "INDEX"): string[
   return [...sql.matchAll(pattern)].map((match) => match[1]!);
 }
 
+async function discoverMvpMigrations() {
+  return (await discoverMigrations(migrationDirectory)).filter(({ version }) => version <= 12);
+}
+
 describe("RM-007 migration inventory", () => {
   it("contains unique sequential versions 0001 through 0012", async () => {
-    const migrations = await discoverMigrations(migrationDirectory);
+    const migrations = await discoverMvpMigrations();
 
     expect(migrations.map(({ filename }) => filename)).toStrictEqual(expectedFilenames);
     expect(migrations.map(({ version }) => version)).toStrictEqual([1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]);
@@ -66,7 +70,7 @@ describe("RM-007 migration inventory", () => {
   });
 
   it("selects the exact clean and existing-deployment plans", async () => {
-    const migrations = await discoverMigrations(migrationDirectory);
+    const migrations = await discoverMvpMigrations();
 
     expect(createMigrationPlan("clean", migrations).migrations.map(({ version }) => version)).toStrictEqual([
       1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12
@@ -84,7 +88,7 @@ describe("RM-007 migration inventory", () => {
   });
 
   it("preserves migrations 0001 through 0009 byte-for-byte after line-ending normalization", async () => {
-    const migrations = await discoverMigrations(migrationDirectory);
+    const migrations = await discoverMvpMigrations();
 
     for (const migration of migrations.filter(({ version }) => version <= 9)) {
       const contents = await readFile(migration.path, "utf8");
@@ -93,7 +97,7 @@ describe("RM-007 migration inventory", () => {
   });
 
   it("creates only the two RM-007 tables in their owning files", async () => {
-    const migrations = await discoverMigrations(migrationDirectory);
+    const migrations = await discoverMvpMigrations();
     const favoritesSql = await readFile(migrations.find(({ version }) => version === 10)!.path, "utf8");
     const moderationSql = await readFile(migrations.find(({ version }) => version === 11)!.path, "utf8");
 
@@ -104,7 +108,7 @@ describe("RM-007 migration inventory", () => {
   });
 
   it("creates exactly the ten approved explicit indexes in 0012", async () => {
-    const migrations = await discoverMigrations(migrationDirectory);
+    const migrations = await discoverMvpMigrations();
     const indexSql = await readFile(migrations.find(({ version }) => version === 12)!.path, "utf8");
 
     expect(createdObjectNames(indexSql, "INDEX")).toStrictEqual(expectedExplicitIndexes);
@@ -115,7 +119,7 @@ describe("RM-007 migration inventory", () => {
   });
 
   it("keeps all migrations free of bookkeeping and RM-007 free of prohibited objects or provisioning", async () => {
-    const migrations = await discoverMigrations(migrationDirectory);
+    const migrations = await discoverMvpMigrations();
     const allSql = (
       await Promise.all(migrations.map(({ path: migrationPath }) => readFile(migrationPath, "utf8")))
     ).join("\n");

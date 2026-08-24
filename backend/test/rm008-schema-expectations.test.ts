@@ -30,7 +30,7 @@ describe("RM-008 final schema expectations", () => {
     ]);
   });
 
-  it("defines exactly eight product tables and their 53 frozen columns", () => {
+  it("defines eight product tables and the additive profile-identity column", () => {
     expect(expectedProductTables).toStrictEqual([
       "amenities",
       "favorites",
@@ -41,15 +41,15 @@ describe("RM-008 final schema expectations", () => {
       "property_types",
       "users"
     ]);
-    expect(expectedColumnSignatures).toHaveLength(53);
+    expect(expectedColumnSignatures).toHaveLength(54);
   });
 
-  it("defines exactly 52 named constraints in the frozen categories", () => {
-    expect(expectedNamedConstraints).toHaveLength(52);
+  it("defines the frozen constraints plus the additive display-name constraint", () => {
+    expect(expectedNamedConstraints).toHaveLength(53);
     expect(expectedNamedConstraints.filter(([, , type]) => type === "p")).toHaveLength(8);
     expect(expectedNamedConstraints.filter(([, , type]) => type === "f")).toHaveLength(9);
     expect(expectedNamedConstraints.filter(([, , type]) => type === "u")).toHaveLength(7);
-    expect(expectedNamedConstraints.filter(([, , type]) => type === "c")).toHaveLength(28);
+    expect(expectedNamedConstraints.filter(([, , type]) => type === "c")).toHaveLength(29);
     expect(expectedForeignKeys).toHaveLength(9);
     expect(expectedKeyConstraints).toHaveLength(15);
   });
@@ -71,11 +71,11 @@ describe("RM-008 final schema expectations", () => {
     expect(expectedAmenities.every((row) => row.length === 2)).toBe(true);
   });
 
-  it("expects migrations to end exactly at committed version 0012", async () => {
+  it("expects the additive post-MVP migration after the committed MVP inventory", async () => {
     const migrations = await discoverMigrations(migrationDirectory);
 
-    expect(highestExpectedMigrationVersion).toBe(12);
-    expect(migrations.map(({ version }) => version)).toStrictEqual([1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]);
-    expect(migrations.some(({ version }) => version > 12)).toBe(false);
+    expect(highestExpectedMigrationVersion).toBe(13);
+    expect(migrations.map(({ version }) => version)).toStrictEqual([1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13]);
+    expect(migrations.some(({ version }) => version > 13)).toBe(false);
   });
 });

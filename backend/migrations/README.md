@@ -219,7 +219,8 @@ types. They clean only those objects and never create, drop, truncate, or mutate
 re-runs seed migrations `0005` and `0006` to prove stable identities, exact counts, and preservation of retired
 `is_active = false` rows.
 
-To execute all twelve migrations, explicitly point the migration command at a clean isolated database:
+To execute all thirteen migrations, including the additive post-MVP profile-identity migration, explicitly point the
+migration command at a clean isolated database:
 
 ```powershell
 $env:NODE_ENV = "test"
