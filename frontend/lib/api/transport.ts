@@ -1,4 +1,5 @@
 import type { ApiErrorDetail, ApiPage } from "../../types/api";
+import { resolveApiBaseUrl } from "../config/api-base";
 
 export type ApiErrorCategory = "backend" | "network" | "unexpected";
 
@@ -51,7 +52,6 @@ export interface CreateTransportOptions {
   readonly fetcher?: typeof fetch;
 }
 
-const DEFAULT_API_BASE_URL = "http://localhost:4000";
 const UNEXPECTED_MESSAGE = "The server returned an unexpected response.";
 const NETWORK_MESSAGE = "Unable to reach the server.";
 
@@ -66,10 +66,6 @@ function unexpectedResponse(status: number | null = null): ApiError {
     message: UNEXPECTED_MESSAGE,
     category: "unexpected"
   });
-}
-
-function normalizeBaseUrl(value: string): string {
-  return value.replace(/\/+$/, "");
 }
 
 export function serializeQuery(query?: ApiQuery): string {
@@ -134,7 +130,7 @@ function assertRequestBody(options: TransportRequestOptions): void {
 }
 
 export function createTransport(options: CreateTransportOptions = {}): ApiTransport {
-  const baseUrl = normalizeBaseUrl(options.baseUrl ?? process.env.NEXT_PUBLIC_API_BASE_URL ?? DEFAULT_API_BASE_URL);
+  const baseUrl = resolveApiBaseUrl(options.baseUrl);
   const fetcher = options.fetcher ?? ((input, init) => globalThis.fetch(input, init));
 
   async function request(path: string, requestOptions: TransportRequestOptions = {}): Promise<Response> {

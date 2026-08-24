@@ -3,17 +3,96 @@
 @tailwind utilities;
 
 :root {
-  --rm-canvas: #f4f1e8;
-  --rm-paper: #fffdf7;
-  --rm-ink: #092b27;
-  --rm-ink-soft: #34554e;
-  --rm-line: #092b27;
-  --rm-green: #176b4d;
-  --rm-lime: #c9f269;
-  --rm-coral: #ff7657;
-  --rm-blue: #86b6ff;
-  --rm-yellow: #ffd34e;
+  /* Semantic color tokens are stored as RGB channels so Tailwind opacity modifiers remain available. */
+  --color-background: 244 241 232;
+  --color-surface: 255 253 247;
+  --color-surface-subtle: 247 246 241;
+  --color-foreground: 9 43 39;
+  --color-foreground-soft: 18 58 51;
+  --color-muted: 236 233 223;
+  --color-muted-foreground: 56 86 79;
+  --color-subtle-foreground: 83 108 101;
+  --color-border: 221 220 210;
+  --color-border-strong: 185 190 181;
+
+  --color-primary-50: 238 247 241;
+  --color-primary-100: 220 239 227;
+  --color-primary-200: 185 222 200;
+  --color-primary-400: 61 139 102;
+  --color-primary: 23 107 77;
+  --color-primary-hover: 15 87 62;
+  --color-primary-700: 12 69 51;
+  --color-primary-foreground: 255 255 255;
+  --color-primary-subtle: 229 243 235;
+
+  --color-success: 31 122 83;
+  --color-success-foreground: 16 89 58;
+  --color-success-subtle: 229 246 237;
+  --color-warning: 161 92 0;
+  --color-warning-foreground: 113 63 0;
+  --color-warning-subtle: 255 244 214;
+  --color-danger: 180 35 24;
+  --color-danger-hover: 145 28 20;
+  --color-danger-foreground: 255 255 255;
+  --color-danger-subtle: 254 232 230;
+  --color-info: 23 92 211;
+  --color-info-foreground: 24 73 169;
+  --color-info-subtle: 239 248 255;
+  --color-focus-ring: 37 99 235;
+  --color-control-disabled: 231 230 224;
+
+  --color-accent: 201 242 105;
+  --color-accent-hover: 184 230 83;
+  --color-accent-subtle: 238 249 207;
+  --color-decorative-coral: 255 118 87;
+  --color-decorative-blue: 134 182 255;
+  --color-decorative-yellow: 255 211 78;
+
+  --font-size-xs: 0.75rem;
+  --font-size-sm: 0.875rem;
+  --font-size-base: 1rem;
+  --font-size-lg: 1.25rem;
+  --font-size-xl: 1.5rem;
+  --font-size-2xl: 2rem;
+  --font-size-display: 3rem;
+  --line-height-xs: 1rem;
+  --line-height-sm: 1.25rem;
+  --line-height-base: 1.5rem;
+  --line-height-lg: 1.75rem;
+  --line-height-xl: 2rem;
+  --line-height-2xl: 2.5rem;
+  --line-height-display: 3.25rem;
+
+  --space-1: 0.25rem;
+  --space-2: 0.5rem;
+  --space-3: 0.75rem;
+  --space-4: 1rem;
+  --space-6: 1.5rem;
+  --space-8: 2rem;
+  --space-12: 3rem;
+  --space-16: 4rem;
+
+  --radius-control: 0.5rem;
+  --radius-card: 0.75rem;
+  --radius-overlay: 1rem;
+  --shadow-surface: 0 1px 2px rgb(9 43 39 / 0.08);
+  --shadow-raised: 0 8px 24px rgb(9 43 39 / 0.12);
+  --shadow-overlay: 0 18px 48px rgb(9 43 39 / 0.18);
+  --motion-fast: 150ms;
+  --motion-standard: 200ms;
   --rm-ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+
+  /* Compatibility aliases keep the existing presentation stable while rebuilt routes adopt semantic tokens. */
+  --rm-canvas: rgb(var(--color-background));
+  --rm-paper: rgb(var(--color-surface));
+  --rm-ink: rgb(var(--color-foreground));
+  --rm-ink-soft: rgb(var(--color-muted-foreground));
+  --rm-line: rgb(var(--color-foreground));
+  --rm-green: rgb(var(--color-primary));
+  --rm-lime: rgb(var(--color-accent));
+  --rm-coral: rgb(var(--color-decorative-coral));
+  --rm-blue: rgb(var(--color-decorative-blue));
+  --rm-yellow: rgb(var(--color-decorative-yellow));
 }
 
 * {
@@ -168,7 +247,7 @@ summary {
 }
 
 :focus-visible {
-  outline: 3px solid var(--rm-coral);
+  outline: 3px solid rgb(var(--color-focus-ring));
   outline-offset: 3px;
 }
 

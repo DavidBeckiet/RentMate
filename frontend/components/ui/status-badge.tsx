@@ -1,69 +1,50 @@
 import type { ListingStatus } from "../../types/api";
+import { Badge, type BadgeVariant } from "./badge";
 
-const listingStatusPresentation: Record<ListingStatus, { label: string; classes: string; dot: string }> = {
+const listingStatusPresentation: Record<ListingStatus, { label: string; variant: BadgeVariant }> = {
   DRAFT: {
     label: "Nháp",
-    classes: "bg-[#dfddd5] text-heroDark-950",
-    dot: "bg-slate-400"
+    variant: "neutral"
   },
   PENDING: {
     label: "Chờ duyệt",
-    classes: "bg-rent-yellow text-heroDark-950",
-    dot: "bg-amber-600"
+    variant: "warning"
   },
   APPROVED: {
     label: "Đã duyệt",
-    classes: "bg-rent-accent text-heroDark-950",
-    dot: "bg-brandBlue-600"
+    variant: "success"
   },
   REJECTED: {
     label: "Bị từ chối",
-    classes: "bg-rent-coral text-heroDark-950",
-    dot: "bg-rose-500"
+    variant: "danger"
   },
   HIDDEN: {
     label: "Đã ẩn",
-    classes: "bg-[#cbd5e1] text-heroDark-950",
-    dot: "bg-slate-400"
+    variant: "neutral"
   },
   INACTIVE: {
     label: "Ngừng hoạt động",
-    classes: "bg-[#cbd5e1] text-heroDark-950",
-    dot: "bg-slate-400"
+    variant: "neutral"
   }
 };
 
-function Badge({ label, classes, dot, context }: { label: string; classes: string; dot: string; context: string }) {
+function StatusBadge({ label, variant, context }: { label: string; variant: BadgeVariant; context: string }) {
   return (
-    <span
-      className={`inline-flex items-center gap-1.5 border-2 border-heroDark-950 px-3 py-1 font-display text-xs font-bold leading-none shadow-glass-sm ${classes}`}
-    >
-      <span className={`h-1.5 w-1.5 rounded-full ${dot}`} aria-hidden="true" />
-      <span className="sr-only">{context}: </span>
+    <Badge variant={variant} context={context} showIndicator>
       {label}
-    </span>
+    </Badge>
   );
 }
 
 export function ListingStatusBadge({ status }: { readonly status: ListingStatus }) {
   const presentation = listingStatusPresentation[status];
-  return <Badge {...presentation} context="Trạng thái tin đăng" />;
+  return <StatusBadge {...presentation} context="Trạng thái tin đăng" />;
 }
 
 export function AccountStatusBadge({ isActive }: { readonly isActive: boolean }) {
   return isActive ? (
-    <Badge
-      label="Đang hoạt động"
-      classes="bg-rent-accent text-heroDark-950"
-      dot="bg-brandBlue-600"
-      context="Trạng thái tài khoản"
-    />
+    <StatusBadge label="Đang hoạt động" variant="success" context="Trạng thái tài khoản" />
   ) : (
-    <Badge
-      label="Ngừng hoạt động"
-      classes="bg-[#cbd5e1] text-heroDark-950"
-      dot="bg-slate-400"
-      context="Trạng thái tài khoản"
-    />
+    <StatusBadge label="Ngừng hoạt động" variant="neutral" context="Trạng thái tài khoản" />
   );
 }

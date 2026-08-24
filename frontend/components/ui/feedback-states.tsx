@@ -1,24 +1,27 @@
 import type { ReactNode } from "react";
-import { Icon } from "./icon";
+import { Button } from "./button";
+import { cx } from "./class-names";
 
 export interface LoadingStateProps {
   readonly message?: string;
+  readonly className?: string;
 }
 
-export function LoadingState({ message = "Đang tải…" }: LoadingStateProps) {
+export function LoadingState({ message = "Đang tải…", className }: LoadingStateProps) {
   return (
     <div
       role="status"
       aria-live="polite"
-      className="flex min-h-40 flex-col items-center justify-center gap-4 border-2 border-heroDark-950 bg-rent-surface p-7 shadow-glass-sm"
+      className={cx(
+        "flex min-h-40 flex-col items-center justify-center gap-4 rounded-card border border-border bg-surface p-6 text-center shadow-surface",
+        className
+      )}
     >
       <span
         aria-hidden="true"
-        className="relative grid h-12 w-12 animate-spin place-items-center border-2 border-heroDark-950 bg-rent-accent motion-reduce:animate-none"
-      >
-        <span className="h-3 w-3 bg-rent-coral" />
-      </span>
-      <span className="font-display text-sm font-bold text-rent-secondary">{message}</span>
+        className="h-9 w-9 animate-spin rounded-full border-2 border-primary/20 border-r-primary motion-reduce:animate-none"
+      />
+      <span className="text-ui-sm font-semibold text-muted-foreground">{message}</span>
     </div>
   );
 }
@@ -26,20 +29,22 @@ export function LoadingState({ message = "Đang tải…" }: LoadingStateProps) 
 export interface EmptyStateProps {
   readonly title: string;
   readonly description?: string;
+  readonly visual?: ReactNode;
   readonly action?: ReactNode;
+  readonly className?: string;
 }
 
-export function EmptyState({ title, description, action }: EmptyStateProps) {
+export function EmptyState({ title, description, visual, action, className }: EmptyStateProps) {
   return (
-    <section className="flex flex-col items-center border-2 border-dashed border-heroDark-950 bg-rent-surface p-7 text-center shadow-glass-sm sm:p-10">
-      <span
-        aria-hidden="true"
-        className="mb-4 grid h-12 w-12 place-items-center border-2 border-heroDark-950 bg-rent-accent shadow-glass-sm"
-      >
-        <Icon name="plus" />
-      </span>
-      <h2 className="font-display text-xl font-bold text-rent-ink">{title}</h2>
-      {description ? <p className="mt-2 text-sm leading-6 text-rent-secondary">{description}</p> : null}
+    <section
+      className={cx(
+        "flex flex-col items-center rounded-card border border-dashed border-border-strong bg-surface p-6 text-center shadow-surface sm:p-8",
+        className
+      )}
+    >
+      {visual ? <div className="mb-4 text-muted-foreground">{visual}</div> : null}
+      <h2 className="font-display text-heading-sm font-semibold text-foreground">{title}</h2>
+      {description ? <p className="mt-2 max-w-prose text-ui-sm text-muted-foreground">{description}</p> : null}
       {action ? <div className="mt-4 flex justify-center">{action}</div> : null}
     </section>
   );
@@ -47,26 +52,50 @@ export function EmptyState({ title, description, action }: EmptyStateProps) {
 
 export interface ErrorStateProps {
   readonly message: string;
+  readonly title?: string;
   readonly requestId?: string | null;
+  readonly onRetry?: () => void;
+  readonly retryLabel?: string;
   readonly action?: ReactNode;
+  readonly className?: string;
 }
 
-export function ErrorState({ message, requestId, action }: ErrorStateProps) {
+export function ErrorState({
+  message,
+  title = "Không thể hoàn tất yêu cầu",
+  requestId,
+  onRetry,
+  retryLabel = "Thử lại",
+  action,
+  className
+}: ErrorStateProps) {
   return (
     <section
       role="alert"
-      className="border-2 border-heroDark-950 bg-rent-coral p-5 text-left text-heroDark-950 shadow-glass"
+      className={cx(
+        "rounded-card border border-danger/25 bg-danger-subtle p-5 text-left text-foreground shadow-surface",
+        className
+      )}
     >
       <span
         aria-hidden="true"
-        className="mb-3 grid h-10 w-10 place-items-center border-2 border-heroDark-950 bg-white font-display text-xl font-bold"
+        className="mb-3 grid h-9 w-9 place-items-center rounded-full bg-danger font-display text-heading-sm font-bold text-danger-foreground"
       >
         !
       </span>
-      <h2 className="font-display font-bold">Không thể hoàn tất yêu cầu</h2>
-      <p className="mt-1 text-sm">{message}</p>
-      {requestId ? <p className="mt-2 text-xs font-semibold">Mã yêu cầu: {requestId}</p> : null}
-      {action ? <div className="mt-4">{action}</div> : null}
+      <h2 className="font-display text-ui-base font-semibold">{title}</h2>
+      <p className="mt-1 text-ui-sm text-muted-foreground">{message}</p>
+      {requestId ? <p className="mt-2 text-ui-xs font-semibold text-danger">Mã yêu cầu: {requestId}</p> : null}
+      {onRetry || action ? (
+        <div className="mt-4 flex flex-wrap items-center gap-3">
+          {onRetry ? (
+            <Button variant="outline" size="sm" onClick={onRetry}>
+              {retryLabel}
+            </Button>
+          ) : null}
+          {action}
+        </div>
+      ) : null}
     </section>
   );
 }

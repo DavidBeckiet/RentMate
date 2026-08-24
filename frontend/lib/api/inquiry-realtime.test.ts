@@ -1,4 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
+import { createTransport } from "./transport";
 import { connectInquiryRealtime, parseInquiryRealtimeEvent } from "./inquiry-realtime";
 
 class FakeEventSource {
@@ -25,6 +26,7 @@ class FakeEventSource {
 describe("inquiry realtime client", () => {
   afterEach(() => {
     vi.unstubAllGlobals();
+    vi.unstubAllEnvs();
     FakeEventSource.instances.length = 0;
   });
 
@@ -65,7 +67,7 @@ describe("inquiry realtime client", () => {
     const connection = connectInquiryRealtime(7, { onEvent, onStatusChange });
     const source = FakeEventSource.instances[0]!;
 
-    expect(source.url).toBe("http://localhost:4000/api/v1/inquiries/7/events");
+    expect(source.url).toBe("http://localhost:4001/api/v1/inquiries/7/events");
     expect(source.withCredentials).toBe(true);
     source.onopen?.();
     source.onmessage?.(new MessageEvent("message", { data: '{"type":"CONNECTED","inquiryId":7}' }));
@@ -78,6 +80,27 @@ describe("inquiry realtime client", () => {
     expect(source.closed).toBe(true);
     source.onerror?.();
     expect(onStatusChange).toHaveBeenCalledTimes(2);
+  });
+
+  it("uses the same configured Gateway origin for REST and SSE", async () => {
+    vi.stubEnv("NEXT_PUBLIC_API_BASE_URL", "http://localhost:4100/");
+    vi.stubGlobal("EventSource", FakeEventSource);
+    const fetcher = vi.fn<typeof fetch>().mockResolvedValue(
+      new Response(JSON.stringify({ data: { id: 7 } }), {
+        status: 200,
+        headers: { "Content-Type": "application/json" }
+      })
+    );
+
+    await createTransport({ fetcher }).object("/api/v1/users/me");
+    connectInquiryRealtime(7, { onEvent: vi.fn(), onStatusChange: vi.fn() });
+
+    const restUrl = String(fetcher.mock.calls[0]?.[0]);
+    const eventSource = FakeEventSource.instances[0]!;
+    expect(new URL(restUrl).origin).toBe("http://localhost:4100");
+    expect(new URL(eventSource.url).origin).toBe(new URL(restUrl).origin);
+    expect(fetcher.mock.calls[0]?.[1]).toEqual(expect.objectContaining({ credentials: "include" }));
+    expect(eventSource.withCredentials).toBe(true);
   });
 
   it("falls back without breaking messaging when EventSource is unavailable", () => {

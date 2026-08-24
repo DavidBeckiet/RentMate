@@ -1,5 +1,7 @@
 import type { Config } from "tailwindcss";
 
+const color = (token: string) => `rgb(var(--color-${token}) / <alpha-value>)`;
+
 const config: Config = {
   content: [
     "./app/**/*.{js,ts,jsx,tsx,mdx}",
@@ -12,56 +14,130 @@ const config: Config = {
         sans: ["var(--font-manrope)", "Inter", "ui-sans-serif", "system-ui", "sans-serif"],
         display: ["var(--font-space-grotesk)", "Arial Black", "sans-serif"]
       },
+      fontSize: {
+        "ui-xs": ["var(--font-size-xs)", { lineHeight: "var(--line-height-xs)" }],
+        "ui-sm": ["var(--font-size-sm)", { lineHeight: "var(--line-height-sm)" }],
+        "ui-base": ["var(--font-size-base)", { lineHeight: "var(--line-height-base)" }],
+        "heading-sm": ["var(--font-size-lg)", { lineHeight: "var(--line-height-lg)" }],
+        "heading-md": ["var(--font-size-xl)", { lineHeight: "var(--line-height-xl)" }],
+        "heading-lg": ["var(--font-size-2xl)", { lineHeight: "var(--line-height-2xl)" }],
+        display: ["var(--font-size-display)", { lineHeight: "var(--line-height-display)" }]
+      },
+      spacing: {
+        "token-1": "var(--space-1)",
+        "token-2": "var(--space-2)",
+        "token-3": "var(--space-3)",
+        "token-4": "var(--space-4)",
+        "token-6": "var(--space-6)",
+        "token-8": "var(--space-8)",
+        "token-12": "var(--space-12)",
+        "token-16": "var(--space-16)"
+      },
       colors: {
+        background: color("background"),
+        surface: {
+          DEFAULT: color("surface"),
+          subtle: color("surface-subtle")
+        },
+        foreground: color("foreground"),
+        muted: {
+          DEFAULT: color("muted"),
+          foreground: color("muted-foreground")
+        },
+        border: {
+          DEFAULT: color("border"),
+          strong: color("border-strong")
+        },
+        primary: {
+          DEFAULT: color("primary"),
+          hover: color("primary-hover"),
+          foreground: color("primary-foreground"),
+          subtle: color("primary-subtle")
+        },
+        success: {
+          DEFAULT: color("success"),
+          foreground: color("success-foreground"),
+          subtle: color("success-subtle")
+        },
+        warning: {
+          DEFAULT: color("warning"),
+          foreground: color("warning-foreground"),
+          subtle: color("warning-subtle")
+        },
+        danger: {
+          DEFAULT: color("danger"),
+          hover: color("danger-hover"),
+          foreground: color("danger-foreground"),
+          subtle: color("danger-subtle")
+        },
+        info: {
+          DEFAULT: color("info"),
+          foreground: color("info-foreground"),
+          subtle: color("info-subtle")
+        },
+        focus: color("focus-ring"),
+        disabled: color("control-disabled"),
+        /* Compatibility aliases are retained until old routes are rebuilt. New code uses semantic names above. */
         brandBlue: {
-          50: "#eef7f1",
-          100: "#dcefe3",
-          200: "#b9dec8",
-          400: "#3d8b66",
-          500: "#176b4d",
-          600: "#0f573e",
-          700: "#0c4533"
+          50: color("primary-50"),
+          100: color("primary-100"),
+          200: color("primary-200"),
+          400: color("primary-400"),
+          500: color("primary"),
+          600: color("primary-hover"),
+          700: color("primary-700")
         },
         heroDark: {
-          900: "#123a33",
-          950: "#092b27"
+          900: color("foreground-soft"),
+          950: color("foreground")
         },
         rent: {
-          canvas: "#f5f3eb",
-          surface: "#fffdf7",
-          muted: "#ece9df",
-          "surface-muted": "#f0eee6",
-          ink: "#13352f",
-          secondary: "#38564f",
-          subtle: "#6d7f79",
-          line: "#dddcd2",
-          strong: "#c9c8bc",
-          primary: "#176b4d",
-          "primary-hover": "#0f573e",
-          "primary-subtle": "#dcefe3",
-          accent: "#c9f269",
-          "accent-hover": "#b8e653",
-          "accent-subtle": "#eef9cf",
-          coral: "#ff7657",
-          yellow: "#ffd34e"
+          canvas: color("background"),
+          surface: color("surface"),
+          muted: color("muted"),
+          "surface-muted": color("surface-subtle"),
+          ink: color("foreground"),
+          secondary: color("muted-foreground"),
+          subtle: color("subtle-foreground"),
+          line: color("border"),
+          strong: color("border-strong"),
+          primary: color("primary"),
+          "primary-hover": color("primary-hover"),
+          "primary-subtle": color("primary-100"),
+          accent: color("accent"),
+          "accent-hover": color("accent-hover"),
+          "accent-subtle": color("accent-subtle"),
+          coral: color("decorative-coral"),
+          yellow: color("decorative-yellow")
         }
       },
       borderRadius: {
-        control: "0.75rem",
-        card: "1.25rem",
-        "2xl": "1rem",
+        control: "var(--radius-control)",
+        card: "var(--radius-card)",
+        overlay: "var(--radius-overlay)",
+        "2xl": "var(--radius-overlay)",
         "3xl": "1.5rem",
         "4xl": "2rem"
       },
       boxShadow: {
-        glass: "5px 5px 0 #092b27",
-        "glass-sm": "3px 3px 0 #092b27",
-        "card-hover": "8px 8px 0 #092b27",
-        "card-elevated": "10px 10px 0 #092b27",
-        "glow-teal": "6px 6px 0 #092b27",
-        "glow-blue": "6px 6px 0 #092b27",
-        "glow-indigo": "6px 6px 0 #092b27",
-        overlay: "12px 12px 0 rgba(9, 43, 39, 0.96)"
+        surface: "var(--shadow-surface)",
+        raised: "var(--shadow-raised)",
+        "overlay-soft": "var(--shadow-overlay)",
+        glass: "5px 5px 0 rgb(var(--color-foreground))",
+        "glass-sm": "3px 3px 0 rgb(var(--color-foreground))",
+        "card-hover": "8px 8px 0 rgb(var(--color-foreground))",
+        "card-elevated": "10px 10px 0 rgb(var(--color-foreground))",
+        "glow-teal": "6px 6px 0 rgb(var(--color-foreground))",
+        "glow-blue": "6px 6px 0 rgb(var(--color-foreground))",
+        "glow-indigo": "6px 6px 0 rgb(var(--color-foreground))",
+        overlay: "12px 12px 0 rgb(var(--color-foreground) / 0.96)"
+      },
+      transitionDuration: {
+        fast: "var(--motion-fast)",
+        standard: "var(--motion-standard)"
+      },
+      transitionTimingFunction: {
+        standard: "var(--rm-ease-out)"
       },
       maxWidth: {
         product: "80rem"

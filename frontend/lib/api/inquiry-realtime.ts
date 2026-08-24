@@ -1,4 +1,5 @@
 import type { InquiryMessage, InquiryStatus } from "../../types/api";
+import { resolveApiBaseUrl } from "../config/api-base";
 
 export type InquiryRealtimeEvent =
   | Readonly<{ type: "CONNECTED"; inquiryId: number }>
@@ -74,10 +75,6 @@ export function parseInquiryRealtimeEvent(value: string): InquiryRealtimeEvent |
   return null;
 }
 
-function apiBaseUrl(): string {
-  return (process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:4000").replace(/\/+$/, "");
-}
-
 export function connectInquiryRealtime(
   inquiryId: number,
   handlers: InquiryRealtimeHandlers
@@ -87,7 +84,7 @@ export function connectInquiryRealtime(
     return Object.freeze({ close: () => undefined });
   }
 
-  const source = new EventSource(`${apiBaseUrl()}/api/v1/inquiries/${inquiryId}/events`, {
+  const source = new EventSource(`${resolveApiBaseUrl()}/api/v1/inquiries/${inquiryId}/events`, {
     withCredentials: true
   });
   let closed = false;

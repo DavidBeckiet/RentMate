@@ -1,6 +1,6 @@
 import { fireEvent, render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
-import { CheckboxField, CheckboxGroup, InputField, SelectField, TextareaField } from "./form-controls";
+import { CheckboxField, CheckboxGroup, Field, Input, InputField, SelectField, TextareaField } from "./form-controls";
 
 describe("shared form controls", () => {
   it("connects native inputs to visible labels, names, required text, and hints", () => {
@@ -33,6 +33,26 @@ describe("shared form controls", () => {
     expect(input).toHaveAttribute("aria-describedby", "phone-error");
     expect(screen.getByRole("alert")).toHaveTextContent("Số điện thoại không hợp lệ.");
     expect(screen.queryByText("Nhập số liên hệ.")).not.toBeInTheDocument();
+  });
+
+  it("lets a standalone Field associate an Input with its label, hint, and error", () => {
+    const view = render(
+      <Field id="title" label="Tiêu đề" hint="Mô tả ngắn gọn.">
+        {(controlProps) => <Input {...controlProps} name="title" />}
+      </Field>
+    );
+
+    expect(screen.getByLabelText("Tiêu đề")).toHaveAttribute("aria-describedby", "title-hint");
+
+    view.rerender(
+      <Field id="title" label="Tiêu đề" error="Tiêu đề là bắt buộc.">
+        {(controlProps) => <Input {...controlProps} name="title" />}
+      </Field>
+    );
+
+    expect(screen.getByLabelText("Tiêu đề")).toHaveAttribute("aria-invalid", "true");
+    expect(screen.getByLabelText("Tiêu đề")).toHaveAttribute("aria-describedby", "title-error");
+    expect(screen.getByRole("alert")).toHaveTextContent("Tiêu đề là bắt buộc.");
   });
 
   it("preserves native textarea and select behavior including disabled and read-only states", () => {
