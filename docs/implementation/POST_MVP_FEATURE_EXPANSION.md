@@ -6,12 +6,15 @@
 >
 > Tài liệu này không mở lại, không thay thế và không chỉnh sửa các quyết định frozen của MVP.
 
+> Quyết định phạm vi hiện tại: V2 giai đoạn đầu ưu tiên gọi điện, inquiry và nhắn tin. Đặt lịch xem phòng chưa nằm
+> trong scope triển khai; tenant và landlord tự thống nhất lịch qua các kênh liên hệ.
+
 ## 1. Mục tiêu sản phẩm V2
 
 RentMate V2 phát triển từ một nền tảng tìm phòng thành nền tảng kết nối và hỗ trợ quy trình thuê phòng:
 
 ```text
-Tìm phòng → Lưu phòng → Gửi yêu cầu → Trao đổi → Đặt lịch xem → Theo dõi kết quả
+Tìm phòng → Lưu phòng → Gửi yêu cầu → Gọi điện / nhắn tin → Theo dõi kết quả
 ```
 
 Định vị ban đầu:
@@ -42,18 +45,17 @@ V2 cần ưu tiên tạo ra giao dịch và tương tác thực tế giữa tena
 
 ### P1 — Tăng khả năng quay lại và độ tin cậy
 
-5. Đặt lịch xem phòng.
-6. Saved searches.
-7. Báo cáo tin và xử lý an toàn.
-8. Xác minh landlord.
-9. Review sau khi xem hoặc thuê.
+5. Saved searches.
+6. Báo cáo tin và xử lý an toàn.
+7. Xác minh landlord.
+8. Review sau khi có điều kiện đủ.
 
 ### P2 — Công cụ vận hành và tối ưu
 
-10. Landlord lead management.
-11. Thống kê cơ bản.
-12. So sánh listing, ghi chú và chia sẻ.
-13. Quản lý nhiều phòng trong cùng một tòa nhà.
+9. Landlord lead management.
+10. Thống kê cơ bản.
+11. So sánh listing, ghi chú và chia sẻ.
+12. Quản lý nhiều phòng trong cùng một tòa nhà.
 
 ### Để sau khi có bằng chứng nhu cầu
 
@@ -117,7 +119,7 @@ Quy tắc nghiệp vụ:
 Trạng thái dự kiến:
 
 ```text
-NEW → CONTACTED → VIEWING_SCHEDULED → CLOSED
+NEW → CONTACTED → CLOSED
 ```
 
 ### 4.3 Tin nhắn
@@ -131,36 +133,15 @@ MVP đầu tiên dùng hội thoại bất đồng bộ, không yêu cầu WebSo
 - Không log nội dung nhạy cảm ở dạng không cần thiết.
 - Có thể bổ sung realtime sau khi có số liệu tải thực tế.
 
-### 4.4 Viewing — lịch xem phòng — P1
+### 4.4 Đặt lịch xem phòng — tạm hoãn
 
-Đây không phải chức năng đặt thuê hoặc giữ phòng. Viewing chỉ là yêu cầu hẹn thời gian đến xem phòng thực tế, được triển khai sau khi luồng gọi điện và nhắn tin đã hoạt động.
+Đặt lịch xem phòng không thuộc scope V2 giai đoạn đầu. Tenant và landlord sẽ tự thống nhất thời gian qua điện thoại
+hoặc tin nhắn sau khi inquiry được tạo.
 
-Tenant tạo yêu cầu xem phòng từ inquiry đang mở.
+Trong giai đoạn này không tạo UI, endpoint, bảng dữ liệu hoặc notification riêng cho viewing. Chỉ xem xét lại khi có
+dữ liệu chứng minh người dùng cần quản lý lịch hẹn, tránh trùng lịch hoặc theo dõi nhiều cuộc hẹn.
 
-Thông tin dự kiến:
-
-- Ngày và khung giờ mong muốn.
-- Ghi chú cho landlord.
-- Múi giờ thống nhất theo cấu hình sản phẩm.
-
-Landlord có thể xác nhận, từ chối hoặc đề xuất thời gian khác.
-
-```text
-REQUESTED → CONFIRMED
-REQUESTED → DECLINED
-CONFIRMED → COMPLETED
-CONFIRMED → CANCELLED
-```
-
-Quy tắc:
-
-- Không cho xác nhận hai lịch xung đột nếu landlord chỉ có một lịch tại một thời điểm.
-- Tenant hoặc landlord có thể hủy theo quy tắc đã thống nhất.
-- Lịch phải gắn với listing và inquiry cụ thể.
-- Lịch đã hoàn thành là điều kiện để mở một số chức năng review.
-- Ban đầu không đồng bộ lịch bên ngoài.
-
-### 4.4 Trạng thái kinh doanh listing
+### 4.5 Trạng thái kinh doanh listing
 
 Trạng thái kinh doanh phải tách khỏi trạng thái moderation MVP.
 
@@ -179,14 +160,12 @@ UNKNOWN
 - Hệ thống nhắc landlord xác nhận lại listing lâu ngày không cập nhật.
 - Việc thêm field, enum hoặc bảng mới phải được chốt trong V2 database design trước khi code.
 
-### 4.5 Thông báo trong ứng dụng
+### 4.6 Thông báo trong ứng dụng
 
 Các sự kiện P0 cần tạo notification:
 
 - Inquiry mới.
 - Message mới.
-- Viewing được yêu cầu.
-- Viewing được xác nhận, từ chối, đổi lịch hoặc hủy.
 - Listing được approve, reject hoặc cần cập nhật.
 - Saved search có listing mới phù hợp.
 
@@ -237,7 +216,7 @@ Không hiển thị dữ liệu xác minh nội bộ ra public ngoài badge và 
 
 ### 5.4 Review
 
-Review chỉ được mở sau viewing completed hoặc một điều kiện thuê đã được xác nhận.
+Review chỉ được mở sau khi có điều kiện thuê đã được xác nhận hoặc một điều kiện đủ khác được chốt trong V2.
 
 - Điểm đánh giá.
 - Độ chính xác listing.
@@ -252,7 +231,6 @@ Dashboard landlord cần ưu tiên công việc:
 
 - Inquiry mới.
 - Inquiry chưa phản hồi.
-- Viewing sắp tới.
 - Listing cần cập nhật trạng thái.
 - Tin có nhiều lượt quan tâm.
 
@@ -265,7 +243,7 @@ Trước mắt code có thể bắt đầu dưới dạng modular monolith có b
 ```text
 auth/users          → Identity boundary
 listings/search     → Listing boundary
-favorites/inquiries/viewings → Engagement boundary
+favorites/inquiries → Engagement boundary
 notifications       → Notification boundary
 trust/report/review → Trust & Safety boundary
 ```
@@ -287,7 +265,7 @@ Quy tắc tách:
 - Service khác chỉ dùng API hoặc event contract.
 - Admin action nằm trong service sở hữu resource, không tạo Admin Service quá sớm.
 - Cloudinary và Nominatim thuộc Listing Service.
-- Favorites, inquiries và viewings thuộc Engagement Service ở giai đoạn đầu.
+- Favorites và inquiries thuộc Engagement Service ở giai đoạn đầu. Viewing được hoãn cho đến khi có bằng chứng nhu cầu.
 - Auth cookie hiện tại được giữ qua gateway hoặc identity boundary để tránh buộc frontend đổi ngay.
 - Chỉ dùng event cho công việc có thể bất đồng bộ; transaction nghiệp vụ chính vẫn phải rõ ràng.
 
@@ -306,15 +284,6 @@ GET    /api/v1/landlord/inquiries
 GET    /api/v1/inquiries/:inquiryId
 POST   /api/v1/inquiries/:inquiryId/messages
 PATCH  /api/v1/inquiries/:inquiryId/status
-```
-
-### Viewing
-
-```text
-POST   /api/v1/inquiries/:inquiryId/viewings
-GET    /api/v1/tenant/viewings
-GET    /api/v1/landlord/viewings
-PATCH  /api/v1/viewings/:viewingId
 ```
 
 ### Notification và saved search
@@ -337,7 +306,6 @@ Các bảng hậu MVP có thể gồm:
 
 - `listing_inquiries`
 - `inquiry_messages`
-- `viewing_requests`
 - `notifications`
 - `saved_searches`
 - `listing_reports`
@@ -363,7 +331,6 @@ Các nguyên tắc bắt buộc:
 ```text
 /inquiries
 /inquiries/:inquiryId
-/viewings
 /saved-searches
 /notifications
 ```
@@ -372,7 +339,7 @@ Listing detail bổ sung CTA:
 
 - Gửi yêu cầu liên hệ.
 - Nhắn tin.
-- Đặt lịch xem.
+- Gọi điện.
 - Lưu tìm kiếm.
 - Báo cáo tin.
 
@@ -381,7 +348,6 @@ Listing detail bổ sung CTA:
 ```text
 /landlord/inquiries
 /landlord/inquiries/:inquiryId
-/landlord/viewings
 /landlord/analytics
 ```
 
@@ -406,7 +372,7 @@ Trang landlord phải ưu tiên “việc cần xử lý” thay vì chỉ hiể
 - Có loading, empty, error, unauthorized, forbidden và resource-closed state.
 - Responsive ở 375px, 768px, 1024px và desktop.
 - Tôn trọng `prefers-reduced-motion`.
-- Form inquiry và viewing trên mobile nên dùng sheet hoặc flow ngắn, không tạo cảm giác như form đăng ký dài.
+- Form inquiry trên mobile nên dùng sheet hoặc flow ngắn, không tạo cảm giác như form đăng ký dài.
 
 ## 11. Lộ trình triển khai
 
@@ -423,7 +389,7 @@ Kết quả cần có:
 - Service boundary.
 - Quy tắc notification và rate limit.
 
-### Giai đoạn 1 — Nền tảng microservices
+### Giai đoạn 1 — Nền tảng microservices — đã hoàn tất nền tảng hiện tại
 
 - Tạo API Gateway.
 - Tạo skeleton Identity, Listing và Engagement Service.
@@ -432,7 +398,7 @@ Kết quả cần có:
 - Chuẩn hóa internal authentication.
 - Thiết lập contract test giữa gateway và service.
 
-### Giai đoạn 2 — Di chuyển MVP
+### Giai đoạn 2 — Di chuyển MVP — đã hoàn tất nền tảng hiện tại
 
 - Di chuyển Identity trước.
 - Di chuyển Listing sau vì đây là boundary lớn nhất.
@@ -454,15 +420,7 @@ Tenant gửi inquiry
 
 Đây là release V2 đầu tiên.
 
-### Giai đoạn 4 — Viewing và availability
-
-- Viewing request.
-- Conflict detection.
-- Listing availability.
-- Notification liên quan.
-- E2E tenant-landlord flow.
-
-### Giai đoạn 5 — Saved search và trust & safety
+### Giai đoạn 4 — Saved search và trust & safety
 
 - Saved search.
 - Report.
@@ -470,12 +428,14 @@ Tenant gửi inquiry
 - Review.
 - Admin workflow.
 
-### Giai đoạn 6 — Landlord operations
+### Giai đoạn 5 — Landlord operations
 
 - Lead pipeline.
 - Analytics.
 - Reminders.
 - Multi-room chỉ khi có bằng chứng nhu cầu.
+
+Viewing và availability được giữ ngoài lộ trình triển khai hiện tại; chỉ mở lại sau khi có bằng chứng nhu cầu.
 
 ## 12. Kiểm thử và release gate
 
@@ -494,11 +454,10 @@ Các E2E flow bắt buộc:
 1. Tenant gửi inquiry.
 2. Landlord xem inquiry.
 3. Hai bên nhắn tin.
-4. Tenant tạo viewing.
-5. Landlord xác nhận viewing.
-6. Tenant nhận notification.
-7. Tenant report listing.
-8. Admin xử lý report.
+4. Landlord phản hồi inquiry hoặc message.
+5. Tenant nhận notification.
+6. Tenant report listing.
+7. Admin xử lý report.
 
 Không release service mới nếu chưa chứng minh:
 
@@ -515,8 +474,7 @@ Sau khi V2 chạy thử, theo dõi:
 - Tỷ lệ listing detail → inquiry.
 - Thời gian landlord phản hồi trung bình.
 - Tỷ lệ inquiry được phản hồi trong 24 giờ.
-- Tỷ lệ inquiry → viewing.
-- Tỷ lệ viewing hoàn thành.
+- Tỷ lệ inquiry chuyển thành cuộc trao đổi có phản hồi.
 - Tỷ lệ tenant quay lại nhờ notification.
 - Tỷ lệ listing stale hoặc đã cho thuê nhưng chưa cập nhật.
 - Tỷ lệ report hợp lệ.
@@ -528,10 +486,7 @@ Trước khi viết service hoặc migration, phải chốt riêng:
 
 - Inquiry có cho phép reopen hay không.
 - Tenant có được hiển thị contact trực tiếp hay ưu tiên nhắn tin qua hệ thống.
-- Một landlord có thể có bao nhiêu viewing trùng giờ.
-- Quy tắc hủy và đổi lịch.
 - Thời gian lưu message, inquiry và notification.
-- Availability có dùng enum, bảng riêng hay check constraint.
 - Dùng `/api/v1` additive hay tạo `/api/v2`.
 - Service nào sở hữu từng entity.
 - Cách xác thực request giữa gateway và service.
@@ -539,13 +494,12 @@ Trước khi viết service hoặc migration, phải chốt riêng:
 
 ## 15. Bước triển khai đầu tiên
 
-Bước đầu tiên sau khi tài liệu này được phê duyệt là:
+Bước triển khai tiếp theo sau khi tài liệu này được phê duyệt là:
 
-1. Viết architecture contract cho ba service `identity`, `listing`, `engagement`.
-2. Tạo API Gateway giữ compatibility với frontend hiện tại.
-3. Tạo database boundary và health check cho từng service.
-4. Di chuyển một vertical slice nhỏ của Identity.
-5. Chạy regression MVP.
-6. Sau khi boundary ổn định mới triển khai Inquiry + Message.
+1. Chốt V2 database design cho Inquiry, Message và Notification.
+2. Chốt API contract, privacy matrix, rate limit và notification ownership.
+3. Triển khai Inquiry + Message dưới Engagement boundary, giữ gọi điện bằng `tel:`.
+4. Thêm notification cho inquiry và message theo transaction/event contract đã chốt.
+5. Chạy regression MVP và E2E tenant–landlord flow.
 
 Không bắt đầu bằng thanh toán, chat realtime hoặc việc tách mọi module thành một service riêng.
