@@ -1,6 +1,7 @@
 import { ApplicationError } from "../../../../../shared/src/runtime/shared/errors/application-error.js";
 import { ValidationIssueCollector } from "../../../../../shared/src/runtime/shared/validation/issues.js";
 import {
+  normalizeDisplayName,
   normalizeEmail,
   normalizePhone,
   validatePasswordRepresentation
@@ -11,11 +12,12 @@ import {
   type PlainJsonObject
 } from "../../../../../shared/src/runtime/shared/validation/request.js";
 
-const registrationFields = ["email", "password", "phone"] as const;
+const registrationFields = ["displayName", "email", "password", "phone"] as const;
 
 export type RegistrationRole = "TENANT" | "LANDLORD";
 
 export interface RegistrationInput {
+  readonly displayName?: string | null;
   readonly email: string;
   readonly password: string;
   readonly phone: string | null;
@@ -61,6 +63,13 @@ export function validateRegistrationInput(value: unknown, role: RegistrationRole
   let email: string | undefined;
   let password: string | undefined;
   let phone: string | null | undefined;
+  let displayName: string | null = null;
+
+  if (Object.prototype.hasOwnProperty.call(body, "displayName")) {
+    appendValidationIssues(collector, () => {
+      displayName = normalizeDisplayName(body.displayName);
+    });
+  }
 
   appendValidationIssues(collector, () => {
     email = normalizeEmail(body.email);
@@ -82,6 +91,7 @@ export function validateRegistrationInput(value: unknown, role: RegistrationRole
   }
 
   return Object.freeze({
+    displayName,
     email,
     password,
     phone: phone ?? null

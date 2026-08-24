@@ -1,12 +1,12 @@
 # Profile Identity Data Foundation
 
-This additive post-MVP foundation reserves an optional account display name in the Identity-owned `users` data. It does
-not change registration, login, user-profile, admin, internal-service, or frontend contracts.
+This additive post-MVP foundation reserves an optional account display name in the Identity-owned `users` data. Identity
+Service is the sole owner of the account display name. The legacy compatibility backend is outside the active feature
+scope.
 
 ## Schema
 
-Identity migration `0003_add_user_display_name.sql` and compatibility migration
-`0013_add_user_display_name.sql` add the same column and constraint:
+Identity migration `0003_add_user_display_name.sql` adds the following column and constraint to the Identity database:
 
 - `display_name varchar(120) NULL`;
 - no default, unique constraint, index, or trigger;
@@ -36,6 +36,5 @@ The existing plan selects only `0003`. The runner never creates or updates a dat
 updates the external record only after migration and verification succeed. Migration `0003` checks its `0002` schema
 precondition and uses non-idempotent DDL so a version/schema mismatch fails instead of being hidden.
 
-The compatibility database continues to use its established clean/existing migration commands. An existing manifest at
-version `12` selects only `0013`. Both database changes are forward-only; rollback uses a compatible application artifact
-and leaves the nullable column in place.
+The compatibility database has no Profile Identity migration. Active development does not require compatibility-backend
+schema parity unless a future task explicitly requests it.

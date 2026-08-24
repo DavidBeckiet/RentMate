@@ -1,4 +1,8 @@
-import { queryExactlyOne, queryMany, queryOptional } from "../../../../../shared/src/runtime/db/repository-primitives.js";
+import {
+  queryExactlyOne,
+  queryMany,
+  queryOptional
+} from "../../../../../shared/src/runtime/db/repository-primitives.js";
 import type { SqlExecutor } from "../../../../../shared/src/runtime/db/sql-executor.js";
 import type { UserRole } from "../../../../../shared/src/runtime/shared/types/authentication.js";
 import { mapUserProfileRow, type UserProfile, type UserProfileRow } from "../user-profile.js";
@@ -27,6 +31,7 @@ export type AdminUserRepositoryFactory = (executor: SqlExecutor) => AdminUserRep
 const profileProjection = `
   id,
   role,
+  display_name,
   email,
   phone_e164,
   is_active,

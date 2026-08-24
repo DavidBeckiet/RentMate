@@ -32,7 +32,7 @@ export function createPatchCurrentUserHandler(usersService: UsersService): Reque
       const principal = requirePrincipal(request);
       validateQueryKeys(request.query, []);
       const input = validateUpdateCurrentUserInput(request.body, principal.role);
-      const profile = await usersService.updateCurrentUserPhone(principal, input);
+      const profile = await usersService.updateCurrentUser(principal, input);
       sendObject(response, mapUserProfileToDto(profile));
     })().catch(next);
   };

@@ -15,7 +15,14 @@ export interface UsersRepository {
   readonly findActiveLandlordIds?: () => Promise<readonly number[]>;
   readonly findProfilesByIds?: (userIds: readonly number[]) => Promise<readonly UserProfile[]>;
   readonly findProfileById: (userId: number) => Promise<UserProfile | null>;
-  readonly updatePhone: (userId: number, phone: string | null) => Promise<UserProfile | null>;
+  readonly updateProfile: (userId: number, input: UpdateUserProfileRecord) => Promise<UserProfile | null>;
+}
+
+export interface UpdateUserProfileRecord {
+  readonly displayNameProvided: boolean;
+  readonly displayName: string | null;
+  readonly phoneProvided: boolean;
+  readonly phone: string | null;
 }
 
 interface AuthenticationAccountRow extends QueryResultRow {
@@ -50,6 +57,7 @@ const profileSelect = `
       SELECT
         id,
         role,
+        display_name,
         email,
         phone_e164,
         is_active,
@@ -65,6 +73,7 @@ const profilesSelect = `
       SELECT
         id,
         role,
+        display_name,
         email,
         phone_e164,
         is_active,
@@ -138,28 +147,33 @@ export function createUsersRepository(executor: SqlExecutor): UsersRepository {
 
     findProfileById,
 
-    async updatePhone(userId: number, phone: string | null): Promise<UserProfile | null> {
+    async updateProfile(userId: number, input: UpdateUserProfileRecord): Promise<UserProfile | null> {
       const updated = await queryOptional<UserProfileRow, UserProfile>(
         executor,
         {
           text: `
             UPDATE users
             SET
-              phone_e164 = $2,
+              display_name = CASE WHEN $2::boolean THEN $3::varchar ELSE display_name END,
+              phone_e164 = CASE WHEN $4::boolean THEN $5::varchar ELSE phone_e164 END,
               updated_at = CURRENT_TIMESTAMP
             WHERE id = $1
               AND is_active = true
-              AND phone_e164 IS DISTINCT FROM $2
+              AND (
+                ($2::boolean AND display_name IS DISTINCT FROM $3::varchar)
+                OR ($4::boolean AND phone_e164 IS DISTINCT FROM $5::varchar)
+              )
             RETURNING
               id,
               role,
+              display_name,
               email,
               phone_e164,
               is_active,
               created_at,
               updated_at
           `,
-          values: [userId, phone]
+          values: [userId, input.displayNameProvided, input.displayName, input.phoneProvided, input.phone]
         },
         mapUserProfileRow
       );

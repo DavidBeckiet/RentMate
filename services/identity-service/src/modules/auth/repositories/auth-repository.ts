@@ -6,6 +6,7 @@ import { mapUserProfileRow, type UserProfile, type UserProfileRow } from "../../
 
 export interface CreateUserRecord {
   readonly role: "TENANT" | "LANDLORD";
+  readonly displayName: string | null;
   readonly email: string;
   readonly phone: string | null;
   readonly passwordHash: string;
@@ -18,6 +19,7 @@ export interface AuthRepository {
 export interface LoginAccount {
   readonly id: number;
   readonly role: UserRole;
+  readonly displayName: string | null;
   readonly email: string;
   readonly phone: string | null;
   readonly passwordHash: string;
@@ -84,21 +86,23 @@ export function createAuthRepository(executor: SqlExecutor): AuthRepository & Lo
             text: `
               INSERT INTO users (
                 role,
+                display_name,
                 email,
                 phone_e164,
                 password_hash
               )
-              VALUES ($1, $2, $3, $4)
+              VALUES ($1, $2, $3, $4, $5)
               RETURNING
                 id,
                 role,
+                display_name,
                 email,
                 phone_e164,
                 is_active,
                 created_at,
                 updated_at
             `,
-            values: [input.role as UserRole, input.email, input.phone, input.passwordHash]
+            values: [input.role as UserRole, input.displayName, input.email, input.phone, input.passwordHash]
           },
           mapUserProfileRow
         );
@@ -119,6 +123,7 @@ export function createAuthRepository(executor: SqlExecutor): AuthRepository & Lo
             SELECT
               id,
               role,
+              display_name,
               email,
               phone_e164,
               password_hash,

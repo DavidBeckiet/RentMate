@@ -8,7 +8,7 @@ import type { UsersRepository } from "../repositories/users-repository.js";
 
 export interface UsersService {
   readonly getCurrentUser: (principal: AuthenticatedPrincipal) => Promise<UserProfile>;
-  readonly updateCurrentUserPhone: (
+  readonly updateCurrentUser: (
     principal: AuthenticatedPrincipal,
     input: UpdateCurrentUserInput
   ) => Promise<UserProfile>;
@@ -37,19 +37,21 @@ export function createUsersService(repository: UsersRepository): UsersService {
   return Object.freeze({
     getCurrentUser,
 
-    async updateCurrentUserPhone(
-      principal: AuthenticatedPrincipal,
-      input: UpdateCurrentUserInput
-    ): Promise<UserProfile> {
+    async updateCurrentUser(principal: AuthenticatedPrincipal, input: UpdateCurrentUserInput): Promise<UserProfile> {
       if (principal.role === "LANDLORD" && input.phoneProvided && input.phone === null) {
         throw landlordPhoneRequired();
       }
 
-      if (!input.phoneProvided) {
+      if (!input.displayNameProvided && !input.phoneProvided) {
         return getCurrentUser(principal);
       }
 
-      const profile = await repository.updatePhone(principal.userId, input.phone);
+      const profile = await repository.updateProfile(principal.userId, {
+        displayNameProvided: input.displayNameProvided === true,
+        displayName: input.displayName ?? null,
+        phoneProvided: input.phoneProvided,
+        phone: input.phone
+      });
       if (!profile) {
         throw authenticationRequired();
       }

@@ -2,6 +2,26 @@ import { throwValidationIssue } from "./issues.js";
 
 const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const phonePattern = /^\+[1-9][0-9]{7,14}$/;
+const controlCharacterPattern = /\p{Cc}/u;
+
+export function normalizeDisplayName(value: unknown, field = "displayName"): string {
+  if (typeof value !== "string") {
+    throwValidationIssue(field, "INVALID_TYPE", `${field} must be a string.`);
+  }
+
+  const normalized = value.normalize("NFC").trim();
+  if (!normalized) {
+    throwValidationIssue(field, "REQUIRED", `${field} is required when provided.`);
+  }
+  if (controlCharacterPattern.test(normalized)) {
+    throwValidationIssue(field, "INVALID_VALUE", `${field} must not contain control characters.`);
+  }
+  if ([...normalized].length > 120) {
+    throwValidationIssue(field, "TOO_LONG", `${field} must not exceed 120 Unicode code points.`);
+  }
+
+  return normalized;
+}
 
 export function normalizeEmail(value: unknown, field = "email"): string {
   if (typeof value !== "string") {

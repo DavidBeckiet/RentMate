@@ -8,6 +8,7 @@ const maximumUserId = 2_147_483_647;
 export interface UserProfileRow extends QueryResultRow {
   readonly id: number;
   readonly role: UserRole;
+  readonly display_name: string | null;
   readonly email: string;
   readonly phone_e164: string | null;
   readonly is_active: boolean;
@@ -18,6 +19,7 @@ export interface UserProfileRow extends QueryResultRow {
 export interface UserProfile {
   readonly id: number;
   readonly role: UserRole;
+  readonly displayName: string | null;
   readonly email: string;
   readonly phone: string | null;
   readonly isActive: boolean;
@@ -28,6 +30,7 @@ export interface UserProfile {
 export interface UserProfileDto {
   readonly id: number;
   readonly role: UserRole;
+  readonly displayName: string | null;
   readonly email: string;
   readonly phone: string | null;
   readonly isActive: boolean;
@@ -50,6 +53,7 @@ export function mapUserProfileRow(row: Readonly<UserProfileRow>): UserProfile {
   if (
     !isValidUserId(row.id) ||
     !isUserRole(row.role) ||
+    (row.display_name !== null && typeof row.display_name !== "string") ||
     typeof row.email !== "string" ||
     (row.phone_e164 !== null && typeof row.phone_e164 !== "string") ||
     typeof row.is_active !== "boolean"
@@ -70,6 +74,7 @@ export function mapUserProfileRow(row: Readonly<UserProfileRow>): UserProfile {
   return Object.freeze({
     id: row.id,
     role: row.role,
+    displayName: row.display_name,
     email: row.email,
     phone: row.phone_e164,
     isActive: row.is_active,
@@ -82,6 +87,7 @@ export function mapUserProfileToDto(user: Readonly<UserProfile>): UserProfileDto
   if (
     !isValidUserId(user.id) ||
     !isUserRole(user.role) ||
+    (user.displayName !== null && typeof user.displayName !== "string") ||
     typeof user.email !== "string" ||
     (user.phone !== null && typeof user.phone !== "string") ||
     typeof user.isActive !== "boolean"
@@ -93,6 +99,7 @@ export function mapUserProfileToDto(user: Readonly<UserProfile>): UserProfileDto
     return Object.freeze({
       id: user.id,
       role: user.role,
+      displayName: user.displayName,
       email: user.email,
       phone: user.phone,
       isActive: user.isActive,

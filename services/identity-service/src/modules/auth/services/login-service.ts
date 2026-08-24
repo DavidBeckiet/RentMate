@@ -23,6 +23,7 @@ function withoutPasswordHash(account: LoginAccount): UserProfile {
   return Object.freeze({
     id: account.id,
     role: account.role,
+    displayName: account.displayName,
     email: account.email,
     phone: account.phone,
     isActive: account.isActive,

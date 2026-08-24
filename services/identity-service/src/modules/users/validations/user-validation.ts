@@ -1,6 +1,12 @@
 import { ApplicationError } from "../../../../../shared/src/runtime/shared/errors/application-error.js";
-import { ValidationIssueCollector, validationDetail } from "../../../../../shared/src/runtime/shared/validation/issues.js";
-import { normalizePhone } from "../../../../../shared/src/runtime/shared/validation/normalization.js";
+import {
+  ValidationIssueCollector,
+  validationDetail
+} from "../../../../../shared/src/runtime/shared/validation/issues.js";
+import {
+  normalizeDisplayName,
+  normalizePhone
+} from "../../../../../shared/src/runtime/shared/validation/normalization.js";
 import {
   requirePlainJsonObject,
   validateBodyFields,
@@ -8,9 +14,11 @@ import {
 } from "../../../../../shared/src/runtime/shared/validation/request.js";
 import type { UserRole } from "../../../../../shared/src/runtime/shared/types/authentication.js";
 
-const updateCurrentUserFields = ["phone"] as const;
+const updateCurrentUserFields = ["displayName", "phone"] as const;
 
 export interface UpdateCurrentUserInput {
+  readonly displayNameProvided?: boolean;
+  readonly displayName?: string | null;
   readonly phoneProvided: boolean;
   readonly phone: string | null;
 }
@@ -58,8 +66,16 @@ export function validateUpdateCurrentUserInput(value: unknown, role: UserRole): 
 
   appendValidationIssues(collector, () => validateBodyFields(body, updateCurrentUserFields));
 
+  const displayNameProvided = Object.prototype.hasOwnProperty.call(body, "displayName");
   const phoneProvided = Object.prototype.hasOwnProperty.call(body, "phone");
+  let displayName: string | null = null;
   let phone: string | null = null;
+
+  if (displayNameProvided) {
+    appendValidationIssues(collector, () => {
+      displayName = normalizeDisplayName(body.displayName);
+    });
+  }
 
   if (phoneProvided) {
     if (role === "LANDLORD") {
@@ -80,6 +96,8 @@ export function validateUpdateCurrentUserInput(value: unknown, role: UserRole): 
   collector.throwIfAny();
 
   return Object.freeze({
+    displayNameProvided,
+    displayName,
     phoneProvided,
     phone
   });

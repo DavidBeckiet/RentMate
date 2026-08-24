@@ -10,6 +10,8 @@
     "start": "tsx src/server.ts",
     "test": "node --import tsx --test test/*.test.ts",
     "test:migrations": "node --import tsx --test test/migration-runner.test.ts",
+    "test:profile-identity": "node --import tsx --test test/profile-identity-api.test.ts",
+    "test:profile-identity:database": "node --import tsx --test test/profile-identity-api.database.ts",
     "migrate": "tsx migrate.ts",
     "backfill": "tsx backfill.ts"
   },

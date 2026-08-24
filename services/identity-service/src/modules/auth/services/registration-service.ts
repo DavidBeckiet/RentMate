@@ -1,6 +1,10 @@
 import { ApplicationError } from "../../../../../shared/src/runtime/shared/errors/application-error.js";
 import type { PasswordService } from "../password.js";
-import { RegistrationEmailAlreadyExistsError, type AuthRepository, type CreateUserRecord } from "../repositories/auth-repository.js";
+import {
+  RegistrationEmailAlreadyExistsError,
+  type AuthRepository,
+  type CreateUserRecord
+} from "../repositories/auth-repository.js";
 import type { RegistrationInput, RegistrationRole } from "../validations/registration-validation.js";
 import type { UserProfile } from "../../users/user-profile.js";
 
@@ -21,6 +25,7 @@ export function createRegistrationService(dependencies: {
       const passwordHash = await dependencies.passwordService.hashPassword(input.password);
       const record: CreateUserRecord = {
         role,
+        displayName: input.displayName ?? null,
         email: input.email,
         phone: input.phone,
         passwordHash
