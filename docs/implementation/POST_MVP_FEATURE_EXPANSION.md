@@ -719,7 +719,7 @@ Mục 6 chỉ hoàn thành khi toàn bộ flow trên chạy qua Gateway và khô
 - [x] External migration manifest đã được kiểm tra bằng `--plan-only`: Identity ở version `4`, Listing ở version `7`, Engagement ở version `13`; không có migration chưa áp dụng trên database local.
 - [x] PostgreSQL, Identity, Listing, Engagement, backend compatibility và Gateway đều báo healthy trong Docker.
 - [x] Smoke E2E contact flow đã chạy qua Gateway: public privacy, role/ownership, chat realtime, block/unblock, contact report và admin xử lý report.
-- [x] Identity test `20/20`, Listing test `30/30`, Engagement test `45/45`, Gateway test `5/5` và frontend test `575/575` đã pass.
+- [x] Identity test `22/22`, Listing test `30/30`, Engagement test `45/45`, Gateway test `5/5` và frontend test `575/575` đã pass.
 - [x] Typecheck, lint và production build đã pass; production build dùng một HTTPS API origin hợp lệ truyền qua environment.
 - [x] Playwright Chromium đã kiểm tra Listing Detail tại `375`, `768`, `1024` và `1440px`; không có horizontal overflow và AppShell hiển thị cùng phần đầu listing.
 - [x] Các file frontend được thêm/sửa trong mục 5 đã được format riêng và kiểm tra lại.
@@ -740,7 +740,8 @@ Mục 6 chỉ hoàn thành khi toàn bộ flow trên chạy qua Gateway và khô
 ##### Bước 2 — kết nối provider email/SMS staging
 
 - [ ] Chọn dịch vụ gửi email, dịch vụ gửi SMS và cấu hình sender/domain/phone number cho staging.
-- [ ] Chuẩn bị một webhook adapter nhận payload `{ channel, destination, secret }`, xác thực header `x-rentmate-verification-token` và điều phối sang provider tương ứng.
+- [x] Lớp delivery của RentMate đã gửi đúng payload `{ channel, destination, secret }`, xác thực bằng header `x-rentmate-verification-token`, có timeout và trả lỗi an toàn; không retry để tránh gửi trùng OTP/email.
+- [ ] Chuẩn bị webhook adapter bên ngoài nhận payload `{ channel, destination, secret }`, xác thực header `x-rentmate-verification-token` và điều phối sang provider tương ứng.
 - [ ] Webhook chỉ trả kết quả thành công/thất bại tối thiểu; không log token, OTP, email, số điện thoại hoặc raw provider response không cần thiết.
 - [ ] Chốt timeout, retry/idempotency và cách xử lý provider tạm lỗi để không gửi trùng mã ngoài ý muốn.
 - [ ] Lưu `VERIFICATION_DELIVERY_URL` và `VERIFICATION_DELIVERY_TOKEN` trong secret store của staging; không ghi secret thật vào `.env.example`, Git hoặc log.
