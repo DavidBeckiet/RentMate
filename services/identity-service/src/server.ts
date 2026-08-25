@@ -8,7 +8,10 @@ import { createApp } from "../../shared/src/runtime/app.js";
 import { createAuthRepository } from "./modules/auth/repositories/auth-repository.js";
 import { createLoginService } from "./modules/auth/services/login-service.js";
 import { createPasswordService } from "./modules/auth/password.js";
+import { createPasswordResetDelivery } from "./modules/auth/password-reset-delivery.js";
+import { createPasswordResetRepository } from "./modules/auth/repositories/password-reset-repository.js";
 import { createRegistrationService } from "./modules/auth/services/registration-service.js";
+import { createPasswordResetService } from "./modules/auth/services/password-reset-service.js";
 import { registerAuthRoutes } from "./modules/auth/routes.js";
 import { createSessionCookieService } from "./modules/auth/session-cookie.js";
 import { createSessionTokenService } from "./modules/auth/session-token.js";
@@ -72,6 +75,7 @@ async function startIdentityService(): Promise<void> {
   const sessionTokenService = createSessionTokenService({ secret: config.auth.jwtSecret });
   const sessionCookieService = createSessionCookieService({ secure: config.auth.cookieSecure });
   const authRepository = createAuthRepository(sqlExecutor);
+  const passwordResetRepository = createPasswordResetRepository(sqlExecutor);
   const usersRepository = createUsersRepository(sqlExecutor);
   const registrationService = createRegistrationService({ passwordService, authRepository });
   const missingAccountPasswordHash = await passwordService.hashPassword(randomBytes(32).toString("base64url"));
@@ -94,12 +98,27 @@ async function startIdentityService(): Promise<void> {
     deliveryUrl: config.verification.deliveryUrl,
     deliveryToken: config.verification.deliveryToken
   });
+  const passwordResetDelivery = createPasswordResetDelivery({
+    nodeEnvironment: config.nodeEnv,
+    deliveryUrl: config.verification.deliveryUrl,
+    deliveryToken: config.verification.deliveryToken
+  });
   const contactVerificationService = createContactVerificationService({
     contactRepository: contactVerificationRepository,
     verificationRepository,
     transactionRunner,
     delivery: contactVerificationDelivery,
     secretPepper: config.auth.jwtSecret
+  });
+  const passwordResetService = createPasswordResetService({
+    authRepository,
+    passwordResetRepository,
+    passwordService,
+    transactionRunner,
+    delivery: passwordResetDelivery,
+    secretPepper: config.auth.jwtSecret,
+    frontendOrigin: config.frontendOrigin,
+    logger
   });
   const requiredAuthentication = createProtectedAuthenticationMiddleware({
     verifySessionToken: sessionTokenService.verify,
@@ -118,6 +137,7 @@ async function startIdentityService(): Promise<void> {
       registerAuthRoutes(router, {
         registrationService,
         loginService,
+        passwordResetService,
         sessionTokenService,
         sessionCookieService,
         registrationRateLimitStore: authRateLimitStore,
@@ -225,6 +245,12 @@ async function startIdentityService(): Promise<void> {
             return;
           }
           response.status(200).json({ data: latestVerificationPreview(channel as "EMAIL" | "PHONE" | undefined) });
+        });
+      }
+      const latestPasswordResetPreview = passwordResetDelivery.latestPreview;
+      if (config.nodeEnv !== "production" && latestPasswordResetPreview) {
+        internalApp.get("/internal/v1/password-reset/preview", internalServiceGuard, (_request, response) => {
+          response.status(200).json({ data: latestPasswordResetPreview() });
         });
       }
     }

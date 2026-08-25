@@ -176,6 +176,13 @@ export const adminNavigationItems: readonly NavigationItem[] = [
     pathPrefixes: ["/admin/reviews"]
   },
   {
+    key: "admin-review-reports",
+    label: "Báo cáo review",
+    href: "/admin/review-reports",
+    icon: "flag",
+    pathPrefixes: ["/admin/review-reports"]
+  },
+  {
     key: "admin-verifications",
     label: "Xác minh",
     href: "/admin/verifications",
@@ -209,6 +216,8 @@ export function isNavigationItemActive(item: NavigationItem, pathname: string): 
 export function resolveShellKind(pathname: string, actor: NavigationActor): ShellKind {
   if (
     pathname === "/login" ||
+    pathname === "/forgot-password" ||
+    pathname === "/reset-password" ||
     pathname === "/register" ||
     pathname.startsWith("/register/") ||
     pathname === "/admin/login"

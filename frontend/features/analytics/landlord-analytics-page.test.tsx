@@ -38,13 +38,17 @@ const analytics: LandlordAnalytics = {
   averageFirstResponseMinutes: 75,
   closedInquiries: 1,
   needsReplyNow: 2,
+  views: 12,
+  favorites: 4,
+  callClicks: 3,
+  emailClicks: 2,
   daily: [
     { date: "2026-08-23", inquiries: 2, firstResponses: 1 },
     { date: "2026-08-24", inquiries: 4, firstResponses: 2 }
   ],
   topListings: [
-    { listingId: 42, inquiries: 4 },
-    { listingId: 17, inquiries: 2 }
+    { listingId: 42, inquiries: 4, views: 8, favorites: 2, callClicks: 1, emailClicks: 1 },
+    { listingId: 17, inquiries: 2, views: 4, favorites: 2, callClicks: 2, emailClicks: 1 }
   ]
 };
 

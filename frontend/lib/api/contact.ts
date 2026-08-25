@@ -10,6 +10,7 @@ import type {
   InquiryStatus,
   ListingReview,
   Notification,
+  NotificationUnreadCount,
   PaginationQuery,
   ReviewEligibility
 } from "../../types/api";
@@ -41,6 +42,8 @@ export function createContactApi(transport: ApiTransport) {
       transport.object(`/api/v1/inquiries/${inquiryId}/status`, { method: "PATCH", json: { status }, signal }),
     listNotifications: (query: PaginationQuery = {}, signal?: AbortSignal): Promise<ApiPage<Notification>> =>
       transport.page("/api/v1/notifications", { query, signal }),
+    getUnreadNotificationCount: (signal?: AbortSignal): Promise<NotificationUnreadCount> =>
+      transport.object("/api/v1/notifications/unread-count", { signal }),
     markNotificationRead: (notificationId: number, signal?: AbortSignal): Promise<void> =>
       transport.void(`/api/v1/notifications/${notificationId}/read`, { method: "PATCH", signal }),
     markAllNotificationsRead: (signal?: AbortSignal): Promise<void> =>

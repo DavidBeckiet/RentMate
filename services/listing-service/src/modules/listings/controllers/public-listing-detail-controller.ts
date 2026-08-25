@@ -28,3 +28,18 @@ export function createPublicListingDetailHandler(service: PublicListingDetailSer
     })().catch(next);
   };
 }
+
+export function createSimilarListingsHandler(service: PublicListingDetailService): RequestHandler {
+  return (request, response, next): void => {
+    void (async () => {
+      const listingId = parseListingId(request.params.listingId);
+      validateQueryKeys(request.query, []);
+      validateBody(request.body);
+      const data = await service.getSimilarListings(listingId);
+      response.status(200).json({
+        data,
+        pagination: { page: 1, pageSize: 3, hasNextPage: false }
+      });
+    })().catch(next);
+  };
+}

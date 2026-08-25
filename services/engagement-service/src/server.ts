@@ -8,7 +8,10 @@ import { createFavoriteRepository } from "./modules/favorites/repositories/favor
 import { createFavoriteService } from "./modules/favorites/services/favorite-service.js";
 import { registerFavoriteRoutes } from "./modules/favorites/routes.js";
 import { createLogger } from "../../shared/src/runtime/shared/logging/logger.js";
-import { createProtectedAuthenticationMiddleware } from "../../shared/src/runtime/shared/middleware/authentication.js";
+import {
+  createOptionalAuthenticationMiddleware,
+  createProtectedAuthenticationMiddleware
+} from "../../shared/src/runtime/shared/middleware/authentication.js";
 import { createRoleMiddleware } from "../../shared/src/runtime/shared/middleware/role.js";
 import { createShutdownHandler } from "../../shared/src/runtime/shutdown.js";
 import { applyDatabaseOverrides } from "../../shared/database-overrides.js";
@@ -27,6 +30,7 @@ import { createSavedSearchService } from "./modules/saved-searches/services/save
 import { createSavedSearchNotificationRepository } from "./modules/saved-searches/repositories/saved-search-notification-repository.js";
 import { createSavedSearchNotificationService } from "./modules/saved-searches/services/saved-search-notification-service.js";
 import { createReviewRepository } from "./modules/reviews/repositories/review-repository.js";
+import { createReviewReportRepository } from "./modules/reviews/repositories/review-report-repository.js";
 import { createReviewService } from "./modules/reviews/services/review-service.js";
 import { registerReviewRoutes } from "./modules/reviews/routes.js";
 import { createLeadRepository } from "./modules/leads/repositories/lead-repository.js";
@@ -116,6 +120,10 @@ async function startEngagementService(): Promise<void> {
     verifySessionToken: sessionTokenService.verify,
     loadAuthenticationAccount
   });
+  const optionalAuthentication = createOptionalAuthenticationMiddleware({
+    verifySessionToken: sessionTokenService.verify,
+    loadAuthenticationAccount
+  });
   const tenantRole = createRoleMiddleware(["TENANT"]);
   const adminRole = createRoleMiddleware(["ADMIN"]);
   const landlordRole = createRoleMiddleware(["LANDLORD"]);
@@ -133,6 +141,7 @@ async function startEngagementService(): Promise<void> {
   });
   const reviewService = createReviewService({
     repository: createReviewRepository(),
+    reviewReportRepository: createReviewReportRepository(),
     listingCatalogClient,
     transactionRunner: {
       run: (operation) => withTransaction(databasePool, logger, operation)
@@ -153,6 +162,7 @@ async function startEngagementService(): Promise<void> {
   });
   const analyticsService = createAnalyticsService({
     repository: createAnalyticsRepository(),
+    listingCatalogClient,
     transactionRunner: {
       run: (operation) => withTransaction(databasePool, logger, operation)
     }
@@ -205,6 +215,7 @@ async function startEngagementService(): Promise<void> {
       });
       registerAnalyticsRoutes(router, {
         authenticationMiddleware: requiredAuthentication,
+        optionalAuthenticationMiddleware: optionalAuthentication,
         landlordRoleMiddleware: landlordRole,
         service: analyticsService
       });

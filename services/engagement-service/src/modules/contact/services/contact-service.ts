@@ -11,11 +11,7 @@ import type {
   ContactBlockState,
   ContactSafetyRepository
 } from "../repositories/contact-safety-repository.js";
-import type {
-  ContactCollectionQuery,
-  CreateInquiryInput,
-  InquiryStatus
-} from "../validations/contact-validation.js";
+import type { ContactCollectionQuery, CreateInquiryInput, InquiryStatus } from "../validations/contact-validation.js";
 import type {
   ContactReportCollectionQuery,
   CreateContactReportInput,
@@ -74,10 +70,7 @@ export interface ContactService {
     principal: AuthenticatedPrincipal,
     query: ContactReportCollectionQuery
   ) => Promise<ContactPage<AdminContactReport>>;
-  readonly getContactReport: (
-    principal: AuthenticatedPrincipal,
-    reportId: number
-  ) => Promise<AdminContactReportDetail>;
+  readonly getContactReport: (principal: AuthenticatedPrincipal, reportId: number) => Promise<AdminContactReportDetail>;
   readonly updateContactReportStatus: (
     principal: AuthenticatedPrincipal,
     reportId: number,
@@ -92,6 +85,7 @@ export interface ContactService {
     principal: AuthenticatedPrincipal,
     query: ContactCollectionQuery
   ) => Promise<ContactPage<Notification>>;
+  readonly getUnreadNotificationCount: (principal: AuthenticatedPrincipal) => Promise<number>;
   readonly markNotificationRead: (principal: AuthenticatedPrincipal, notificationId: number) => Promise<void>;
   readonly markAllNotificationsRead: (principal: AuthenticatedPrincipal) => Promise<void>;
 }
@@ -137,7 +131,11 @@ async function decorateInquiry(
   inquiry: Inquiry,
   safetyRepository: ContactSafetyRepository
 ): Promise<InquiryView> {
-  const state = await safetyRepository.getBlockState(executor, principal.userId, otherParticipantId(principal, inquiry));
+  const state = await safetyRepository.getBlockState(
+    executor,
+    principal.userId,
+    otherParticipantId(principal, inquiry)
+  );
   return Object.freeze({
     ...inquiry,
     canSendMessage: canSend(inquiry, state),
@@ -174,7 +172,9 @@ export function createContactService(dependencies: {
 }): ContactService {
   const { repository, safetyRepository, listingCatalogClient, identityAccountClient, transactionRunner } = dependencies;
   const enrichReports = async (reports: readonly ContactReport[]): Promise<readonly AdminContactReport[]> => {
-    const profiles = await identityAccountClient.loadProfilesByIds([...new Set(reports.map((report) => report.reporterId))]);
+    const profiles = await identityAccountClient.loadProfilesByIds([
+      ...new Set(reports.map((report) => report.reporterId))
+    ]);
     return Object.freeze(
       reports.map((report) => Object.freeze({ ...report, reporter: requireReportProfile(report, profiles) }))
     );
@@ -231,7 +231,8 @@ export function createContactService(dependencies: {
           offset: query.offset
         });
         const decorated: InquiryView[] = [];
-        for (const inquiry of inquiries) decorated.push(await decorateInquiry(executor, principal, inquiry, safetyRepository));
+        for (const inquiry of inquiries)
+          decorated.push(await decorateInquiry(executor, principal, inquiry, safetyRepository));
         return decorated;
       });
       return Object.freeze({
@@ -252,7 +253,8 @@ export function createContactService(dependencies: {
           offset: query.offset
         });
         const decorated: InquiryView[] = [];
-        for (const inquiry of inquiries) decorated.push(await decorateInquiry(executor, principal, inquiry, safetyRepository));
+        for (const inquiry of inquiries)
+          decorated.push(await decorateInquiry(executor, principal, inquiry, safetyRepository));
         return decorated;
       });
       return Object.freeze({
@@ -288,7 +290,10 @@ export function createContactService(dependencies: {
         if (!inquiry) throw new ApplicationError("RESOURCE_NOT_FOUND", notFoundMessage);
         const senderRole = requireParticipant(principal, inquiry);
         if (inquiry.status === "CLOSED") throw new ApplicationError("CONCURRENT_MODIFICATION", closedMessage);
-        if (!(await safetyRepository.getBlockState(executor, principal.userId, otherParticipantId(principal, inquiry))).canSendMessage) {
+        if (
+          !(await safetyRepository.getBlockState(executor, principal.userId, otherParticipantId(principal, inquiry)))
+            .canSendMessage
+        ) {
           throw new ApplicationError("CONCURRENT_MODIFICATION", contactBlockedMessage);
         }
         const message = await repository.appendMessage(executor, {
@@ -336,7 +341,10 @@ export function createContactService(dependencies: {
           const inquiry = await repository.findInquiryForUpdate(executor, inquiryId);
           if (!inquiry) throw new ApplicationError("RESOURCE_NOT_FOUND", notFoundMessage);
           const actorRole = requireParticipant(principal, inquiry);
-          if (input.messageId !== null && !(await safetyRepository.messageBelongsToInquiry(executor, inquiryId, input.messageId))) {
+          if (
+            input.messageId !== null &&
+            !(await safetyRepository.messageBelongsToInquiry(executor, inquiryId, input.messageId))
+          ) {
             throw new ApplicationError("RESOURCE_NOT_FOUND", notFoundMessage);
           }
           const report = await safetyRepository.createReport(executor, inquiryId, principal.userId, input);
@@ -444,6 +452,10 @@ export function createContactService(dependencies: {
         pageSize: query.pageSize,
         hasNextPage: rows.length > query.pageSize
       });
+    },
+
+    async getUnreadNotificationCount(principal) {
+      return transactionRunner.run((executor) => repository.countUnreadNotifications(executor, principal.userId));
     },
 
     async markNotificationRead(principal, notificationId) {

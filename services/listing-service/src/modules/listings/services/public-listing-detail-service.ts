@@ -7,6 +7,7 @@ import {
   type TenantPublicListingDetail
 } from "../mappers/public-listing-detail-mapper.js";
 import type { PublicListingDetailRepository } from "../repositories/public-listing-detail-repository.js";
+import type { PublicListingSummary } from "../../../../../shared/public-listing-summary.js";
 
 const resourceNotFoundMessage = "The requested resource was not found.";
 
@@ -15,12 +16,15 @@ export interface PublicListingDetailService {
     listingId: number,
     principal?: AuthenticatedPrincipal
   ) => Promise<PublicListingDetail | TenantPublicListingDetail>;
+  readonly getSimilarListings: (listingId: number) => Promise<readonly PublicListingSummary[]>;
 }
+
+const similarListingLimit = 3;
 
 export function createPublicListingDetailService(
   repository: PublicListingDetailRepository
 ): PublicListingDetailService {
-  return Object.freeze({
+  const service: PublicListingDetailService = {
     async getPublicDetail(
       listingId: number,
       principal?: AuthenticatedPrincipal
@@ -42,6 +46,11 @@ export function createPublicListingDetailService(
         throw new RepositoryInvariantError("Base public detail unexpectedly contains landlord contact.");
       }
       return result.detail;
+    },
+
+    getSimilarListings(listingId) {
+      return repository.findSimilarPublicListings(listingId, similarListingLimit);
     }
-  });
+  };
+  return Object.freeze(service);
 }

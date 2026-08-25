@@ -16,6 +16,7 @@ export interface SearchFilterValues {
   readonly maxMonthlyRent?: number;
   readonly minRoomAreaSqm?: number;
   readonly maxRoomAreaSqm?: number;
+  readonly minOccupants?: number;
   readonly propertyType?: string;
   readonly amenities: readonly string[];
 }
@@ -142,6 +143,7 @@ function commonState(params: SearchParamsReader): SearchStateBase {
   const maxMonthlyRent = positiveInteger(params, "maxMonthlyRent");
   const minRoomAreaSqm = positiveArea(params, "minRoomAreaSqm");
   const maxRoomAreaSqm = positiveArea(params, "maxRoomAreaSqm");
+  const minOccupants = positiveInteger(params, "minOccupants", 20);
   if (minMonthlyRent !== undefined && maxMonthlyRent !== undefined && maxMonthlyRent < minMonthlyRent) {
     fail("Giá thuê tối đa phải lớn hơn hoặc bằng giá thuê tối thiểu.");
   }
@@ -156,6 +158,7 @@ function commonState(params: SearchParamsReader): SearchStateBase {
     ...(maxMonthlyRent === undefined ? {} : { maxMonthlyRent }),
     ...(minRoomAreaSqm === undefined ? {} : { minRoomAreaSqm }),
     ...(maxRoomAreaSqm === undefined ? {} : { maxRoomAreaSqm }),
+    ...(minOccupants === undefined ? {} : { minOccupants }),
     ...(code(params, "propertyType") ? { propertyType: code(params, "propertyType") } : {}),
     amenities: amenityCodes(params),
     page: positiveInteger(params, "page") ?? 1,
@@ -213,6 +216,7 @@ export function serializeSearchState(state: SearchQueryState): URLSearchParams {
   appendNumber(params, "maxMonthlyRent", state.maxMonthlyRent);
   appendNumber(params, "minRoomAreaSqm", state.minRoomAreaSqm);
   appendNumber(params, "maxRoomAreaSqm", state.maxRoomAreaSqm);
+  appendNumber(params, "minOccupants", state.minOccupants);
   if (state.propertyType) params.set("propertyType", state.propertyType);
   if (state.amenities.length > 0) params.set("amenities", normalizeAmenityCodes(state.amenities).join(","));
 
@@ -241,6 +245,7 @@ export function toPublicListingSearchQuery(state: SearchQueryState): PublicListi
     ...(state.maxMonthlyRent === undefined ? {} : { maxMonthlyRent: state.maxMonthlyRent }),
     ...(state.minRoomAreaSqm === undefined ? {} : { minRoomAreaSqm: state.minRoomAreaSqm }),
     ...(state.maxRoomAreaSqm === undefined ? {} : { maxRoomAreaSqm: state.maxRoomAreaSqm }),
+    ...(state.minOccupants === undefined ? {} : { minOccupants: state.minOccupants }),
     ...(state.propertyType ? { propertyType: state.propertyType } : {}),
     ...(state.amenities.length > 0 ? { amenities: normalizeAmenityCodes(state.amenities) } : {}),
     page: state.page,
@@ -333,6 +338,7 @@ export function searchFilterValues(state: SearchQueryState): SearchFilterValues 
     ...(state.maxMonthlyRent === undefined ? {} : { maxMonthlyRent: state.maxMonthlyRent }),
     ...(state.minRoomAreaSqm === undefined ? {} : { minRoomAreaSqm: state.minRoomAreaSqm }),
     ...(state.maxRoomAreaSqm === undefined ? {} : { maxRoomAreaSqm: state.maxRoomAreaSqm }),
+    ...(state.minOccupants === undefined ? {} : { minOccupants: state.minOccupants }),
     ...(state.propertyType ? { propertyType: state.propertyType } : {}),
     amenities: state.amenities
   };
@@ -346,6 +352,7 @@ export function activeFilterCount(state: SearchQueryState): number {
     state.maxMonthlyRent,
     state.minRoomAreaSqm,
     state.maxRoomAreaSqm,
+    state.minOccupants,
     state.propertyType,
     state.amenities.length > 0 ? state.amenities : undefined,
     state.mode === "ordinary" ? undefined : state.mode

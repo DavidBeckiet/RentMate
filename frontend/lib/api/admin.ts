@@ -4,6 +4,8 @@ import type {
   AdminContactReport,
   AdminContactReportQuery,
   AdminListingReview,
+  AdminReviewReport,
+  AdminReviewReportQuery,
   AdminListingReport,
   AdminReportQuery,
   AdminListingDetail,
@@ -13,6 +15,7 @@ import type {
   AdminReviewQuery,
   ApiPage,
   ModerateReviewBody,
+  UpdateReviewReportStatusBody,
   ModerationBody,
   ModerationHistoryItem,
   PaginationQuery,
@@ -106,6 +109,21 @@ export function createAdminApi(transport: ApiTransport) {
       transport.object(`/api/v1/admin/reviews/${reviewId}`, { signal }),
 
     moderateReview: (reviewId: number, body: ModerateReviewBody, signal?: AbortSignal): Promise<AdminListingReview> =>
-      transport.object(`/api/v1/admin/reviews/${reviewId}/status`, { method: "PATCH", json: body, signal })
+      transport.object(`/api/v1/admin/reviews/${reviewId}/status`, { method: "PATCH", json: body, signal }),
+
+    listReviewReports: (
+      query: AdminReviewReportQuery = {},
+      signal?: AbortSignal
+    ): Promise<ApiPage<AdminReviewReport>> => transport.page("/api/v1/admin/review-reports", { query, signal }),
+
+    getReviewReport: (reportId: number, signal?: AbortSignal): Promise<AdminReviewReport> =>
+      transport.object(`/api/v1/admin/review-reports/${reportId}`, { signal }),
+
+    updateReviewReportStatus: (
+      reportId: number,
+      body: UpdateReviewReportStatusBody,
+      signal?: AbortSignal
+    ): Promise<AdminReviewReport> =>
+      transport.object(`/api/v1/admin/review-reports/${reportId}/status`, { method: "PATCH", json: body, signal })
   } as const;
 }

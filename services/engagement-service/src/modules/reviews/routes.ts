@@ -1,9 +1,13 @@
 import type { RequestHandler, Router } from "express";
 import {
   createCreateReviewHandler,
+  createCreateReviewReportHandler,
   createGetAdminReviewHandler,
+  createGetAdminReviewReportHandler,
   createGetReviewEligibilityHandler,
+  createListAdminReviewReportsHandler,
   createListAdminReviewsHandler,
+  createModerateReviewReportHandler,
   createListPublicReviewsHandler,
   createModerateReviewHandler
 } from "./controllers/review-controller.js";
@@ -46,6 +50,17 @@ export function registerReviewRoutes(router: Router, dependencies: ReviewRouteDe
     createLimiter,
     createCreateReviewHandler(dependencies.service)
   );
+  router.post(
+    "/reviews/:reviewId/reports",
+    dependencies.authenticationMiddleware,
+    createRateLimitMiddleware({
+      policy: { scope: "review-report-create", limit: 5, windowMs: 86_400_000 },
+      resolveKey: (request) => `${request.auth?.userId ?? "unknown"}:${request.params.reviewId}:${request.ip}`,
+      store: dependencies.createRateLimitStore ?? new InMemoryRateLimitStore(),
+      clock: dependencies.rateLimitClock
+    }),
+    createCreateReviewReportHandler(dependencies.service)
+  );
   router.get("/listings/:listingId/reviews", createListPublicReviewsHandler(dependencies.service));
   router.get(
     "/admin/reviews",
@@ -64,5 +79,23 @@ export function registerReviewRoutes(router: Router, dependencies: ReviewRouteDe
     dependencies.authenticationMiddleware,
     dependencies.adminRoleMiddleware,
     createModerateReviewHandler(dependencies.service)
+  );
+  router.get(
+    "/admin/review-reports",
+    dependencies.authenticationMiddleware,
+    dependencies.adminRoleMiddleware,
+    createListAdminReviewReportsHandler(dependencies.service)
+  );
+  router.get(
+    "/admin/review-reports/:reportId",
+    dependencies.authenticationMiddleware,
+    dependencies.adminRoleMiddleware,
+    createGetAdminReviewReportHandler(dependencies.service)
+  );
+  router.patch(
+    "/admin/review-reports/:reportId/status",
+    dependencies.authenticationMiddleware,
+    dependencies.adminRoleMiddleware,
+    createModerateReviewReportHandler(dependencies.service)
   );
 }

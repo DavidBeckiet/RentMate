@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
 import { useComparisonSelection } from "../../features/comparison/comparison-store";
+import { api } from "../../lib/api/client";
 import { useAuth } from "../../lib/auth/auth-provider";
 import type { UserProfile } from "../../types/api";
 import { accountInitials, accountPrimaryIdentity, accountRoleLabels } from "./account-identity";
@@ -119,10 +120,34 @@ function AccountSummary({ user }: Readonly<{ user: UserProfile }>) {
 }
 
 function NotificationLink({ pathname }: Readonly<{ pathname: string }>) {
+  const { user } = useAuth();
+  const [unreadCount, setUnreadCount] = useState<number | null>(null);
+
+  useEffect(() => {
+    if (!user) {
+      setUnreadCount(null);
+      return;
+    }
+
+    const controller = new AbortController();
+    setUnreadCount(null);
+    void api.contact
+      .getUnreadNotificationCount(controller.signal)
+      .then((value) => setUnreadCount(value.unreadCount))
+      .catch(() => {
+        if (!controller.signal.aborted) setUnreadCount(null);
+      });
+
+    return () => controller.abort();
+  }, [pathname, user]);
+
+  const accessibleLabel =
+    unreadCount === null || unreadCount === 0 ? "Thông báo" : `Thông báo, ${unreadCount} chưa đọc`;
+
   return (
     <Link
       href="/notifications"
-      aria-label="Thông báo"
+      aria-label={accessibleLabel}
       aria-current={pathname === "/notifications" ? "page" : undefined}
       className={cx(
         buttonClassName("ghost", "sm"),
@@ -130,6 +155,14 @@ function NotificationLink({ pathname }: Readonly<{ pathname: string }>) {
       )}
     >
       <Icon name="bell" />
+      {unreadCount !== null && unreadCount > 0 ? (
+        <span
+          aria-hidden="true"
+          className="absolute -right-1 -top-1 grid h-5 min-w-5 place-items-center rounded-full border-2 border-heroDark-950 bg-rent-coral px-1 text-[0.65rem] font-bold leading-none text-heroDark-950"
+        >
+          {unreadCount > 99 ? "99+" : unreadCount}
+        </span>
+      ) : null}
     </Link>
   );
 }

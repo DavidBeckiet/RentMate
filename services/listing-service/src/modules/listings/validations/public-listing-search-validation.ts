@@ -4,7 +4,10 @@ import {
   parsePagination,
   parsePositiveQueryInteger
 } from "../../../../../shared/src/runtime/shared/validation/parsing.js";
-import { readScalarQueryValue, validateQueryKeys } from "../../../../../shared/src/runtime/shared/validation/request.js";
+import {
+  readScalarQueryValue,
+  validateQueryKeys
+} from "../../../../../shared/src/runtime/shared/validation/request.js";
 
 const queryKeys = [
   "q",
@@ -13,6 +16,7 @@ const queryKeys = [
   "maxMonthlyRent",
   "minRoomAreaSqm",
   "maxRoomAreaSqm",
+  "minOccupants",
   "propertyType",
   "amenities",
   "north",
@@ -41,6 +45,7 @@ export interface PublicSearchCommonFilters {
   readonly maxMonthlyRent: number | null;
   readonly minRoomAreaSqm: number | null;
   readonly maxRoomAreaSqm: number | null;
+  readonly minOccupants: number | null;
   readonly propertyType: string | null;
   readonly amenities: readonly string[];
   readonly page: number;
@@ -175,6 +180,7 @@ export function validatePublicListingSearch(value: unknown): PublicListingSearch
   const maxMonthlyRent = parsePositiveQueryInteger(query.maxMonthlyRent, "maxMonthlyRent", 999_999_999_999) ?? null;
   const minRoomAreaSqm = parseRoomArea(query.minRoomAreaSqm, "minRoomAreaSqm");
   const maxRoomAreaSqm = parseRoomArea(query.maxRoomAreaSqm, "maxRoomAreaSqm");
+  const minOccupants = parsePositiveQueryInteger(query.minOccupants, "minOccupants", 20) ?? null;
   ensureRange(minMonthlyRent, maxMonthlyRent, "maxMonthlyRent");
   ensureRange(minRoomAreaSqm, maxRoomAreaSqm, "maxRoomAreaSqm");
   const propertyType = parseCode(query.propertyType, "propertyType");
@@ -192,6 +198,7 @@ export function validatePublicListingSearch(value: unknown): PublicListingSearch
     maxMonthlyRent,
     minRoomAreaSqm,
     maxRoomAreaSqm,
+    minOccupants,
     propertyType,
     amenities,
     page,

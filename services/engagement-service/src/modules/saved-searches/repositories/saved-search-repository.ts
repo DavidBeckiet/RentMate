@@ -31,6 +31,7 @@ interface SavedSearchRow extends QueryResultRow {
   max_monthly_rent: unknown;
   min_room_area_sqm: unknown;
   max_room_area_sqm: unknown;
+  min_occupants: unknown;
   property_type_code: unknown;
   amenity_codes: unknown;
   mode: unknown;
@@ -49,6 +50,7 @@ interface SavedSearchRow extends QueryResultRow {
 const selectColumns = `
   id, tenant_id, name, is_active, q, area_name, min_monthly_rent, max_monthly_rent,
   min_room_area_sqm, max_room_area_sqm, property_type_code, amenity_codes, mode,
+  min_occupants,
   north, south, east, west, center_lat, center_lng, radius_km, sort, created_at, updated_at
 `;
 
@@ -99,6 +101,7 @@ function mapSavedSearch(row: Readonly<SavedSearchRow>): SavedSearch {
       maxMonthlyRent: nullableNumber(row.max_monthly_rent, "maxMonthlyRent"),
       minRoomAreaSqm: nullableNumber(row.min_room_area_sqm, "minRoomAreaSqm"),
       maxRoomAreaSqm: nullableNumber(row.max_room_area_sqm, "maxRoomAreaSqm"),
+      minOccupants: nullableNumber(row.min_occupants, "minOccupants"),
       propertyType: row.property_type_code as string | null,
       amenities: Object.freeze([...(row.amenity_codes as string[])]),
       mode: row.mode as SavedSearchQuery["mode"],
@@ -128,6 +131,7 @@ function values(tenantId: number, input: CreateSavedSearchInput): readonly unkno
     query.maxMonthlyRent,
     query.minRoomAreaSqm,
     query.maxRoomAreaSqm,
+    query.minOccupants,
     query.propertyType,
     [...query.amenities],
     query.mode,
@@ -173,10 +177,10 @@ export function createSavedSearchRepository(): SavedSearchRepository {
           text: `
           INSERT INTO saved_searches (
             tenant_id, name, is_active, q, area_name, min_monthly_rent, max_monthly_rent,
-            min_room_area_sqm, max_room_area_sqm, property_type_code, amenity_codes, mode,
+            min_room_area_sqm, max_room_area_sqm, min_occupants, property_type_code, amenity_codes, mode,
             north, south, east, west, center_lat, center_lng, radius_km, sort
           ) VALUES (
-            $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20
+            $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21
           )
           RETURNING ${selectColumns}
         `,
@@ -222,9 +226,9 @@ export function createSavedSearchRepository(): SavedSearchRepository {
           UPDATE saved_searches SET
             name = $3, is_active = $4, q = $5, area_name = $6, min_monthly_rent = $7,
             max_monthly_rent = $8, min_room_area_sqm = $9, max_room_area_sqm = $10,
-            property_type_code = $11, amenity_codes = $12, mode = $13, north = $14, south = $15,
-            east = $16, west = $17, center_lat = $18, center_lng = $19, radius_km = $20,
-            sort = $21, updated_at = now()
+            min_occupants = $11, property_type_code = $12, amenity_codes = $13, mode = $14, north = $15, south = $16,
+            east = $17, west = $18, center_lat = $19, center_lng = $20, radius_km = $21,
+            sort = $22, updated_at = now()
           WHERE id = $1 AND tenant_id = $2
           RETURNING ${selectColumns}
         `,

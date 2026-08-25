@@ -19,6 +19,7 @@ function toNotificationListing(listing: PublicListingSummary): SavedSearchNotifi
     title: listing.title,
     monthlyRent: listing.monthlyRent,
     roomAreaSqm: listing.roomAreaSqm,
+    maxOccupants: listing.maxOccupants,
     areaName: listing.areaName,
     latitude: listing.latitude,
     longitude: listing.longitude,

@@ -3,7 +3,10 @@ import test from "node:test";
 import {
   validateAdminReviewQuery,
   validateCreateReviewBody,
-  validateModerateReviewBody
+  validateCreateReviewReportBody,
+  validateModerateReviewBody,
+  validateReviewReportCollectionQuery,
+  validateUpdateReviewReportStatusBody
 } from "../src/modules/reviews/validations/review-validation.js";
 
 test("normalizes valid review and moderation inputs", () => {
@@ -26,6 +29,21 @@ test("normalizes valid review and moderation inputs", () => {
     note: "Nội dung hợp lệ."
   });
   assert.deepEqual(validateAdminReviewQuery({}), { status: "PENDING", page: 1, pageSize: 20, offset: 0 });
+  assert.deepEqual(validateCreateReviewReportBody({ category: "inaccurate", details: "  Sai thông tin.  " }), {
+    category: "INACCURATE",
+    details: "Sai thông tin."
+  });
+  assert.deepEqual(validateReviewReportCollectionQuery({}), {
+    status: "OPEN",
+    category: null,
+    page: 1,
+    pageSize: 20,
+    offset: 0
+  });
+  assert.deepEqual(validateUpdateReviewReportStatusBody({ status: "investigating", note: null }), {
+    status: "INVESTIGATING",
+    note: null
+  });
 });
 
 test("rejects invalid ratings, short comments, pending moderation and unknown fields", () => {
@@ -51,4 +69,6 @@ test("rejects invalid ratings, short comments, pending moderation and unknown fi
   );
   assert.throws(() => validateModerateReviewBody({ status: "PENDING", note: "Chưa quyết định." }), /invalid data/i);
   assert.throws(() => validateAdminReviewQuery({ tenantId: "1" }), /invalid data/i);
+  assert.throws(() => validateCreateReviewReportBody({ category: "UNKNOWN" }), /invalid data/i);
+  assert.throws(() => validateUpdateReviewReportStatusBody({ status: "RESOLVED", note: null }), /invalid data/i);
 });

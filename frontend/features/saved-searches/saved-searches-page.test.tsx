@@ -36,6 +36,7 @@ const item: SavedSearch = {
     maxMonthlyRent: 6_000_000,
     minRoomAreaSqm: null,
     maxRoomAreaSqm: null,
+    minOccupants: null,
     propertyType: "APARTMENT",
     amenities: ["WIFI"],
     mode: "ordinary",

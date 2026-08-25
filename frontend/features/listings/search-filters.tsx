@@ -28,6 +28,7 @@ interface FilterDraft {
   readonly maxMonthlyRent: string;
   readonly minRoomAreaSqm: string;
   readonly maxRoomAreaSqm: string;
+  readonly minOccupants: string;
   readonly propertyType: string;
   readonly amenities: readonly string[];
   readonly sort: PublicListingSort;
@@ -60,16 +61,27 @@ function draftFromState(state: SearchQueryState): FilterDraft {
       values.maxMonthlyRent === undefined || values.maxMonthlyRent >= BUDGET_MAX ? "" : String(values.maxMonthlyRent),
     minRoomAreaSqm: values.minRoomAreaSqm === undefined ? "" : String(values.minRoomAreaSqm),
     maxRoomAreaSqm: values.maxRoomAreaSqm === undefined ? "" : String(values.maxRoomAreaSqm),
+    minOccupants: values.minOccupants === undefined ? "" : String(values.minOccupants),
     propertyType: values.propertyType ?? "",
     amenities: values.amenities,
     sort: state.sort
   };
 }
 
-function parseWhole(value: string, field: keyof FilterDraft, errors: FieldErrors): number | undefined {
+function parseWhole(
+  value: string,
+  field: keyof FilterDraft,
+  errors: FieldErrors,
+  maximum?: number
+): number | undefined {
   if (!value.trim()) return undefined;
-  if (!/^[0-9]+$/.test(value) || Number(value) <= 0 || !Number.isSafeInteger(Number(value))) {
-    errors[field] = "Nhập một số nguyên dương.";
+  if (
+    !/^[0-9]+$/.test(value) ||
+    Number(value) <= 0 ||
+    !Number.isSafeInteger(Number(value)) ||
+    (maximum !== undefined && Number(value) > maximum)
+  ) {
+    errors[field] = maximum === 20 ? "Số người phải từ 1 đến 20." : "Nhập một số nguyên dương.";
     return undefined;
   }
   return Number(value);
@@ -90,6 +102,7 @@ function validateDraft(draft: FilterDraft): { values?: SearchFilterValues; error
   const maxMonthlyRent = parseWhole(draft.maxMonthlyRent, "maxMonthlyRent", errors);
   const minRoomAreaSqm = parseArea(draft.minRoomAreaSqm, "minRoomAreaSqm", errors);
   const maxRoomAreaSqm = parseArea(draft.maxRoomAreaSqm, "maxRoomAreaSqm", errors);
+  const minOccupants = parseWhole(draft.minOccupants, "minOccupants", errors, 20);
 
   if (minMonthlyRent !== undefined && maxMonthlyRent !== undefined && maxMonthlyRent < minMonthlyRent) {
     errors.maxMonthlyRent = "Giá tối đa phải lớn hơn hoặc bằng giá tối thiểu.";
@@ -108,6 +121,7 @@ function validateDraft(draft: FilterDraft): { values?: SearchFilterValues; error
       ...(maxMonthlyRent === undefined ? {} : { maxMonthlyRent }),
       ...(minRoomAreaSqm === undefined ? {} : { minRoomAreaSqm }),
       ...(maxRoomAreaSqm === undefined ? {} : { maxRoomAreaSqm }),
+      ...(minOccupants === undefined ? {} : { minOccupants }),
       ...(draft.propertyType ? { propertyType: draft.propertyType } : {}),
       amenities: draft.amenities
     }
@@ -311,6 +325,29 @@ export function SearchFilters({
             </div>
           )}
         </fieldset>
+
+        <section className={styles.section}>
+          <label className={styles.sectionLabel} htmlFor="listing-min-occupants">
+            Số người sẽ ở
+          </label>
+          <div className={styles.inputWithIcon}>
+            <Icon name="users" className="h-4 w-4" />
+            <input
+              id="listing-min-occupants"
+              name="minOccupants"
+              type="number"
+              inputMode="numeric"
+              min="1"
+              max="20"
+              step="1"
+              placeholder="Không giới hạn"
+              value={draft.minOccupants}
+              onChange={(event) => setDraft((current) => ({ ...current, minOccupants: event.target.value }))}
+            />
+          </div>
+          <p className={styles.helpText}>Chỉ hiển thị phòng có sức chứa đủ cho số người này.</p>
+          <FieldError message={errors.minOccupants} />
+        </section>
 
         <section className={styles.section}>
           <div className={styles.budgetHeader}>

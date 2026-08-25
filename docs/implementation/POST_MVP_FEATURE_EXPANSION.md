@@ -509,6 +509,8 @@ Các hạng mục tiếp theo được triển khai theo thứ tự:
 
 > Cập nhật ngày 25/08/2026: mục 1, 2, 4 và 5 đã hoàn thành, đã kiểm tra qua Gateway và mục 3 tiếp tục tạm hoãn. Mục 6 là phần kế tiếp.
 
+> Cập nhật triển khai ngày 25/08/2026: giai đoạn post-MVP 1, 2 và 3 đã được triển khai ở mức code/test; các giới hạn provider thật và E2E staging vẫn giữ nguyên là release blocker.
+
 1. **Rà soát và sửa giao diện responsive**
    - Kiểm tra trang tìm kiếm, chi tiết listing, form đăng tin và dashboard landlord/admin.
    - Bắt buộc kiểm tra các mốc khoảng 375px, 768px, 1024px và desktop.
@@ -541,7 +543,7 @@ Chưa ưu tiên ở giai đoạn này: đặt lịch xem phòng, thanh toán, h�
 - Có thể dùng làm bộ lọc tìm kiếm ở bước tiếp theo.
 - Phân biệt rõ với số người đang ở hiện tại.
 - Cho phép để trống trong bản nháp; yêu cầu hoàn thiện trước khi gửi duyệt nếu đây là thông tin bắt buộc của tin đăng.
-- Chưa triển khai; đây là hạng mục số 2 trong thứ tự post-MVP hiện tại và có thể làm độc lập.
+- Đã triển khai phần lõi và bộ lọc tìm kiếm; migration Engagement `0014` đã được apply ở database local Docker.
 
 ## 17. Kế hoạch triển khai chi tiết cho các mục đã chọn
 
@@ -786,3 +788,32 @@ Phần này cần chủ dự án cung cấp hoặc tạo tài khoản provider, 
 #### Thứ tự đề xuất
 
 Thực hiện `Bước 1 → Bước 2 → Bước 3 → Bước 4 → Bước 5`. Có thể chuẩn bị Bước 2 song song với Bước 1, nhưng không đánh dấu release gate hoàn thành khi chưa có provider staging thật và full quality gate chưa pass.
+
+## 18. Cập nhật triển khai — giai đoạn 1, 2 và 3
+
+### Giai đoạn 1 — Discovery, tương tác tìm phòng và so sánh
+
+- Đã thêm bộ lọc `minOccupants` cho tìm kiếm public và saved search, giới hạn 1–20 người.
+- Đã thêm API và khu vực **Phòng tương tự trong khu vực**, tối đa 3 tin public hợp lệ.
+- Đã lưu lựa chọn so sánh trong `sessionStorage`, giữ giới hạn tối đa 4 tin và tránh mismatch SSR.
+- Đã bổ sung loading, empty, retry và test contract/frontend cho các luồng trên.
+
+### Giai đoạn 2 — Trust & safety và analytics
+
+- Đã thêm report review cho tenant/landlord, chống report trùng, queue admin, status transition và event history append-only.
+- Đã thêm event analytics `VIEW`, `FAVORITE`, `CALL_CLICK`, `EMAIL_CLICK`; dashboard landlord hiển thị các chỉ số tương ứng.
+- Đã thêm migration Engagement `0015` và `0016`, test service/repository/validation/frontend.
+
+### Giai đoạn 3 — Account và notifications
+
+- Đã thêm đặt lại mật khẩu bằng token một lần: token chỉ lưu dạng HMAC hash, có hạn dùng, consume một lần, rate limit và không trả token trong API response.
+- Đã thêm form `/forgot-password`, `/reset-password` và API Gateway route tương thích.
+- Đã thêm `GET /api/v1/notifications/unread-count` và badge số thông báo chưa đọc trong AppShell.
+- Đã mở rộng webhook delivery cho email reset mật khẩu, dùng cùng contract bảo vệ bởi `VERIFICATION_DELIVERY_TOKEN`; local development chỉ có memory preview.
+- Identity migration `0005` đã được apply ở `rentmate_identity` local Docker.
+
+### Phần chưa đóng
+
+- Provider email/SMS thật và credential staging chưa có, nên chưa thể xác nhận gửi Gmail/SMS thật.
+- Push notification chưa triển khai; chat realtime vẫn ưu tiên nhận trực tiếp trong app theo quyết định sản phẩm.
+- Chưa đánh dấu release gate hoàn tất khi chưa có provider staging, full E2E qua Gateway và quality gate cuối.

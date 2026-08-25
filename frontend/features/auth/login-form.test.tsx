@@ -198,7 +198,7 @@ describe("LoginForm", () => {
     fireEvent.click(screen.getByRole("button", { name: "Ẩn mật khẩu" }));
     expect(password).toHaveAttribute("type", "password");
     expect(screen.getByRole("button", { name: "Hiện mật khẩu" })).toBeInTheDocument();
-    expect(screen.queryByText(/Quên mật khẩu|Ghi nhớ đăng nhập/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/Ghi nhớ đăng nhập/i)).not.toBeInTheDocument();
   });
 
   it("shows Google as a disabled future option without login or navigation", () => {

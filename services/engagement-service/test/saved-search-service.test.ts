@@ -19,6 +19,7 @@ const query: CreateSavedSearchInput["query"] = Object.freeze({
   maxMonthlyRent: 7_000_000,
   minRoomAreaSqm: null,
   maxRoomAreaSqm: null,
+  minOccupants: null,
   propertyType: null,
   amenities: Object.freeze(["WIFI"]),
   mode: "ordinary",

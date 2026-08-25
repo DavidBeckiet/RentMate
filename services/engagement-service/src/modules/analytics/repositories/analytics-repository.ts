@@ -1,10 +1,12 @@
 import type { QueryResultRow } from "pg";
 import {
+  executeCommand,
   queryExactlyOne,
   RepositoryInvariantError
 } from "../../../../../shared/src/runtime/db/repository-primitives.js";
 import type { SqlExecutor } from "../../../../../shared/src/runtime/db/sql-executor.js";
 import { formatApiTimestamp } from "../../../../../shared/src/runtime/shared/mapping/api-values.js";
+import type { AnalyticsEventType } from "../validations/analytics-validation.js";
 
 export interface AnalyticsDailyPoint {
   readonly date: string;
@@ -15,6 +17,10 @@ export interface AnalyticsDailyPoint {
 export interface AnalyticsListingRank {
   readonly listingId: number;
   readonly inquiries: number;
+  readonly views: number;
+  readonly favorites: number;
+  readonly callClicks: number;
+  readonly emailClicks: number;
 }
 
 export interface LandlordAnalyticsSnapshot {
@@ -27,6 +33,10 @@ export interface LandlordAnalyticsSnapshot {
   readonly averageFirstResponseMinutes: number | null;
   readonly closedInquiries: number;
   readonly needsReplyNow: number;
+  readonly views: number;
+  readonly favorites: number;
+  readonly callClicks: number;
+  readonly emailClicks: number;
   readonly daily: readonly AnalyticsDailyPoint[];
   readonly topListings: readonly AnalyticsListingRank[];
 }
@@ -41,6 +51,10 @@ interface AnalyticsRow extends QueryResultRow {
   average_first_response_minutes: unknown;
   closed_inquiries: unknown;
   needs_reply_now: unknown;
+  views: unknown;
+  favorites: unknown;
+  call_clicks: unknown;
+  email_clicks: unknown;
   daily: unknown;
   top_listings: unknown;
 }
@@ -96,7 +110,11 @@ function mapTopListings(value: unknown): readonly AnalyticsListingRank[] {
       const item = rank as Record<string, unknown>;
       return Object.freeze({
         listingId: positiveInteger(item.listingId, `analytics.topListings[${index}].listingId`),
-        inquiries: nonnegativeInteger(item.inquiries, `analytics.topListings[${index}].inquiries`)
+        inquiries: nonnegativeInteger(item.inquiries, `analytics.topListings[${index}].inquiries`),
+        views: nonnegativeInteger(item.views, `analytics.topListings[${index}].views`),
+        favorites: nonnegativeInteger(item.favorites, `analytics.topListings[${index}].favorites`),
+        callClicks: nonnegativeInteger(item.callClicks, `analytics.topListings[${index}].callClicks`),
+        emailClicks: nonnegativeInteger(item.emailClicks, `analytics.topListings[${index}].emailClicks`)
       });
     })
   );
@@ -116,17 +134,39 @@ function mapSnapshot(row: Readonly<AnalyticsRow>): LandlordAnalyticsSnapshot {
         : nonnegativeInteger(row.average_first_response_minutes, "analytics.averageFirstResponseMinutes"),
     closedInquiries: nonnegativeInteger(row.closed_inquiries, "analytics.closedInquiries"),
     needsReplyNow: nonnegativeInteger(row.needs_reply_now, "analytics.needsReplyNow"),
+    views: nonnegativeInteger(row.views, "analytics.views"),
+    favorites: nonnegativeInteger(row.favorites, "analytics.favorites"),
+    callClicks: nonnegativeInteger(row.call_clicks, "analytics.callClicks"),
+    emailClicks: nonnegativeInteger(row.email_clicks, "analytics.emailClicks"),
     daily: mapDaily(row.daily),
     topListings: mapTopListings(row.top_listings)
   });
 }
 
 export interface AnalyticsRepository {
+  readonly recordEvent: (
+    executor: SqlExecutor,
+    input: {
+      readonly listingId: number;
+      readonly landlordId: number;
+      readonly actorId: number | null;
+      readonly eventType: AnalyticsEventType;
+    }
+  ) => Promise<void>;
   readonly load: (executor: SqlExecutor, landlordId: number, days: 7 | 30 | 90) => Promise<LandlordAnalyticsSnapshot>;
 }
 
 export function createAnalyticsRepository(): AnalyticsRepository {
   const repository: AnalyticsRepository = {
+    async recordEvent(executor, input) {
+      await executeCommand(executor, {
+        text: `
+          INSERT INTO listing_analytics_events (listing_id, landlord_id, actor_id, event_type)
+          VALUES ($1, $2, $3, $4)
+        `,
+        values: [input.listingId, input.landlordId, input.actorId, input.eventType]
+      });
+    },
     load(executor, landlordId, days) {
       return queryExactlyOne<AnalyticsRow, LandlordAnalyticsSnapshot>(
         executor,
@@ -149,6 +189,13 @@ export function createAnalyticsRepository(): AnalyticsRepository {
                 AND m.created_at <= (SELECT measured_at FROM params)
               GROUP BY pi.id
             ),
+            period_events AS MATERIALIZED (
+              SELECT listing_id, event_type, created_at
+              FROM listing_analytics_events
+              WHERE landlord_id = $1
+                AND created_at >= (SELECT since_at FROM params)
+                AND created_at <= (SELECT measured_at FROM params)
+            ),
             daily_rows AS (
               SELECT to_char(day_value, 'YYYY-MM-DD') AS date,
                 (SELECT count(*)::integer FROM period_inquiries AS pi
@@ -164,10 +211,45 @@ export function createAnalyticsRepository(): AnalyticsRepository {
                 ) AS day_value
               ORDER BY day_value ASC
             ),
+            event_totals AS (
+              SELECT
+                count(*) FILTER (WHERE event_type = 'VIEW')::integer AS views,
+                count(*) FILTER (WHERE event_type = 'FAVORITE')::integer AS favorites,
+                count(*) FILTER (WHERE event_type = 'CALL_CLICK')::integer AS call_clicks,
+                count(*) FILTER (WHERE event_type = 'EMAIL_CLICK')::integer AS email_clicks
+              FROM period_events
+            ),
+            listing_activity AS (
+              SELECT listing_id,
+                count(*)::integer AS inquiries,
+                0::integer AS views,
+                0::integer AS favorites,
+                0::integer AS call_clicks,
+                0::integer AS email_clicks
+              FROM period_inquiries
+              GROUP BY listing_id
+              UNION ALL
+              SELECT listing_id,
+                0::integer AS inquiries,
+                count(*) FILTER (WHERE event_type = 'VIEW')::integer AS views,
+                count(*) FILTER (WHERE event_type = 'FAVORITE')::integer AS favorites,
+                count(*) FILTER (WHERE event_type = 'CALL_CLICK')::integer AS call_clicks,
+                count(*) FILTER (WHERE event_type = 'EMAIL_CLICK')::integer AS email_clicks
+              FROM period_events
+              GROUP BY listing_id
+            ),
             top_listing_rows AS (
-              SELECT listing_id, count(*)::integer AS inquiries
-              FROM period_inquiries GROUP BY listing_id
-              ORDER BY inquiries DESC, listing_id ASC LIMIT 5
+              SELECT listing_id,
+                sum(inquiries)::integer AS inquiries,
+                sum(views)::integer AS views,
+                sum(favorites)::integer AS favorites,
+                sum(call_clicks)::integer AS call_clicks,
+                sum(email_clicks)::integer AS email_clicks
+              FROM listing_activity
+              GROUP BY listing_id
+              ORDER BY (sum(inquiries) + sum(views) + sum(favorites) + sum(call_clicks) + sum(email_clicks)) DESC,
+                listing_id ASC
+              LIMIT 5
             ),
             current_needs_reply AS (
               SELECT count(*)::integer AS value
@@ -190,12 +272,22 @@ export function createAnalyticsRepository(): AnalyticsRepository {
                 FILTER (WHERE fr.first_reply_at IS NOT NULL))::integer AS average_first_response_minutes,
               count(*) FILTER (WHERE pi.status = 'CLOSED')::integer AS closed_inquiries,
               (SELECT value FROM current_needs_reply) AS needs_reply_now,
+              (SELECT views FROM event_totals) AS views,
+              (SELECT favorites FROM event_totals) AS favorites,
+              (SELECT call_clicks FROM event_totals) AS call_clicks,
+              (SELECT email_clicks FROM event_totals) AS email_clicks,
               (SELECT COALESCE(jsonb_agg(jsonb_build_object(
                 'date', date, 'inquiries', inquiries, 'firstResponses', first_responses
               ) ORDER BY date), '[]'::jsonb) FROM daily_rows) AS daily,
               (SELECT COALESCE(jsonb_agg(jsonb_build_object(
-                'listingId', listing_id, 'inquiries', inquiries
-              ) ORDER BY inquiries DESC, listing_id ASC), '[]'::jsonb) FROM top_listing_rows) AS top_listings
+                'listingId', listing_id,
+                'inquiries', inquiries,
+                'views', views,
+                'favorites', favorites,
+                'callClicks', call_clicks,
+                'emailClicks', email_clicks
+              ) ORDER BY (inquiries + views + favorites + call_clicks + email_clicks) DESC, listing_id ASC), '[]'::jsonb)
+                FROM top_listing_rows) AS top_listings
             FROM params AS p
             LEFT JOIN period_inquiries AS pi ON TRUE
             LEFT JOIN first_replies AS fr ON fr.inquiry_id = pi.id

@@ -248,6 +248,7 @@ export interface ContactRepository {
       readonly offset: number;
     }
   ) => Promise<readonly Notification[]>;
+  readonly countUnreadNotifications: (executor: SqlExecutor, recipientId: number) => Promise<number>;
   readonly markNotificationRead: (
     executor: SqlExecutor,
     recipientId: number,
@@ -429,6 +430,23 @@ export function createContactRepository(): ContactRepository {
           values: [input.recipientId, input.pageSize + 1, input.offset]
         },
         mapNotification
+      );
+    },
+
+    async countUnreadNotifications(executor, recipientId) {
+      return queryExactlyOne<{ unread_count: unknown }, number>(
+        executor,
+        {
+          text: `SELECT count(*)::integer AS unread_count FROM notifications WHERE recipient_id = $1 AND is_read = false`,
+          values: [recipientId]
+        },
+        (row) => {
+          const count = Number(row.unread_count);
+          if (!Number.isSafeInteger(count) || count < 0) {
+            throw new RepositoryInvariantError("notification unread count is invalid.");
+          }
+          return count;
+        }
       );
     },
 

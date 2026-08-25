@@ -32,4 +32,18 @@ describe("comparison store", () => {
     act(() => result.current.clear());
     expect(result.current.listingIds).toEqual([]);
   });
+
+  it("keeps the selection in session storage when the comparison view is remounted", () => {
+    const first = renderHook(() => useComparisonSelection());
+    act(() => {
+      first.result.current.toggle(17);
+      first.result.current.toggle(19);
+    });
+    expect(window.sessionStorage.getItem("rentmate:comparison-selection")).toBe("17,19");
+    first.unmount();
+
+    const second = renderHook(() => useComparisonSelection());
+    expect(second.result.current.listingIds).toEqual([17, 19]);
+    second.unmount();
+  });
 });

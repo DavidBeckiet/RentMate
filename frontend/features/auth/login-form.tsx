@@ -1,6 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { useState, type FormEvent } from "react";
 import { Button } from "../../components/ui/button";
 import { ErrorState } from "../../components/ui/feedback-states";
@@ -161,6 +162,14 @@ export function LoginForm({ requiredRole, successDestination = "/" }: LoginFormP
           clearFieldError("password");
         }}
       />
+      <div className="text-right">
+        <Link
+          href="/forgot-password"
+          className="text-ui-sm font-semibold text-teal-800 underline decoration-2 underline-offset-4 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-700 focus-visible:ring-offset-2"
+        >
+          Quên mật khẩu?
+        </Link>
+      </div>
       {feedback.formMessage ? <ErrorState message={feedback.formMessage} requestId={feedback.requestId} /> : null}
       <Button type="submit" pending={pending} pendingLabel="Đang đăng nhập…" className="rm-auth-primary w-full">
         <Icon name="logIn" className="h-4 w-4" />

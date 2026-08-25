@@ -170,6 +170,10 @@ function createContactHarness(): ContactHarness {
         .map((item) => Object.freeze({ ...item }));
     },
 
+    async countUnreadNotifications(_executor, recipientId) {
+      return notifications.filter((item) => item.recipientId === recipientId && !item.isRead).length;
+    },
+
     async markNotificationRead(_executor, recipientId, notificationId) {
       const notification = notifications.find((item) => item.recipientId === recipientId && item.id === notificationId);
       if (!notification) return false;
@@ -271,9 +275,11 @@ test("completes the tenant-landlord inquiry, message, status and notification fl
     tenantNotifications.data.map((notification) => notification.eventType),
     ["MESSAGE_CREATED", "INQUIRY_STATUS_CHANGED"]
   );
+  assert.equal(await harness.service.getUnreadNotificationCount(tenant), 2);
 
   await harness.service.markNotificationRead(tenant, tenantNotifications.data[0]?.id ?? 0);
   assert.equal(harness.notifications[1]?.isRead, true);
+  assert.equal(await harness.service.getUnreadNotificationCount(tenant), 1);
 
   await harness.service.updateStatus(landlord, created.id, "CLOSED");
   await assert.rejects(

@@ -12,6 +12,7 @@ const publicSearch = {
   maxMonthlyRent: null,
   minRoomAreaSqm: null,
   maxRoomAreaSqm: null,
+  minOccupants: null,
   propertyType: null,
   amenities: [],
   page: 1,

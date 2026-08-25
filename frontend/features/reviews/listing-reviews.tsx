@@ -7,6 +7,7 @@ import { Icon } from "../../components/ui/icon";
 import { Pagination } from "../../components/ui/pagination";
 import { api } from "../../lib/api/client";
 import type { ApiPage, PublicListingReview } from "../../types/api";
+import { ReportReviewControl } from "./report-review-control";
 
 export function ListingReviews({ listingId }: Readonly<{ listingId: number }>) {
   const [page, setPage] = useState(1);
@@ -84,6 +85,7 @@ export function ListingReviews({ listingId }: Readonly<{ listingId: number }>) {
               <time className="mt-4 block text-xs font-bold text-slate-500">
                 {new Date(review.createdAt).toLocaleDateString("vi-VN")}
               </time>
+              <ReportReviewControl reviewId={review.id} />
             </article>
           ))}
           <Pagination

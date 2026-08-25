@@ -37,6 +37,9 @@ export function createListingsApi(transport: ApiTransport) {
     getPublicDetail: (listingId: number, signal?: AbortSignal): Promise<PublicListingDetail> =>
       transport.object(`/api/v1/listings/${listingId}`, { signal }),
 
+    listSimilar: (listingId: number, signal?: AbortSignal): Promise<ApiPage<PublicListingSummary>> =>
+      transport.page(`/api/v1/listings/${listingId}/similar`, { signal }),
+
     report: (listingId: number, body: CreateListingReportBody, signal?: AbortSignal): Promise<ListingReportReceipt> =>
       transport.object(`/api/v1/listings/${listingId}/reports`, { method: "POST", json: body, signal }),
 

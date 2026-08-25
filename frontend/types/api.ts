@@ -198,6 +198,19 @@ export interface LoginBody {
   readonly password: string;
 }
 
+export interface PasswordResetRequestBody {
+  readonly email: string;
+}
+
+export interface PasswordResetConfirmationBody {
+  readonly token: string;
+  readonly password: string;
+}
+
+export interface PasswordResetRequestReceipt {
+  readonly accepted: true;
+}
+
 export interface UpdateCurrentUserBody {
   readonly displayName?: string;
   readonly phone?: string | null;
@@ -217,6 +230,7 @@ export interface PublicListingSearchQuery extends PaginationQuery {
   readonly maxMonthlyRent?: number;
   readonly minRoomAreaSqm?: number;
   readonly maxRoomAreaSqm?: number;
+  readonly minOccupants?: number;
   readonly propertyType?: string;
   readonly amenities?: readonly string[];
   readonly north?: number;
@@ -371,6 +385,10 @@ export interface Notification {
   readonly createdAt: string;
 }
 
+export interface NotificationUnreadCount {
+  readonly unreadCount: number;
+}
+
 export type SavedSearchMode = "ordinary" | "bounds" | "radius";
 
 export interface SavedSearchQuery {
@@ -380,6 +398,7 @@ export interface SavedSearchQuery {
   readonly maxMonthlyRent: number | null;
   readonly minRoomAreaSqm: number | null;
   readonly maxRoomAreaSqm: number | null;
+  readonly minOccupants: number | null;
   readonly propertyType: string | null;
   readonly amenities: readonly string[];
   readonly mode: SavedSearchMode;
@@ -552,6 +571,8 @@ export interface UpdateReportStatusBody {
 
 export type ReviewStatus = "PENDING" | "APPROVED" | "REJECTED";
 export type ReviewEligibilityReason = "INQUIRY_OPEN" | "NO_LANDLORD_REPLY" | "ALREADY_REVIEWED";
+export type ReviewReportCategory = "INACCURATE" | "OFFENSIVE" | "HARASSMENT" | "SPAM" | "OTHER";
+export type ReviewReportStatus = "OPEN" | "INVESTIGATING" | "RESOLVED" | "DISMISSED";
 
 export interface ListingReview {
   readonly id: number;
@@ -594,6 +615,55 @@ export interface AdminListingReview extends ListingReview {
   readonly tenantId: number;
   readonly reviewedByAdminId: number | null;
   readonly updatedAt: string;
+}
+
+export interface CreateReviewReportBody {
+  readonly category: ReviewReportCategory;
+  readonly details?: string | null;
+}
+
+export interface ReviewReportReceipt {
+  readonly id: number;
+  readonly reviewId: number;
+  readonly category: ReviewReportCategory;
+  readonly status: "OPEN";
+  readonly createdAt: string;
+}
+
+export interface AdminReviewReportEvent {
+  readonly id: number;
+  readonly actorId: number;
+  readonly actorRole: "TENANT" | "LANDLORD" | "ADMIN";
+  readonly previousStatus: ReviewReportStatus | null;
+  readonly newStatus: ReviewReportStatus;
+  readonly note: string | null;
+  readonly createdAt: string;
+}
+
+export interface AdminReviewReport {
+  readonly id: number;
+  readonly reviewId: number;
+  readonly listingId: number;
+  readonly reporterId: number;
+  readonly category: ReviewReportCategory;
+  readonly details: string | null;
+  readonly status: ReviewReportStatus;
+  readonly resolutionNote: string | null;
+  readonly assignedAdminId: number | null;
+  readonly createdAt: string;
+  readonly updatedAt: string;
+  readonly resolvedAt: string | null;
+  readonly events?: readonly AdminReviewReportEvent[];
+}
+
+export interface AdminReviewReportQuery extends PaginationQuery {
+  readonly status?: ReviewReportStatus;
+  readonly category?: ReviewReportCategory;
+}
+
+export interface UpdateReviewReportStatusBody {
+  readonly status: Exclude<ReviewReportStatus, "OPEN">;
+  readonly note?: string | null;
 }
 
 export interface AdminReviewQuery extends PaginationQuery {
@@ -645,6 +715,7 @@ export interface LeadReminderState {
 }
 
 export type AnalyticsPeriod = "7D" | "30D" | "90D";
+export type AnalyticsEventType = "VIEW" | "FAVORITE" | "CALL_CLICK" | "EMAIL_CLICK";
 
 export interface AnalyticsDailyPoint {
   readonly date: string;
@@ -655,6 +726,10 @@ export interface AnalyticsDailyPoint {
 export interface AnalyticsListingRank {
   readonly listingId: number;
   readonly inquiries: number;
+  readonly views: number;
+  readonly favorites: number;
+  readonly callClicks: number;
+  readonly emailClicks: number;
 }
 
 export interface LandlordAnalytics {
@@ -670,6 +745,10 @@ export interface LandlordAnalytics {
   readonly averageFirstResponseMinutes: number | null;
   readonly closedInquiries: number;
   readonly needsReplyNow: number;
+  readonly views: number;
+  readonly favorites: number;
+  readonly callClicks: number;
+  readonly emailClicks: number;
   readonly daily: readonly AnalyticsDailyPoint[];
   readonly topListings: readonly AnalyticsListingRank[];
 }

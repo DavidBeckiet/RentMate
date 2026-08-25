@@ -5,6 +5,7 @@ import {
   createContactReportHandler,
   createGetContactReportHandler,
   createGetInquiryHandler,
+  createGetUnreadNotificationCountHandler,
   createListContactReportsHandler,
   createListLandlordInquiriesHandler,
   createListNotificationsHandler,
@@ -121,6 +122,11 @@ export function registerContactRoutes(router: Router, dependencies: ContactRoute
     "/notifications",
     dependencies.authenticationMiddleware,
     createListNotificationsHandler(dependencies.contactService)
+  );
+  router.get(
+    "/notifications/unread-count",
+    dependencies.authenticationMiddleware,
+    createGetUnreadNotificationCountHandler(dependencies.contactService)
   );
   router.patch(
     "/notifications/:notificationId/read",

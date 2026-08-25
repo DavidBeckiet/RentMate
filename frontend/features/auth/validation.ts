@@ -20,6 +20,10 @@ export type RegistrationSubmission =
   | { readonly mode: "tenant"; readonly body: TenantRegistrationBody }
   | { readonly mode: "landlord"; readonly body: LandlordRegistrationBody };
 
+export interface PasswordResetRequestValues {
+  readonly email: string;
+}
+
 const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const phonePattern = /^\+[1-9][0-9]{7,14}$/;
 const vietnameseMobilePattern = /^0(?:3|5|7|8|9)[0-9]{8}$/;
@@ -84,6 +88,12 @@ export function validateLoginInput(values: Pick<AuthFormValues, "email" | "passw
   return hasErrors(errors)
     ? { valid: false, errors }
     : { valid: true, value: { email, password: values.password }, errors };
+}
+
+export function validatePasswordResetRequestInput(emailValue: string): ValidationResult<PasswordResetRequestValues> {
+  const errors: AuthFieldErrors = {};
+  const email = validateEmail(emailValue, errors);
+  return hasErrors(errors) ? { valid: false, errors } : { valid: true, value: { email }, errors };
 }
 
 export function validateRegistrationInput(

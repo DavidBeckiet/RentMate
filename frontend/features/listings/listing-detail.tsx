@@ -19,6 +19,7 @@ import { ListingReviews } from "../reviews/listing-reviews";
 import { ReportListingControl } from "../reports/report-listing-control";
 import { formatAreaSqm } from "./format";
 import { ListingAmenityChips, ListingPrice } from "./listing-presentation";
+import { SimilarListings } from "./similar-listings";
 import styles from "./listing-detail.module.css";
 
 const maximumListingId = 2_147_483_647;
@@ -228,6 +229,11 @@ export function ListingDetail({ listingId, actions }: ListingDetailProps) {
     setSelectedImageOrder(null);
   }, [detail?.id]);
 
+  useEffect(() => {
+    if (!detail) return;
+    void api.analytics?.trackListingEvent?.(detail.id, "VIEW").catch(() => undefined);
+  }, [detail]);
+
   if (parsedId !== null && status === "loading") return <ListingDetailSkeleton />;
 
   if (parsedId === null || status === "not-found") {
@@ -408,13 +414,27 @@ export function ListingDetail({ listingId, actions }: ListingDetailProps) {
                 <div>
                   <dt>Email liên hệ</dt>
                   <dd>
-                    <a href={`mailto:${detail.landlordContact.email}`}>{detail.landlordContact.email}</a>
+                    <a
+                      href={`mailto:${detail.landlordContact.email}`}
+                      onClick={() =>
+                        void api.analytics?.trackListingEvent?.(detail.id, "EMAIL_CLICK").catch(() => undefined)
+                      }
+                    >
+                      {detail.landlordContact.email}
+                    </a>
                   </dd>
                 </div>
                 <div>
                   <dt>Số điện thoại</dt>
                   <dd>
-                    <a href={`tel:${detail.landlordContact.phone}`}>{detail.landlordContact.phone}</a>
+                    <a
+                      href={`tel:${detail.landlordContact.phone}`}
+                      onClick={() =>
+                        void api.analytics?.trackListingEvent?.(detail.id, "CALL_CLICK").catch(() => undefined)
+                      }
+                    >
+                      {detail.landlordContact.phone}
+                    </a>
                   </dd>
                 </div>
               </dl>
@@ -469,6 +489,7 @@ export function ListingDetail({ listingId, actions }: ListingDetailProps) {
       >
         <ListingReviews listingId={detail.id} />
       </section>
+      <SimilarListings listingId={detail.id} />
     </article>
   );
 }

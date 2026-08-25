@@ -183,7 +183,16 @@ export function LandlordAnalyticsPage() {
     return () => controller.abort();
   }, [allowed, period, retryKey]);
 
-  const topMaximum = useMemo(() => Math.max(1, ...(data?.topListings.map((item) => item.inquiries) ?? [])), [data]);
+  const topMaximum = useMemo(
+    () =>
+      Math.max(
+        1,
+        ...(data?.topListings.map(
+          (item) => item.inquiries + item.views + item.favorites + item.callClicks + item.emailClicks
+        ) ?? [])
+      ),
+    [data]
+  );
 
   if (authStatus === "loading") return <LoadingState message="Đang kiểm tra tài khoản…" />;
   if (authStatus === "anonymous")
@@ -281,6 +290,13 @@ export function LandlordAnalyticsPage() {
             )}
           </div>
 
+          <section aria-label="Hành vi trên tin đăng" className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+            {metric("Lượt xem", data.views, "Tổng lượt mở tin đăng", "bg-white")}
+            {metric("Lượt lưu", data.favorites, "Lần người thuê lưu tin", "bg-rent-accent")}
+            {metric("Bấm gọi", data.callClicks, "Lần bấm số điện thoại", "bg-rent-coral")}
+            {metric("Bấm email", data.emailClicks, "Lần mở email liên hệ", "bg-[#e5eefc]")}
+          </section>
+
           <div className="grid gap-4 lg:grid-cols-[minmax(0,1.45fr)_minmax(18rem,0.55fr)]">
             <TrendChart data={data.daily} />
             <aside className="space-y-4">
@@ -310,12 +326,16 @@ export function LandlordAnalyticsPage() {
                       <li key={item.listingId}>
                         <div className="flex justify-between gap-3 text-sm font-extrabold">
                           <span>Tin #{item.listingId}</span>
-                          <span>{item.inquiries}</span>
+                          <span>
+                            {item.inquiries + item.views + item.favorites + item.callClicks + item.emailClicks}
+                          </span>
                         </div>
                         <div className="mt-2 h-3 border-2 border-heroDark-950 bg-[#f4f1e8]">
                           <span
                             className="block h-full bg-[#176b4d]"
-                            style={{ width: `${(item.inquiries / topMaximum) * 100}%` }}
+                            style={{
+                              width: `${((item.inquiries + item.views + item.favorites + item.callClicks + item.emailClicks) / topMaximum) * 100}%`
+                            }}
                           />
                         </div>
                       </li>
@@ -327,8 +347,8 @@ export function LandlordAnalyticsPage() {
           </div>
 
           <p className="border-2 border-heroDark-950 bg-white p-4 text-xs font-bold leading-5 text-slate-600">
-            Dashboard hiện chỉ dùng inquiry và message. Lượt xem và lượt lưu chưa được hiển thị vì hệ thống chưa có
-            attribution đủ chính xác theo chủ trọ.
+            Lượt xem được ghi nhận khi người dùng mở chi tiết tin; lượt gọi, email và lưu tin là số lần tương tác được
+            ghi nhận trong khoảng thời gian đã chọn, không phải số hợp đồng thuê.
           </p>
         </>
       ) : null}

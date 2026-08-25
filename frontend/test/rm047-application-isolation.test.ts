@@ -19,6 +19,8 @@ describe("RM-047 application isolation", () => {
     expect(existsSync(join(authRoot, "register", "admin", "page.tsx"))).toBe(false);
     expect(existsSync(join(authRoot, "logout", "page.tsx"))).toBe(false);
     expect(existsSync(join(authRoot, "register", "page.tsx"))).toBe(true);
+    expect(existsSync(join(authRoot, "forgot-password", "page.tsx"))).toBe(true);
+    expect(existsSync(join(authRoot, "reset-password", "page.tsx"))).toBe(true);
 
     const loginPage = read("app/(auth)/login/page.tsx");
     const tenantPage = read("app/(auth)/register/tenant/page.tsx");
@@ -69,7 +71,7 @@ describe("RM-047 application isolation", () => {
     expect(authProduction).not.toMatch(/Authorization|Bearer|decodeJWT|decodeJwt|setToken/i);
     expect(authProduction).not.toMatch(/useSearchParams|URLSearchParams|[?&](?:next|redirect)=/i);
     expect(authProduction).not.toMatch(/console\.(?:log|error|debug)\s*\(/);
-    expect(authProduction).not.toMatch(/forgot-password|reset-password|social-login|google-login|facebook-login/i);
+    expect(authProduction).not.toMatch(/social-login|google-login|facebook-login/i);
     expect(authProduction).not.toMatch(browserTestPackageImport);
   });
 

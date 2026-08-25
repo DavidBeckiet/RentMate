@@ -55,7 +55,10 @@ import {
 import type { OwnerListingReadService } from "./services/owner-listing-read-service.js";
 import { createPublicListingSearchHandler } from "./controllers/public-listing-search-controller.js";
 import type { PublicListingSearchService } from "./services/public-listing-search-service.js";
-import { createPublicListingDetailHandler } from "./controllers/public-listing-detail-controller.js";
+import {
+  createPublicListingDetailHandler,
+  createSimilarListingsHandler
+} from "./controllers/public-listing-detail-controller.js";
 import type { PublicListingDetailService } from "./services/public-listing-detail-service.js";
 
 export interface ListingsRouteDependencies {
@@ -115,6 +118,7 @@ export function registerListingsRoutes(router: Router, dependencies: ListingsRou
   router.get("/lookups/property-types", createGetPropertyTypesHandler(dependencies.lookupRepository));
   router.get("/lookups/amenities", createGetAmenitiesHandler(dependencies.lookupRepository));
   router.get("/listings", createPublicListingSearchHandler(dependencies.publicListingSearchService));
+  router.get("/listings/:listingId/similar", createSimilarListingsHandler(dependencies.publicListingDetailService));
   router.get(
     "/listings/:listingId",
     dependencies.optionalAuthenticationMiddleware,

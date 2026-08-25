@@ -91,6 +91,7 @@ function addCommonPredicates(search: PublicSearchCommonFilters, builder: QueryBu
   if (search.maxMonthlyRent !== null) predicates.push(`l.monthly_rent <= ${builder.parameter(search.maxMonthlyRent)}`);
   if (search.minRoomAreaSqm !== null) predicates.push(`l.room_area_sqm >= ${builder.parameter(search.minRoomAreaSqm)}`);
   if (search.maxRoomAreaSqm !== null) predicates.push(`l.room_area_sqm <= ${builder.parameter(search.maxRoomAreaSqm)}`);
+  if (search.minOccupants !== null) predicates.push(`l.max_occupants >= ${builder.parameter(search.minOccupants)}`);
   if (search.propertyType !== null) predicates.push(`pt.code = ${builder.parameter(search.propertyType)}`);
   if (search.amenities.length > 0) {
     const reference = builder.parameter([...search.amenities]);

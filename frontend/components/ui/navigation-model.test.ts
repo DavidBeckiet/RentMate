@@ -26,6 +26,7 @@ describe("actor-aware navigation model", () => {
       "/admin/reports",
       "/admin/contact-reports",
       "/admin/reviews",
+      "/admin/review-reports",
       "/admin/verifications"
     ]);
 

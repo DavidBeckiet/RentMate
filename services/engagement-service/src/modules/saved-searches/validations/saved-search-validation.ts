@@ -16,6 +16,7 @@ const queryFields = [
   "maxMonthlyRent",
   "minRoomAreaSqm",
   "maxRoomAreaSqm",
+  "minOccupants",
   "propertyType",
   "amenities",
   "mode",
@@ -38,6 +39,7 @@ export interface SavedSearchQuery {
   readonly maxMonthlyRent: number | null;
   readonly minRoomAreaSqm: number | null;
   readonly maxRoomAreaSqm: number | null;
+  readonly minOccupants: number | null;
   readonly propertyType: string | null;
   readonly amenities: readonly string[];
   readonly mode: "ordinary" | "bounds" | "radius";
@@ -95,6 +97,14 @@ function optionalFiniteNumber(value: unknown, field: string): number | null {
   return value;
 }
 
+function optionalOccupants(value: unknown): number | null {
+  if (value === undefined || value === null) return null;
+  if (!Number.isSafeInteger(value) || (value as number) < 1 || (value as number) > 20) {
+    throwValidationIssue("minOccupants", "OUT_OF_RANGE", "minOccupants must be an integer between 1 and 20.");
+  }
+  return value as number;
+}
+
 function booleanValue(value: unknown, field: string, fallback?: boolean): boolean {
   if (value === undefined && fallback !== undefined) return fallback;
   if (typeof value !== "boolean") throwValidationIssue(field, "INVALID_TYPE", `${field} must be a boolean.`);
@@ -128,6 +138,7 @@ function validateQuery(value: unknown): SavedSearchQuery {
   const maxMonthlyRent = optionalNumber(input.maxMonthlyRent, "maxMonthlyRent", validateMonthlyRent);
   const minRoomAreaSqm = optionalNumber(input.minRoomAreaSqm, "minRoomAreaSqm", validateRoomArea);
   const maxRoomAreaSqm = optionalNumber(input.maxRoomAreaSqm, "maxRoomAreaSqm", validateRoomArea);
+  const minOccupants = optionalOccupants(input.minOccupants);
   if (minMonthlyRent !== null && maxMonthlyRent !== null && minMonthlyRent > maxMonthlyRent) {
     throwValidationIssue("maxMonthlyRent", "INVALID_VALUE", "maxMonthlyRent must be at least minMonthlyRent.");
   }
@@ -142,6 +153,7 @@ function validateQuery(value: unknown): SavedSearchQuery {
     maxMonthlyRent,
     minRoomAreaSqm,
     maxRoomAreaSqm,
+    minOccupants,
     propertyType: code(input.propertyType, "propertyType"),
     amenities: amenities(input.amenities)
   } as const;

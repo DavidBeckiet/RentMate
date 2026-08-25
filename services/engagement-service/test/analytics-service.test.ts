@@ -27,17 +27,24 @@ const snapshot: LandlordAnalyticsSnapshot = Object.freeze({
   averageFirstResponseMinutes: 90,
   closedInquiries: 1,
   needsReplyNow: 2,
+  views: 12,
+  favorites: 4,
+  callClicks: 3,
+  emailClicks: 2,
   daily: Object.freeze([
     Object.freeze({ date: "2026-08-23", inquiries: 1, firstResponses: 0 }),
     Object.freeze({ date: "2026-08-24", inquiries: 3, firstResponses: 3 })
   ]),
-  topListings: Object.freeze([Object.freeze({ listingId: 42, inquiries: 3 })])
+  topListings: Object.freeze([
+    Object.freeze({ listingId: 42, inquiries: 3, views: 8, favorites: 2, callClicks: 1, emailClicks: 1 })
+  ])
 });
 
 test("calculates landlord response rates from an authorized aggregate snapshot", async () => {
   let receivedOwner = 0;
   let receivedDays = 0;
   const repository: AnalyticsRepository = {
+    async recordEvent() {},
     async load(_executor, ownerId, days) {
       receivedOwner = ownerId;
       receivedDays = days;
@@ -46,6 +53,7 @@ test("calculates landlord response rates from an authorized aggregate snapshot",
   };
   const service = createAnalyticsService({
     repository,
+    listingCatalogClient: { loadPublicInquiryTarget: async () => ({ listingId: 77, landlordId: landlord.userId }) },
     transactionRunner: { run: (operation) => operation(executor) }
   });
   const analytics = await service.get(landlord, { period: "30D", days: 30 });
@@ -59,6 +67,7 @@ test("calculates landlord response rates from an authorized aggregate snapshot",
 test("returns zero rates for an empty period and rejects other roles before reading data", async () => {
   let reads = 0;
   const repository: AnalyticsRepository = {
+    async recordEvent() {},
     async load() {
       reads += 1;
       return { ...snapshot, inquiries: 0, respondedInquiries: 0, respondedWithin24Hours: 0 };
@@ -66,6 +75,7 @@ test("returns zero rates for an empty period and rejects other roles before read
   };
   const service = createAnalyticsService({
     repository,
+    listingCatalogClient: { loadPublicInquiryTarget: async () => ({ listingId: 77, landlordId: landlord.userId }) },
     transactionRunner: { run: (operation) => operation(executor) }
   });
   const empty = await service.get(landlord, { period: "7D", days: 7 });
@@ -76,4 +86,38 @@ test("returns zero rates for an empty period and rejects other roles before read
     (error: unknown) => error instanceof ApplicationError && error.code === "FORBIDDEN"
   );
   assert.equal(reads, 1);
+});
+
+test("records public engagement events only for a public listing and keeps favorite attribution tenant-only", async () => {
+  const events: unknown[] = [];
+  const repository: AnalyticsRepository = {
+    async recordEvent(_executor, input) {
+      events.push(input);
+    },
+    async load() {
+      return snapshot;
+    }
+  };
+  const service = createAnalyticsService({
+    repository,
+    listingCatalogClient: {
+      loadPublicInquiryTarget: async (listingId) => (listingId === 77 ? { listingId, landlordId: 20 } : null)
+    },
+    transactionRunner: { run: (operation) => operation(executor) }
+  });
+
+  await service.trackEvent(undefined, 77, { eventType: "VIEW" });
+  await service.trackEvent(tenant, 77, { eventType: "FAVORITE" });
+  assert.deepEqual(events, [
+    { listingId: 77, landlordId: 20, actorId: null, eventType: "VIEW" },
+    { listingId: 77, landlordId: 20, actorId: 10, eventType: "FAVORITE" }
+  ]);
+  await assert.rejects(
+    () => service.trackEvent(undefined, 77, { eventType: "FAVORITE" }),
+    (error: unknown) => error instanceof ApplicationError && error.code === "FORBIDDEN"
+  );
+  await assert.rejects(
+    () => service.trackEvent(undefined, 999, { eventType: "VIEW" }),
+    (error: unknown) => error instanceof ApplicationError && error.code === "RESOURCE_NOT_FOUND"
+  );
 });

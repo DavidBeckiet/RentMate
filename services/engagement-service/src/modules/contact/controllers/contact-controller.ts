@@ -2,10 +2,16 @@ import type { Request, RequestHandler, Response } from "express";
 import { ApplicationError } from "../../../../../shared/src/runtime/shared/errors/application-error.js";
 import { authenticationRequiredMessage } from "../../../../../shared/src/runtime/shared/middleware/authentication.js";
 import { sendNoContent, sendObject, sendPaginated } from "../../../../../shared/src/runtime/shared/http/responses.js";
+import { validateQueryKeys } from "../../../../../shared/src/runtime/shared/validation/request.js";
 import type { InquiryMessage, Notification } from "../repositories/contact-repository.js";
 import type { ContactReport, ContactReportEvent } from "../repositories/contact-safety-repository.js";
 import type { InquiryRealtimeEvent, InquiryRealtimeHub } from "../realtime/inquiry-realtime-hub.js";
-import type { AdminContactReport, AdminContactReportDetail, ContactService, InquiryView } from "../services/contact-service.js";
+import type {
+  AdminContactReport,
+  AdminContactReportDetail,
+  ContactService,
+  InquiryView
+} from "../services/contact-service.js";
 import {
   parseContactId,
   validateContactCollectionQuery,
@@ -240,7 +246,9 @@ export function createGetContactReportHandler(service: ContactService): RequestH
     void (async () => {
       sendObject(
         response,
-        adminReportDetailDto(await service.getContactReport(requirePrincipal(request), parseContactReportId(request.params.reportId)))
+        adminReportDetailDto(
+          await service.getContactReport(requirePrincipal(request), parseContactReportId(request.params.reportId))
+        )
       );
     })().catch(next);
   };
@@ -330,6 +338,15 @@ export function createListNotificationsHandler(service: ContactService): Request
         validateContactCollectionQuery(request.query)
       );
       sendPaginated(response, page.data.map(notificationDto), page);
+    })().catch(next);
+  };
+}
+
+export function createGetUnreadNotificationCountHandler(service: ContactService): RequestHandler {
+  return (request, response, next) => {
+    void (async () => {
+      validateQueryKeys(request.query, []);
+      sendObject(response, { unreadCount: await service.getUnreadNotificationCount(requirePrincipal(request)) });
     })().catch(next);
   };
 }

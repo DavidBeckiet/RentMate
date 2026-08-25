@@ -1,6 +1,11 @@
-import { queryOptional } from "../../../../../shared/src/runtime/db/repository-primitives.js";
+import { queryMany, queryOptional } from "../../../../../shared/src/runtime/db/repository-primitives.js";
 import type { ParameterizedQuery, SqlExecutor } from "../../../../../shared/src/runtime/db/sql-executor.js";
 import type { UserRole } from "../../../../../shared/src/runtime/shared/types/authentication.js";
+import {
+  mapPublicListingSummaryRow,
+  type PublicListingSummary,
+  type PublicListingSummaryRow
+} from "../../../../../shared/public-listing-summary.js";
 import {
   mapBasePublicListingDetailResult,
   mapTenantPublicListingDetailResult,
@@ -14,6 +19,7 @@ export interface PublicListingDetailRepository {
     listingId: number,
     includeContact: boolean
   ) => Promise<MappedPublicListingDetailResult | null>;
+  readonly findSimilarPublicListings: (listingId: number, limit: number) => Promise<readonly PublicListingSummary[]>;
 }
 
 export interface PublicListingDetailLandlordProfile {
@@ -103,6 +109,67 @@ const tenantPublicDetailQuery = (listingId: number): ParameterizedQuery => ({
   values: [listingId]
 });
 
+const similarPublicListingsQuery = (listingId: number, limit: number): ParameterizedQuery => ({
+  text: `
+      SELECT
+        l.id,
+        l.landlord_id,
+        l.business_status,
+        l.title,
+        l.monthly_rent,
+        l.room_area_sqm,
+        l.max_occupants,
+        l.area_name,
+        l.latitude,
+        l.longitude,
+        pt.code AS property_type_code,
+        pt.label AS property_type_label,
+        COALESCE(amenity_data.items, '[]'::jsonb) AS amenities,
+        cover.secure_url AS cover_image_url,
+        cover.alt_text AS cover_image_alt_text,
+        cover.display_order AS cover_image_display_order,
+        l.updated_at
+      FROM listings AS l
+      JOIN listings AS current_listing
+        ON current_listing.id = $1
+      JOIN users AS landlord
+        ON landlord.id = l.landlord_id
+      JOIN property_types AS pt
+        ON pt.id = l.property_type_id
+      LEFT JOIN LATERAL (
+        SELECT jsonb_agg(
+          jsonb_build_object('code', a.code, 'label', a.label)
+          ORDER BY a.label ASC, a.code ASC
+        ) AS items
+        FROM listing_amenities AS la
+        JOIN amenities AS a ON a.id = la.amenity_id
+        WHERE la.listing_id = l.id
+      ) AS amenity_data ON true
+      LEFT JOIN LATERAL (
+        SELECT secure_url, alt_text, display_order
+        FROM listing_images
+        WHERE listing_id = l.id
+        ORDER BY display_order ASC, id ASC
+        LIMIT 1
+      ) AS cover ON true
+      WHERE current_listing.status = 'APPROVED'
+        AND current_listing.business_status IN ('AVAILABLE', 'UNKNOWN')
+        AND l.id <> current_listing.id
+        AND l.status = 'APPROVED'
+        AND l.business_status IN ('AVAILABLE', 'UNKNOWN')
+        AND landlord.is_active = true
+        AND l.area_name = current_listing.area_name
+      ORDER BY
+        (l.property_type_id = current_listing.property_type_id) DESC,
+        ABS(l.monthly_rent - current_listing.monthly_rent) ASC,
+        ABS(l.room_area_sqm - current_listing.room_area_sqm) ASC,
+        l.updated_at DESC,
+        l.id DESC
+      LIMIT $2
+    `,
+  values: [listingId, limit]
+});
+
 const remotePublicDetailQuery = (listingId: number): ParameterizedQuery => ({
   text: `
       SELECT
@@ -147,7 +214,7 @@ export function createPublicListingDetailRepository(
   executor: SqlExecutor,
   dependencies: PublicListingDetailRepositoryDependencies = {}
 ): PublicListingDetailRepository {
-  return Object.freeze({
+  const repository: PublicListingDetailRepository = {
     async findPublicDetailById(
       listingId: number,
       includeContact: boolean
@@ -195,6 +262,34 @@ export function createPublicListingDetailRepository(
         basePublicDetailQuery(listingId),
         mapBasePublicListingDetailResult
       );
+    },
+
+    async findSimilarPublicListings(listingId, limit) {
+      const rows = await queryMany<PublicListingSummaryRow, PublicListingSummaryRow>(
+        executor,
+        similarPublicListingsQuery(listingId, limit),
+        (value) => value
+      );
+      if (rows.length === 0) return Object.freeze([]);
+
+      const mapped = rows.map((row) => ({
+        landlordId: row.landlord_id,
+        summary: mapPublicListingSummaryRow(row)
+      }));
+      const landlordIds = mapped
+        .map((item) => item.landlordId)
+        .filter((value): value is number => typeof value === "number" && Number.isSafeInteger(value) && value > 0);
+      const verifiedIds = dependencies.loadVerifiedLandlordIds
+        ? await dependencies.loadVerifiedLandlordIds([...new Set(landlordIds)])
+        : Object.freeze([]);
+      return Object.freeze(
+        mapped.map(({ landlordId, summary }) =>
+          typeof landlordId === "number" && verifiedIds.includes(landlordId)
+            ? Object.freeze({ ...summary, landlordVerified: true })
+            : summary
+        )
+      );
     }
-  });
+  };
+  return Object.freeze(repository);
 }

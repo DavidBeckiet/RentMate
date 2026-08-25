@@ -70,6 +70,7 @@ export function FavoriteSaveControl({ listingId, compact = false }: FavoriteSave
     try {
       await api.favorites.add(parsedListingId, controller.signal);
       if (controller.signal.aborted) return;
+      void api.analytics?.trackListingEvent?.(parsedListingId, "FAVORITE").catch(() => undefined);
       setOutcome({ status: "success" });
     } catch (caught: unknown) {
       if (controller.signal.aborted) return;
