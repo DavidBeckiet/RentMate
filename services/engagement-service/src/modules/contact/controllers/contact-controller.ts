@@ -47,6 +47,7 @@ function notificationDto(notification: Notification) {
     id: notification.id,
     eventType: notification.eventType,
     inquiryId: notification.inquiryId,
+    listingId: notification.listingId,
     resourcePath: notification.resourcePath,
     isRead: notification.isRead,
     createdAt: notification.createdAt

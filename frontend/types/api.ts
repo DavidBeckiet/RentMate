@@ -2,7 +2,14 @@ export type UserRole = "TENANT" | "LANDLORD" | "ADMIN";
 
 export type ListingStatus = "DRAFT" | "PENDING" | "APPROVED" | "REJECTED" | "INACTIVE" | "HIDDEN";
 export type InquiryStatus = "NEW" | "CONTACTED" | "CLOSED";
-export type NotificationEventType = "INQUIRY_CREATED" | "MESSAGE_CREATED" | "INQUIRY_STATUS_CHANGED";
+export type NotificationEventType =
+  | "INQUIRY_CREATED"
+  | "MESSAGE_CREATED"
+  | "INQUIRY_STATUS_CHANGED"
+  | "LEAD_REMINDER_DUE"
+  | "LISTING_APPROVED"
+  | "LISTING_REJECTED"
+  | "LISTING_HIDDEN";
 
 export type ModerationAction = "APPROVE" | "REJECT" | "HIDE" | "RESTORE";
 
@@ -318,7 +325,8 @@ export interface CreateInquiryBody {
 export interface Notification {
   readonly id: number;
   readonly eventType: NotificationEventType;
-  readonly inquiryId: number;
+  readonly inquiryId: number | null;
+  readonly listingId: number | null;
   readonly resourcePath: string;
   readonly isRead: boolean;
   readonly createdAt: string;

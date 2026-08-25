@@ -10,6 +10,20 @@ import type { SqlExecutor } from "../../../../../shared/src/runtime/db/sql-execu
 import { formatApiTimestamp } from "../../../../../shared/src/runtime/shared/mapping/api-values.js";
 import type { InquiryStatus } from "../validations/contact-validation.js";
 
+export type NotificationEventType =
+  | "INQUIRY_CREATED"
+  | "MESSAGE_CREATED"
+  | "INQUIRY_STATUS_CHANGED"
+  | "LEAD_REMINDER_DUE"
+  | "LISTING_APPROVED"
+  | "LISTING_REJECTED"
+  | "LISTING_HIDDEN";
+
+export type ListingModerationNotificationEvent =
+  | "LISTING_APPROVED"
+  | "LISTING_REJECTED"
+  | "LISTING_HIDDEN";
+
 export interface InquiryMessage {
   readonly id: number;
   readonly senderRole: "TENANT" | "LANDLORD";
@@ -33,8 +47,9 @@ export interface Inquiry {
 
 export interface Notification {
   readonly id: number;
-  readonly eventType: "INQUIRY_CREATED" | "MESSAGE_CREATED" | "INQUIRY_STATUS_CHANGED";
-  readonly inquiryId: number;
+  readonly eventType: NotificationEventType;
+  readonly inquiryId: number | null;
+  readonly listingId: number | null;
   readonly resourcePath: string;
   readonly isRead: boolean;
   readonly createdAt: string;
@@ -65,6 +80,7 @@ interface NotificationRow extends QueryResultRow {
   id: unknown;
   event_type: unknown;
   inquiry_id: unknown;
+  listing_id: unknown;
   resource_path: unknown;
   is_read: unknown;
   created_at: unknown;
@@ -125,8 +141,20 @@ function mapMessage(row: Readonly<MessageRow>, viewerRole: "TENANT" | "LANDLORD"
 }
 
 function mapNotification(row: Readonly<NotificationRow>): Notification {
+  const eventType = String(row.event_type);
+  const inquiryEvent = [
+    "INQUIRY_CREATED",
+    "MESSAGE_CREATED",
+    "INQUIRY_STATUS_CHANGED",
+    "LEAD_REMINDER_DUE"
+  ].includes(eventType);
+  const listingEvent = ["LISTING_APPROVED", "LISTING_REJECTED", "LISTING_HIDDEN"].includes(eventType);
+  const inquiryId = row.inquiry_id === null ? null : positiveInteger(row.inquiry_id, "notification.inquiry_id");
+  const listingId = row.listing_id === null ? null : positiveInteger(row.listing_id, "notification.listing_id");
   if (
-    !["INQUIRY_CREATED", "MESSAGE_CREATED", "INQUIRY_STATUS_CHANGED"].includes(String(row.event_type)) ||
+    (!inquiryEvent && !listingEvent) ||
+    (inquiryEvent && (inquiryId === null || listingId !== null)) ||
+    (listingEvent && (listingId === null || inquiryId !== null)) ||
     typeof row.resource_path !== "string" ||
     typeof row.is_read !== "boolean"
   ) {
@@ -134,8 +162,9 @@ function mapNotification(row: Readonly<NotificationRow>): Notification {
   }
   return Object.freeze({
     id: positiveInteger(row.id, "notification.id"),
-    eventType: row.event_type as Notification["eventType"],
-    inquiryId: positiveInteger(row.inquiry_id, "notification.inquiry_id"),
+    eventType: eventType as Notification["eventType"],
+    inquiryId,
+    listingId,
     resourcePath: row.resource_path,
     isRead: row.is_read,
     createdAt: timestamp(row.created_at, "notification.created_at")
@@ -185,10 +214,19 @@ export interface ContactRepository {
     executor: SqlExecutor,
     input: {
       readonly recipientId: number;
-      readonly eventType: Notification["eventType"];
+      readonly eventType: Extract<NotificationEventType, "INQUIRY_CREATED" | "MESSAGE_CREATED" | "INQUIRY_STATUS_CHANGED">;
       readonly inquiryId: number;
     }
   ) => Promise<Notification>;
+  readonly createListingModerationNotification: (
+    executor: SqlExecutor,
+    input: {
+      readonly recipientId: number;
+      readonly eventType: ListingModerationNotificationEvent;
+      readonly listingId: number;
+      readonly moderationHistoryId: number;
+    }
+  ) => Promise<void>;
   readonly listNotifications: (
     executor: SqlExecutor,
     input: {
@@ -328,7 +366,7 @@ export function createContactRepository(): ContactRepository {
           text: `
           INSERT INTO notifications (recipient_id, event_type, inquiry_id, resource_path)
           VALUES ($1, $2, $3, $4)
-          RETURNING id, event_type, inquiry_id, resource_path, is_read, created_at
+          RETURNING id, event_type, inquiry_id, listing_id, resource_path, is_read, created_at
         `,
           values: [input.recipientId, input.eventType, input.inquiryId, `/inquiries/${input.inquiryId}`]
         },
@@ -336,12 +374,29 @@ export function createContactRepository(): ContactRepository {
       );
     },
 
+    async createListingModerationNotification(executor, input) {
+      await executeCommand(executor, {
+        text: `
+          INSERT INTO notifications (recipient_id, event_type, listing_id, resource_path, dedupe_key)
+          VALUES ($1, $2, $3, $4, $5)
+          ON CONFLICT DO NOTHING
+        `,
+        values: [
+          input.recipientId,
+          input.eventType,
+          input.listingId,
+          `/landlord/listings/${input.listingId}`,
+          `listing-moderation:${input.moderationHistoryId}`
+        ]
+      });
+    },
+
     async listNotifications(executor, input) {
       return queryMany<NotificationRow, Notification>(
         executor,
         {
           text: `
-          SELECT id, event_type, inquiry_id, resource_path, is_read, created_at
+          SELECT id, event_type, inquiry_id, listing_id, resource_path, is_read, created_at
           FROM notifications
           WHERE recipient_id = $1
           ORDER BY created_at DESC, id DESC

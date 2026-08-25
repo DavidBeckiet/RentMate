@@ -44,6 +44,7 @@ import { createRoleMiddleware } from "../../shared/src/runtime/shared/middleware
 import { createShutdownHandler } from "../../shared/src/runtime/shutdown.js";
 import { applyDatabaseOverrides } from "../../shared/database-overrides.js";
 import { createIdentityAccountClient } from "../../shared/identity-account-client.js";
+import { createEngagementNotificationClient } from "../../shared/engagement-notification-client.js";
 import { createInternalServiceGuard } from "../../shared/internal-service-auth.js";
 import { createReportRepository } from "./modules/reports/repositories/report-repository.js";
 import { registerReportRoutes } from "./modules/reports/routes.js";
@@ -99,6 +100,13 @@ async function startListingService(): Promise<void> {
     baseUrl: identityServiceUrl,
     internalToken: process.env.SERVICE_INTERNAL_TOKEN ?? ""
   });
+  const engagementServiceUrl = process.env.ENGAGEMENT_SERVICE_URL;
+  const moderationNotificationClient = engagementServiceUrl
+    ? createEngagementNotificationClient({
+        baseUrl: engagementServiceUrl,
+        internalToken: process.env.SERVICE_INTERNAL_TOKEN ?? ""
+      })
+    : undefined;
   const loadAuthenticationAccount = identityAccountClient.loadAuthenticationAccount;
   const requiredAuthentication = createProtectedAuthenticationMiddleware({
     verifySessionToken: sessionTokenService.verify,
@@ -129,7 +137,11 @@ async function startListingService(): Promise<void> {
             loadLandlordProfiles: identityAccountClient.loadProfilesByIds
           })
         ),
-        moderationActionService: createModerationActionService({ transactionRunner }),
+        moderationActionService: createModerationActionService({
+          transactionRunner,
+          notificationClient: moderationNotificationClient,
+          logger
+        }),
         listingCreateService: createListingCreateService({ transactionRunner }),
         ownerListingReadService: createOwnerListingReadService(createOwnerListingReadRepository(sqlExecutor)),
         publicListingSearchService: createPublicListingSearchService(

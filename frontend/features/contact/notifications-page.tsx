@@ -11,6 +11,10 @@ import type { Notification } from "../../types/api";
 function notificationLabel(notification: Notification): string {
   if (notification.eventType === "INQUIRY_CREATED") return "Bạn có yêu cầu liên hệ mới.";
   if (notification.eventType === "MESSAGE_CREATED") return "Cuộc trò chuyện có tin nhắn mới.";
+  if (notification.eventType === "LEAD_REMINDER_DUE") return "Đã đến hạn chăm sóc lead.";
+  if (notification.eventType === "LISTING_APPROVED") return "Tin đăng đã được duyệt.";
+  if (notification.eventType === "LISTING_REJECTED") return "Tin đăng cần được chỉnh sửa.";
+  if (notification.eventType === "LISTING_HIDDEN") return "Tin đăng đã bị ẩn khỏi kết quả tìm kiếm.";
   return "Trạng thái yêu cầu đã được cập nhật.";
 }
 

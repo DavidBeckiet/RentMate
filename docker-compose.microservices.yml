@@ -91,6 +91,7 @@ services:
     environment:
       <<: *service-environment
       IDENTITY_SERVICE_URL: http://identity:4100
+      ENGAGEMENT_SERVICE_URL: http://engagement:4300
       LISTING_DB_NAME: rentmate_listing
       LISTING_SERVICE_PORT: 4200
     command: ["sh", "-c", "npm --prefix services/listing-service run start"]

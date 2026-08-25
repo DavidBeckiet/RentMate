@@ -1,6 +1,11 @@
 import { ApplicationError } from "../../../../../shared/src/runtime/shared/errors/application-error.js";
 import { forbiddenRoleMessage } from "../../../../../shared/src/runtime/shared/middleware/role.js";
 import type { AuthenticatedPrincipal } from "../../../../../shared/src/runtime/shared/types/authentication.js";
+import type {
+  EngagementNotificationClient,
+  ListingModerationNotificationEvent
+} from "../../../../../shared/engagement-notification-client.js";
+import type { Logger } from "../../../../../shared/src/runtime/shared/logging/logger.js";
 import type { TransactionRunner } from "./listing-create-service.js";
 import {
   createModerationActionRepository,
@@ -31,6 +36,14 @@ export interface ModerationActionService {
 interface ModerationActionServiceDependencies {
   readonly transactionRunner: TransactionRunner;
   readonly repositoryFactory?: ModerationActionRepositoryFactory;
+  readonly notificationClient?: EngagementNotificationClient;
+  readonly logger?: Pick<Logger, "warn">;
+}
+
+function notificationEventForStatus(status: ModerationHistoryItem["newStatus"]): ListingModerationNotificationEvent {
+  if (status === "APPROVED") return "LISTING_APPROVED";
+  if (status === "REJECTED") return "LISTING_REJECTED";
+  return "LISTING_HIDDEN";
 }
 
 export function createModerationActionService(
@@ -48,7 +61,7 @@ export function createModerationActionService(
         throw new ApplicationError("FORBIDDEN", forbiddenRoleMessage);
       }
 
-      return dependencies.transactionRunner(async (executor) => {
+      const outcome = await dependencies.transactionRunner(async (executor) => {
         const repository = repositoryFactory(executor);
         const listing = await repository.lockListing(listingId);
         if (listing === null) {
@@ -67,14 +80,35 @@ export function createModerationActionService(
           throw new ApplicationError("CONCURRENT_MODIFICATION", concurrentModificationMessage);
         }
 
-        return repository.insertHistory({
-          listingId,
-          adminId: principal.userId,
-          previousStatus: listing.status,
-          newStatus: transition.nextStatus,
-          reason: input.reason
+        return Object.freeze({
+          history: await repository.insertHistory({
+            listingId,
+            adminId: principal.userId,
+            previousStatus: listing.status,
+            newStatus: transition.nextStatus,
+            reason: input.reason
+          }),
+          landlordId: listing.landlordId
         });
       });
+
+      if (dependencies.notificationClient) {
+        try {
+          await dependencies.notificationClient.notifyListingModerationResult({
+            landlordId: outcome.landlordId,
+            listingId,
+            moderationHistoryId: outcome.history.id,
+            eventType: notificationEventForStatus(outcome.history.newStatus)
+          });
+        } catch (error) {
+          dependencies.logger?.warn("Listing moderation notification delivery failed", {
+            errorType: error instanceof Error ? error.name : "UnknownError",
+            listingId
+          });
+        }
+      }
+
+      return outcome.history;
     }
   });
 }

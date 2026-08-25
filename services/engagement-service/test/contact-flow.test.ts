@@ -153,6 +153,7 @@ function createContactHarness(): ContactHarness {
         recipientId: input.recipientId,
         eventType: input.eventType,
         inquiryId: input.inquiryId,
+        listingId: null,
         resourcePath: `/inquiries/${input.inquiryId}`,
         isRead: false,
         createdAt

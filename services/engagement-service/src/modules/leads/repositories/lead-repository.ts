@@ -274,7 +274,7 @@ export function createLeadRepository(): LeadRepository {
             VALUES ($1, $2, $3)
             ON CONFLICT (inquiry_id) DO UPDATE
             SET landlord_id = EXCLUDED.landlord_id, remind_at = EXCLUDED.remind_at,
-              updated_at = CURRENT_TIMESTAMP
+              due_notification_sent_at = NULL, updated_at = CURRENT_TIMESTAMP
             RETURNING inquiry_id, remind_at, updated_at`,
           values: [inquiryId, landlordId, remindAt]
         },

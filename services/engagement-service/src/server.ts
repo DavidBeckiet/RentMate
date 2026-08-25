@@ -14,6 +14,7 @@ import { createShutdownHandler } from "../../shared/src/runtime/shutdown.js";
 import { applyDatabaseOverrides } from "../../shared/database-overrides.js";
 import { createIdentityAccountClient } from "../../shared/identity-account-client.js";
 import { createListingCatalogClient } from "../../shared/listing-catalog-client.js";
+import { createInternalServiceGuard } from "../../shared/internal-service-auth.js";
 import { withTransaction } from "../../shared/src/runtime/db/transaction.js";
 import { createContactRepository } from "./modules/contact/repositories/contact-repository.js";
 import { createContactService } from "./modules/contact/services/contact-service.js";
@@ -28,12 +29,15 @@ import { registerReviewRoutes } from "./modules/reviews/routes.js";
 import { createLeadRepository } from "./modules/leads/repositories/lead-repository.js";
 import { createLeadService } from "./modules/leads/services/lead-service.js";
 import { registerLeadRoutes } from "./modules/leads/routes.js";
+import { createLeadReminderNotificationRepository } from "./modules/leads/repositories/lead-reminder-notification-repository.js";
+import { createLeadReminderScheduler } from "./modules/leads/services/lead-reminder-scheduler.js";
 import { createAnalyticsRepository } from "./modules/analytics/repositories/analytics-repository.js";
 import { createAnalyticsService } from "./modules/analytics/services/analytics-service.js";
 import { registerAnalyticsRoutes } from "./modules/analytics/routes.js";
 import { createListingNoteRepository } from "./modules/listing-notes/repositories/listing-note-repository.js";
 import { createListingNoteService } from "./modules/listing-notes/services/listing-note-service.js";
 import { registerListingNoteRoutes } from "./modules/listing-notes/routes.js";
+import { validateListingModerationNotificationBody } from "./modules/contact/validations/internal-notification-validation.js";
 
 function listen(server: Server, port: number): Promise<void> {
   return new Promise((resolve, reject) => {
@@ -125,6 +129,13 @@ async function startEngagementService(): Promise<void> {
       run: (operation) => withTransaction(databasePool, logger, operation)
     }
   });
+  const leadReminderScheduler = createLeadReminderScheduler({
+    repository: createLeadReminderNotificationRepository(),
+    transactionRunner: {
+      run: (operation) => withTransaction(databasePool, logger, operation)
+    },
+    logger
+  });
   const analyticsService = createAnalyticsService({
     repository: createAnalyticsRepository(),
     transactionRunner: {
@@ -186,6 +197,27 @@ async function startEngagementService(): Promise<void> {
         tenantRoleMiddleware: tenantRole,
         service: listingNoteService
       });
+    },
+    registerInternalRoutes: (internalApp) => {
+      const internalServiceGuard = createInternalServiceGuard(process.env.SERVICE_INTERNAL_TOKEN);
+      internalApp.post(
+        "/internal/v1/notifications/listing-moderation",
+        internalServiceGuard,
+        (request, response, next) => {
+          void (async () => {
+            const input = validateListingModerationNotificationBody(request.body);
+            await withTransaction(databasePool, logger, (executor) =>
+              contactRepository.createListingModerationNotification(executor, {
+                recipientId: input.landlordId,
+                listingId: input.listingId,
+                moderationHistoryId: input.moderationHistoryId,
+                eventType: input.eventType
+              })
+            );
+            response.status(204).end();
+          })().catch(next);
+        }
+      );
     }
   });
   const server = createServer(app);
@@ -201,8 +233,16 @@ async function startEngagementService(): Promise<void> {
     return;
   }
 
+  leadReminderScheduler.start();
   logger.info("Engagement service started", { nodeEnvironment: config.nodeEnv, port: config.port });
-  const shutdown = createShutdownHandler({ server, closeDatabase: closeRuntimePool, logger });
+  const shutdown = createShutdownHandler({
+    server,
+    closeDatabase: async () => {
+      leadReminderScheduler.stop();
+      await closeRuntimePool();
+    },
+    logger
+  });
   const handleSignal = (signal: NodeJS.Signals) => {
     void shutdown(signal).catch(() => {
       process.exitCode = 1;

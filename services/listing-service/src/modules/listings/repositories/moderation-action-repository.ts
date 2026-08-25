@@ -17,11 +17,13 @@ const maximumListingId = 2_147_483_647;
 
 interface LockedModerationListingRow extends QueryResultRow {
   readonly id: unknown;
+  readonly landlord_id: unknown;
   readonly status: unknown;
 }
 
 export interface LockedModerationListing {
   readonly id: number;
+  readonly landlordId: number;
   readonly status: ListingStatus;
 }
 
@@ -51,11 +53,14 @@ function mapLockedModerationListing(row: Readonly<LockedModerationListingRow>): 
     !Number.isInteger(row.id) ||
     (row.id as number) < 1 ||
     (row.id as number) > maximumListingId ||
+    !Number.isInteger(row.landlord_id) ||
+    (row.landlord_id as number) < 1 ||
+    (row.landlord_id as number) > maximumListingId ||
     !isListingStatus(row.status)
   ) {
     throw new RepositoryInvariantError("Locked moderation listing row is invalid.");
   }
-  return Object.freeze({ id: row.id as number, status: row.status });
+  return Object.freeze({ id: row.id as number, landlordId: row.landlord_id as number, status: row.status });
 }
 
 export function createModerationActionRepository(executor: SqlExecutor): ModerationActionRepository {
@@ -64,7 +69,7 @@ export function createModerationActionRepository(executor: SqlExecutor): Moderat
       return queryOptional(
         executor,
         {
-          text: "SELECT l.id, l.status FROM listings AS l WHERE l.id = $1 FOR UPDATE OF l",
+          text: "SELECT l.id, l.landlord_id, l.status FROM listings AS l WHERE l.id = $1 FOR UPDATE OF l",
           values: [listingId]
         },
         mapLockedModerationListing
