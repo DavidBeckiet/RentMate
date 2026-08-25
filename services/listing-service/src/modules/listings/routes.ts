@@ -44,6 +44,8 @@ import { createUpdateOwnerListingHandler } from "./controllers/listing-update-co
 import type { ListingUpdateService } from "./services/listing-update-service.js";
 import { createUpdateOwnerBusinessStatusHandler } from "./controllers/listing-business-status-controller.js";
 import type { ListingBusinessStatusService } from "./services/listing-business-status-service.js";
+import { createConfirmOwnerListingAvailabilityHandler } from "./controllers/listing-availability-controller.js";
+import type { ListingAvailabilityService } from "./services/listing-availability-service.js";
 import { createGetAmenitiesHandler, createGetPropertyTypesHandler } from "./controllers/lookup-controller.js";
 import type { LookupRepository } from "./repositories/lookup-repository.js";
 import {
@@ -70,6 +72,7 @@ export interface ListingsRouteDependencies {
   readonly publicListingDetailService: PublicListingDetailService;
   readonly listingUpdateService: ListingUpdateService;
   readonly listingBusinessStatusService: ListingBusinessStatusService;
+  readonly listingAvailabilityService: ListingAvailabilityService;
   readonly listingSubmitService: ListingSubmitService;
   readonly listingLifecycleActionService: ListingLifecycleActionService;
   readonly listingDeleteService: ListingDeleteService;
@@ -170,6 +173,12 @@ export function registerListingsRoutes(router: Router, dependencies: ListingsRou
     dependencies.authenticationMiddleware,
     dependencies.landlordRoleMiddleware,
     createUpdateOwnerBusinessStatusHandler(dependencies.listingBusinessStatusService)
+  );
+  router.post(
+    "/landlord/listings/:listingId/confirm-availability",
+    dependencies.authenticationMiddleware,
+    dependencies.landlordRoleMiddleware,
+    createConfirmOwnerListingAvailabilityHandler(dependencies.listingAvailabilityService)
   );
   router.post(
     "/landlord/listings/:listingId/submit",

@@ -8,6 +8,8 @@ const listingModerationEvents: readonly ListingModerationNotificationEvent[] = [
   "LISTING_REJECTED",
   "LISTING_HIDDEN"
 ];
+const listingAvailabilityKinds = ["REMINDER_DUE", "AUTO_PAUSED"] as const;
+type ListingAvailabilityNotificationKind = (typeof listingAvailabilityKinds)[number];
 
 export interface ListingModerationNotificationInput {
   readonly landlordId: number;
@@ -18,6 +20,13 @@ export interface ListingModerationNotificationInput {
 
 export interface ListingPublishedNotificationInput {
   readonly listingId: number;
+}
+
+export interface ListingAvailabilityNotificationInput {
+  readonly landlordId: number;
+  readonly listingId: number;
+  readonly kind: ListingAvailabilityNotificationKind;
+  readonly dedupeKey: string;
 }
 
 function parsePositiveId(value: unknown, field: string): number {
@@ -57,4 +66,31 @@ export function validateListingPublishedNotificationBody(value: unknown): Listin
   const body = validateBodyFields(value, ["listingId"]);
   if (!("listingId" in body)) throwValidationIssue("listingId", "REQUIRED", "listingId is required.");
   return Object.freeze({ listingId: parsePositiveId(body.listingId, "listingId") });
+}
+
+export function validateListingAvailabilityNotificationBody(value: unknown): ListingAvailabilityNotificationInput {
+  const body = validateBodyFields(value, ["landlordId", "listingId", "kind", "dedupeKey"]);
+  if (!("landlordId" in body)) throwValidationIssue("landlordId", "REQUIRED", "landlordId is required.");
+  if (!("listingId" in body)) throwValidationIssue("listingId", "REQUIRED", "listingId is required.");
+  if (!("kind" in body)) throwValidationIssue("kind", "REQUIRED", "kind is required.");
+  if (!("dedupeKey" in body)) throwValidationIssue("dedupeKey", "REQUIRED", "dedupeKey is required.");
+  if (
+    typeof body.kind !== "string" ||
+    !listingAvailabilityKinds.includes(body.kind as ListingAvailabilityNotificationKind)
+  ) {
+    throwValidationIssue("kind", "INVALID_VALUE", "kind is not supported.");
+  }
+  if (typeof body.dedupeKey !== "string") {
+    throwValidationIssue("dedupeKey", "INVALID_TYPE", "dedupeKey must be a string.");
+  }
+  const dedupeKey = body.dedupeKey.trim();
+  if (dedupeKey.length === 0) throwValidationIssue("dedupeKey", "INVALID_VALUE", "dedupeKey must not be blank.");
+  if (dedupeKey.length > 200) throwValidationIssue("dedupeKey", "TOO_LONG", "dedupeKey is too long.");
+
+  return Object.freeze({
+    landlordId: parsePositiveId(body.landlordId, "landlordId"),
+    listingId: parsePositiveId(body.listingId, "listingId"),
+    kind: body.kind as ListingAvailabilityNotificationKind,
+    dedupeKey
+  });
 }

@@ -105,7 +105,9 @@ test("landlords can update business status and receive the canonical owner detai
       listingId: 42,
       landlordId: 30,
       expectedStatus: "AVAILABLE",
-      nextStatus: "RENTED"
+      nextStatus: "RENTED",
+      resetAvailability: false,
+      clearAutoPause: true
     }
   ]);
 });

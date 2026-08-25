@@ -96,6 +96,10 @@ services:
       ENGAGEMENT_SERVICE_URL: http://engagement:4300
       LISTING_DB_NAME: rentmate_listing
       LISTING_SERVICE_PORT: 4200
+      LISTING_STALE_REMINDER_DAYS: ${LISTING_STALE_REMINDER_DAYS:-30}
+      LISTING_STALE_GRACE_DAYS: ${LISTING_STALE_GRACE_DAYS:-7}
+      LISTING_STALE_SCAN_INTERVAL_MS: ${LISTING_STALE_SCAN_INTERVAL_MS:-30000}
+      LISTING_STALE_BATCH_SIZE: ${LISTING_STALE_BATCH_SIZE:-100}
     command: ["sh", "-c", "npm --prefix services/listing-service run start"]
     healthcheck:
       test: ["CMD-SHELL", "wget -q -O - http://localhost:4200/api/health | grep -q 'status.*ok'"]

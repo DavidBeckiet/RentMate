@@ -192,6 +192,16 @@ export function OwnerListingsPage() {
   } else if (result) {
     content = (
       <div className="space-y-6">
+        {result.data.some(
+          (listing) => listing.availabilityStatus === "REMINDER_DUE" || listing.availabilityStatus === "AUTO_PAUSED"
+        ) ? (
+          <div className="border-2 border-heroDark-950 bg-rent-yellow p-4 shadow-glass-sm" role="status">
+            <p className="font-bold text-rent-ink">Tin cần cập nhật</p>
+            <p className="mt-1 text-sm text-rent-secondary">
+              Một số tin đăng cần xác nhận lại tình trạng phòng để tránh hiển thị thông tin đã cũ.
+            </p>
+          </div>
+        ) : null}
         {result.data.length === 0 ? (
           <EmptyState
             title={parsed.state.status === undefined ? "Bạn chưa có tin đăng." : "Không có tin ở trạng thái này."}

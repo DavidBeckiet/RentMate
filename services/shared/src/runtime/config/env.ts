@@ -58,6 +58,12 @@ export interface RuntimeConfig {
     readonly region: DeploymentRegion;
     readonly maximumSearchRadiusKm: 50;
   };
+  readonly listingAvailability: {
+    readonly reminderDays: number;
+    readonly graceDays: number;
+    readonly scanIntervalMs: number;
+    readonly batchSize: number;
+  };
 }
 
 export class EnvironmentConfigurationError extends Error {
@@ -447,6 +453,12 @@ export function parseEnvironment(source: EnvironmentSource): RuntimeConfig {
         production,
         issues
       ) as 50
+    },
+    listingAvailability: {
+      reminderDays: readInteger(source, "LISTING_STALE_REMINDER_DAYS", 30, false, 1, 3_650, issues),
+      graceDays: readInteger(source, "LISTING_STALE_GRACE_DAYS", 7, false, 1, 365, issues),
+      scanIntervalMs: readInteger(source, "LISTING_STALE_SCAN_INTERVAL_MS", 30_000, false, 1_000, 3_600_000, issues),
+      batchSize: readInteger(source, "LISTING_STALE_BATCH_SIZE", 100, false, 1, 1_000, issues)
     }
   };
 

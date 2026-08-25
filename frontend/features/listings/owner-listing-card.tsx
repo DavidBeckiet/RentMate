@@ -42,6 +42,11 @@ export function OwnerListingCard({ listing }: { readonly listing: OwnerListingSu
             {listing.propertyType?.label ?? "Chưa chọn loại"} · {listing.areaName ?? "Chưa nhập khu vực"}
             {listing.maxOccupants !== null ? ` · ${listing.maxOccupants} người tối đa` : ""}
           </ListingMetadata>
+          {listing.availabilityStatus === "REMINDER_DUE" ? (
+            <p className="text-sm font-semibold text-amber-800">Cần xác nhận lại tình trạng phòng</p>
+          ) : listing.availabilityStatus === "AUTO_PAUSED" ? (
+            <p className="text-sm font-semibold text-red-800">Đã tạm dừng vì quá hạn xác nhận</p>
+          ) : null}
           {reason ? (
             <div className="rounded-control border border-red-200 bg-red-50 p-3 text-sm text-red-950">
               <p className="font-semibold">{reason.label}</p>

@@ -41,7 +41,8 @@ import { createListingNoteService } from "./modules/listing-notes/services/listi
 import { registerListingNoteRoutes } from "./modules/listing-notes/routes.js";
 import {
   validateListingModerationNotificationBody,
-  validateListingPublishedNotificationBody
+  validateListingPublishedNotificationBody,
+  validateListingAvailabilityNotificationBody
 } from "./modules/contact/validations/internal-notification-validation.js";
 
 function listen(server: Server, port: number): Promise<void> {
@@ -238,6 +239,23 @@ async function startEngagementService(): Promise<void> {
             const summaries = await listingCatalogClient.loadPublicSummariesByIds([input.listingId]);
             const listing = summaries[0];
             if (listing) await savedSearchNotificationService.notifyListingPublished(listing);
+            response.status(204).end();
+          })().catch(next);
+        }
+      );
+      internalApp.post(
+        "/internal/v1/notifications/listing-availability",
+        internalServiceGuard,
+        (request, response, next) => {
+          void (async () => {
+            const input = validateListingAvailabilityNotificationBody(request.body);
+            await withTransaction(databasePool, logger, (executor) =>
+              contactRepository.createListingAvailabilityNotification(executor, {
+                recipientId: input.landlordId,
+                listingId: input.listingId,
+                dedupeKey: input.dedupeKey
+              })
+            );
             response.status(204).end();
           })().catch(next);
         }

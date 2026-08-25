@@ -2,11 +2,17 @@ import type { QueryResultRow } from "pg";
 import {
   mapNullablePgScaleTwoNumeric,
   mapNullablePgWholeNumeric,
+  mapNullablePgTimestamptz,
   mapPgTimestamptz
 } from "../../../../../shared/src/runtime/db/value-mappers.js";
 import { formatApiTimestamp } from "../../../../../shared/src/runtime/shared/mapping/api-values.js";
 import { isListingBusinessStatus, type ListingBusinessStatus } from "../../../../../shared/listing-business-status.js";
 import { resolveCurrentModerationReason } from "../current-moderation-reason.js";
+import {
+  resolveListingAvailabilitySnapshot,
+  type ListingAvailabilityFields,
+  type ListingAvailabilityStatus
+} from "../listing-availability.js";
 import { copyOwnerImage, mapOwnerImageToDto, type OwnerImage, type OwnerImageDto } from "./owner-image-mapper.js";
 import {
   mapAmenityToDto,
@@ -43,6 +49,10 @@ export interface CreatedListingRow extends QueryResultRow {
   readonly area_name: unknown;
   readonly latitude: unknown;
   readonly longitude: unknown;
+  readonly availability_confirmed_at: unknown;
+  readonly availability_reminder_sent_at: unknown;
+  readonly availability_reminder_notified_at: unknown;
+  readonly availability_auto_paused_at: unknown;
   readonly created_at: unknown;
   readonly updated_at: unknown;
 }
@@ -65,6 +75,10 @@ export interface CreatedListing {
   readonly areaName: string | null;
   readonly latitude: number | null;
   readonly longitude: number | null;
+  readonly availabilityConfirmedAt: Date | null;
+  readonly availabilityReminderSentAt: Date | null;
+  readonly availabilityReminderNotifiedAt: Date | null;
+  readonly availabilityAutoPausedAt: Date | null;
   readonly createdAt: Date;
   readonly updatedAt: Date;
 }
@@ -82,6 +96,10 @@ export interface OwnerListingDetailBase {
   readonly areaName: string | null;
   readonly latitude: number | null;
   readonly longitude: number | null;
+  readonly availabilityConfirmedAt: Date | null;
+  readonly availabilityReminderSentAt: Date | null;
+  readonly availabilityReminderNotifiedAt: Date | null;
+  readonly availabilityAutoPausedAt: Date | null;
   readonly propertyType: LookupValue | null;
   readonly createdAt: Date;
   readonly updatedAt: Date;
@@ -106,6 +124,9 @@ export interface OwnerListingDetailDto {
   readonly areaName: string | null;
   readonly latitude: number | null;
   readonly longitude: number | null;
+  readonly availabilityStatus: ListingAvailabilityStatus;
+  readonly availabilityConfirmedAt: string | null;
+  readonly availabilityExpiresAt: string | null;
   readonly propertyType: PropertyTypeDto | null;
   readonly amenities: readonly AmenityDto[];
   readonly images: readonly OwnerImageDto[];
@@ -220,6 +241,22 @@ function mapBaseListingRow(
       areaName: row.area_name,
       latitude: coordinates.latitude,
       longitude: coordinates.longitude,
+      availabilityConfirmedAt: mapNullablePgTimestamptz(
+        row.availability_confirmed_at ?? null,
+        "availability_confirmed_at"
+      ),
+      availabilityReminderSentAt: mapNullablePgTimestamptz(
+        row.availability_reminder_sent_at ?? null,
+        "availability_reminder_sent_at"
+      ),
+      availabilityReminderNotifiedAt: mapNullablePgTimestamptz(
+        row.availability_reminder_notified_at ?? null,
+        "availability_reminder_notified_at"
+      ),
+      availabilityAutoPausedAt: mapNullablePgTimestamptz(
+        row.availability_auto_paused_at ?? null,
+        "availability_auto_paused_at"
+      ),
       createdAt: mapPgTimestamptz(row.created_at, "created_at"),
       updatedAt: mapPgTimestamptz(row.updated_at, "updated_at")
     });
@@ -246,6 +283,10 @@ export function mapCreatedListingRow(row: Readonly<CreatedListingRow>): CreatedL
     areaName: mapped.areaName,
     latitude: mapped.latitude,
     longitude: mapped.longitude,
+    availabilityConfirmedAt: mapped.availabilityConfirmedAt,
+    availabilityReminderSentAt: mapped.availabilityReminderSentAt,
+    availabilityReminderNotifiedAt: mapped.availabilityReminderNotifiedAt,
+    availabilityAutoPausedAt: mapped.availabilityAutoPausedAt,
     createdAt: mapped.createdAt,
     updatedAt: mapped.updatedAt
   });
@@ -267,6 +308,10 @@ export function mapPersistedOwnerListingRow(row: Readonly<PersistedOwnerListingR
       areaName: mapped.areaName,
       latitude: mapped.latitude,
       longitude: mapped.longitude,
+      availabilityConfirmedAt: mapped.availabilityConfirmedAt,
+      availabilityReminderSentAt: mapped.availabilityReminderSentAt,
+      availabilityReminderNotifiedAt: mapped.availabilityReminderNotifiedAt,
+      availabilityAutoPausedAt: mapped.availabilityAutoPausedAt,
       propertyType: mapPropertyType(row.property_type_code, row.property_type_label),
       createdAt: mapped.createdAt,
       updatedAt: mapped.updatedAt
@@ -298,6 +343,10 @@ export function createOwnerListingDetail(
       areaName: listing.areaName,
       latitude: listing.latitude,
       longitude: listing.longitude,
+      availabilityConfirmedAt: listing.availabilityConfirmedAt,
+      availabilityReminderSentAt: listing.availabilityReminderSentAt,
+      availabilityReminderNotifiedAt: listing.availabilityReminderNotifiedAt,
+      availabilityAutoPausedAt: listing.availabilityAutoPausedAt,
       propertyType: listing.propertyType === null ? null : copyLookup(listing.propertyType),
       amenities: mappedAmenities,
       images: mappedImages,
@@ -328,6 +377,10 @@ export function createOwnerListing(
     areaName: listing.areaName,
     latitude: listing.latitude,
     longitude: listing.longitude,
+    availabilityConfirmedAt: null,
+    availabilityReminderSentAt: null,
+    availabilityReminderNotifiedAt: null,
+    availabilityAutoPausedAt: null,
     propertyType,
     createdAt: listing.createdAt,
     updatedAt: listing.updatedAt
@@ -337,6 +390,7 @@ export function createOwnerListing(
 
 export function mapOwnerListingToDto(listing: Readonly<OwnerListingDetail>): OwnerListingDetailDto {
   try {
+    const availability = resolveListingAvailabilitySnapshot(listing as OwnerListingDetailBase & ListingAvailabilityFields);
     return Object.freeze({
       id: listing.id,
       status: listing.status,
@@ -350,6 +404,13 @@ export function mapOwnerListingToDto(listing: Readonly<OwnerListingDetail>): Own
       areaName: listing.areaName,
       latitude: listing.latitude,
       longitude: listing.longitude,
+      availabilityStatus: availability.availabilityStatus,
+      availabilityConfirmedAt:
+        availability.availabilityConfirmedAt === null
+          ? null
+          : formatApiTimestamp(availability.availabilityConfirmedAt),
+      availabilityExpiresAt:
+        availability.availabilityExpiresAt === null ? null : formatApiTimestamp(availability.availabilityExpiresAt),
       propertyType: listing.propertyType === null ? null : mapPropertyTypeToDto(listing.propertyType),
       amenities: Object.freeze(listing.amenities.map(mapAmenityToDto)),
       images: Object.freeze(listing.images.map(mapOwnerImageToDto)),

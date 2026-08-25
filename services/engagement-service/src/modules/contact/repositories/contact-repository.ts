@@ -18,7 +18,8 @@ export type NotificationEventType =
   | "LISTING_APPROVED"
   | "LISTING_REJECTED"
   | "LISTING_HIDDEN"
-  | "SAVED_SEARCH_MATCHED";
+  | "SAVED_SEARCH_MATCHED"
+  | "LISTING_AVAILABILITY_REMINDER";
 
 export type ListingModerationNotificationEvent = "LISTING_APPROVED" | "LISTING_REJECTED" | "LISTING_HIDDEN";
 
@@ -143,9 +144,13 @@ function mapNotification(row: Readonly<NotificationRow>): Notification {
   const inquiryEvent = ["INQUIRY_CREATED", "MESSAGE_CREATED", "INQUIRY_STATUS_CHANGED", "LEAD_REMINDER_DUE"].includes(
     eventType
   );
-  const listingEvent = ["LISTING_APPROVED", "LISTING_REJECTED", "LISTING_HIDDEN", "SAVED_SEARCH_MATCHED"].includes(
-    eventType
-  );
+  const listingEvent = [
+    "LISTING_APPROVED",
+    "LISTING_REJECTED",
+    "LISTING_HIDDEN",
+    "SAVED_SEARCH_MATCHED",
+    "LISTING_AVAILABILITY_REMINDER"
+  ].includes(eventType);
   const inquiryId = row.inquiry_id === null ? null : positiveInteger(row.inquiry_id, "notification.inquiry_id");
   const listingId = row.listing_id === null ? null : positiveInteger(row.listing_id, "notification.listing_id");
   if (
@@ -225,6 +230,14 @@ export interface ContactRepository {
       readonly eventType: ListingModerationNotificationEvent;
       readonly listingId: number;
       readonly moderationHistoryId: number;
+    }
+  ) => Promise<void>;
+  readonly createListingAvailabilityNotification: (
+    executor: SqlExecutor,
+    input: {
+      readonly recipientId: number;
+      readonly listingId: number;
+      readonly dedupeKey: string;
     }
   ) => Promise<void>;
   readonly listNotifications: (
@@ -388,6 +401,17 @@ export function createContactRepository(): ContactRepository {
           `/landlord/listings/${input.listingId}`,
           `listing-moderation:${input.moderationHistoryId}`
         ]
+      });
+    },
+
+    async createListingAvailabilityNotification(executor, input) {
+      await executeCommand(executor, {
+        text: `
+          INSERT INTO notifications (recipient_id, event_type, listing_id, resource_path, dedupe_key)
+          VALUES ($1, 'LISTING_AVAILABILITY_REMINDER', $2, $3, $4)
+          ON CONFLICT DO NOTHING
+        `,
+        values: [input.recipientId, input.listingId, `/landlord/listings/${input.listingId}`, input.dedupeKey]
       });
     },
 

@@ -469,8 +469,8 @@ async function seedListing(demo, existingListingIds) {
           `
             INSERT INTO listings (
               landlord_id, property_type_id, status, business_status, title, description, monthly_rent, room_area_sqm,
-              max_occupants, address_text, area_name, latitude, longitude
-            ) VALUES ($1, $2, $3::listing_status, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
+              max_occupants, availability_confirmed_at, address_text, area_name, latitude, longitude
+            ) VALUES ($1, $2, $3::listing_status, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
             RETURNING id
           `,
           [
@@ -483,6 +483,7 @@ async function seedListing(demo, existingListingIds) {
             listing.monthlyRent,
             listing.roomAreaSqm,
             listing.maxOccupants,
+            listing.status === "APPROVED" ? new Date() : null,
             listing.addressText,
             listing.areaName,
             listing.latitude,

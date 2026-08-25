@@ -69,7 +69,11 @@ export function createListingBusinessStatusService(
             listingId,
             landlordId: principal.userId,
             expectedStatus: current.businessStatus,
-            nextStatus: input.businessStatus
+            nextStatus: input.businessStatus,
+            resetAvailability:
+              current.status === "APPROVED" &&
+              (input.businessStatus === "AVAILABLE" || input.businessStatus === "UNKNOWN"),
+            clearAutoPause: current.status === "APPROVED" && input.businessStatus !== "AVAILABLE" && input.businessStatus !== "UNKNOWN"
           });
           if (!updated) {
             throw new ApplicationError("CONCURRENT_MODIFICATION", concurrentModificationMessage);

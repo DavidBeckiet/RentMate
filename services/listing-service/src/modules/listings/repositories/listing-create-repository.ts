@@ -135,6 +135,10 @@ export function createListingCreateRepository(executor: SqlExecutor): ListingCre
               area_name,
               latitude,
               longitude,
+              availability_confirmed_at,
+              availability_reminder_sent_at,
+              availability_reminder_notified_at,
+              availability_auto_paused_at,
               created_at,
               updated_at
           `,

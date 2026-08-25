@@ -83,6 +83,9 @@ function detail(overrides: Partial<OwnerDetail> = {}): OwnerDetail {
     areaName: "Quận 1",
     latitude: 10.7731,
     longitude: 106.7032,
+    availabilityStatus: "NOT_APPLICABLE",
+    availabilityConfirmedAt: null,
+    availabilityExpiresAt: null,
     propertyType: { code: "OLD_STUDIO", label: "Studio cũ" },
     amenities: [{ code: "OLD_WIFI", label: "Wi-Fi cũ" }],
     images: [

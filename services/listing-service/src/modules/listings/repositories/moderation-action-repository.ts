@@ -78,7 +78,18 @@ export function createModerationActionRepository(executor: SqlExecutor): Moderat
 
     async transitionStatus(listingId: number, transition: ModerationStatusTransition) {
       const affected = await executeCommand(executor, {
-        text: "UPDATE listings SET status = $2::listing_status, updated_at = CURRENT_TIMESTAMP WHERE id = $1 AND status = $3::listing_status",
+        text: `
+          UPDATE listings
+          SET
+            status = $2::listing_status,
+            availability_confirmed_at = CASE WHEN $2::listing_status = 'APPROVED' THEN CURRENT_TIMESTAMP ELSE availability_confirmed_at END,
+            availability_reminder_sent_at = CASE WHEN $2::listing_status = 'APPROVED' THEN NULL ELSE availability_reminder_sent_at END,
+            availability_reminder_notified_at = CASE WHEN $2::listing_status = 'APPROVED' THEN NULL ELSE availability_reminder_notified_at END,
+            availability_auto_paused_at = CASE WHEN $2::listing_status = 'APPROVED' THEN NULL ELSE availability_auto_paused_at END,
+            updated_at = CURRENT_TIMESTAMP
+          WHERE id = $1
+            AND status = $3::listing_status
+        `,
         values: [listingId, transition.nextStatus, transition.expectedStatus]
       });
       if (affected !== 0 && affected !== 1) {

@@ -66,7 +66,19 @@ export function createListingLifecycleActionRepository(executor: SqlExecutor): L
     },
     async transitionStatus(listingId: number, landlordId: number, transition: ListingAvailabilityTransition) {
       const affected = await executeCommand(executor, {
-        text: `UPDATE listings SET status = $1::listing_status, updated_at = CURRENT_TIMESTAMP WHERE id = $2 AND landlord_id = $3 AND status = $4::listing_status`,
+        text: `
+          UPDATE listings
+          SET
+            status = $1::listing_status,
+            availability_confirmed_at = CASE WHEN $1::listing_status = 'APPROVED' THEN CURRENT_TIMESTAMP ELSE availability_confirmed_at END,
+            availability_reminder_sent_at = CASE WHEN $1::listing_status = 'APPROVED' THEN NULL ELSE availability_reminder_sent_at END,
+            availability_reminder_notified_at = CASE WHEN $1::listing_status = 'APPROVED' THEN NULL ELSE availability_reminder_notified_at END,
+            availability_auto_paused_at = CASE WHEN $1::listing_status = 'APPROVED' THEN NULL ELSE availability_auto_paused_at END,
+            updated_at = CURRENT_TIMESTAMP
+          WHERE id = $2
+            AND landlord_id = $3
+            AND status = $4::listing_status
+        `,
         values: [transition.nextStatus, listingId, landlordId, transition.expectedStatus]
       });
       if (affected !== 0 && affected !== 1) {

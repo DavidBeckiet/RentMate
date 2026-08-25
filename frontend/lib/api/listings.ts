@@ -70,6 +70,12 @@ export function createListingsApi(transport: ApiTransport) {
         signal
       }),
 
+    confirmAvailability: (listingId: number, signal?: AbortSignal): Promise<OwnerListingDetail> =>
+      transport.object(`/api/v1/landlord/listings/${listingId}/confirm-availability`, {
+        method: "POST",
+        signal
+      }),
+
     deleteOwned: (listingId: number, signal?: AbortSignal): Promise<void> =>
       transport.void(`/api/v1/landlord/listings/${listingId}`, { method: "DELETE", signal }),
 

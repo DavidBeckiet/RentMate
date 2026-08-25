@@ -2,6 +2,7 @@ export type UserRole = "TENANT" | "LANDLORD" | "ADMIN";
 
 export type ListingStatus = "DRAFT" | "PENDING" | "APPROVED" | "REJECTED" | "INACTIVE" | "HIDDEN";
 export type ListingBusinessStatus = "AVAILABLE" | "PAUSED" | "RENTED" | "UNKNOWN";
+export type ListingAvailabilityStatus = "NOT_APPLICABLE" | "CURRENT" | "REMINDER_DUE" | "AUTO_PAUSED";
 export type InquiryStatus = "NEW" | "CONTACTED" | "CLOSED";
 export type NotificationEventType =
   | "INQUIRY_CREATED"
@@ -11,7 +12,8 @@ export type NotificationEventType =
   | "LISTING_APPROVED"
   | "LISTING_REJECTED"
   | "LISTING_HIDDEN"
-  | "SAVED_SEARCH_MATCHED";
+  | "SAVED_SEARCH_MATCHED"
+  | "LISTING_AVAILABILITY_REMINDER";
 
 export type ModerationAction = "APPROVE" | "REJECT" | "HIDE" | "RESTORE";
 
@@ -89,6 +91,9 @@ export interface OwnerListingSummary {
   readonly monthlyRent: number | null;
   readonly maxOccupants: number | null;
   readonly areaName: string | null;
+  readonly availabilityStatus: ListingAvailabilityStatus;
+  readonly availabilityConfirmedAt: string | null;
+  readonly availabilityExpiresAt: string | null;
   readonly propertyType: PropertyType | null;
   readonly coverImage: OwnerImage | null;
   readonly currentModerationReason: string | null;
@@ -108,6 +113,9 @@ export interface OwnerListingDetail {
   readonly areaName: string | null;
   readonly latitude: number | null;
   readonly longitude: number | null;
+  readonly availabilityStatus: ListingAvailabilityStatus;
+  readonly availabilityConfirmedAt: string | null;
+  readonly availabilityExpiresAt: string | null;
   readonly propertyType: PropertyType | null;
   readonly amenities: readonly Amenity[];
   readonly images: readonly OwnerImage[];

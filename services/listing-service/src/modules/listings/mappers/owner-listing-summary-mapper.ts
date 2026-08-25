@@ -1,11 +1,19 @@
 import type { QueryResultRow } from "pg";
-import { mapNullablePgWholeNumeric, mapPgTimestamptz } from "../../../../../shared/src/runtime/db/value-mappers.js";
+import {
+  mapNullablePgTimestamptz,
+  mapNullablePgWholeNumeric,
+  mapPgTimestamptz
+} from "../../../../../shared/src/runtime/db/value-mappers.js";
 import { formatApiTimestamp } from "../../../../../shared/src/runtime/shared/mapping/api-values.js";
 import { resolveCurrentModerationReason } from "../current-moderation-reason.js";
 import { isListingBusinessStatus, type ListingBusinessStatus } from "../../../../../shared/listing-business-status.js";
 import { mapOwnerImageRow, mapOwnerImageToDto, type OwnerImage, type OwnerImageDto } from "./owner-image-mapper.js";
 import { mapLookupValueRow, mapPropertyTypeToDto, type LookupValue, type PropertyTypeDto } from "./lookup-mapper.js";
 import { isListingStatus, type ListingStatus } from "./owner-listing-mapper.js";
+import {
+  resolveListingAvailabilitySnapshot,
+  type ListingAvailabilityStatus
+} from "../listing-availability.js";
 
 const maximumListingId = 2_147_483_647;
 
@@ -17,6 +25,10 @@ export interface OwnerListingSummaryRow extends QueryResultRow {
   readonly monthly_rent: unknown;
   readonly max_occupants: unknown;
   readonly area_name: unknown;
+  readonly availability_confirmed_at: unknown;
+  readonly availability_reminder_sent_at: unknown;
+  readonly availability_reminder_notified_at: unknown;
+  readonly availability_auto_paused_at: unknown;
   readonly updated_at: unknown;
   readonly property_type_code: unknown;
   readonly property_type_label: unknown;
@@ -40,6 +52,10 @@ export interface OwnerListingSummary {
   readonly monthlyRent: number | null;
   readonly maxOccupants: number | null;
   readonly areaName: string | null;
+  readonly availabilityConfirmedAt: Date | null;
+  readonly availabilityReminderSentAt: Date | null;
+  readonly availabilityReminderNotifiedAt: Date | null;
+  readonly availabilityAutoPausedAt: Date | null;
   readonly propertyType: LookupValue | null;
   readonly coverImage: OwnerImage | null;
   readonly currentModerationReason: string | null;
@@ -54,6 +70,9 @@ export interface OwnerListingSummaryDto {
   readonly monthlyRent: number | null;
   readonly maxOccupants: number | null;
   readonly areaName: string | null;
+  readonly availabilityStatus: ListingAvailabilityStatus;
+  readonly availabilityConfirmedAt: string | null;
+  readonly availabilityExpiresAt: string | null;
   readonly propertyType: PropertyTypeDto | null;
   readonly coverImage: OwnerImageDto | null;
   readonly currentModerationReason: string | null;
@@ -138,6 +157,22 @@ export function mapOwnerListingSummaryRow(row: Readonly<OwnerListingSummaryRow>)
       monthlyRent: mapNullablePgWholeNumeric(row.monthly_rent, "monthly_rent"),
       maxOccupants: mapMaxOccupants(row.max_occupants),
       areaName: row.area_name as string | null,
+      availabilityConfirmedAt: mapNullablePgTimestamptz(
+        row.availability_confirmed_at ?? null,
+        "availability_confirmed_at"
+      ),
+      availabilityReminderSentAt: mapNullablePgTimestamptz(
+        row.availability_reminder_sent_at ?? null,
+        "availability_reminder_sent_at"
+      ),
+      availabilityReminderNotifiedAt: mapNullablePgTimestamptz(
+        row.availability_reminder_notified_at ?? null,
+        "availability_reminder_notified_at"
+      ),
+      availabilityAutoPausedAt: mapNullablePgTimestamptz(
+        row.availability_auto_paused_at ?? null,
+        "availability_auto_paused_at"
+      ),
       propertyType: mapPropertyType(row.property_type_code, row.property_type_label),
       coverImage: mapCoverImage(row),
       currentModerationReason: resolveCurrentModerationReason(row.status, row.current_moderation_reason),
@@ -153,6 +188,7 @@ export function mapOwnerListingSummaryRow(row: Readonly<OwnerListingSummaryRow>)
 
 export function mapOwnerListingSummaryToDto(summary: Readonly<OwnerListingSummary>): OwnerListingSummaryDto {
   try {
+    const availability = resolveListingAvailabilitySnapshot(summary);
     return Object.freeze({
       id: summary.id,
       status: summary.status,
@@ -161,6 +197,13 @@ export function mapOwnerListingSummaryToDto(summary: Readonly<OwnerListingSummar
       monthlyRent: summary.monthlyRent,
       maxOccupants: summary.maxOccupants,
       areaName: summary.areaName,
+      availabilityStatus: availability.availabilityStatus,
+      availabilityConfirmedAt:
+        availability.availabilityConfirmedAt === null
+          ? null
+          : formatApiTimestamp(availability.availabilityConfirmedAt),
+      availabilityExpiresAt:
+        availability.availabilityExpiresAt === null ? null : formatApiTimestamp(availability.availabilityExpiresAt),
       propertyType: summary.propertyType === null ? null : mapPropertyTypeToDto(summary.propertyType),
       coverImage: summary.coverImage === null ? null : mapOwnerImageToDto(summary.coverImage),
       currentModerationReason: resolveCurrentModerationReason(summary.status, summary.currentModerationReason),

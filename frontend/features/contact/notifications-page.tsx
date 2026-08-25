@@ -16,6 +16,9 @@ function notificationLabel(notification: Notification): string {
   if (notification.eventType === "LISTING_REJECTED") return "Tin đăng cần được chỉnh sửa.";
   if (notification.eventType === "LISTING_HIDDEN") return "Tin đăng đã bị ẩn khỏi kết quả tìm kiếm.";
   if (notification.eventType === "SAVED_SEARCH_MATCHED") return "Có tin đăng mới phù hợp với bộ lọc đã lưu.";
+  if (notification.eventType === "LISTING_AVAILABILITY_REMINDER") {
+    return "Tin đăng cần cập nhật tình trạng còn phòng.";
+  }
   return "Trạng thái yêu cầu đã được cập nhật.";
 }
 

@@ -25,6 +25,9 @@ import {
 import { createListingSubmitService } from "./modules/listings/services/listing-submit-service.js";
 import { createListingUpdateService } from "./modules/listings/services/listing-update-service.js";
 import { createListingBusinessStatusService } from "./modules/listings/services/listing-business-status-service.js";
+import { createListingAvailabilityService } from "./modules/listings/services/listing-availability-service.js";
+import { createListingAvailabilityRepository } from "./modules/listings/repositories/listing-availability-repository.js";
+import { createListingAvailabilityScheduler } from "./modules/listings/services/listing-availability-scheduler.js";
 import { createLookupRepository } from "./modules/listings/repositories/lookup-repository.js";
 import { createModerationActionService } from "./modules/listings/services/moderation-action-service.js";
 import { createOwnerListingReadRepository } from "./modules/listings/repositories/owner-listing-read-repository.js";
@@ -122,6 +125,18 @@ async function startListingService(): Promise<void> {
   const cloudinaryClient = createCloudinaryClient(config.cloudinary);
   const listingDeleteCleanupHandoff: ListingDeleteCleanupHandoff =
     createListingDeleteCloudinaryCleanup(cloudinaryClient);
+  const listingAvailabilityRepository = createListingAvailabilityRepository();
+  const listingAvailabilityService = createListingAvailabilityService({ transactionRunner });
+  const listingAvailabilityScheduler = createListingAvailabilityScheduler({
+    repository: listingAvailabilityRepository,
+    transactionRunner: { run: transactionRunner },
+    notificationClient: moderationNotificationClient,
+    logger,
+    reminderDays: config.listingAvailability.reminderDays,
+    graceDays: config.listingAvailability.graceDays,
+    intervalMs: config.listingAvailability.scanIntervalMs,
+    batchSize: config.listingAvailability.batchSize
+  });
   const app = createApp({
     frontendOrigin: config.frontendOrigin,
     logger,
@@ -167,6 +182,7 @@ async function startListingService(): Promise<void> {
           notificationClient: moderationNotificationClient,
           logger
         }),
+        listingAvailabilityService,
         listingSubmitService: createListingSubmitService({ transactionRunner }),
         listingLifecycleActionService: createListingLifecycleActionService({
           transactionRunner,
@@ -280,8 +296,16 @@ async function startListingService(): Promise<void> {
     return;
   }
 
+  listingAvailabilityScheduler.start();
   logger.info("Listing service started", { nodeEnvironment: config.nodeEnv, port: config.port });
-  const shutdown = createShutdownHandler({ server, closeDatabase: closeRuntimePool, logger });
+  const shutdown = createShutdownHandler({
+    server,
+    closeDatabase: async () => {
+      listingAvailabilityScheduler.stop();
+      await closeRuntimePool();
+    },
+    logger
+  });
   const handleSignal = (signal: NodeJS.Signals) => {
     void shutdown(signal).catch(() => {
       process.exitCode = 1;

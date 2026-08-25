@@ -12,6 +12,7 @@ import { OwnerImageManager } from "./owner-image-manager";
 import { OwnerLifecycleActions } from "./owner-lifecycle-actions";
 import { OwnerListingEditor, type LookupResource, type OwnerEditorFeedback } from "./owner-listing-editor";
 import { OwnerBusinessStatusControl } from "./owner-business-status-control";
+import { OwnerListingAvailabilityControl } from "./owner-listing-availability-control";
 import styles from "./owner-listing-detail.module.css";
 
 const maximumListingId = 2_147_483_647;
@@ -252,6 +253,8 @@ export function OwnerListingDetail({ listingId }: { readonly listingId: string }
       />
 
       <OwnerBusinessStatusControl detail={detail} disabled={blocked} onDetailChange={replaceDetail} />
+
+      <OwnerListingAvailabilityControl detail={detail} disabled={blocked} onDetailChange={replaceDetail} />
 
       <OwnerImageManager
         detail={detail}

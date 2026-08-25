@@ -47,6 +47,9 @@ function detail(status: ListingStatus, overrides: Partial<OwnerListingDetail> = 
     areaName: "Quận 1",
     latitude: 10.77,
     longitude: 106.7,
+    availabilityStatus: "NOT_APPLICABLE",
+    availabilityConfirmedAt: null,
+    availabilityExpiresAt: null,
     propertyType: { code: "STUDIO", label: "Studio" },
     amenities: [],
     images: [

@@ -520,7 +520,7 @@ Các hạng mục tiếp theo được triển khai theo thứ tự:
    - Đây là chức năng hiển thị thông tin, chưa triển khai thanh toán hoặc đặt cọc online.
 4. **Tự động nhắc listing cũ**
    - Nhắc landlord xác nhận tin còn hiệu lực.
-   - Có thể chuyển tin lâu ngày sang `PAUSED` sau khi chốt thời hạn và lifecycle V2.
+   - Đã chốt mốc mặc định 30 ngày và tự chuyển sang `PAUSED` sau thêm 7 ngày không phản hồi.
 5. **Báo cáo và chặn người dùng/cuộc trò chuyện**
    - Bổ sung trust & safety cho spam, lừa đảo và hành vi không phù hợp trong contact flow.
    - Giữ riêng với report listing hiện có.
@@ -626,7 +626,7 @@ Hoàn thiện giao diện hiện có, không redesign toàn bộ. Các luồng c
 
 #### Database và API
 
-1. Listing Service thêm migration kế tiếp sau `max_occupants`, dự kiến `0007`, gồm `availability_confirmed_at`, trạng thái gửi nhắc và dấu thời gian auto-pause cần thiết cùng index truy vấn due rows.
+1. Listing Service thêm migration `0007`, gồm `availability_confirmed_at`, trạng thái gửi nhắc và dấu thời gian auto-pause cần thiết cùng index truy vấn due rows.
 2. Backfill listing đang public từ timestamp hiện có theo một quy tắc được ghi trong migration; không sửa migration cũ.
 3. Thêm endpoint owner-scoped `POST /api/v1/landlord/listings/:listingId/confirm-availability`.
 4. Owner DTO trả `availabilityConfirmedAt`, `availabilityExpiresAt` và trạng thái cần xác nhận; public DTO không lộ timestamp vận hành nội bộ.
@@ -657,7 +657,7 @@ Hoàn thiện giao diện hiện có, không redesign toàn bộ. Các luồng c
 
 #### Database và API
 
-1. Engagement migration kế tiếp, dự kiến `0012`, tạo:
+1. Engagement migration kế tiếp là `0013`, tạo:
    - `contact_blocks` với cặp blocker/blocked duy nhất và inquiry nguồn.
    - `contact_reports` với message được báo cáo dạng optional, category `SPAM`, `FRAUD`, `HARASSMENT`, `INAPPROPRIATE`, `OTHER`; status `OPEN`, `INVESTIGATING`, `RESOLVED`, `DISMISSED`.
    - `contact_report_events` append-only để lưu lịch sử xử lý admin.

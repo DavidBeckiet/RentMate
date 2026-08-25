@@ -1,4 +1,5 @@
 export type ListingModerationNotificationEvent = "LISTING_APPROVED" | "LISTING_REJECTED" | "LISTING_HIDDEN";
+export type ListingAvailabilityNotificationKind = "REMINDER_DUE" | "AUTO_PAUSED";
 
 export interface EngagementNotificationClientOptions {
   readonly baseUrl: string;
@@ -18,9 +19,17 @@ export interface ListingPublishedNotificationInput {
   readonly listingId: number;
 }
 
+export interface ListingAvailabilityNotificationInput {
+  readonly landlordId: number;
+  readonly listingId: number;
+  readonly kind: ListingAvailabilityNotificationKind;
+  readonly dedupeKey: string;
+}
+
 export interface EngagementNotificationClient {
   readonly notifyListingModerationResult: (input: ListingModerationNotificationInput) => Promise<void>;
   readonly notifyListingPublished: (input: ListingPublishedNotificationInput) => Promise<void>;
+  readonly notifyListingAvailabilityReminder: (input: ListingAvailabilityNotificationInput) => Promise<void>;
 }
 
 function normalizeBaseUrl(value: string): string {
@@ -72,6 +81,27 @@ export function createEngagementNotificationClient(
         if (!response.ok) throw new Error("Engagement service saved search notification request failed.");
       } catch {
         throw new Error("Engagement service saved search notification request failed.");
+      } finally {
+        clearTimeout(timeout);
+      }
+    },
+
+    async notifyListingAvailabilityReminder(input: ListingAvailabilityNotificationInput): Promise<void> {
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), timeoutMs);
+      try {
+        const response = await fetcher(`${baseUrl}/internal/v1/notifications/listing-availability`, {
+          method: "POST",
+          headers: {
+            "content-type": "application/json",
+            "x-rentmate-internal-token": options.internalToken
+          },
+          body: JSON.stringify(input),
+          signal: controller.signal
+        });
+        if (!response.ok) throw new Error("Engagement service listing availability notification request failed.");
+      } catch {
+        throw new Error("Engagement service listing availability notification request failed.");
       } finally {
         clearTimeout(timeout);
       }

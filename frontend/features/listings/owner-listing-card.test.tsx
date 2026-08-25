@@ -16,6 +16,9 @@ function listing(overrides: Partial<OwnerListingSummary> = {}): OwnerListingSumm
     monthlyRent: 7_500_000,
     maxOccupants: null,
     areaName: "Quận 1",
+    availabilityStatus: "NOT_APPLICABLE",
+    availabilityConfirmedAt: null,
+    availabilityExpiresAt: null,
     propertyType: { code: "STUDIO", label: "Studio" },
     coverImage: {
       id: 9,
