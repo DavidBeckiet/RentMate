@@ -1,6 +1,9 @@
 import type {
   ApiPage,
   CreateInquiryBody,
+  CreateContactReportBody,
+  ContactBlockState,
+  ContactReportReceipt,
   CreateReviewBody,
   Inquiry,
   InquiryMessage,
@@ -24,6 +27,16 @@ export function createContactApi(transport: ApiTransport) {
       transport.object(`/api/v1/inquiries/${inquiryId}`, { signal }),
     sendMessage: (inquiryId: number, body: string, signal?: AbortSignal): Promise<InquiryMessage> =>
       transport.object(`/api/v1/inquiries/${inquiryId}/messages`, { method: "POST", json: { body }, signal }),
+    blockInquiry: (inquiryId: number, signal?: AbortSignal): Promise<ContactBlockState> =>
+      transport.object(`/api/v1/inquiries/${inquiryId}/block`, { method: "POST", json: {}, signal }),
+    unblockInquiry: (inquiryId: number, signal?: AbortSignal): Promise<ContactBlockState> =>
+      transport.object(`/api/v1/inquiries/${inquiryId}/block`, { method: "DELETE", signal }),
+    createContactReport: (
+      inquiryId: number,
+      body: CreateContactReportBody,
+      signal?: AbortSignal
+    ): Promise<ContactReportReceipt> =>
+      transport.object(`/api/v1/inquiries/${inquiryId}/reports`, { method: "POST", json: body, signal }),
     updateInquiryStatus: (inquiryId: number, status: InquiryStatus, signal?: AbortSignal): Promise<Inquiry> =>
       transport.object(`/api/v1/inquiries/${inquiryId}/status`, { method: "PATCH", json: { status }, signal }),
     listNotifications: (query: PaginationQuery = {}, signal?: AbortSignal): Promise<ApiPage<Notification>> =>

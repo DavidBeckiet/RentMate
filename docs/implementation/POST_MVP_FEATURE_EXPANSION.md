@@ -507,6 +507,8 @@ Các hạng mục tiếp theo được triển khai theo thứ tự:
 
 > Quyết định ngày 25/08/2026: triển khai các mục 1, 2, 4, 5 và 6. Mục 3 — minh bạch tổng chi phí — tạm hoãn và không phải dependency của mục 4.
 
+> Cập nhật ngày 25/08/2026: mục 1, 2, 4 và 5 đã hoàn thành, đã kiểm tra qua Gateway và mục 3 tiếp tục tạm hoãn. Mục 6 là phần kế tiếp.
+
 1. **Rà soát và sửa giao diện responsive**
    - Kiểm tra trang tìm kiếm, chi tiết listing, form đăng tin và dashboard landlord/admin.
    - Bắt buộc kiểm tra các mốc khoảng 375px, 768px, 1024px và desktop.

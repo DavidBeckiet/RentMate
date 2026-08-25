@@ -7,7 +7,7 @@ import { ErrorState, LoadingState } from "../../components/ui/feedback-states";
 import { api, ApiError } from "../../lib/api/client";
 import { connectInquiryRealtime, type InquiryRealtimeConnectionStatus } from "../../lib/api/inquiry-realtime";
 import { useAuth } from "../../lib/auth/auth-provider";
-import type { Inquiry } from "../../types/api";
+import type { ContactReportCategory, Inquiry } from "../../types/api";
 import { TenantReviewPanel } from "../reviews/tenant-review-panel";
 
 function parseId(value: string): number | null {
@@ -34,6 +34,14 @@ const realtimeStatusLabels: Readonly<Record<InquiryRealtimeConnectionStatus, str
   unsupported: "Trình duyệt không hỗ trợ kết nối trực tiếp; bạn vẫn có thể gửi tin"
 });
 
+const contactReportCategories: readonly { readonly value: ContactReportCategory; readonly label: string }[] = [
+  { value: "SPAM", label: "Spam hoặc quảng cáo" },
+  { value: "FRAUD", label: "Nghi ngờ lừa đảo" },
+  { value: "HARASSMENT", label: "Quấy rối" },
+  { value: "INAPPROPRIATE", label: "Nội dung không phù hợp" },
+  { value: "OTHER", label: "Lý do khác" }
+];
+
 export function InquiryDetailPage({ inquiryId }: Readonly<{ inquiryId: string }>) {
   const id = useMemo(() => parseId(inquiryId), [inquiryId]);
   const { status: authStatus, user } = useAuth();
@@ -43,6 +51,14 @@ export function InquiryDetailPage({ inquiryId }: Readonly<{ inquiryId: string }>
   const [message, setMessage] = useState("");
   const [pending, setPending] = useState(false);
   const [statusPending, setStatusPending] = useState(false);
+  const [safetyPending, setSafetyPending] = useState(false);
+  const [safetyError, setSafetyError] = useState<string | null>(null);
+  const [safetyMenuOpen, setSafetyMenuOpen] = useState(false);
+  const [reportOpen, setReportOpen] = useState(false);
+  const [reportCategory, setReportCategory] = useState<ContactReportCategory>("SPAM");
+  const [reportDetails, setReportDetails] = useState("");
+  const [reportMessageId, setReportMessageId] = useState("");
+  const [reportSubmitted, setReportSubmitted] = useState(false);
   const [realtimeStatus, setRealtimeStatus] = useState<InquiryRealtimeConnectionStatus>("connecting");
 
   const load = useCallback(() => {
@@ -158,6 +174,55 @@ export function InquiryDetailPage({ inquiryId }: Readonly<{ inquiryId: string }>
     }
   };
 
+  const updateBlockState = (nextState: { readonly canSendMessage: boolean; readonly blockedByCurrentUser: boolean }) => {
+    setInquiry((current) => (current === null ? current : { ...current, ...nextState }));
+  };
+
+  const toggleBlock = async () => {
+    if (!inquiry || safetyPending) return;
+    if (!inquiry.blockedByCurrentUser && !window.confirm("Chặn liên hệ này? Hai bên sẽ không thể gửi tin nhắn mới.")) return;
+    setSafetyPending(true);
+    setSafetyError(null);
+    try {
+      const nextState = inquiry.blockedByCurrentUser
+        ? await api.contact.unblockInquiry(inquiry.id)
+        : await api.contact.blockInquiry(inquiry.id);
+      updateBlockState(nextState);
+      setSafetyMenuOpen(false);
+    } catch (caught: unknown) {
+      setSafetyError(caught instanceof ApiError ? "Chưa thể cập nhật trạng thái chặn. Vui lòng thử lại." : "Đã có lỗi xảy ra.");
+    } finally {
+      setSafetyPending(false);
+    }
+  };
+
+  const submitReport = async (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    if (!inquiry || safetyPending) return;
+    setSafetyPending(true);
+    setSafetyError(null);
+    try {
+      await api.contact.createContactReport(inquiry.id, {
+        category: reportCategory,
+        details: reportDetails.trim() || null,
+        messageId: reportMessageId ? Number(reportMessageId) : null
+      });
+      setReportSubmitted(true);
+      setReportOpen(false);
+      setSafetyMenuOpen(false);
+      setReportDetails("");
+      setReportMessageId("");
+    } catch (caught: unknown) {
+      setSafetyError(
+        caught instanceof ApiError && caught.status === 409
+          ? "Bạn đã có một báo cáo đang được xử lý cho cuộc trò chuyện này."
+          : "Chưa thể gửi báo cáo. Vui lòng thử lại."
+      );
+    } finally {
+      setSafetyPending(false);
+    }
+  };
+
   const isLandlord = user.role === "LANDLORD";
   return (
     <section className="rm-workspace my-4 space-y-8" aria-labelledby="inquiry-detail-heading">
@@ -203,6 +268,119 @@ export function InquiryDetailPage({ inquiryId }: Readonly<{ inquiryId: string }>
           </div>
         ) : null}
       </header>
+      <div className="flex flex-col items-end gap-3">
+        <div className="relative">
+          <Button
+            variant="secondary"
+            aria-expanded={safetyMenuOpen}
+            aria-haspopup="menu"
+            onClick={() => setSafetyMenuOpen((open) => !open)}
+          >
+            Thao tác khác
+          </Button>
+          {safetyMenuOpen ? (
+            <div
+              className="absolute right-0 z-20 mt-2 w-56 border-2 border-heroDark-950 bg-rent-surface p-2 shadow-glass"
+              role="menu"
+            >
+              <Button
+                variant="secondary"
+                className="w-full justify-start text-left"
+                pending={safetyPending}
+                onClick={() => void toggleBlock()}
+              >
+                {inquiry.blockedByCurrentUser ? "Bỏ chặn liên hệ" : "Chặn liên hệ"}
+              </Button>
+              <Button
+                variant="secondary"
+                className="mt-2 w-full justify-start text-left"
+                disabled={safetyPending}
+                onClick={() => {
+                  setReportOpen(true);
+                  setSafetyMenuOpen(false);
+                  setReportSubmitted(false);
+                }}
+              >
+                Báo cáo cuộc trò chuyện
+              </Button>
+            </div>
+          ) : null}
+        </div>
+        {reportSubmitted ? (
+          <p role="status" className="w-full border-2 border-heroDark-950 bg-rent-accent p-3 text-sm font-bold">
+            Đã gửi báo cáo. RentMate sẽ xem xét thông tin này.
+          </p>
+        ) : null}
+        {safetyError ? (
+          <p role="alert" className="w-full border-2 border-heroDark-950 bg-rent-coral p-3 text-sm font-bold">
+            {safetyError}
+          </p>
+        ) : null}
+      </div>
+      {reportOpen ? (
+        <form
+          onSubmit={(event) => void submitReport(event)}
+          className="space-y-4 border-2 border-heroDark-950 bg-rent-surface p-5 shadow-glass"
+          aria-label="Báo cáo cuộc trò chuyện"
+        >
+          <div>
+            <h2 className="font-display text-xl font-bold">Báo cáo cuộc trò chuyện</h2>
+            <p className="mt-1 text-sm text-rent-secondary">
+              Chỉ gửi báo cáo khi bạn phát hiện spam, lừa đảo hoặc hành vi không phù hợp.
+            </p>
+          </div>
+          <label className="block text-sm font-bold" htmlFor="contact-report-category">
+            Lý do
+            <select
+              id="contact-report-category"
+              value={reportCategory}
+              onChange={(event) => setReportCategory(event.target.value as ContactReportCategory)}
+              className="mt-2 block min-h-11 w-full border-2 border-heroDark-950 bg-white px-3"
+            >
+              {contactReportCategories.map((category) => (
+                <option key={category.value} value={category.value}>
+                  {category.label}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label className="block text-sm font-bold" htmlFor="contact-report-message">
+            Tin nhắn liên quan (không bắt buộc)
+            <select
+              id="contact-report-message"
+              value={reportMessageId}
+              onChange={(event) => setReportMessageId(event.target.value)}
+              className="mt-2 block min-h-11 w-full border-2 border-heroDark-950 bg-white px-3"
+            >
+              <option value="">Toàn bộ cuộc trò chuyện</option>
+              {inquiry.messages.map((item) => (
+                <option key={item.id} value={item.id}>
+                  Tin #{item.id} · {item.senderRole === "TENANT" ? "Người thuê" : "Chủ trọ"}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label className="block text-sm font-bold" htmlFor="contact-report-details">
+            Chi tiết (không bắt buộc)
+            <textarea
+              id="contact-report-details"
+              value={reportDetails}
+              onChange={(event) => setReportDetails(event.target.value)}
+              maxLength={2000}
+              rows={4}
+              className="mt-2 block w-full resize-y border-2 border-heroDark-950 bg-white p-3 font-medium"
+            />
+          </label>
+          <div className="flex flex-wrap gap-3">
+            <Button type="submit" pending={safetyPending} pendingLabel="Đang gửi…">
+              Gửi báo cáo
+            </Button>
+            <Button variant="secondary" type="button" disabled={safetyPending} onClick={() => setReportOpen(false)}>
+              Hủy
+            </Button>
+          </div>
+        </form>
+      ) : null}
       {error ? (
         <p role="alert" className="border-2 border-heroDark-950 bg-rent-coral p-4 text-sm font-bold">
           Không thể cập nhật cuộc trò chuyện. Vui lòng thử lại.
@@ -230,6 +408,10 @@ export function InquiryDetailPage({ inquiryId }: Readonly<{ inquiryId: string }>
       {inquiry.status === "CLOSED" ? (
         <p className="border-2 border-heroDark-950 bg-slate-100 p-4 text-sm font-bold text-slate-600">
           Yêu cầu đã đóng, không thể gửi thêm tin nhắn.
+        </p>
+      ) : !inquiry.canSendMessage ? (
+        <p className="border-2 border-heroDark-950 bg-slate-100 p-4 text-sm font-bold text-slate-600">
+          Cuộc trò chuyện đang bị giới hạn, không thể gửi tin nhắn mới.
         </p>
       ) : (
         <form

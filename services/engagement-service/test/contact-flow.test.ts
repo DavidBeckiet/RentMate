@@ -12,6 +12,7 @@ import type {
   InquiryMessage,
   Notification
 } from "../src/modules/contact/repositories/contact-repository.js";
+import type { ContactSafetyRepository } from "../src/modules/contact/repositories/contact-safety-repository.js";
 import type {
   ContactCollectionQuery,
   CreateInquiryInput,
@@ -203,10 +204,16 @@ function createContactHarness(): ContactHarness {
         })
       ])
   };
+  const safetyRepository = {
+    getBlockState: async () =>
+      Object.freeze({ blockedByCurrentUser: false, blockedByOtherUser: false, canSendMessage: true }),
+    isPairBlocked: async () => false
+  } as unknown as ContactSafetyRepository;
 
   return {
     service: createContactService({
       repository,
+      safetyRepository,
       listingCatalogClient,
       identityAccountClient,
       transactionRunner: { run: (operation) => operation(executor) }

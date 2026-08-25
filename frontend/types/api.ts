@@ -349,6 +349,8 @@ export interface Inquiry {
   readonly preferredContactAt: string | null;
   readonly createdAt: string;
   readonly updatedAt: string;
+  readonly canSendMessage: boolean;
+  readonly blockedByCurrentUser: boolean;
   readonly messages: readonly InquiryMessage[];
 }
 
@@ -470,6 +472,72 @@ export interface AdminListingReport {
   readonly updatedAt: string;
   readonly resolvedAt: string | null;
   readonly events?: readonly AdminReportEvent[];
+}
+
+export type ContactReportCategory = "SPAM" | "FRAUD" | "HARASSMENT" | "INAPPROPRIATE" | "OTHER";
+export type ContactReportStatus = "OPEN" | "INVESTIGATING" | "RESOLVED" | "DISMISSED";
+
+export interface ContactBlockState {
+  readonly canSendMessage: boolean;
+  readonly blockedByCurrentUser: boolean;
+}
+
+export interface CreateContactReportBody {
+  readonly category: ContactReportCategory;
+  readonly details?: string | null;
+  readonly messageId?: number | null;
+}
+
+export interface ContactReportReceipt {
+  readonly id: number;
+  readonly inquiryId: number;
+  readonly category: ContactReportCategory;
+  readonly status: "OPEN";
+  readonly createdAt: string;
+}
+
+export interface AdminContactReportMessage {
+  readonly id: number;
+  readonly senderRole: "TENANT" | "LANDLORD";
+  readonly body: string;
+  readonly createdAt: string;
+}
+
+export interface AdminContactReportEvent {
+  readonly id: number;
+  readonly actorId: number;
+  readonly actorRole: "TENANT" | "LANDLORD" | "ADMIN";
+  readonly previousStatus: ContactReportStatus | null;
+  readonly newStatus: ContactReportStatus;
+  readonly note: string | null;
+  readonly createdAt: string;
+}
+
+export interface AdminContactReport {
+  readonly id: number;
+  readonly inquiryId: number;
+  readonly listingId: number;
+  readonly reporter: { readonly id: number; readonly email: string; readonly isActive: boolean };
+  readonly message: AdminContactReportMessage | null;
+  readonly category: ContactReportCategory;
+  readonly details: string | null;
+  readonly status: ContactReportStatus;
+  readonly resolutionNote: string | null;
+  readonly assignedAdminId: number | null;
+  readonly createdAt: string;
+  readonly updatedAt: string;
+  readonly resolvedAt: string | null;
+  readonly events?: readonly AdminContactReportEvent[];
+}
+
+export interface AdminContactReportQuery extends PaginationQuery {
+  readonly status?: ContactReportStatus;
+  readonly category?: ContactReportCategory;
+}
+
+export interface UpdateContactReportStatusBody {
+  readonly status: Exclude<ContactReportStatus, "OPEN">;
+  readonly note?: string | null;
 }
 
 export interface AdminReportQuery extends PaginationQuery {

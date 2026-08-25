@@ -17,6 +17,7 @@ import { createListingCatalogClient } from "../../shared/listing-catalog-client.
 import { createInternalServiceGuard } from "../../shared/internal-service-auth.js";
 import { withTransaction } from "../../shared/src/runtime/db/transaction.js";
 import { createContactRepository } from "./modules/contact/repositories/contact-repository.js";
+import { createContactSafetyRepository } from "./modules/contact/repositories/contact-safety-repository.js";
 import { createContactService } from "./modules/contact/services/contact-service.js";
 import { registerContactRoutes } from "./modules/contact/routes.js";
 import { createInquiryRealtimeHub } from "./modules/contact/realtime/inquiry-realtime-hub.js";
@@ -99,9 +100,11 @@ async function startEngagementService(): Promise<void> {
     internalToken: process.env.SERVICE_INTERNAL_TOKEN ?? ""
   });
   const contactRepository = createContactRepository();
+  const contactSafetyRepository = createContactSafetyRepository();
   const inquiryRealtimeHub = createInquiryRealtimeHub();
   const contactService = createContactService({
     repository: contactRepository,
+    safetyRepository: contactSafetyRepository,
     listingCatalogClient,
     identityAccountClient,
     transactionRunner: {
@@ -180,6 +183,7 @@ async function startEngagementService(): Promise<void> {
         authenticationMiddleware: requiredAuthentication,
         tenantRoleMiddleware: tenantRole,
         landlordRoleMiddleware: landlordRole,
+        adminRoleMiddleware: adminRole,
         contactService,
         realtimeHub: inquiryRealtimeHub
       });

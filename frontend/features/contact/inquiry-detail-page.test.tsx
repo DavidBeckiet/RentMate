@@ -51,6 +51,8 @@ const inquiry: Inquiry = {
   preferredContactAt: null,
   createdAt: originalMessage.createdAt,
   updatedAt: originalMessage.createdAt,
+  canSendMessage: true,
+  blockedByCurrentUser: false,
   messages: [originalMessage]
 };
 

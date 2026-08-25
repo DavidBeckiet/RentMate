@@ -2,9 +2,10 @@ import type { Request, RequestHandler, Response } from "express";
 import { ApplicationError } from "../../../../../shared/src/runtime/shared/errors/application-error.js";
 import { authenticationRequiredMessage } from "../../../../../shared/src/runtime/shared/middleware/authentication.js";
 import { sendNoContent, sendObject, sendPaginated } from "../../../../../shared/src/runtime/shared/http/responses.js";
-import type { Inquiry, InquiryMessage, Notification } from "../repositories/contact-repository.js";
+import type { InquiryMessage, Notification } from "../repositories/contact-repository.js";
+import type { ContactReport, ContactReportEvent } from "../repositories/contact-safety-repository.js";
 import type { InquiryRealtimeEvent, InquiryRealtimeHub } from "../realtime/inquiry-realtime-hub.js";
-import type { ContactService } from "../services/contact-service.js";
+import type { AdminContactReport, AdminContactReportDetail, ContactService, InquiryView } from "../services/contact-service.js";
 import {
   parseContactId,
   validateContactCollectionQuery,
@@ -13,6 +14,12 @@ import {
   validateNotificationReadBody,
   validateStatusBody
 } from "../validations/contact-validation.js";
+import {
+  parseContactReportId,
+  validateContactReportCollectionQuery,
+  validateCreateContactReportBody,
+  validateUpdateContactReportStatusBody
+} from "../validations/contact-safety-validation.js";
 
 function requirePrincipal(request: Request): NonNullable<Request["auth"]> {
   if (!request.auth) throw new ApplicationError("AUTHENTICATION_REQUIRED", authenticationRequiredMessage);
@@ -29,7 +36,7 @@ function messageDto(message: InquiryMessage) {
   };
 }
 
-function inquiryDto(inquiry: Inquiry) {
+function inquiryDto(inquiry: InquiryView) {
   return {
     id: inquiry.id,
     listingId: inquiry.listingId,
@@ -38,8 +45,67 @@ function inquiryDto(inquiry: Inquiry) {
     preferredContactAt: inquiry.preferredContactAt,
     createdAt: inquiry.createdAt,
     updatedAt: inquiry.updatedAt,
+    canSendMessage: inquiry.canSendMessage,
+    blockedByCurrentUser: inquiry.blockedByCurrentUser,
     messages: inquiry.messages.map(messageDto)
   };
+}
+
+function blockStateDto(state: { readonly canSendMessage: boolean; readonly blockedByCurrentUser: boolean }) {
+  return {
+    canSendMessage: state.canSendMessage,
+    blockedByCurrentUser: state.blockedByCurrentUser
+  };
+}
+
+function reportReceiptDto(report: ContactReport) {
+  return {
+    id: report.id,
+    inquiryId: report.inquiryId,
+    category: report.category,
+    status: report.status,
+    createdAt: report.createdAt
+  };
+}
+
+function reportMessageDto(message: ContactReport["message"]) {
+  return message
+    ? { id: message.id, senderRole: message.senderRole, body: message.body, createdAt: message.createdAt }
+    : null;
+}
+
+function reportEventDto(event: ContactReportEvent) {
+  return {
+    id: event.id,
+    actorId: event.actorId,
+    actorRole: event.actorRole,
+    previousStatus: event.previousStatus,
+    newStatus: event.newStatus,
+    note: event.note,
+    createdAt: event.createdAt
+  };
+}
+
+function adminReportDto(report: AdminContactReport) {
+  return {
+    id: report.id,
+    inquiryId: report.inquiryId,
+    listingId: report.listingId,
+    reporter: { id: report.reporter.id, email: report.reporter.email, isActive: report.reporter.isActive },
+    message: reportMessageDto(report.message),
+    category: report.category,
+    details: report.details,
+    status: report.status,
+    resolutionNote: report.resolutionNote,
+    assignedAdminId: report.assignedAdminId,
+    createdAt: report.createdAt,
+    updatedAt: report.updatedAt,
+    resolvedAt: report.resolvedAt
+  };
+}
+
+function adminReportDetailDto(report: AdminContactReportDetail) {
+  return { ...adminReportDto(report), events: report.events.map(reportEventDto) };
 }
 
 function notificationDto(notification: Notification) {
@@ -116,6 +182,83 @@ export function createSendMessageHandler(service: ContactService, realtimeHub: I
       const message = await service.sendMessage(requirePrincipal(request), inquiryId, body);
       realtimeHub.publish(Object.freeze({ type: "MESSAGE_CREATED", inquiryId, message }));
       sendObject(response, messageDto(message), 201);
+    })().catch(next);
+  };
+}
+
+export function createBlockInquiryHandler(service: ContactService): RequestHandler {
+  return (request, response, next) => {
+    void (async () => {
+      validateNotificationReadBody(request.body);
+      sendObject(
+        response,
+        blockStateDto(await service.blockInquiry(requirePrincipal(request), parseContactId(request.params.inquiryId)))
+      );
+    })().catch(next);
+  };
+}
+
+export function createUnblockInquiryHandler(service: ContactService): RequestHandler {
+  return (request, response, next) => {
+    void (async () => {
+      validateNotificationReadBody(request.body);
+      sendObject(
+        response,
+        blockStateDto(await service.unblockInquiry(requirePrincipal(request), parseContactId(request.params.inquiryId)))
+      );
+    })().catch(next);
+  };
+}
+
+export function createContactReportHandler(service: ContactService): RequestHandler {
+  return (request, response, next) => {
+    void (async () => {
+      const report = await service.createContactReport(
+        requirePrincipal(request),
+        parseContactId(request.params.inquiryId),
+        validateCreateContactReportBody(request.body)
+      );
+      sendObject(response, reportReceiptDto(report), 201);
+    })().catch(next);
+  };
+}
+
+export function createListContactReportsHandler(service: ContactService): RequestHandler {
+  return (request, response, next) => {
+    void (async () => {
+      const page = await service.listContactReports(
+        requirePrincipal(request),
+        validateContactReportCollectionQuery(request.query)
+      );
+      sendPaginated(response, page.data.map(adminReportDto), page);
+    })().catch(next);
+  };
+}
+
+export function createGetContactReportHandler(service: ContactService): RequestHandler {
+  return (request, response, next) => {
+    void (async () => {
+      sendObject(
+        response,
+        adminReportDetailDto(await service.getContactReport(requirePrincipal(request), parseContactReportId(request.params.reportId)))
+      );
+    })().catch(next);
+  };
+}
+
+export function createUpdateContactReportStatusHandler(service: ContactService): RequestHandler {
+  return (request, response, next) => {
+    void (async () => {
+      sendObject(
+        response,
+        adminReportDetailDto(
+          await service.updateContactReportStatus(
+            requirePrincipal(request),
+            parseContactReportId(request.params.reportId),
+            validateUpdateContactReportStatusBody(request.body)
+          )
+        )
+      );
     })().catch(next);
   };
 }

@@ -162,6 +162,13 @@ export const adminNavigationItems: readonly NavigationItem[] = [
     pathPrefixes: ["/admin/reports"]
   },
   {
+    key: "admin-contact-reports",
+    label: "Báo cáo contact",
+    href: "/admin/contact-reports",
+    icon: "message",
+    pathPrefixes: ["/admin/contact-reports"]
+  },
+  {
     key: "admin-reviews",
     label: "Reviews",
     href: "/admin/reviews",
