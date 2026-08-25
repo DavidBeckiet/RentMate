@@ -31,6 +31,7 @@ export interface PublicListingDetailLandlordProfile {
 }
 
 export interface PublicListingDetailRepositoryDependencies {
+  readonly loadActiveLandlordIds?: () => Promise<readonly number[]>;
   readonly loadLandlordProfiles?: (
     userIds: readonly number[]
   ) => Promise<readonly PublicListingDetailLandlordProfile[]>;
@@ -109,8 +110,26 @@ const tenantPublicDetailQuery = (listingId: number): ParameterizedQuery => ({
   values: [listingId]
 });
 
-const similarPublicListingsQuery = (listingId: number, limit: number): ParameterizedQuery => ({
-  text: `
+const similarPublicListingsQuery = (
+  listingId: number,
+  limit: number,
+  activeLandlordIds: readonly number[] | undefined
+): ParameterizedQuery => {
+  const localLandlordJoins =
+    activeLandlordIds === undefined
+      ? `
+      JOIN users AS current_landlord
+        ON current_landlord.id = current_listing.landlord_id
+      JOIN users AS landlord
+        ON landlord.id = l.landlord_id`
+      : "";
+  const landlordVisibility =
+    activeLandlordIds === undefined
+      ? "current_landlord.is_active = true AND landlord.is_active = true"
+      : "current_listing.landlord_id = ANY($3::integer[]) AND l.landlord_id = ANY($3::integer[])";
+
+  return {
+    text: `
       SELECT
         l.id,
         l.landlord_id,
@@ -132,8 +151,7 @@ const similarPublicListingsQuery = (listingId: number, limit: number): Parameter
       FROM listings AS l
       JOIN listings AS current_listing
         ON current_listing.id = $1
-      JOIN users AS landlord
-        ON landlord.id = l.landlord_id
+      ${localLandlordJoins}
       JOIN property_types AS pt
         ON pt.id = l.property_type_id
       LEFT JOIN LATERAL (
@@ -154,10 +172,10 @@ const similarPublicListingsQuery = (listingId: number, limit: number): Parameter
       ) AS cover ON true
       WHERE current_listing.status = 'APPROVED'
         AND current_listing.business_status IN ('AVAILABLE', 'UNKNOWN')
+        AND ${landlordVisibility}
         AND l.id <> current_listing.id
         AND l.status = 'APPROVED'
         AND l.business_status IN ('AVAILABLE', 'UNKNOWN')
-        AND landlord.is_active = true
         AND l.area_name = current_listing.area_name
       ORDER BY
         (l.property_type_id = current_listing.property_type_id) DESC,
@@ -167,8 +185,9 @@ const similarPublicListingsQuery = (listingId: number, limit: number): Parameter
         l.id DESC
       LIMIT $2
     `,
-  values: [listingId, limit]
-});
+    values: activeLandlordIds === undefined ? [listingId, limit] : [listingId, limit, [...activeLandlordIds]]
+  };
+};
 
 const remotePublicDetailQuery = (listingId: number): ParameterizedQuery => ({
   text: `
@@ -265,9 +284,12 @@ export function createPublicListingDetailRepository(
     },
 
     async findSimilarPublicListings(listingId, limit) {
+      const activeLandlordIds = dependencies.loadActiveLandlordIds
+        ? await dependencies.loadActiveLandlordIds()
+        : undefined;
       const rows = await queryMany<PublicListingSummaryRow, PublicListingSummaryRow>(
         executor,
-        similarPublicListingsQuery(listingId, limit),
+        similarPublicListingsQuery(listingId, limit, activeLandlordIds),
         (value) => value
       );
       if (rows.length === 0) return Object.freeze([]);

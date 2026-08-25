@@ -33,8 +33,13 @@ test("similar public listings stay public-safe, capped, and batch landlord verif
       return { rows: [similarRow] as unknown as Row[], command: "SELECT", rowCount: 1, oid: 0, fields: [] };
     }
   };
+  const requestedActiveLandlordIds: number[][] = [];
   const requestedIds: number[][] = [];
   const repository = createPublicListingDetailRepository(executor, {
+    loadActiveLandlordIds: async () => {
+      requestedActiveLandlordIds.push([7]);
+      return [7];
+    },
     loadVerifiedLandlordIds: async (ids) => {
       requestedIds.push([...ids]);
       return [7];
@@ -46,9 +51,12 @@ test("similar public listings stay public-safe, capped, and batch landlord verif
   assert.equal(result.length, 1);
   assert.equal(result[0]?.landlordVerified, true);
   assert.equal("landlord_id" in (result[0] ?? {}), false);
+  assert.deepEqual(requestedActiveLandlordIds, [[7]]);
   assert.deepEqual(requestedIds, [[7]]);
-  assert.deepEqual(queries[0]?.values, [42, 3]);
+  assert.deepEqual(queries[0]?.values, [42, 3, [7]]);
+  assert.doesNotMatch(queries[0]?.text ?? "", /JOIN users/);
   assert.match(queries[0]?.text ?? "", /current_listing\.status = 'APPROVED'/);
+  assert.match(queries[0]?.text ?? "", /current_listing\.landlord_id = ANY\(\$3::integer\[\]\)/);
   assert.match(queries[0]?.text ?? "", /l\.area_name = current_listing\.area_name/);
   assert.match(queries[0]?.text ?? "", /LIMIT \$2/);
 });
