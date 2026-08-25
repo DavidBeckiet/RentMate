@@ -12,7 +12,12 @@ dotenv.config({ path: path.join(repositoryRoot, ".env") });
 
 const developmentPassword = "RentMateDev123!";
 const developmentPasswordHash = "$2b$10$Ud5SkkcShNSYVQ/ZwEP/i.ieCIr2a4Z1EazYD4OmfSdSqReIa1quC";
-const demoListingImageBaseUrl = "https://placehold.co/1200x800/png?text=";
+const demoListingImageUrls = Object.freeze([
+  "https://images.unsplash.com/photo-1522708323590-d24dbb6b0267?w=1200&q=85",
+  "https://images.unsplash.com/photo-1505693416388-ac5ce068fe85?w=1200&q=85",
+  "https://images.unsplash.com/photo-1560448204-e02f11c3d0e2?w=1200&q=85",
+  "https://images.unsplash.com/photo-1493809842364-78817add7ffb?w=1200&q=85"
+]);
 
 const demoUsers = Object.freeze([
   { key: "admin", role: "ADMIN", displayName: "Admin RentMate", email: "demo.admin@rentmate.local", phone: null },
@@ -494,7 +499,7 @@ async function seedListing(demo, existingListingIds) {
           [
             listingId,
             `demo/seed/${listing.code}`,
-            `${demoListingImageBaseUrl}${encodeURIComponent(`RentMate Demo ${String(index + 1).padStart(2, "0")}`)}`,
+            demoListingImageUrls[index % demoListingImageUrls.length],
             `Anh demo cho ${listing.title}`
           ]
         );

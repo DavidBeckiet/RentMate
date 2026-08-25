@@ -492,14 +492,222 @@ Trước khi viết service hoặc migration, phải chốt riêng:
 - Cách xác thực request giữa gateway và service.
 - Cách xử lý event thất bại hoặc service tạm thời không khả dụng.
 
-## 15. Bước triển khai đầu tiên
+## 15. Trạng thái triển khai và thứ tự tiếp theo
 
-Bước triển khai tiếp theo sau khi tài liệu này được phê duyệt là:
+Các phần nền tảng V2 dưới đây đã được triển khai hoặc đã có nền tảng hoạt động:
 
-1. Chốt V2 database design cho Inquiry, Message và Notification.
-2. Chốt API contract, privacy matrix, rate limit và notification ownership.
-3. Triển khai Inquiry + Message dưới Engagement boundary, giữ gọi điện bằng `tel:`.
-4. Thêm notification cho inquiry và message theo transaction/event contract đã chốt.
-5. Chạy regression MVP và E2E tenant–landlord flow.
+- Inquiry, message và chat realtime giữa tenant với landlord.
+- Notification trong ứng dụng và saved search.
+- Trạng thái kinh doanh của listing, report, review và moderation.
+- Lead management, nhắc lead đến hạn và thống kê landlord cơ bản.
+- Xác minh email, số điện thoại, duyệt landlord thủ công và badge xác minh.
+- Migration runner, contract test và kiểm tra authorization/privacy.
 
-Không bắt đầu bằng thanh toán, chat realtime hoặc việc tách mọi module thành một service riêng.
+Các hạng mục tiếp theo được triển khai theo thứ tự:
+
+> Quyết định ngày 25/08/2026: triển khai các mục 1, 2, 4, 5 và 6. Mục 3 — minh bạch tổng chi phí — tạm hoãn và không phải dependency của mục 4.
+
+1. **Rà soát và sửa giao diện responsive**
+   - Kiểm tra trang tìm kiếm, chi tiết listing, form đăng tin và dashboard landlord/admin.
+   - Bắt buộc kiểm tra các mốc khoảng 375px, 768px, 1024px và desktop.
+2. **Sức chứa phòng (`max_occupants`)**
+   - Landlord nhập số người tối đa.
+   - Hiển thị trong form, listing card và trang chi tiết.
+   - Chỉ mở rộng thành bộ lọc sau khi field lõi ổn định.
+3. **Minh bạch tổng chi phí**
+   - Bổ sung tiền cọc, phí dịch vụ, điện, nước, giữ xe và internet nếu có.
+   - Hiển thị chi phí cố định, chi phí theo mức sử dụng và khoản cần chuẩn bị ban đầu.
+   - Đây là chức năng hiển thị thông tin, chưa triển khai thanh toán hoặc đặt cọc online.
+4. **Tự động nhắc listing cũ**
+   - Nhắc landlord xác nhận tin còn hiệu lực.
+   - Có thể chuyển tin lâu ngày sang `PAUSED` sau khi chốt thời hạn và lifecycle V2.
+5. **Báo cáo và chặn người dùng/cuộc trò chuyện**
+   - Bổ sung trust & safety cho spam, lừa đảo và hành vi không phù hợp trong contact flow.
+   - Giữ riêng với report listing hiện có.
+6. **Release gate**
+   - Kết nối provider email/SMS thật cho xác minh.
+   - Chạy E2E tenant–landlord và kiểm tra lại authorization, privacy, migration và responsive UI.
+
+Chưa ưu tiên ở giai đoạn này: đặt lịch xem phòng, thanh toán, hợp đồng điện tử, quản lý tài sản và tách thêm service chỉ vì có thêm bảng dữ liệu.
+
+## 16. Ghi chú bổ sung — sức chứa phòng
+
+Đề xuất bổ sung trường `max_occupants` cho tin đăng để landlord khai báo sức chứa phòng. Trên giao diện, hiển thị ngắn gọn theo dạng **`[số người] tối đa`**.
+
+- Dùng số nguyên dương, không dùng nội dung tự do.
+- Hiển thị trong form đăng tin, thẻ tin và trang chi tiết.
+- Có thể dùng làm bộ lọc tìm kiếm ở bước tiếp theo.
+- Phân biệt rõ với số người đang ở hiện tại.
+- Cho phép để trống trong bản nháp; yêu cầu hoàn thiện trước khi gửi duyệt nếu đây là thông tin bắt buộc của tin đăng.
+- Chưa triển khai; đây là hạng mục số 2 trong thứ tự post-MVP hiện tại và có thể làm độc lập.
+
+## 17. Kế hoạch triển khai chi tiết cho các mục đã chọn
+
+### 17.1 Nguyên tắc thực hiện chung
+
+- Thực hiện lần lượt `1 → 2 → 4 → 5 → 6`; hoàn thành, kiểm tra và commit riêng từng mục trước khi chuyển mục tiếp theo.
+- Mục 3 tiếp tục nằm trong backlog nhưng không thiết kế database, API hoặc UI trong đợt này.
+- Giữ visual language hiện tại của RentMate: màu xanh/lime/coral, Manrope/Space Grotesk, block layout và semantic design token hiện có.
+- Không thay đổi privacy projection, quyền sở hữu, cookie auth hoặc listing moderation lifecycle ngoài thay đổi V2 được mô tả rõ trong từng mục.
+- Mỗi schema change dùng migration tiến mới. Listing Service tiếp tục sở hữu listing; Engagement Service tiếp tục sở hữu inquiry, message, notification và trust & safety của contact flow.
+- Không gom nhiều mục vào một migration hoặc commit lớn. Mỗi mục phải có unit test, service/HTTP test, database test khi có migration và frontend test tương ứng.
+
+### 17.2 Mục 1 — rà soát và sửa giao diện responsive
+
+#### Mục tiêu
+
+Hoàn thiện giao diện hiện có, không redesign toàn bộ. Các luồng chính phải dùng được rõ ràng trên mobile, tablet và desktop, không tràn ngang, không che nội dung và không nhồi quá nhiều hành động vào cùng một màn hình.
+
+#### Phạm vi màn hình
+
+1. **App shell và public marketplace**
+   - Header, menu mobile, footer, homepage, search, near-me, listing card, bản đồ và listing detail.
+2. **Auth và tenant**
+   - Đăng ký, đăng nhập, profile, favorites, saved searches, compare, inquiry/chat và notifications.
+3. **Landlord**
+   - Danh sách/chi tiết/form đăng tin, ảnh, trạng thái kinh doanh, profile/xác minh, inquiry, lead và analytics.
+4. **Admin**
+   - User, listing moderation, listing report, review và landlord verification.
+
+#### Cách triển khai
+
+1. Chạy ứng dụng với dữ liệu seed và lập issue matrix cho từng route ở `375px`, `768px`, `1024px` và `1440px`.
+2. Sửa theo từng nhóm màn hình: shell/public → tenant → landlord → admin; không sửa tất cả route trong một diff duy nhất.
+3. Với action phụ như báo cáo, chặn, ghi chú hoặc tác vụ quản trị ít dùng, ưu tiên menu, disclosure, dialog hoặc mobile sheet thay vì đặt toàn bộ nút trực tiếp trên giao diện.
+4. Chuẩn hóa form mobile-first: label thật, lỗi tại field, `inputMode` phù hợp, nút chạm tối thiểu khoảng `44×44px`, trạng thái pending và retry an toàn.
+5. Bảng rộng trên mobile phải chuyển thành card hoặc có vùng cuộn ngang có chủ đích; sticky/fixed element không được che nội dung hay CTA.
+6. Bổ sung `loading.tsx`/`error.tsx` tại route group cần thiết, giữ chỗ ảnh bằng aspect ratio và tránh layout shift khi dữ liệu tải về.
+7. Giữ focus ring rõ ràng, thứ tự tab hợp lý, heading tuần tự, tương phản chữ tối thiểu 4.5:1 và tôn trọng `prefers-reduced-motion`.
+
+#### Kiểm thử và điều kiện hoàn thành
+
+- Component test cho navigation, disclosure/dialog, form state, empty/error/401/403/404 và layout có logic điều kiện.
+- Playwright chạy desktop và mobile cho các luồng public, tenant, landlord và admin quan trọng.
+- Thêm kiểm tra không có horizontal overflow ở bốn viewport; screenshot/trace được lưu khi E2E lỗi.
+- `typecheck`, `lint`, frontend test và production build đều pass.
+- Không thay đổi backend contract và không còn lỗi hiển thị mức nghiêm trọng trên các route đã liệt kê.
+
+### 17.3 Mục 2 — sức chứa phòng (`max_occupants`)
+
+#### Quyết định dữ liệu
+
+- Listing Service thêm migration kế tiếp `0006` với cột `max_occupants smallint` nullable và check trong khoảng `1..20`.
+- Giữ nullable cho listing cũ và draft để backward compatible; chưa bắt buộc khi submit trong đợt đầu.
+- Chưa thêm bộ lọc tìm kiếm theo số người trong mục này. Chỉ thêm sau khi phần lớn listing có dữ liệu đủ tin cậy.
+
+#### Backend và API
+
+1. Bổ sung `maxOccupants` vào create/patch owner listing, owner/admin detail và các DTO public cần hiển thị.
+2. Chuẩn hóa số nguyên, từ chối `0`, số âm, số thập phân, số lớn hơn `20` và unknown field.
+3. Normalized no-op PATCH tiếp tục không ghi database hoặc đổi `updatedAt`.
+4. Public projection chỉ trả con số sức chứa, không thêm dữ liệu người đang ở hoặc dữ liệu tenant.
+5. Cập nhật service contract giữa Listing và Engagement nếu public listing summary được mở rộng.
+
+#### Frontend
+
+- Form landlord dùng input số có `min=1`, `max=20`, `step=1` và `inputMode="numeric"`.
+- Hiển thị ngắn gọn **`[số người] tối đa`** trên listing card, detail, owner/admin workflow; ẩn hoàn toàn nếu giá trị null.
+- Không để badge sức chứa cạnh tranh với badge xác minh, trạng thái kinh doanh hoặc nút favorite trên card nhỏ.
+
+#### Kiểm thử và điều kiện hoàn thành
+
+- Migration clean/existing plan, constraint, repository mapping, create/update/no-op và privacy test đều pass.
+- Frontend test bao phủ giá trị hợp lệ, null, lỗi field và hiển thị card/detail.
+- Typecheck/test/build pass; migration `0006` được chạy trên database local bằng manifest version đúng, không chạy lại migration cũ.
+
+### 17.4 Mục 4 — tự động nhắc listing cũ
+
+#### Quyết định nghiệp vụ đề xuất
+
+- Chỉ áp dụng cho listing `APPROVED` có business status `AVAILABLE` hoặc `UNKNOWN`.
+- Mốc mặc định cấu hình được: nhắc sau `30 ngày` chưa xác nhận; tự chuyển sang `PAUSED` sau thêm `7 ngày` không phản hồi.
+- Dùng thời điểm xác nhận tình trạng phòng riêng, không dùng `updatedAt`, vì sửa tiêu đề hoặc ảnh không chứng minh phòng vẫn còn.
+- Landlord phải có action xác nhận rõ ràng. Việc gửi lại `AVAILABLE` dạng no-op không được lợi dụng để thay đổi timestamp nội dung.
+
+#### Database và API
+
+1. Listing Service thêm migration kế tiếp sau `max_occupants`, dự kiến `0007`, gồm `availability_confirmed_at`, trạng thái gửi nhắc và dấu thời gian auto-pause cần thiết cùng index truy vấn due rows.
+2. Backfill listing đang public từ timestamp hiện có theo một quy tắc được ghi trong migration; không sửa migration cũ.
+3. Thêm endpoint owner-scoped `POST /api/v1/landlord/listings/:listingId/confirm-availability`.
+4. Owner DTO trả `availabilityConfirmedAt`, `availabilityExpiresAt` và trạng thái cần xác nhận; public DTO không lộ timestamp vận hành nội bộ.
+5. Scheduler nằm trong Listing Service vì Listing sở hữu availability và business status. Batch xử lý dùng transaction, row locking và `SKIP LOCKED` để tránh hai instance xử lý cùng hàng.
+6. Notification được gửi sang Engagement qua internal endpoint có token và dedupe key. Không dùng distributed transaction; việc thay đổi listing phải commit trước và delivery phải retry/idempotent.
+7. Các mốc và scheduler dùng config riêng, dự kiến `LISTING_STALE_REMINDER_DAYS`, `LISTING_STALE_GRACE_DAYS`, `LISTING_STALE_SCAN_INTERVAL_MS` và `LISTING_STALE_BATCH_SIZE`.
+
+#### Frontend
+
+- Owner listing card/detail hiển thị “đã xác nhận”, “sắp cần xác nhận” hoặc “quá hạn”, kèm một CTA xác nhận.
+- Dashboard landlord có khu vực “Tin cần cập nhật”; notification dẫn thẳng đến listing tương ứng.
+- Khi hệ thống auto-pause, giải thích rõ lý do và cho phép landlord xác nhận rồi chuyển lại `AVAILABLE` nếu moderation status vẫn cho phép.
+
+#### Kiểm thử và điều kiện hoàn thành
+
+- Test mốc thời gian bằng clock giả, batch concurrency, no-op confirm, ownership, inactive account và trạng thái không đủ điều kiện.
+- Test notification dedupe, retry khi Engagement tạm lỗi và việc `PAUSED` lập tức biến mất khỏi public search.
+- Test UI các trạng thái sắp hạn/quá hạn/auto-pause và E2E landlord xác nhận lại tin.
+- Scheduler có cấu hình interval/batch rõ ràng, dừng sạch khi shutdown và không log contact hoặc dữ liệu nhạy cảm.
+
+### 17.5 Mục 5 — báo cáo và chặn trong contact flow
+
+#### Boundary và phạm vi
+
+- Contact report và contact block thuộc Engagement Service vì chỉ điều khiển inquiry/message; không tạo Admin Service mới.
+- Block trong mục này là chặn tương tác giữa một cặp người dùng trong RentMate, không tự khóa tài khoản toàn hệ thống. Admin vẫn dùng Identity workflow hiện có nếu cần vô hiệu hóa account.
+- Chỉ participant thật của inquiry mới được báo cáo hoặc chặn người còn lại. Lịch sử hội thoại vẫn đọc được; block ngăn tạo inquiry mới giữa cặp đó và ngăn message mới.
+
+#### Database và API
+
+1. Engagement migration kế tiếp, dự kiến `0012`, tạo:
+   - `contact_blocks` với cặp blocker/blocked duy nhất và inquiry nguồn.
+   - `contact_reports` với message được báo cáo dạng optional, category `SPAM`, `FRAUD`, `HARASSMENT`, `INAPPROPRIATE`, `OTHER`; status `OPEN`, `INVESTIGATING`, `RESOLVED`, `DISMISSED`.
+   - `contact_report_events` append-only để lưu lịch sử xử lý admin.
+2. Cho phép tối đa một report đang hoạt động của cùng reporter trên cùng inquiry; create report và event đầu tiên phải atomic.
+3. API participant:
+   - `POST /api/v1/inquiries/:inquiryId/reports`
+   - `POST /api/v1/inquiries/:inquiryId/block`
+   - `DELETE /api/v1/inquiries/:inquiryId/block`
+4. API admin:
+   - `GET /api/v1/admin/contact-reports`
+   - `GET /api/v1/admin/contact-reports/:reportId`
+   - `PATCH /api/v1/admin/contact-reports/:reportId/status`
+5. Gateway route mới phải trỏ các path trên vào Engagement Service và tiếp tục không expose internal route.
+
+#### Privacy và hành vi
+
+- Participant DTO chỉ cần `canSendMessage` và `blockedByCurrentUser`; không tiết lộ trực tiếp người kia có chặn mình hay không.
+- Người bị báo cáo/chặn không nhận notification về hành động đó.
+- Admin chỉ xem evidence tối thiểu cần xử lý; không trả toàn bộ hội thoại khi report chỉ gắn với một message.
+- Block/unblock idempotent, report có rate limit, unknown field rejection và nội dung chi tiết được giới hạn/sanitize.
+- Realtime không được dùng để vượt block; service kiểm tra lại block trong transaction trước khi lưu message và publish event.
+
+#### Frontend và kiểm thử
+
+- Đặt “Báo cáo” và “Chặn” trong menu phụ của trang inquiry; dùng confirm dialog hoặc mobile sheet, không chèn thêm hàng nút vào chat.
+- Khi đã block, ô nhập tin nhắn chuyển sang trạng thái khóa có giải thích và action bỏ chặn an toàn.
+- Admin có queue contact report riêng, filter theo status/category và xem lịch sử xử lý.
+- Test participant/ownership/cross-role, block hai chiều, report dedupe, admin transition, privacy projection, concurrent writes và realtime enforcement.
+
+### 17.6 Mục 6 — release gate
+
+#### Cấu hình và migration
+
+1. Kết nối provider email/SMS staging/production qua `VERIFICATION_DELIVERY_URL` và `VERIFICATION_DELIVERY_TOKEN`; local memory preview chỉ dùng development/test.
+2. Lưu external migration manifest theo từng môi trường và từng service; chạy `--plan-only` trước khi apply, sao lưu database và chỉ cập nhật manifest sau khi migration cùng post-check thành công.
+3. Xác minh health/readiness, shutdown scheduler, timeout và log sanitization cho Identity, Listing, Engagement và Gateway.
+
+#### E2E bắt buộc qua Gateway
+
+1. Đăng ký landlord → xác minh email → xác minh điện thoại → admin duyệt → badge public.
+2. Landlord tạo/sửa/gửi duyệt listing có `maxOccupants` → admin approve → tenant tìm và xem detail.
+3. Listing đến hạn → landlord nhận nhắc → xác nhận lại; quá grace period thì auto-pause và biến mất khỏi public search.
+4. Tenant gửi inquiry → hai bên chat realtime → block/unblock → report → admin xử lý report.
+5. Regression tenant favorite, saved search, review, notification và landlord lead reminder.
+
+#### Quality gate
+
+- Chạy typecheck, lint, format check, test từng service, frontend test, production build và Playwright desktop/mobile.
+- Kiểm tra `401/403/404/409`, Origin/CORS, cookie production, internal token, role, ownership và dữ liệu public không lộ contact/tọa độ chính xác/report nội bộ.
+- Kiểm tra responsive tại `375/768/1024/1440px`, keyboard-only, focus, touch target, empty/loading/error và không có horizontal overflow.
+- Có deployment checklist, backward-compatible migration path và cách rollback application version mà không rollback migration phá dữ liệu.
+
+Mục 6 chỉ hoàn thành khi toàn bộ flow trên chạy qua Gateway và không còn lỗi nghiêm trọng về dữ liệu, authorization, privacy hoặc giao diện.

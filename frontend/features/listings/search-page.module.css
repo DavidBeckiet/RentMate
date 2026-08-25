@@ -1,5 +1,6 @@
 .page {
   min-height: 100vh;
+  min-height: 100dvh;
   background:
     linear-gradient(rgb(9 43 39 / 0.035) 1px, transparent 1px),
     linear-gradient(90deg, rgb(9 43 39 / 0.035) 1px, transparent 1px),
@@ -167,7 +168,7 @@
 .mobileFilterButton,
 .mapButton {
   display: inline-flex;
-  min-height: 2.5rem;
+  min-height: 2.75rem;
   align-items: center;
   justify-content: center;
   gap: 0.4rem;
@@ -231,7 +232,7 @@
 }
 
 .sortControl select {
-  min-height: 2.38rem;
+  min-height: 2.75rem;
   min-width: 0;
   flex: 1;
   border: 0;

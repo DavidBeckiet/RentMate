@@ -83,7 +83,7 @@ describe("InquiryDetailPage realtime", () => {
   it("shows connection feedback and appends an incoming message immediately", async () => {
     render(<InquiryDetailPage inquiryId="7" />);
     expect(await screen.findByText(originalMessage.body)).toBeInTheDocument();
-    expect(realtimeMock.handlers).not.toBeNull();
+    await waitFor(() => expect(realtimeMock.handlers).not.toBeNull());
 
     act(() => realtimeMock.handlers?.onStatusChange("connected"));
     expect(screen.getByRole("status")).toHaveTextContent("Đã kết nối trực tiếp");

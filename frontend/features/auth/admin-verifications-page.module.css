@@ -1,5 +1,6 @@
 .page {
   min-height: 100vh;
+  min-height: 100dvh;
   padding-bottom: 4rem;
   background:
     linear-gradient(rgb(9 43 39 / 0.04) 1px, transparent 1px),

@@ -364,7 +364,7 @@ function WorkspaceShell({
   return (
     <div className="min-h-screen bg-rent-canvas text-heroDark-950 lg:grid lg:grid-cols-[16.5rem_minmax(0,1fr)]">
       <SkipLink />
-      <aside className="sticky top-0 hidden h-screen flex-col border-r-2 border-heroDark-950 bg-rent-surface p-4 lg:flex">
+      <aside className="sticky top-0 hidden h-[100dvh] flex-col border-r-2 border-heroDark-950 bg-rent-surface p-4 lg:flex">
         <Brand />
         <div className="mt-7 px-2">
           <p className="text-ui-xs font-bold uppercase tracking-[0.14em] text-muted-foreground">Workspace</p>
