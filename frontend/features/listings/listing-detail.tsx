@@ -7,6 +7,7 @@ import { MapBase } from "../../components/map/map-base";
 import { Button } from "../../components/ui/button";
 import { ErrorState } from "../../components/ui/feedback-states";
 import { Icon } from "../../components/ui/icon";
+import { BusinessStatusBadge } from "../../components/ui/status-badge";
 import { api, ApiError } from "../../lib/api/client";
 import { useAuth } from "../../lib/auth/auth-provider";
 import type { PublicListingDetail } from "../../types/api";
@@ -281,6 +282,7 @@ export function ListingDetail({ listingId, actions }: ListingDetailProps) {
             <div className={styles.summaryEyebrow}>
               <span className={styles.statusBadge}>Đang hiển thị công khai</span>
               <span className={styles.typeBadge}>{detail.propertyType.label}</span>
+              <BusinessStatusBadge status={detail.businessStatus} />
             </div>
             <h1 id="listing-title" className={styles.summaryTitle}>
               {detail.title}

@@ -11,6 +11,7 @@ export const demoPropertyTypes = [
 export const demoListings: readonly PublicListingSummary[] = [
   {
     id: 9101,
+    businessStatus: "AVAILABLE",
     title: "Studio nhiều nắng, ban công xanh ngay Thảo Điền",
     monthlyRent: 7_800_000,
     roomAreaSqm: 32,
@@ -32,6 +33,7 @@ export const demoListings: readonly PublicListingSummary[] = [
   },
   {
     id: 9102,
+    businessStatus: "AVAILABLE",
     title: "Căn hộ mini phong cách retro, 5 phút đến Landmark 81",
     monthlyRent: 9_200_000,
     roomAreaSqm: 38,
@@ -52,6 +54,7 @@ export const demoListings: readonly PublicListingSummary[] = [
   },
   {
     id: 9103,
+    businessStatus: "AVAILABLE",
     title: "Phòng gác lửng tối giản, hẻm xe hơi yên tĩnh",
     monthlyRent: 4_600_000,
     roomAreaSqm: 26,
@@ -72,6 +75,7 @@ export const demoListings: readonly PublicListingSummary[] = [
   },
   {
     id: 9104,
+    businessStatus: "AVAILABLE",
     title: "Căn hộ một phòng ngủ cạnh công viên, có bếp riêng",
     monthlyRent: 8_500_000,
     roomAreaSqm: 42,

@@ -45,6 +45,7 @@ function listing(id: number, title: string): OwnerListingSummary {
   return {
     id,
     status: "DRAFT",
+    businessStatus: "UNKNOWN",
     title,
     monthlyRent: null,
     areaName: null,
@@ -68,6 +69,7 @@ function createdDraft(): OwnerListingDetail {
   return {
     id: 88,
     status: "DRAFT",
+    businessStatus: "UNKNOWN",
     title: null,
     description: null,
     monthlyRent: null,

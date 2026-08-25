@@ -109,6 +109,7 @@ function publicAggregateQuery(prefix: string, order: string, includeDistance: bo
   return `${prefix}
       SELECT
         pc.id,
+        pc.business_status,
         pc.title,
         pc.monthly_rent,
         pc.room_area_sqm,
@@ -154,7 +155,11 @@ function nonRadiusPageQuery(
   activeLandlordIds?: readonly number[]
 ): ParameterizedQuery {
   const builder = createQueryBuilder();
-  const predicates = ["l.status = 'APPROVED'", ownerVisibilityPredicate(builder, activeLandlordIds)];
+  const predicates = [
+    "l.status = 'APPROVED'",
+    "l.business_status IN ('AVAILABLE', 'UNKNOWN')",
+    ownerVisibilityPredicate(builder, activeLandlordIds)
+  ];
   if (search.mode === "bounds") {
     predicates.push(`l.latitude >= ${builder.parameter(search.south)}`);
     predicates.push(`l.latitude <= ${builder.parameter(search.north)}`);
@@ -170,6 +175,7 @@ function nonRadiusPageQuery(
       WITH page_candidates AS (
         SELECT
           l.id,
+          l.business_status,
           l.title,
           l.monthly_rent,
           l.room_area_sqm,
@@ -199,7 +205,11 @@ function radiusPageQuery(
   activeLandlordIds?: readonly number[]
 ): ParameterizedQuery {
   const builder = createQueryBuilder();
-  const predicates = ["l.status = 'APPROVED'", ownerVisibilityPredicate(builder, activeLandlordIds)];
+  const predicates = [
+    "l.status = 'APPROVED'",
+    "l.business_status IN ('AVAILABLE', 'UNKNOWN')",
+    ownerVisibilityPredicate(builder, activeLandlordIds)
+  ];
   predicates.push(`l.latitude >= ${builder.parameter(boundingBox.south)}`);
   predicates.push(`l.latitude <= ${builder.parameter(boundingBox.north)}`);
   predicates.push(`l.longitude >= ${builder.parameter(boundingBox.west)}`);
@@ -227,6 +237,7 @@ function radiusPageQuery(
       WITH filtered_candidates AS (
         SELECT
           l.id,
+          l.business_status,
           l.title,
           l.monthly_rent,
           l.room_area_sqm,

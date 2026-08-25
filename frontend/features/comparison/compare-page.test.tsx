@@ -50,6 +50,7 @@ function detail(id: number): PublicListingDetail {
     amenities: [{ code: "WIFI", label: "Wi-Fi" }],
     images: [],
     landlordVerified: false,
+    businessStatus: "AVAILABLE",
     updatedAt: "2026-08-24T00:00:00.000Z"
   };
 }

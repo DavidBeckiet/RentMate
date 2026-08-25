@@ -64,7 +64,8 @@ function detail(status: ListingStatus, overrides: Partial<OwnerListingDetail> = 
     currentModerationReason: null,
     createdAt: "2026-08-01T00:00:00.000Z",
     updatedAt: "2026-08-02T00:00:00.000Z",
-    ...overrides
+    ...overrides,
+    businessStatus: overrides.businessStatus ?? "UNKNOWN"
   };
 }
 

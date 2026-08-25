@@ -123,6 +123,7 @@ export function createListingCreateRepository(executor: SqlExecutor): ListingCre
             RETURNING
               id,
               status,
+              business_status,
               title,
               description,
               monthly_rent,

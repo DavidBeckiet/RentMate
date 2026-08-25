@@ -12,6 +12,7 @@ import { ModerationActions } from "./moderation-actions";
 const detail = (status: AdminListingDetail["status"] = "PENDING", active = true): AdminListingDetail => ({
   id: 7,
   status,
+  businessStatus: "AVAILABLE",
   title: "Tin",
   description: "Mô tả",
   monthlyRent: 5000000,

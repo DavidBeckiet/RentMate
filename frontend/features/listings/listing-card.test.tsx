@@ -21,7 +21,8 @@ function listing(overrides: Partial<PublicListingSummary> = {}): PublicListingSu
     amenities: [{ code: "WIFI", label: "Wi-Fi" }],
     coverImage: { url: "https://res.cloudinary.com/rentmate/image/upload/studio.webp", altText: null, displayOrder: 1 },
     updatedAt: "2026-08-01T00:00:00.000Z",
-    ...overrides
+    ...overrides,
+    businessStatus: overrides.businessStatus ?? "AVAILABLE"
   };
 }
 

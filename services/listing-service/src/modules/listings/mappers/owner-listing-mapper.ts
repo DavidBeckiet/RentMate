@@ -5,6 +5,7 @@ import {
   mapPgTimestamptz
 } from "../../../../../shared/src/runtime/db/value-mappers.js";
 import { formatApiTimestamp } from "../../../../../shared/src/runtime/shared/mapping/api-values.js";
+import { isListingBusinessStatus, type ListingBusinessStatus } from "../../../../../shared/listing-business-status.js";
 import { resolveCurrentModerationReason } from "../current-moderation-reason.js";
 import { copyOwnerImage, mapOwnerImageToDto, type OwnerImage, type OwnerImageDto } from "./owner-image-mapper.js";
 import {
@@ -32,6 +33,7 @@ export type ListingStatus = (typeof listingStatuses)[number];
 export interface CreatedListingRow extends QueryResultRow {
   readonly id: unknown;
   readonly status: unknown;
+  readonly business_status: unknown;
   readonly title: unknown;
   readonly description: unknown;
   readonly monthly_rent: unknown;
@@ -52,6 +54,7 @@ export interface PersistedOwnerListingRow extends CreatedListingRow {
 export interface CreatedListing {
   readonly id: number;
   readonly status: "DRAFT";
+  readonly businessStatus: ListingBusinessStatus;
   readonly title: string | null;
   readonly description: string | null;
   readonly monthlyRent: number | null;
@@ -67,6 +70,7 @@ export interface CreatedListing {
 export interface OwnerListingDetailBase {
   readonly id: number;
   readonly status: ListingStatus;
+  readonly businessStatus: ListingBusinessStatus;
   readonly title: string | null;
   readonly description: string | null;
   readonly monthlyRent: number | null;
@@ -89,6 +93,7 @@ export interface OwnerListingDetail extends OwnerListingDetailBase {
 export interface OwnerListingDetailDto {
   readonly id: number;
   readonly status: ListingStatus;
+  readonly businessStatus: ListingBusinessStatus;
   readonly title: string | null;
   readonly description: string | null;
   readonly monthlyRent: number | null;
@@ -178,6 +183,7 @@ function mapBaseListingRow(
     (row.id as number) < 1 ||
     (row.id as number) > maximumListingId ||
     !isListingStatus(row.status) ||
+    !isListingBusinessStatus(row.business_status) ||
     (expectedStatus !== undefined && row.status !== expectedStatus) ||
     !isNullableString(row.title) ||
     !isNullableString(row.description) ||
@@ -192,6 +198,7 @@ function mapBaseListingRow(
     return Object.freeze({
       id: row.id as number,
       status: row.status,
+      businessStatus: row.business_status,
       title: row.title,
       description: row.description,
       monthlyRent: mapNullablePgWholeNumeric(row.monthly_rent, "monthly_rent"),
@@ -216,6 +223,7 @@ export function mapCreatedListingRow(row: Readonly<CreatedListingRow>): CreatedL
   return Object.freeze({
     id: mapped.id,
     status: "DRAFT",
+    businessStatus: mapped.businessStatus,
     title: mapped.title,
     description: mapped.description,
     monthlyRent: mapped.monthlyRent,
@@ -235,6 +243,7 @@ export function mapPersistedOwnerListingRow(row: Readonly<PersistedOwnerListingR
     return Object.freeze({
       id: mapped.id,
       status: mapped.status,
+      businessStatus: mapped.businessStatus,
       title: mapped.title,
       description: mapped.description,
       monthlyRent: mapped.monthlyRent,
@@ -264,6 +273,7 @@ export function createOwnerListingDetail(
     return Object.freeze({
       id: listing.id,
       status: listing.status,
+      businessStatus: listing.businessStatus,
       title: listing.title,
       description: listing.description,
       monthlyRent: listing.monthlyRent,
@@ -292,6 +302,7 @@ export function createOwnerListing(
   const base: OwnerListingDetailBase = Object.freeze({
     id: listing.id,
     status: "DRAFT",
+    businessStatus: listing.businessStatus,
     title: listing.title,
     description: listing.description,
     monthlyRent: listing.monthlyRent,
@@ -312,6 +323,7 @@ export function mapOwnerListingToDto(listing: Readonly<OwnerListingDetail>): Own
     return Object.freeze({
       id: listing.id,
       status: listing.status,
+      businessStatus: listing.businessStatus,
       title: listing.title,
       description: listing.description,
       monthlyRent: listing.monthlyRent,

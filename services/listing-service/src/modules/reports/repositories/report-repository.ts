@@ -202,7 +202,7 @@ export function createReportRepository(): ReportRepository {
       const row = await queryExactlyOne<ExistsRow, boolean>(
         executor,
         {
-          text: `SELECT EXISTS (SELECT 1 FROM listings WHERE id = $1 AND status = 'APPROVED' AND landlord_id = ANY($2::integer[])) AS exists`,
+          text: `SELECT EXISTS (SELECT 1 FROM listings WHERE id = $1 AND status = 'APPROVED' AND business_status IN ('AVAILABLE', 'UNKNOWN') AND landlord_id = ANY($2::integer[])) AS exists`,
           values: [listingId, [...activeLandlordIds]]
         },
         (value) => {

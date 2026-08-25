@@ -24,6 +24,7 @@ import {
 } from "./modules/listings/services/listing-create-service.js";
 import { createListingSubmitService } from "./modules/listings/services/listing-submit-service.js";
 import { createListingUpdateService } from "./modules/listings/services/listing-update-service.js";
+import { createListingBusinessStatusService } from "./modules/listings/services/listing-business-status-service.js";
 import { createLookupRepository } from "./modules/listings/repositories/lookup-repository.js";
 import { createModerationActionService } from "./modules/listings/services/moderation-action-service.js";
 import { createOwnerListingReadRepository } from "./modules/listings/repositories/owner-listing-read-repository.js";
@@ -159,6 +160,7 @@ async function startListingService(): Promise<void> {
           })
         ),
         listingUpdateService: createListingUpdateService({ transactionRunner }),
+        listingBusinessStatusService: createListingBusinessStatusService({ transactionRunner }),
         listingSubmitService: createListingSubmitService({ transactionRunner }),
         listingLifecycleActionService: createListingLifecycleActionService({ transactionRunner }),
         listingDeleteService: createListingDeleteService({

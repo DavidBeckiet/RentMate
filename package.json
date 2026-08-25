@@ -118,6 +118,7 @@
     "db:bootstrap": "npm --prefix backend run db:bootstrap",
     "deploy:validate": "npm --prefix backend run deploy:validate && npm --prefix frontend run deploy:validate",
     "providers:check": "npm --prefix backend run providers:check",
+    "seed:dev": "node scripts/seed-dev-microservices.mjs",
     "smoke:production": "npm --prefix backend run smoke:production",
     "format": "prettier --write .",
     "format:check": "prettier --check ."

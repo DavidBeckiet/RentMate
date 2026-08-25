@@ -6,7 +6,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { MapBase } from "../../components/map/map-base";
 import { Button } from "../../components/ui/button";
 import { ErrorState, LoadingState } from "../../components/ui/feedback-states";
-import { AccountStatusBadge, ListingStatusBadge } from "../../components/ui/status-badge";
+import { AccountStatusBadge, BusinessStatusBadge, ListingStatusBadge } from "../../components/ui/status-badge";
 import { api, ApiError } from "../../lib/api/client";
 import { useAuth } from "../../lib/auth/auth-provider";
 import type { AdminListingDetail as AdminListingDetailDto } from "../../types/api";
@@ -133,6 +133,7 @@ function CanonicalDetail({
             <p className="mt-2 text-sm text-rent-secondary">Cập nhật {new Date(detail.updatedAt).toLocaleString("vi-VN")}</p>
           </div>
           <ListingStatusBadge status={detail.status} />
+          <BusinessStatusBadge status={detail.businessStatus} />
         </div>
         {reasonLabel && detail.currentModerationReason ? (
           <div className="mt-5 rounded-control border border-red-200 bg-red-50 p-4 text-sm text-red-950">

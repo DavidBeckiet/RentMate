@@ -1,6 +1,7 @@
 export type UserRole = "TENANT" | "LANDLORD" | "ADMIN";
 
 export type ListingStatus = "DRAFT" | "PENDING" | "APPROVED" | "REJECTED" | "INACTIVE" | "HIDDEN";
+export type ListingBusinessStatus = "AVAILABLE" | "PAUSED" | "RENTED" | "UNKNOWN";
 export type InquiryStatus = "NEW" | "CONTACTED" | "CLOSED";
 export type NotificationEventType =
   | "INQUIRY_CREATED"
@@ -51,6 +52,7 @@ export interface OwnerImage extends PublicImage {
 
 export interface PublicListingSummary {
   readonly id: number;
+  readonly businessStatus: ListingBusinessStatus;
   readonly title: string;
   readonly monthlyRent: number;
   readonly roomAreaSqm: number;
@@ -79,6 +81,7 @@ export interface PublicListingDetail extends Omit<PublicListingSummary, "coverIm
 export interface OwnerListingSummary {
   readonly id: number;
   readonly status: ListingStatus;
+  readonly businessStatus: ListingBusinessStatus;
   readonly title: string | null;
   readonly monthlyRent: number | null;
   readonly areaName: string | null;
@@ -91,6 +94,7 @@ export interface OwnerListingSummary {
 export interface OwnerListingDetail {
   readonly id: number;
   readonly status: ListingStatus;
+  readonly businessStatus: ListingBusinessStatus;
   readonly title: string | null;
   readonly description: string | null;
   readonly monthlyRent: number | null;
@@ -118,6 +122,7 @@ export interface AdminListingLandlord {
 export interface AdminListingSummary {
   readonly id: number;
   readonly status: ListingStatus;
+  readonly businessStatus: ListingBusinessStatus;
   readonly title: string | null;
   readonly areaName: string | null;
   readonly landlord: AdminListingLandlord;
@@ -222,6 +227,10 @@ export interface ListingContentBody {
   readonly latitude?: number | null;
   readonly longitude?: number | null;
   readonly amenityCodes?: readonly string[];
+}
+
+export interface ListingBusinessStatusBody {
+  readonly businessStatus: ListingBusinessStatus;
 }
 
 export interface OwnedListingQuery extends PaginationQuery {

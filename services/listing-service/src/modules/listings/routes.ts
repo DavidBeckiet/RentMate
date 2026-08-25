@@ -42,9 +42,14 @@ import { createSubmitOwnerListingHandler } from "./controllers/listing-submit-co
 import type { ListingSubmitService } from "./services/listing-submit-service.js";
 import { createUpdateOwnerListingHandler } from "./controllers/listing-update-controller.js";
 import type { ListingUpdateService } from "./services/listing-update-service.js";
+import { createUpdateOwnerBusinessStatusHandler } from "./controllers/listing-business-status-controller.js";
+import type { ListingBusinessStatusService } from "./services/listing-business-status-service.js";
 import { createGetAmenitiesHandler, createGetPropertyTypesHandler } from "./controllers/lookup-controller.js";
 import type { LookupRepository } from "./repositories/lookup-repository.js";
-import { createGetOwnerListingDetailHandler, createListOwnerListingsHandler } from "./controllers/owner-listing-read-controller.js";
+import {
+  createGetOwnerListingDetailHandler,
+  createListOwnerListingsHandler
+} from "./controllers/owner-listing-read-controller.js";
 import type { OwnerListingReadService } from "./services/owner-listing-read-service.js";
 import { createPublicListingSearchHandler } from "./controllers/public-listing-search-controller.js";
 import type { PublicListingSearchService } from "./services/public-listing-search-service.js";
@@ -64,6 +69,7 @@ export interface ListingsRouteDependencies {
   readonly publicListingSearchService: PublicListingSearchService;
   readonly publicListingDetailService: PublicListingDetailService;
   readonly listingUpdateService: ListingUpdateService;
+  readonly listingBusinessStatusService: ListingBusinessStatusService;
   readonly listingSubmitService: ListingSubmitService;
   readonly listingLifecycleActionService: ListingLifecycleActionService;
   readonly listingDeleteService: ListingDeleteService;
@@ -158,6 +164,12 @@ export function registerListingsRoutes(router: Router, dependencies: ListingsRou
     dependencies.authenticationMiddleware,
     dependencies.landlordRoleMiddleware,
     createUpdateOwnerListingHandler(dependencies.listingUpdateService)
+  );
+  router.patch(
+    "/landlord/listings/:listingId/business-status",
+    dependencies.authenticationMiddleware,
+    dependencies.landlordRoleMiddleware,
+    createUpdateOwnerBusinessStatusHandler(dependencies.listingBusinessStatusService)
   );
   router.post(
     "/landlord/listings/:listingId/submit",

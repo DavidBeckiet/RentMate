@@ -116,6 +116,7 @@ import { SearchPage } from "./search-page";
 function listing(id: number, title: string): PublicListingSummary {
   return {
     id,
+    businessStatus: "AVAILABLE",
     title,
     monthlyRent: 5_000_000,
     roomAreaSqm: 20,

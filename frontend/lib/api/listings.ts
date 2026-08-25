@@ -4,6 +4,7 @@ import type {
   ForwardGeocodeBody,
   GeocodingCandidate,
   ListingContentBody,
+  ListingBusinessStatusBody,
   OwnedListingQuery,
   OwnerImage,
   OwnerListingDetail,
@@ -57,6 +58,17 @@ export function createListingsApi(transport: ApiTransport) {
 
     updateOwned: (listingId: number, body: ListingContentBody, signal?: AbortSignal): Promise<OwnerListingDetail> =>
       transport.object(`/api/v1/landlord/listings/${listingId}`, { method: "PATCH", json: body, signal }),
+
+    updateBusinessStatus: (
+      listingId: number,
+      body: ListingBusinessStatusBody,
+      signal?: AbortSignal
+    ): Promise<OwnerListingDetail> =>
+      transport.object(`/api/v1/landlord/listings/${listingId}/business-status`, {
+        method: "PATCH",
+        json: body,
+        signal
+      }),
 
     deleteOwned: (listingId: number, signal?: AbortSignal): Promise<void> =>
       transport.void(`/api/v1/landlord/listings/${listingId}`, { method: "DELETE", signal }),

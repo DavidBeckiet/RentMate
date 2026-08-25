@@ -4,13 +4,14 @@ import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Button } from "../../components/ui/button";
 import { ErrorState, LoadingState } from "../../components/ui/feedback-states";
-import { ListingStatusBadge } from "../../components/ui/status-badge";
+import { BusinessStatusBadge, ListingStatusBadge } from "../../components/ui/status-badge";
 import { api, ApiError } from "../../lib/api/client";
 import { useAuth } from "../../lib/auth/auth-provider";
 import type { Amenity, OwnerListingDetail as OwnerDetail, PropertyType } from "../../types/api";
 import { OwnerImageManager } from "./owner-image-manager";
 import { OwnerLifecycleActions } from "./owner-lifecycle-actions";
 import { OwnerListingEditor, type LookupResource, type OwnerEditorFeedback } from "./owner-listing-editor";
+import { OwnerBusinessStatusControl } from "./owner-business-status-control";
 import styles from "./owner-listing-detail.module.css";
 
 const maximumListingId = 2_147_483_647;
@@ -224,7 +225,10 @@ export function OwnerListingDetail({ listingId }: { readonly listingId: string }
               Cập nhật lần cuối: {new Date(detail.updatedAt).toLocaleString("vi-VN")}
             </p>
           </div>
-          <ListingStatusBadge status={detail.status} />
+          <div className="flex flex-wrap justify-end gap-2">
+            <ListingStatusBadge status={detail.status} />
+            <BusinessStatusBadge status={detail.businessStatus} />
+          </div>
         </div>
         {reasonLabel && detail.currentModerationReason ? (
           <div className="rounded-control border border-red-200 bg-red-50 p-4 text-sm text-red-950">
@@ -246,6 +250,8 @@ export function OwnerListingDetail({ listingId }: { readonly listingId: string }
         onRetryPropertyTypes={() => setPropertyVersion((version) => version + 1)}
         onRetryAmenities={() => setAmenityVersion((version) => version + 1)}
       />
+
+      <OwnerBusinessStatusControl detail={detail} disabled={blocked} onDetailChange={replaceDetail} />
 
       <OwnerImageManager
         detail={detail}

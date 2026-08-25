@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { ListingStatusBadge } from "../../components/ui/status-badge";
+import { BusinessStatusBadge, ListingStatusBadge } from "../../components/ui/status-badge";
 import type { OwnerListingSummary } from "../../types/api";
 import { ListingCardShell, ListingImage, ListingMetadata, ListingPrice } from "./listing-presentation";
 
@@ -32,7 +32,10 @@ export function OwnerListingCard({ listing }: { readonly listing: OwnerListingSu
         <div className="min-w-0 space-y-3 p-4 sm:p-5">
           <div className="flex flex-wrap items-start justify-between gap-3">
             <h2 className="text-lg font-semibold leading-6 text-rent-ink group-hover:text-teal-800">{title}</h2>
-            <ListingStatusBadge status={listing.status} />
+            <div className="flex flex-wrap justify-end gap-2">
+              <ListingStatusBadge status={listing.status} />
+              <BusinessStatusBadge status={listing.businessStatus} />
+            </div>
           </div>
           <ListingPrice monthlyRent={listing.monthlyRent} />
           <ListingMetadata>

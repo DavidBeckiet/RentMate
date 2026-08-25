@@ -7,6 +7,7 @@ describe("AdminListingCard", () => {
     const listing = {
       id: 8,
       status: "PENDING" as const,
+      businessStatus: "AVAILABLE" as const,
       title: "Phòng yên tĩnh",
       areaName: "Quận 3",
       landlord: { id: 2, email: "owner@example.com", phone: "+8490", isActive: false },

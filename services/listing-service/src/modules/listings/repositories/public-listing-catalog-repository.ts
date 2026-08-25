@@ -41,6 +41,7 @@ export function createPublicListingCatalogRepository(executor: SqlExecutor): Pub
             text: `
               SELECT
                 l.id,
+                l.business_status,
                 l.title,
                 l.monthly_rent,
                 l.room_area_sqm,
@@ -75,6 +76,7 @@ export function createPublicListingCatalogRepository(executor: SqlExecutor): Pub
               ) AS amenity_data ON true
               WHERE l.id = ANY($1::integer[])
                 AND l.status = 'APPROVED'
+                AND l.business_status IN ('AVAILABLE', 'UNKNOWN')
                 AND ${visibility}
               ORDER BY l.id ASC
             `,
@@ -102,6 +104,7 @@ export function createPublicListingCatalogRepository(executor: SqlExecutor): Pub
           ${activeLandlordIds === undefined ? "JOIN users AS landlord ON landlord.id = l.landlord_id" : ""}
           WHERE l.id = ANY($1::integer[])
             AND l.status = 'APPROVED'
+            AND l.business_status IN ('AVAILABLE', 'UNKNOWN')
             AND ${visibility}
           ORDER BY l.id ASC
         `,

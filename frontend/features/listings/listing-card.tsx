@@ -3,6 +3,7 @@ import Link from "next/link";
 import { Icon } from "../../components/ui/icon";
 import { ListingSaveControl } from "../../components/ui/listing-save-control";
 import { ComparisonToggle } from "../comparison/comparison-toggle";
+import { BusinessStatusBadge } from "../../components/ui/status-badge";
 import type { PublicListingSummary } from "../../types/api";
 import { formatAreaSqm, formatDistanceKm, formatVnd } from "./format";
 import styles from "./listing-card.module.css";
@@ -56,6 +57,9 @@ export function ListingCard({ listing, showFavorite = true, href, variant = "def
               {formatDistanceKm(listing.distanceKm)}
             </span>
           ) : null}
+          <span className="absolute bottom-3 right-3">
+            <BusinessStatusBadge status={listing.businessStatus} />
+          </span>
         </div>
 
         <div className={`${styles.content} flex flex-1 flex-col justify-between gap-5 p-4 sm:p-5`}>

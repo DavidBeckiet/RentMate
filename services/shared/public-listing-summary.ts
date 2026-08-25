@@ -2,11 +2,13 @@ import type { QueryResultRow } from "pg";
 import { RepositoryInvariantError } from "./src/runtime/db/repository-primitives.js";
 import { mapPgScaleTwoNumeric, mapPgTimestamptz, mapPgWholeNumeric } from "./src/runtime/db/value-mappers.js";
 import { formatApiTimestamp } from "./src/runtime/shared/mapping/api-values.js";
+import { isListingBusinessStatus, type ListingBusinessStatus } from "./listing-business-status.js";
 
 const codePattern = /^[A-Z][A-Z0-9_]*$/;
 
 export interface PublicListingSummaryRow extends QueryResultRow {
   readonly id: unknown;
+  readonly business_status: unknown;
   readonly title: unknown;
   readonly monthly_rent: unknown;
   readonly room_area_sqm: unknown;
@@ -39,6 +41,7 @@ export interface PublicCoverImage {
 
 export interface PublicListingSummary {
   readonly id: number;
+  readonly businessStatus: ListingBusinessStatus;
   readonly title: string;
   readonly monthlyRent: number;
   readonly roomAreaSqm: number;
@@ -103,11 +106,13 @@ export function mapPublicListingSummaryRow(row: Readonly<PublicListingSummaryRow
   const monthlyRent = mapPgWholeNumeric(row.monthly_rent, "public_listing.monthly_rent");
   const roomAreaSqm = mapPgScaleTwoNumeric(row.room_area_sqm, "public_listing.room_area_sqm");
   if (monthlyRent <= 0 || monthlyRent > 999_999_999_999 || roomAreaSqm <= 0 || roomAreaSqm > 999_999.99) invariant();
+  if (!isListingBusinessStatus(row.business_status)) invariant();
   if (typeof row.cover_image_url !== "string" || row.cover_image_url.length === 0) invariant();
   if (row.cover_image_alt_text !== null && typeof row.cover_image_alt_text !== "string") invariant();
 
   return Object.freeze({
     id: positiveInteger(row.id),
+    businessStatus: row.business_status,
     title: nonblank(row.title),
     monthlyRent,
     roomAreaSqm,

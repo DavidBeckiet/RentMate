@@ -2,6 +2,7 @@ import type { QueryResultRow } from "pg";
 import { mapPgTimestamptz } from "../../../../../shared/src/runtime/db/value-mappers.js";
 import { formatApiTimestamp } from "../../../../../shared/src/runtime/shared/mapping/api-values.js";
 import { isListingStatus, type ListingStatus } from "./owner-listing-mapper.js";
+import { isListingBusinessStatus, type ListingBusinessStatus } from "../../../../../shared/listing-business-status.js";
 
 const maximumIntegerId = 2_147_483_647;
 const e164Pattern = /^\+[1-9][0-9]{7,14}$/;
@@ -9,6 +10,7 @@ const e164Pattern = /^\+[1-9][0-9]{7,14}$/;
 export interface AdminListingSummaryRow extends QueryResultRow {
   readonly id: unknown;
   readonly status: unknown;
+  readonly business_status: unknown;
   readonly title: unknown;
   readonly area_name: unknown;
   readonly landlord_id: unknown;
@@ -28,6 +30,7 @@ export interface AdminListingSummaryLandlord {
 export interface AdminListingSummary {
   readonly id: number;
   readonly status: ListingStatus;
+  readonly businessStatus: ListingBusinessStatus;
   readonly title: string | null;
   readonly areaName: string | null;
   readonly landlord: AdminListingSummaryLandlord;
@@ -37,6 +40,7 @@ export interface AdminListingSummary {
 export interface AdminListingSummaryDto {
   readonly id: number;
   readonly status: ListingStatus;
+  readonly businessStatus: ListingBusinessStatus;
   readonly title: string | null;
   readonly areaName: string | null;
   readonly landlord: AdminListingSummaryLandlord;
@@ -82,6 +86,7 @@ export function mapAdminListingSummaryRow(row: Readonly<AdminListingSummaryRow>)
   if (
     !isPositiveIntegerId(row.id) ||
     !isListingStatus(row.status) ||
+    !isListingBusinessStatus(row.business_status) ||
     !isNullableString(row.title) ||
     !isNullableString(row.area_name) ||
     !isPositiveIntegerId(row.landlord_id) ||
@@ -96,6 +101,7 @@ export function mapAdminListingSummaryRow(row: Readonly<AdminListingSummaryRow>)
     return Object.freeze({
       id: row.id,
       status: row.status,
+      businessStatus: row.business_status,
       title: row.title,
       areaName: row.area_name,
       landlord: Object.freeze({
@@ -124,6 +130,7 @@ export function mapAdminListingSummaryToDto(summary: Readonly<AdminListingSummar
     return Object.freeze({
       id: summary.id,
       status: summary.status,
+      businessStatus: summary.businessStatus,
       title: summary.title,
       areaName: summary.areaName,
       landlord: copyLandlord(summary.landlord),

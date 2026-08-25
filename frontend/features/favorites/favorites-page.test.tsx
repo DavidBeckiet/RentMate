@@ -58,6 +58,7 @@ function listing(id: number, title: string): PublicListingSummary {
       altText: `Ảnh ${title}`,
       displayOrder: 1
     },
+    businessStatus: "AVAILABLE",
     updatedAt: "2026-08-01T00:00:00.000Z"
   };
 }

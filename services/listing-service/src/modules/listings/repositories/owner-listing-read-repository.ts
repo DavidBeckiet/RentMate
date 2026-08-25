@@ -52,6 +52,7 @@ export function createOwnerListingReadRepository(executor: SqlExecutor): OwnerLi
               SELECT
                 l.id,
                 l.status,
+                l.business_status,
                 l.title,
                 l.monthly_rent,
                 l.area_name,
@@ -129,6 +130,7 @@ export function createOwnerListingReadRepository(executor: SqlExecutor): OwnerLi
             SELECT
               l.id,
               l.status,
+              l.business_status,
               l.title,
               l.description,
               l.monthly_rent,

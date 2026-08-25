@@ -6,6 +6,7 @@ import {
   mapPgWholeNumeric
 } from "../../../../../shared/src/runtime/db/value-mappers.js";
 import { formatApiTimestamp } from "../../../../../shared/src/runtime/shared/mapping/api-values.js";
+import { isListingBusinessStatus, type ListingBusinessStatus } from "../../../../../shared/listing-business-status.js";
 
 const codePattern = /^[A-Z][A-Z0-9_]*$/;
 const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -14,6 +15,7 @@ const phonePattern = /^\+[1-9][0-9]{7,14}$/;
 export interface PublicListingDetailRow extends QueryResultRow {
   readonly landlord_id?: unknown;
   readonly id: unknown;
+  readonly business_status: unknown;
   readonly title: unknown;
   readonly description: unknown;
   readonly monthly_rent: unknown;
@@ -51,6 +53,7 @@ export interface LandlordContact {
 
 export interface PublicListingDetail {
   readonly id: number;
+  readonly businessStatus: ListingBusinessStatus;
   readonly title: string;
   readonly description: string;
   readonly monthlyRent: number;
@@ -149,6 +152,7 @@ function mapContact(emailValue: unknown, phoneValue: unknown): LandlordContact {
 }
 
 export function mapPublicListingDetailRow(row: Readonly<PublicListingDetailRow>): PublicListingDetail {
+  if (!isListingBusinessStatus(row.business_status)) invariant();
   const monthlyRent = mapPgWholeNumeric(row.monthly_rent, "public_listing_detail.monthly_rent");
   const roomAreaSqm = mapPgScaleTwoNumeric(row.room_area_sqm, "public_listing_detail.room_area_sqm");
   if (monthlyRent <= 0 || monthlyRent > 999_999_999_999 || roomAreaSqm <= 0 || roomAreaSqm > 999_999.99) {
@@ -157,6 +161,7 @@ export function mapPublicListingDetailRow(row: Readonly<PublicListingDetailRow>)
 
   return Object.freeze({
     id: positiveInteger(row.id),
+    businessStatus: row.business_status,
     title: nonblank(row.title, 160),
     description: nonblank(row.description, 5_000),
     monthlyRent,
@@ -194,6 +199,7 @@ export function enrichPublicListingDetail(
   const contact = mapContact(landlordContact.email, landlordContact.phone);
   return Object.freeze({
     id: detail.id,
+    businessStatus: detail.businessStatus,
     title: detail.title,
     description: detail.description,
     monthlyRent: detail.monthlyRent,

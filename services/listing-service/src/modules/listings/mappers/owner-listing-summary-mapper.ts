@@ -2,6 +2,7 @@ import type { QueryResultRow } from "pg";
 import { mapNullablePgWholeNumeric, mapPgTimestamptz } from "../../../../../shared/src/runtime/db/value-mappers.js";
 import { formatApiTimestamp } from "../../../../../shared/src/runtime/shared/mapping/api-values.js";
 import { resolveCurrentModerationReason } from "../current-moderation-reason.js";
+import { isListingBusinessStatus, type ListingBusinessStatus } from "../../../../../shared/listing-business-status.js";
 import { mapOwnerImageRow, mapOwnerImageToDto, type OwnerImage, type OwnerImageDto } from "./owner-image-mapper.js";
 import { mapLookupValueRow, mapPropertyTypeToDto, type LookupValue, type PropertyTypeDto } from "./lookup-mapper.js";
 import { isListingStatus, type ListingStatus } from "./owner-listing-mapper.js";
@@ -11,6 +12,7 @@ const maximumListingId = 2_147_483_647;
 export interface OwnerListingSummaryRow extends QueryResultRow {
   readonly id: unknown;
   readonly status: unknown;
+  readonly business_status: unknown;
   readonly title: unknown;
   readonly monthly_rent: unknown;
   readonly area_name: unknown;
@@ -32,6 +34,7 @@ export interface OwnerListingSummaryRow extends QueryResultRow {
 export interface OwnerListingSummary {
   readonly id: number;
   readonly status: ListingStatus;
+  readonly businessStatus: ListingBusinessStatus;
   readonly title: string | null;
   readonly monthlyRent: number | null;
   readonly areaName: string | null;
@@ -44,6 +47,7 @@ export interface OwnerListingSummary {
 export interface OwnerListingSummaryDto {
   readonly id: number;
   readonly status: ListingStatus;
+  readonly businessStatus: ListingBusinessStatus;
   readonly title: string | null;
   readonly monthlyRent: number | null;
   readonly areaName: string | null;
@@ -107,6 +111,7 @@ export function mapOwnerListingSummaryRow(row: Readonly<OwnerListingSummaryRow>)
     (row.id as number) < 1 ||
     (row.id as number) > maximumListingId ||
     !isListingStatus(row.status) ||
+    !isListingBusinessStatus(row.business_status) ||
     (row.title !== null && typeof row.title !== "string") ||
     (row.area_name !== null && typeof row.area_name !== "string")
   ) {
@@ -117,6 +122,7 @@ export function mapOwnerListingSummaryRow(row: Readonly<OwnerListingSummaryRow>)
     return Object.freeze({
       id: row.id as number,
       status: row.status,
+      businessStatus: row.business_status,
       title: row.title as string | null,
       monthlyRent: mapNullablePgWholeNumeric(row.monthly_rent, "monthly_rent"),
       areaName: row.area_name as string | null,
@@ -138,6 +144,7 @@ export function mapOwnerListingSummaryToDto(summary: Readonly<OwnerListingSummar
     return Object.freeze({
       id: summary.id,
       status: summary.status,
+      businessStatus: summary.businessStatus,
       title: summary.title,
       monthlyRent: summary.monthlyRent,
       areaName: summary.areaName,

@@ -47,6 +47,7 @@ const auth = (overrides: Partial<AuthContextValue> = {}): AuthContextValue => ({
 const detail: Detail = {
   id: 7,
   status: "HIDDEN",
+  businessStatus: "UNKNOWN",
   title: "Tin quản trị",
   description: "Mô tả",
   monthlyRent: 5000000,

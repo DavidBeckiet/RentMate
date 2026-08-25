@@ -1,4 +1,4 @@
-import type { ListingStatus } from "../../types/api";
+import type { ListingBusinessStatus, ListingStatus } from "../../types/api";
 import { Badge, type BadgeVariant } from "./badge";
 
 const listingStatusPresentation: Record<ListingStatus, { label: string; variant: BadgeVariant }> = {
@@ -39,6 +39,30 @@ function StatusBadge({ label, variant, context }: { label: string; variant: Badg
 export function ListingStatusBadge({ status }: { readonly status: ListingStatus }) {
   const presentation = listingStatusPresentation[status];
   return <StatusBadge {...presentation} context="Trạng thái tin đăng" />;
+}
+
+const listingBusinessStatusPresentation: Record<ListingBusinessStatus, { label: string; variant: BadgeVariant }> = {
+  AVAILABLE: {
+    label: "Còn phòng",
+    variant: "success"
+  },
+  PAUSED: {
+    label: "Tạm dừng",
+    variant: "neutral"
+  },
+  RENTED: {
+    label: "Đã thuê",
+    variant: "danger"
+  },
+  UNKNOWN: {
+    label: "Chưa xác định",
+    variant: "warning"
+  }
+};
+
+export function BusinessStatusBadge({ status }: { readonly status: ListingBusinessStatus }) {
+  const presentation = listingBusinessStatusPresentation[status];
+  return <StatusBadge {...presentation} context="Trạng thái còn phòng" />;
 }
 
 export function AccountStatusBadge({ isActive }: { readonly isActive: boolean }) {

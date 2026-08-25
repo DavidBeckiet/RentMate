@@ -70,7 +70,8 @@ function detail(overrides: Partial<PublicListingDetail> = {}): PublicListingDeta
     ],
     landlordVerified: false,
     updatedAt: "2026-08-01T00:00:00.000Z",
-    ...overrides
+    ...overrides,
+    businessStatus: overrides.businessStatus ?? "AVAILABLE"
   };
 }
 

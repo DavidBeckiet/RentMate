@@ -43,6 +43,7 @@ const viewport: MapViewport = {
 const listings: readonly PublicListingSummary[] = [
   {
     id: 1,
+    businessStatus: "AVAILABLE",
     title: "Phòng A",
     monthlyRent: 5_000_000,
     roomAreaSqm: 20,
@@ -56,6 +57,7 @@ const listings: readonly PublicListingSummary[] = [
   },
   {
     id: 2,
+    businessStatus: "UNKNOWN",
     title: "Phòng B",
     monthlyRent: 6_000_000,
     roomAreaSqm: 24,

@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { AccountStatusBadge, ListingStatusBadge } from "../../components/ui/status-badge";
+import { AccountStatusBadge, BusinessStatusBadge, ListingStatusBadge } from "../../components/ui/status-badge";
 import type { AdminListingSummary } from "../../types/api";
 import { ListingMetadata } from "./listing-presentation";
 
@@ -15,6 +15,7 @@ export function AdminListingCard({ listing }: { readonly listing: AdminListingSu
               {listing.title ?? "Chưa có tiêu đề"}
             </h2>
             <ListingStatusBadge status={listing.status} />
+            <BusinessStatusBadge status={listing.businessStatus} />
           </div>
           <ListingMetadata>{listing.areaName ?? "Chưa có khu vực"}</ListingMetadata>
           <dl className="grid gap-x-6 gap-y-2 text-sm text-rent-secondary sm:grid-cols-2">

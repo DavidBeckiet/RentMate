@@ -43,6 +43,7 @@ const auth = (overrides: Partial<AuthContextValue> = {}): AuthContextValue => ({
 const listing = (id: number, title: string): AdminListingSummary => ({
   id,
   status: "PENDING",
+  businessStatus: "AVAILABLE",
   title,
   areaName: "Quận 1",
   landlord: { id: 9, email: "owner@example.com", phone: "+8490", isActive: true },

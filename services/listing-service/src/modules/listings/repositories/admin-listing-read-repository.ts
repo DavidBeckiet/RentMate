@@ -100,6 +100,7 @@ export function createAdminListingReadRepository(
               SELECT
                 l.id,
                 l.status,
+                l.business_status,
                 l.title,
                 l.area_name,
                 l.updated_at,
@@ -142,6 +143,7 @@ export function createAdminListingReadRepository(
               SELECT
                 l.id,
                 l.status,
+                l.business_status,
                 l.title,
                 l.area_name,
                 l.updated_at,
@@ -175,6 +177,7 @@ export function createAdminListingReadRepository(
               SELECT
                 l.id,
                 l.status,
+                l.business_status,
                 l.title,
                 l.description,
                 l.monthly_rent,
@@ -218,6 +221,7 @@ export function createAdminListingReadRepository(
             SELECT
               l.id,
               l.status,
+              l.business_status,
               l.title,
               l.description,
               l.monthly_rent,

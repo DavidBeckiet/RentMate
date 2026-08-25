@@ -33,6 +33,7 @@ export interface PublicListingDetailRepositoryDependencies {
 
 const publicProjection = `
         l.id,
+        l.business_status,
         l.title,
         l.description,
         l.monthly_rent,
@@ -78,6 +79,7 @@ const publicFrom = `
         ON true
       WHERE l.id = $1
         AND l.status = 'APPROVED'
+        AND l.business_status IN ('AVAILABLE', 'UNKNOWN')
         AND landlord.is_active = true
       LIMIT 1
     `;
@@ -134,6 +136,7 @@ const remotePublicDetailQuery = (listingId: number): ParameterizedQuery => ({
         ON true
       WHERE l.id = $1
         AND l.status = 'APPROVED'
+        AND l.business_status IN ('AVAILABLE', 'UNKNOWN')
       LIMIT 1
     `,
   values: [listingId]

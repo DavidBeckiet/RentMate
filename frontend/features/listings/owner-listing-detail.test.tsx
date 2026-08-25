@@ -111,7 +111,8 @@ function detail(overrides: Partial<OwnerDetail> = {}): OwnerDetail {
     currentModerationReason: "Lý do cũ không được hiện",
     createdAt: "2026-08-01T00:00:00.000Z",
     updatedAt: "2026-08-02T00:00:00.000Z",
-    ...overrides
+    ...overrides,
+    businessStatus: overrides.businessStatus ?? "AVAILABLE"
   };
 }
 
