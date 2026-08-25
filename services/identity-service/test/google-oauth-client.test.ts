@@ -43,7 +43,10 @@ test("exchanges a code and reads only the verified Google profile fields", async
     }
   });
 
-  const profile = await client.exchangeCode("oauth-code", "verifier_abcdefghijklmnopqrstuvwxyz123");
+  const profile = await client.exchangeCode(
+    "4/0AX4XfWiAvnXLqxlckFUVao8j0zvZUJ06AMgr-n0vSPotHWcn9p-zHCjqwr47KHS_vDvu8w",
+    "verifier_abcdefghijklmnopqrstuvwxyz123"
+  );
   assert.deepEqual(profile, {
     subject: "google-subject-1",
     email: "owner@example.com",

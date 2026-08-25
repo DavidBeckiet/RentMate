@@ -44,6 +44,10 @@ function providerFailure(): GoogleOAuthProviderError {
   return new GoogleOAuthProviderError();
 }
 
+function isUsableAuthorizationCode(code: string): boolean {
+  return code.length > 0 && code.length <= 2048 && !/[\u0000-\u001f\u007f\s]/.test(code);
+}
+
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }
@@ -135,7 +139,8 @@ export function createGoogleOAuthClient(options: GoogleOAuthClientOptions): Goog
     },
 
     async exchangeCode(code: string, codeVerifier: string) {
-      if (!/^[A-Za-z0-9._~-]{1,2048}$/.test(code) || !/^[A-Za-z0-9_-]{32,128}$/.test(codeVerifier)) {
+      // Google authorization codes are opaque values and may contain characters such as "/".
+      if (!isUsableAuthorizationCode(code) || !/^[A-Za-z0-9_-]{32,128}$/.test(codeVerifier)) {
         throw new ApplicationError("GOOGLE_AUTH_FAILED", "Google authentication could not be completed.");
       }
 

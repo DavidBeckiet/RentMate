@@ -14,6 +14,7 @@ import type { GoogleAuthService } from "../services/google-auth-service.js";
 import { validateGoogleAuthStartInput } from "../validations/google-auth-validation.js";
 import { validateGoogleLandlordCompletionInput } from "../validations/google-landlord-completion-validation.js";
 import { mapUserProfileToDto } from "../../users/user-profile.js";
+import type { Logger } from "../../../../../shared/src/runtime/shared/logging/logger.js";
 
 export interface GoogleAuthControllerDependencies {
   readonly client: GoogleOAuthClient | null;
@@ -23,6 +24,7 @@ export interface GoogleAuthControllerDependencies {
   readonly sessionTokenService: SessionTokenService;
   readonly sessionCookieService: SessionCookieService;
   readonly frontendOrigin: string;
+  readonly logger: Logger;
 }
 
 function notConfigured(): ApplicationError {
@@ -55,6 +57,24 @@ function defaultErrorRedirect(frontendOrigin: string, error: unknown): string {
   return errorRedirect(frontendOrigin, "LOGIN", null, error);
 }
 
+const knownGoogleProviderErrors = new Set([
+  "access_denied",
+  "invalid_request",
+  "unauthorized_client",
+  "redirect_uri_mismatch",
+  "invalid_scope",
+  "server_error",
+  "temporarily_unavailable"
+]);
+
+function safeGoogleProviderError(value: string): string {
+  return knownGoogleProviderErrors.has(value) ? value : "other";
+}
+
+function applicationErrorCode(error: unknown): string {
+  return error instanceof ApplicationError ? error.code : "UNEXPECTED_ERROR";
+}
+
 export function createGoogleStartHandler(dependencies: GoogleAuthControllerDependencies): RequestHandler {
   return (request, response, next): void => {
     void (async () => {
@@ -74,9 +94,11 @@ export function createGoogleCallbackHandler(dependencies: GoogleAuthControllerDe
       let intent: "LOGIN" | "REGISTER" = "LOGIN";
       let role: "TENANT" | "LANDLORD" | null = null;
       let consumedState = false;
+      let stage = "state";
 
       try {
-        validateQueryKeys(request.query, ["code", "error", "error_description", "state"]);
+        // OAuth providers may append response metadata such as scope, authuser, or prompt.
+        // Only consume the fields RentMate needs and ignore the rest as required by OAuth 2.0.
         const stateValue = readScalarQueryValue(request.query.state, "state");
         if (!stateValue)
           throw new ApplicationError("GOOGLE_AUTH_FAILED", "Google authentication could not be verified.");
@@ -88,6 +110,12 @@ export function createGoogleCallbackHandler(dependencies: GoogleAuthControllerDe
 
         const providerError = readScalarQueryValue(request.query.error, "error");
         if (providerError) {
+          dependencies.logger.warn("Google OAuth provider rejected callback", {
+            requestId: request.requestId,
+            stage: "provider_response",
+            providerError: safeGoogleProviderError(providerError),
+            hasDescription: Boolean(readScalarQueryValue(request.query.error_description, "error_description"))
+          });
           response.redirect(
             303,
             errorRedirect(
@@ -102,18 +130,26 @@ export function createGoogleCallbackHandler(dependencies: GoogleAuthControllerDe
 
         const code = readScalarQueryValue(request.query.code, "code");
         if (!code || !dependencies.service) throw notConfigured();
+        stage = "provider_exchange";
         const completion = await dependencies.service.complete({ code, state });
         if (completion.kind === "LANDLORD_PROFILE_REQUIRED") {
+          stage = "onboarding_ticket";
           dependencies.onboardingTicketService.create(response, completion.profile);
           response.redirect(303, new URL("/register/landlord/complete", dependencies.frontendOrigin).href);
           return;
         }
 
         const user = completion.user;
+        stage = "session_cookie";
         const token = await dependencies.sessionTokenService.sign({ userId: user.id, role: user.role });
         dependencies.sessionCookieService.set(response, token);
         response.redirect(303, dependencies.frontendOrigin);
       } catch (error) {
+        dependencies.logger.warn("Google OAuth callback failed", {
+          requestId: request.requestId,
+          stage,
+          errorCode: applicationErrorCode(error)
+        });
         if (!consumedState) dependencies.stateService.clear(response);
         if (!response.headersSent)
           response.redirect(303, errorRedirect(dependencies.frontendOrigin, intent, role, error));

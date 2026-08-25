@@ -177,7 +177,8 @@ async function startIdentityService(): Promise<void> {
           onboardingTicketService: googleOAuthOnboardingTicketService,
           sessionTokenService,
           sessionCookieService,
-          frontendOrigin: config.frontendOrigin
+          frontendOrigin: config.frontendOrigin,
+          logger
         },
         registrationRateLimitStore: authRateLimitStore,
         loginRateLimitStore: authRateLimitStore
