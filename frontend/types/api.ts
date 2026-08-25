@@ -208,6 +208,10 @@ export interface GoogleAuthStartResponse {
   readonly redirectUrl: string;
 }
 
+export interface GoogleLandlordCompletionBody {
+  readonly phone: string;
+}
+
 export interface PasswordResetRequestBody {
   readonly email: string;
 }

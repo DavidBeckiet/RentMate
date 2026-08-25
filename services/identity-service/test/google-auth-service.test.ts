@@ -86,7 +86,9 @@ test("creates a tenant account and links the verified Google subject", async () 
   const harness = createHarness();
   const result = await harness.service.complete({ code: "oauth-code", state: state("REGISTER", "TENANT") });
 
-  assert.equal(result.id, tenantProfile.id);
+  assert.equal(result.kind, "AUTHENTICATED");
+  if (result.kind !== "AUTHENTICATED") throw new Error("Expected Google registration to authenticate the user.");
+  assert.equal(result.user.id, tenantProfile.id);
   assert.equal(harness.calls.create.length, 1);
   assert.deepEqual(harness.calls.create[0], {
     role: "TENANT",
@@ -98,14 +100,52 @@ test("creates a tenant account and links the verified Google subject", async () 
   });
 });
 
-test("keeps the landlord phone requirement in Google registration", async () => {
+test("keeps the landlord phone when it is supplied during Google registration", async () => {
   const harness = createHarness();
-  await harness.service.complete({
+  const result = await harness.service.complete({
     code: "oauth-code",
     state: state("REGISTER", "LANDLORD", "+84901234567")
   });
 
+  assert.equal(result.kind, "AUTHENTICATED");
   assert.equal((harness.calls.create[0] as { phone: string }).phone, "+84901234567");
+});
+
+test("defers a new landlord phone requirement to the onboarding step", async () => {
+  const harness = createHarness();
+  const result = await harness.service.complete({ code: "oauth-code", state: state("REGISTER", "LANDLORD") });
+
+  assert.deepEqual(result, {
+    kind: "LANDLORD_PROFILE_REQUIRED",
+    profile: {
+      providerSubject: profile.subject,
+      email: profile.email,
+      displayName: profile.displayName
+    }
+  });
+  assert.equal(harness.calls.create.length, 0);
+});
+
+test("creates the landlord after the onboarding phone is submitted", async () => {
+  const harness = createHarness();
+  const result = await harness.service.completeLandlordRegistration({
+    profile: {
+      providerSubject: profile.subject,
+      email: profile.email,
+      displayName: profile.displayName
+    },
+    phone: "+84901234567"
+  });
+
+  assert.equal(result.id, tenantProfile.id);
+  assert.deepEqual(harness.calls.create[0], {
+    role: "LANDLORD",
+    displayName: "Google User",
+    email: "google@example.com",
+    phone: "+84901234567",
+    passwordHash: "generated-google-password-hash",
+    providerSubject: "google-subject-1"
+  });
 });
 
 test("links an existing verified-email account during Google login", async () => {
@@ -113,7 +153,9 @@ test("links an existing verified-email account during Google login", async () =>
   const harness = createHarness({ existing });
   const result = await harness.service.complete({ code: "oauth-code", state: state("LOGIN") });
 
-  assert.equal(result.id, existing.id);
+  assert.equal(result.kind, "AUTHENTICATED");
+  if (result.kind !== "AUTHENTICATED") throw new Error("Expected Google login to authenticate the user.");
+  assert.equal(result.user.id, existing.id);
   assert.deepEqual(harness.calls.link, [{ userId: existing.id, providerSubject: profile.subject }]);
 });
 

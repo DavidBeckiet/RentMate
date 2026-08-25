@@ -42,9 +42,8 @@ export function validateGoogleAuthStartInput(value: unknown): GoogleAuthStartInp
 
   const role = normalizeControlledCode(body.role, "role", ["TENANT", "LANDLORD"]) as GoogleAuthRole;
   if (role === "LANDLORD") {
-    const phone = normalizePhone(body.phone, "phone", "required");
-    if (!phone) throw new Error("Google landlord phone validation did not produce a value.");
-    return Object.freeze({ intent, role, phone });
+    const phone = normalizePhone(body.phone, "phone", "nullable");
+    return Object.freeze({ intent, role, phone: phone ?? null });
   }
 
   if (hasPhone) {

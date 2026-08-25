@@ -63,3 +63,22 @@ test("rejects tampered state and mismatched query state", () => {
     )
   );
 });
+
+test("allows a landlord state without collecting the phone before Google", () => {
+  const service = createGoogleOAuthStateService({ secret: "test-google-state-secret", secure: false });
+  const cookie = createResponse();
+  const created = service.create(cookie.response, {
+    intent: "REGISTER",
+    role: "LANDLORD",
+    phone: null
+  });
+
+  const stored = cookie.values.get(googleOAuthStateCookieName)!;
+  const consumed = service.consume(
+    { cookies: { [googleOAuthStateCookieName]: stored } } as unknown as Request,
+    cookie.response,
+    created.state
+  );
+
+  assert.equal(consumed.phone, null);
+});

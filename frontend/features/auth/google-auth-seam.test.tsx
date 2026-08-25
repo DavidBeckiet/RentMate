@@ -31,18 +31,17 @@ describe("GoogleAuthSeam", () => {
     expect(redirect).toHaveBeenCalledWith("https://accounts.google.com/oauth");
   });
 
-  it("sends the landlord phone in the signed OAuth-start request", async () => {
+  it("starts landlord registration before collecting the required phone", async () => {
     const redirect = vi.fn();
     apiMocks.startGoogle.mockResolvedValue({ redirectUrl: "https://accounts.google.com/oauth" });
-    render(<GoogleAuthSeam mode="register" role="LANDLORD" phone=" +84901234567 " onRedirect={redirect} />);
+    render(<GoogleAuthSeam mode="register" role="LANDLORD" onRedirect={redirect} />);
 
     fireEvent.click(screen.getByRole("button", { name: "Đăng ký nhanh bằng Google" }));
 
     await waitFor(() =>
       expect(apiMocks.startGoogle).toHaveBeenCalledWith({
         intent: "REGISTER",
-        role: "LANDLORD",
-        phone: "+84901234567"
+        role: "LANDLORD"
       })
     );
   });

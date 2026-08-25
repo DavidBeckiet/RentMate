@@ -22,7 +22,11 @@ test("validates Google login and registration intents", () => {
 
 test("requires exact role/phone combinations for Google start", () => {
   assert.throws(() => validateGoogleAuthStartInput({ intent: "LOGIN", role: "TENANT" }));
-  assert.throws(() => validateGoogleAuthStartInput({ intent: "REGISTER", role: "LANDLORD" }));
+  assert.deepEqual(validateGoogleAuthStartInput({ intent: "REGISTER", role: "LANDLORD" }), {
+    intent: "REGISTER",
+    role: "LANDLORD",
+    phone: null
+  });
   assert.throws(() => validateGoogleAuthStartInput({ intent: "REGISTER", role: "TENANT", phone: "+84901234567" }));
   assert.throws(() => validateGoogleAuthStartInput({ intent: "REGISTER", role: "LANDLORD", phone: "0901234567" }));
 });

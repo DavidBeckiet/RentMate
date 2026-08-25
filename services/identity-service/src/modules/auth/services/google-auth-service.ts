@@ -6,10 +6,18 @@ import type { LoginAccount, LoginAuthRepository } from "../repositories/auth-rep
 import { GoogleIdentityConflictError, type GoogleAuthRepository } from "../repositories/google-auth-repository.js";
 import type { GoogleProfile, GoogleOAuthClient, GoogleOAuthProviderError } from "../google-oauth-client.js";
 import type { GoogleOAuthState } from "../google-oauth-state.js";
+import type { GoogleOAuthOnboardingProfile } from "../google-oauth-onboarding.js";
 import type { TransactionRunner } from "../../../shared/transaction.js";
 
+export type GoogleAuthCompletion =
+  | { readonly kind: "AUTHENTICATED"; readonly user: UserProfile }
+  | { readonly kind: "LANDLORD_PROFILE_REQUIRED"; readonly profile: GoogleOAuthOnboardingProfile };
+
 export interface GoogleAuthService {
-  complete(input: Readonly<{ code: string; state: GoogleOAuthState }>): Promise<UserProfile>;
+  complete(input: Readonly<{ code: string; state: GoogleOAuthState }>): Promise<GoogleAuthCompletion>;
+  completeLandlordRegistration(
+    input: Readonly<{ profile: GoogleOAuthOnboardingProfile; phone: string }>
+  ): Promise<UserProfile>;
 }
 
 function withoutPasswordHash(account: LoginAccount): UserProfile {
@@ -59,7 +67,10 @@ export function createGoogleAuthService(
   }>
 ): GoogleAuthService {
   return Object.freeze({
-    async complete({ code, state }: Readonly<{ code: string; state: GoogleOAuthState }>): Promise<UserProfile> {
+    async complete({
+      code,
+      state
+    }: Readonly<{ code: string; state: GoogleOAuthState }>): Promise<GoogleAuthCompletion> {
       let googleProfile: GoogleProfile;
       try {
         googleProfile = await dependencies.client.exchangeCode(code, state.codeVerifier);
@@ -73,7 +84,7 @@ export function createGoogleAuthService(
       if (linkedAccount) {
         if (!isUsableAccount(linkedAccount)) throw invalidInactiveAccount();
         if (state.intent === "REGISTER") throw existingGoogleAccount();
-        return linkedAccount;
+        return { kind: "AUTHENTICATED", user: linkedAccount };
       }
 
       const existingAccount = await dependencies.loginRepository.findLoginAccount(googleProfile.email);
@@ -89,15 +100,26 @@ export function createGoogleAuthService(
           if (error instanceof GoogleIdentityConflictError) throw providerApplicationError(error);
           throw error;
         }
-        return withoutPasswordHash(existingAccount);
+        return { kind: "AUTHENTICATED", user: withoutPasswordHash(existingAccount) };
       }
 
       if (state.intent === "LOGIN") throw missingGoogleAccount();
       if (!state.role) throw providerApplicationError();
 
+      if (state.role === "LANDLORD" && state.phone === null) {
+        return {
+          kind: "LANDLORD_PROFILE_REQUIRED",
+          profile: Object.freeze({
+            providerSubject: googleProfile.subject,
+            email: googleProfile.email,
+            displayName: googleProfile.displayName
+          })
+        };
+      }
+
       const passwordHash = await dependencies.passwordService.hashPassword(randomBytes(32).toString("base64url"));
       try {
-        return await dependencies.transactionRunner((executor) =>
+        const user = await dependencies.transactionRunner((executor) =>
           dependencies.repository.createUserAndLinkProvider(executor, {
             role: state.role!,
             displayName: googleProfile.displayName,
@@ -105,6 +127,29 @@ export function createGoogleAuthService(
             phone: state.phone,
             passwordHash,
             providerSubject: googleProfile.subject
+          })
+        );
+        return { kind: "AUTHENTICATED", user };
+      } catch (error) {
+        if (error instanceof GoogleIdentityConflictError) throw existingGoogleAccount();
+        throw error;
+      }
+    },
+
+    async completeLandlordRegistration({
+      profile,
+      phone
+    }: Readonly<{ profile: GoogleOAuthOnboardingProfile; phone: string }>): Promise<UserProfile> {
+      const passwordHash = await dependencies.passwordService.hashPassword(randomBytes(32).toString("base64url"));
+      try {
+        return await dependencies.transactionRunner((executor) =>
+          dependencies.repository.createUserAndLinkProvider(executor, {
+            role: "LANDLORD",
+            displayName: profile.displayName,
+            email: profile.email,
+            phone,
+            passwordHash,
+            providerSubject: profile.providerSubject
           })
         );
       } catch (error) {

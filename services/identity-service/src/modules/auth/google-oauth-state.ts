@@ -91,9 +91,6 @@ function assertStateInput(input: GoogleOAuthStateInput): void {
   if (input.role !== "LANDLORD" && input.phone !== null) {
     throw new Error("Google registration phone is only valid for landlords.");
   }
-  if (input.role === "LANDLORD" && !input.phone) {
-    throw new Error("Google landlord registration requires a phone.");
-  }
 }
 
 function invalidState(): ApplicationError {

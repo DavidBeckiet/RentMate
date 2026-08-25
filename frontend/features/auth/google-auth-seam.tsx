@@ -11,7 +11,6 @@ type GoogleRegistrationRole = "TENANT" | "LANDLORD";
 interface GoogleAuthSeamProps {
   readonly mode: "login" | "register";
   readonly role?: GoogleRegistrationRole;
-  readonly phone?: string;
   readonly enabled?: boolean;
   readonly onRedirect?: (url: string) => void;
 }
@@ -26,9 +25,6 @@ const googleErrorMessages: Readonly<Record<string, string>> = {
 };
 
 function startError(error: unknown): { readonly message: string; readonly requestId: string | null } {
-  if (error instanceof ApiError && error.code === "VALIDATION_FAILED") {
-    return { message: "Vui lòng nhập số điện thoại hợp lệ trước khi đăng ký bằng Google.", requestId: error.requestId };
-  }
   if (error instanceof ApiError && error.code === "GOOGLE_AUTH_NOT_CONFIGURED") {
     return { message: googleErrorMessages["not-configured"]!, requestId: error.requestId };
   }
@@ -41,7 +37,7 @@ function startError(error: unknown): { readonly message: string; readonly reques
   };
 }
 
-export function GoogleAuthSeam({ mode, role, phone, enabled = true, onRedirect }: Readonly<GoogleAuthSeamProps>) {
+export function GoogleAuthSeam({ mode, role, enabled = true, onRedirect }: Readonly<GoogleAuthSeamProps>) {
   const availabilityId = `google-${mode}-availability`;
   const label = mode === "login" ? "Đăng nhập nhanh bằng Google" : "Đăng ký nhanh bằng Google";
   const providerConfigured = process.env.NEXT_PUBLIC_GOOGLE_AUTH_ENABLED === "true";
@@ -71,7 +67,7 @@ export function GoogleAuthSeam({ mode, role, phone, enabled = true, onRedirect }
       mode === "login"
         ? { intent: "LOGIN" }
         : role === "LANDLORD"
-          ? { intent: "REGISTER", role, phone: phone?.trim() || undefined }
+          ? { intent: "REGISTER", role }
           : { intent: "REGISTER", role: "TENANT" };
 
     try {

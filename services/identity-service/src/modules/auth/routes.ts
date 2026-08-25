@@ -12,6 +12,7 @@ import {
 } from "./controllers/login-controller.js";
 import {
   createGoogleCallbackHandler,
+  createGoogleLandlordCompletionHandler,
   createGoogleStartHandler,
   type GoogleAuthControllerDependencies
 } from "./controllers/google-auth-controller.js";
@@ -94,6 +95,11 @@ export function registerAuthRoutes(router: Router, dependencies: AuthRouteDepend
   router.post("/auth/logout", createLogoutHandler(dependencies));
   router.post("/auth/google/start", loginRateLimiter, createGoogleStartHandler(dependencies.googleAuth));
   router.get("/auth/google/callback", createGoogleCallbackHandler(dependencies.googleAuth));
+  router.post(
+    "/auth/google/complete-landlord",
+    loginRateLimiter,
+    createGoogleLandlordCompletionHandler(dependencies.googleAuth)
+  );
   router.post(
     "/auth/password-reset/request",
     passwordResetRequestRateLimiter,

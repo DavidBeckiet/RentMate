@@ -17,6 +17,7 @@ import { createSessionCookieService } from "./modules/auth/session-cookie.js";
 import { createSessionTokenService } from "./modules/auth/session-token.js";
 import { createGoogleOAuthClient } from "./modules/auth/google-oauth-client.js";
 import { createGoogleOAuthStateService } from "./modules/auth/google-oauth-state.js";
+import { createGoogleOAuthOnboardingTicketService } from "./modules/auth/google-oauth-onboarding.js";
 import { createGoogleAuthRepository } from "./modules/auth/repositories/google-auth-repository.js";
 import { createGoogleAuthService } from "./modules/auth/services/google-auth-service.js";
 import { createAdminUserRepository } from "./modules/users/repositories/admin-user-repository.js";
@@ -80,6 +81,10 @@ async function startIdentityService(): Promise<void> {
   const sessionCookieService = createSessionCookieService({ secure: config.auth.cookieSecure });
   const authRepository = createAuthRepository(sqlExecutor);
   const googleOAuthStateService = createGoogleOAuthStateService({
+    secret: config.auth.jwtSecret,
+    secure: config.auth.cookieSecure
+  });
+  const googleOAuthOnboardingTicketService = createGoogleOAuthOnboardingTicketService({
     secret: config.auth.jwtSecret,
     secure: config.auth.cookieSecure
   });
@@ -169,6 +174,7 @@ async function startIdentityService(): Promise<void> {
           client: googleOAuthClient,
           service: googleAuthService,
           stateService: googleOAuthStateService,
+          onboardingTicketService: googleOAuthOnboardingTicketService,
           sessionTokenService,
           sessionCookieService,
           frontendOrigin: config.frontendOrigin

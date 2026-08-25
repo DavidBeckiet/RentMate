@@ -9,13 +9,17 @@ import type { SessionCookieService } from "../session-cookie.js";
 import type { SessionTokenService } from "../session-token.js";
 import type { GoogleOAuthClient } from "../google-oauth-client.js";
 import type { GoogleOAuthStateService } from "../google-oauth-state.js";
+import type { GoogleOAuthOnboardingTicketService } from "../google-oauth-onboarding.js";
 import type { GoogleAuthService } from "../services/google-auth-service.js";
 import { validateGoogleAuthStartInput } from "../validations/google-auth-validation.js";
+import { validateGoogleLandlordCompletionInput } from "../validations/google-landlord-completion-validation.js";
+import { mapUserProfileToDto } from "../../users/user-profile.js";
 
 export interface GoogleAuthControllerDependencies {
   readonly client: GoogleOAuthClient | null;
   readonly service: GoogleAuthService | null;
   readonly stateService: GoogleOAuthStateService;
+  readonly onboardingTicketService: GoogleOAuthOnboardingTicketService;
   readonly sessionTokenService: SessionTokenService;
   readonly sessionCookieService: SessionCookieService;
   readonly frontendOrigin: string;
@@ -30,6 +34,7 @@ function errorSlug(error: unknown): string {
   if (error.code === "GOOGLE_AUTH_NOT_CONFIGURED") return "not-configured";
   if (error.code === "GOOGLE_ACCOUNT_EXISTS") return "account-exists";
   if (error.code === "GOOGLE_ACCOUNT_NOT_REGISTERED") return "not-registered";
+  if (error.code === "GOOGLE_ONBOARDING_REQUIRED") return "onboarding-required";
   if (error.code === "INVALID_CREDENTIALS") return "account-unavailable";
   return "failed";
 }
@@ -97,7 +102,14 @@ export function createGoogleCallbackHandler(dependencies: GoogleAuthControllerDe
 
         const code = readScalarQueryValue(request.query.code, "code");
         if (!code || !dependencies.service) throw notConfigured();
-        const user = await dependencies.service.complete({ code, state });
+        const completion = await dependencies.service.complete({ code, state });
+        if (completion.kind === "LANDLORD_PROFILE_REQUIRED") {
+          dependencies.onboardingTicketService.create(response, completion.profile);
+          response.redirect(303, new URL("/register/landlord/complete", dependencies.frontendOrigin).href);
+          return;
+        }
+
+        const user = completion.user;
         const token = await dependencies.sessionTokenService.sign({ userId: user.id, role: user.role });
         dependencies.sessionCookieService.set(response, token);
         response.redirect(303, dependencies.frontendOrigin);
@@ -107,5 +119,21 @@ export function createGoogleCallbackHandler(dependencies: GoogleAuthControllerDe
           response.redirect(303, errorRedirect(dependencies.frontendOrigin, intent, role, error));
       }
     })();
+  };
+}
+
+export function createGoogleLandlordCompletionHandler(dependencies: GoogleAuthControllerDependencies): RequestHandler {
+  return (request, response, next): void => {
+    void (async () => {
+      validateQueryKeys(request.query, []);
+      if (!dependencies.client || !dependencies.service) throw notConfigured();
+
+      const input = validateGoogleLandlordCompletionInput(request.body);
+      const profile = dependencies.onboardingTicketService.consume(request, response);
+      const user = await dependencies.service.completeLandlordRegistration({ profile, phone: input.phone });
+      const token = await dependencies.sessionTokenService.sign({ userId: user.id, role: user.role });
+      dependencies.sessionCookieService.set(response, token);
+      sendObject(response, mapUserProfileToDto(user), 201);
+    })().catch(next);
   };
 }
