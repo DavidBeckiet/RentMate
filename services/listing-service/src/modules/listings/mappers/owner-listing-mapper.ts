@@ -38,6 +38,7 @@ export interface CreatedListingRow extends QueryResultRow {
   readonly description: unknown;
   readonly monthly_rent: unknown;
   readonly room_area_sqm: unknown;
+  readonly max_occupants: unknown;
   readonly address_text: unknown;
   readonly area_name: unknown;
   readonly latitude: unknown;
@@ -59,6 +60,7 @@ export interface CreatedListing {
   readonly description: string | null;
   readonly monthlyRent: number | null;
   readonly roomAreaSqm: number | null;
+  readonly maxOccupants: number | null;
   readonly addressText: string | null;
   readonly areaName: string | null;
   readonly latitude: number | null;
@@ -75,6 +77,7 @@ export interface OwnerListingDetailBase {
   readonly description: string | null;
   readonly monthlyRent: number | null;
   readonly roomAreaSqm: number | null;
+  readonly maxOccupants: number | null;
   readonly addressText: string | null;
   readonly areaName: string | null;
   readonly latitude: number | null;
@@ -98,6 +101,7 @@ export interface OwnerListingDetailDto {
   readonly description: string | null;
   readonly monthlyRent: number | null;
   readonly roomAreaSqm: number | null;
+  readonly maxOccupants: number | null;
   readonly addressText: string | null;
   readonly areaName: string | null;
   readonly latitude: number | null;
@@ -126,6 +130,14 @@ export function isListingStatus(value: unknown): value is ListingStatus {
 
 function isNullableString(value: unknown): value is string | null {
   return value === null || typeof value === "string";
+}
+
+function mapMaxOccupants(value: unknown): number | null {
+  if (value === null) return null;
+  if (!Number.isInteger(value) || (value as number) < 1 || (value as number) > 20) {
+    throw new OwnerListingMappingError();
+  }
+  return value as number;
 }
 
 function mapCoordinatePair(
@@ -203,6 +215,7 @@ function mapBaseListingRow(
       description: row.description,
       monthlyRent: mapNullablePgWholeNumeric(row.monthly_rent, "monthly_rent"),
       roomAreaSqm: mapNullablePgScaleTwoNumeric(row.room_area_sqm, "room_area_sqm"),
+      maxOccupants: mapMaxOccupants(row.max_occupants),
       addressText: row.address_text,
       areaName: row.area_name,
       latitude: coordinates.latitude,
@@ -228,6 +241,7 @@ export function mapCreatedListingRow(row: Readonly<CreatedListingRow>): CreatedL
     description: mapped.description,
     monthlyRent: mapped.monthlyRent,
     roomAreaSqm: mapped.roomAreaSqm,
+    maxOccupants: mapped.maxOccupants,
     addressText: mapped.addressText,
     areaName: mapped.areaName,
     latitude: mapped.latitude,
@@ -248,6 +262,7 @@ export function mapPersistedOwnerListingRow(row: Readonly<PersistedOwnerListingR
       description: mapped.description,
       monthlyRent: mapped.monthlyRent,
       roomAreaSqm: mapped.roomAreaSqm,
+      maxOccupants: mapped.maxOccupants,
       addressText: mapped.addressText,
       areaName: mapped.areaName,
       latitude: mapped.latitude,
@@ -278,6 +293,7 @@ export function createOwnerListingDetail(
       description: listing.description,
       monthlyRent: listing.monthlyRent,
       roomAreaSqm: listing.roomAreaSqm,
+      maxOccupants: listing.maxOccupants,
       addressText: listing.addressText,
       areaName: listing.areaName,
       latitude: listing.latitude,
@@ -307,6 +323,7 @@ export function createOwnerListing(
     description: listing.description,
     monthlyRent: listing.monthlyRent,
     roomAreaSqm: listing.roomAreaSqm,
+    maxOccupants: listing.maxOccupants,
     addressText: listing.addressText,
     areaName: listing.areaName,
     latitude: listing.latitude,
@@ -328,6 +345,7 @@ export function mapOwnerListingToDto(listing: Readonly<OwnerListingDetail>): Own
       description: listing.description,
       monthlyRent: listing.monthlyRent,
       roomAreaSqm: listing.roomAreaSqm,
+      maxOccupants: listing.maxOccupants,
       addressText: listing.addressText,
       areaName: listing.areaName,
       latitude: listing.latitude,

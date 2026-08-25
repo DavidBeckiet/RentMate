@@ -9,6 +9,7 @@ const publicSummary = {
   title: "Studio sáng",
   monthlyRent: 7_500_000,
   roomAreaSqm: 28,
+  maxOccupants: null,
   areaName: "Quận 1",
   latitude: 10.772,
   longitude: 106.698,

@@ -15,6 +15,7 @@ export interface OwnerListingSummaryRow extends QueryResultRow {
   readonly business_status: unknown;
   readonly title: unknown;
   readonly monthly_rent: unknown;
+  readonly max_occupants: unknown;
   readonly area_name: unknown;
   readonly updated_at: unknown;
   readonly property_type_code: unknown;
@@ -37,6 +38,7 @@ export interface OwnerListingSummary {
   readonly businessStatus: ListingBusinessStatus;
   readonly title: string | null;
   readonly monthlyRent: number | null;
+  readonly maxOccupants: number | null;
   readonly areaName: string | null;
   readonly propertyType: LookupValue | null;
   readonly coverImage: OwnerImage | null;
@@ -50,6 +52,7 @@ export interface OwnerListingSummaryDto {
   readonly businessStatus: ListingBusinessStatus;
   readonly title: string | null;
   readonly monthlyRent: number | null;
+  readonly maxOccupants: number | null;
   readonly areaName: string | null;
   readonly propertyType: PropertyTypeDto | null;
   readonly coverImage: OwnerImageDto | null;
@@ -72,6 +75,14 @@ function mapPropertyType(code: unknown, label: unknown): LookupValue | null {
     throw new OwnerListingSummaryMappingError();
   }
   return mapLookupValueRow({ code, label });
+}
+
+function mapMaxOccupants(value: unknown): number | null {
+  if (value === null) return null;
+  if (!Number.isInteger(value) || (value as number) < 1 || (value as number) > 20) {
+    throw new OwnerListingSummaryMappingError();
+  }
+  return value as number;
 }
 
 function mapCoverImage(row: Readonly<OwnerListingSummaryRow>): OwnerImage | null {
@@ -125,6 +136,7 @@ export function mapOwnerListingSummaryRow(row: Readonly<OwnerListingSummaryRow>)
       businessStatus: row.business_status,
       title: row.title as string | null,
       monthlyRent: mapNullablePgWholeNumeric(row.monthly_rent, "monthly_rent"),
+      maxOccupants: mapMaxOccupants(row.max_occupants),
       areaName: row.area_name as string | null,
       propertyType: mapPropertyType(row.property_type_code, row.property_type_label),
       coverImage: mapCoverImage(row),
@@ -147,6 +159,7 @@ export function mapOwnerListingSummaryToDto(summary: Readonly<OwnerListingSummar
       businessStatus: summary.businessStatus,
       title: summary.title,
       monthlyRent: summary.monthlyRent,
+      maxOccupants: summary.maxOccupants,
       areaName: summary.areaName,
       propertyType: summary.propertyType === null ? null : mapPropertyTypeToDto(summary.propertyType),
       coverImage: summary.coverImage === null ? null : mapOwnerImageToDto(summary.coverImage),

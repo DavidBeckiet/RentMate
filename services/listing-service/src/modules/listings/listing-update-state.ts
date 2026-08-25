@@ -11,6 +11,7 @@ export interface ListingContentState {
   readonly description: string | null;
   readonly monthlyRent: number | null;
   readonly roomAreaSqm: number | null;
+  readonly maxOccupants: number | null;
   readonly addressText: string | null;
   readonly areaName: string | null;
   readonly latitude: number | null;
@@ -51,6 +52,7 @@ export function resolveListingUpdateState(
     description: value(input.description, current.description),
     monthlyRent: value(input.monthlyRent, current.monthlyRent),
     roomAreaSqm: value(input.roomAreaSqm, current.roomAreaSqm),
+    maxOccupants: value(input.maxOccupants, current.maxOccupants),
     addressText: value(input.addressText, current.addressText),
     areaName: value(input.areaName, current.areaName),
     latitude: coordinates.latitude,
@@ -62,6 +64,7 @@ export function resolveListingUpdateState(
     next.description !== current.description ||
     next.monthlyRent !== current.monthlyRent ||
     next.roomAreaSqm !== current.roomAreaSqm ||
+    next.maxOccupants !== current.maxOccupants ||
     next.addressText !== current.addressText ||
     next.areaName !== current.areaName ||
     next.latitude !== current.latitude ||

@@ -27,6 +27,8 @@ function isPublicListingSummary(value: unknown): value is PublicListingSummary {
     typeof summary.title === "string" &&
     typeof summary.monthlyRent === "number" &&
     typeof summary.roomAreaSqm === "number" &&
+    (summary.maxOccupants === null ||
+      (Number.isInteger(summary.maxOccupants) && summary.maxOccupants >= 1 && summary.maxOccupants <= 20)) &&
     typeof summary.areaName === "string" &&
     typeof summary.latitude === "number" &&
     typeof summary.longitude === "number" &&
@@ -47,6 +49,7 @@ function mapPublicListingSummary(summary: PublicListingSummary): PublicListingSu
     title: summary.title,
     monthlyRent: summary.monthlyRent,
     roomAreaSqm: summary.roomAreaSqm,
+    maxOccupants: summary.maxOccupants,
     areaName: summary.areaName,
     latitude: summary.latitude,
     longitude: summary.longitude,

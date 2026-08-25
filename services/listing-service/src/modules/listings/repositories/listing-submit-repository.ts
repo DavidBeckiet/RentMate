@@ -27,6 +27,7 @@ interface LockedSubmissionRow extends QueryResultRow {
   readonly description: unknown;
   readonly monthly_rent: unknown;
   readonly room_area_sqm: unknown;
+  readonly max_occupants: unknown;
   readonly address_text: unknown;
   readonly area_name: unknown;
   readonly latitude: unknown;
@@ -49,6 +50,7 @@ export interface LockedSubmissionListing {
   readonly description: string | null;
   readonly monthlyRent: number | null;
   readonly roomAreaSqm: number | null;
+  readonly maxOccupants: number | null;
   readonly addressText: string | null;
   readonly areaName: string | null;
   readonly latitude: number | null;
@@ -79,6 +81,14 @@ function nullableCoordinate(value: unknown, minimum: number, maximum: number): n
     throw new RepositoryInvariantError("Locked listing coordinate is invalid.");
   }
   return mapped;
+}
+
+function nullableMaxOccupants(value: unknown): number | null {
+  if (value === null) return null;
+  if (!Number.isInteger(value) || (value as number) < 1 || (value as number) > 20) {
+    throw new RepositoryInvariantError("Locked submission max occupants value is invalid.");
+  }
+  return value as number;
 }
 
 function lockedSubmission(row: Readonly<LockedSubmissionRow>): LockedSubmissionListing {
@@ -122,6 +132,7 @@ function lockedSubmission(row: Readonly<LockedSubmissionRow>): LockedSubmissionL
     description: row.description as string | null,
     monthlyRent: mapNullablePgWholeNumeric(row.monthly_rent, "monthly_rent"),
     roomAreaSqm: mapNullablePgScaleTwoNumeric(row.room_area_sqm, "room_area_sqm"),
+    maxOccupants: nullableMaxOccupants(row.max_occupants),
     addressText: row.address_text as string | null,
     areaName: row.area_name as string | null,
     latitude: nullableCoordinate(row.latitude, -90, 90),
@@ -144,7 +155,7 @@ export function createListingSubmitRepository(executor: SqlExecutor): ListingSub
       return queryOptional(
         executor,
         {
-          text: `SELECT l.id, l.status, l.property_type_id, l.title, l.description, l.monthly_rent, l.room_area_sqm, l.address_text, l.area_name, l.latitude, l.longitude, l.created_at, l.updated_at, (l.property_type_id IS NOT NULL) AS property_type_present, (pt.id IS NOT NULL) AS property_type_known, pt.code AS property_type_code, pt.label AS property_type_label FROM listings AS l LEFT JOIN property_types AS pt ON pt.id = l.property_type_id WHERE l.id = $1 AND l.landlord_id = $2 FOR UPDATE OF l`,
+          text: `SELECT l.id, l.status, l.property_type_id, l.title, l.description, l.monthly_rent, l.room_area_sqm, l.max_occupants, l.address_text, l.area_name, l.latitude, l.longitude, l.created_at, l.updated_at, (l.property_type_id IS NOT NULL) AS property_type_present, (pt.id IS NOT NULL) AS property_type_known, pt.code AS property_type_code, pt.label AS property_type_label FROM listings AS l LEFT JOIN property_types AS pt ON pt.id = l.property_type_id WHERE l.id = $1 AND l.landlord_id = $2 FOR UPDATE OF l`,
           values: [listingId, landlordId]
         },
         lockedSubmission

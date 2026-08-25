@@ -14,6 +14,7 @@ function listing(overrides: Partial<OwnerListingSummary> = {}): OwnerListingSumm
     status: "DRAFT",
     title: "Studio trung tâm",
     monthlyRent: 7_500_000,
+    maxOccupants: null,
     areaName: "Quận 1",
     propertyType: { code: "STUDIO", label: "Studio" },
     coverImage: {

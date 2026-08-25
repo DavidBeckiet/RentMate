@@ -152,6 +152,10 @@ function CanonicalDetail({
             <dd>{detail.roomAreaSqm === null ? "Chưa có" : formatAreaSqm(detail.roomAreaSqm)}</dd>
           </div>
           <div>
+            <dt className="font-semibold text-rent-ink">Sức chứa</dt>
+            <dd>{detail.maxOccupants === null ? "Chưa xác định" : `${detail.maxOccupants} người tối đa`}</dd>
+          </div>
+          <div>
             <dt className="font-semibold text-rent-ink">Loại hình</dt>
             <dd>{detail.propertyType?.label ?? "Chưa có"}</dd>
           </div>

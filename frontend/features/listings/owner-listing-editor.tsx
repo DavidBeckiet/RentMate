@@ -26,6 +26,7 @@ export const ownerEditorFields = [
   "monthlyRent",
   "propertyTypeCode",
   "roomAreaSqm",
+  "maxOccupants",
   "addressText",
   "areaName",
   "latitude",
@@ -60,6 +61,7 @@ interface FormState {
   readonly monthlyRent: string;
   readonly propertyTypeCode: string;
   readonly roomAreaSqm: string;
+  readonly maxOccupants: string;
   readonly addressText: string;
   readonly areaName: string;
   readonly latitude: string;
@@ -80,6 +82,7 @@ function formFromDetail(detail: OwnerListingDetail): FormState {
     monthlyRent: detail.monthlyRent === null ? "" : String(detail.monthlyRent),
     propertyTypeCode: detail.propertyType?.code ?? "",
     roomAreaSqm: detail.roomAreaSqm === null ? "" : String(detail.roomAreaSqm),
+    maxOccupants: detail.maxOccupants === null ? "" : String(detail.maxOccupants),
     addressText: detail.addressText ?? "",
     areaName: detail.areaName ?? "",
     latitude: detail.latitude === null ? "" : String(detail.latitude),
@@ -122,7 +125,9 @@ function parseNumber(
     errors[field] =
       field === "monthlyRent"
         ? "Giá thuê phải là số nguyên dương không lớn hơn 999999999999."
-        : "Diện tích phải là số dương, tối đa hai chữ số thập phân và không lớn hơn 999999.99.";
+        : field === "maxOccupants"
+          ? "Sức chứa phải là số nguyên từ 1 đến 20."
+          : "Diện tích phải là số dương, tối đa hai chữ số thập phân và không lớn hơn 999999.99.";
   }
   return number;
 }
@@ -170,6 +175,14 @@ function buildPatch(form: FormState, dirty: ReadonlySet<OwnerEditorField>) {
       errors
     );
   }
+  if (dirty.has("maxOccupants")) {
+    body.maxOccupants = parseNumber(
+      form.maxOccupants,
+      "maxOccupants",
+      { integer: true, minimumExclusive: 0, maximum: 20 },
+      errors
+    );
+  }
   if (dirty.has("latitude") || dirty.has("longitude")) {
     const latitude = parseCoordinate(form.latitude, "latitude", -90, 90, errors);
     const longitude = parseCoordinate(form.longitude, "longitude", -180, 180, errors);
@@ -193,6 +206,7 @@ function sameCanonicalContent(left: OwnerListingDetail, right: OwnerListingDetai
     left.description === right.description &&
     left.monthlyRent === right.monthlyRent &&
     left.roomAreaSqm === right.roomAreaSqm &&
+    left.maxOccupants === right.maxOccupants &&
     left.addressText === right.addressText &&
     left.areaName === right.areaName &&
     left.latitude === right.latitude &&
@@ -421,7 +435,7 @@ export function OwnerListingEditor({
         <h2 id="owner-price-heading" className="text-xl font-semibold text-rent-ink">
           Giá &amp; diện tích
         </h2>
-        <div className="grid gap-5 sm:grid-cols-2">
+        <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
           <InputField
             id="owner-rent"
             name="monthlyRent"
@@ -447,6 +461,21 @@ export function OwnerListingEditor({
             error={combinedErrors.roomAreaSqm}
             disabled={pending}
             onChange={(event) => updateField("roomAreaSqm", event.target.value)}
+          />
+          <InputField
+            id="owner-max-occupants"
+            name="maxOccupants"
+            label="Sức chứa tối đa"
+            hint="Để trống nếu chưa xác định. Từ 1 đến 20 người."
+            type="number"
+            inputMode="numeric"
+            min="1"
+            max="20"
+            step="1"
+            value={form.maxOccupants}
+            error={combinedErrors.maxOccupants}
+            disabled={pending}
+            onChange={(event) => updateField("maxOccupants", event.target.value)}
           />
         </div>
       </section>

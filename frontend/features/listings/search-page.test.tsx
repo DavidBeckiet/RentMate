@@ -120,6 +120,7 @@ function listing(id: number, title: string): PublicListingSummary {
     title,
     monthlyRent: 5_000_000,
     roomAreaSqm: 20,
+    maxOccupants: null,
     areaName: "Quận 1",
     latitude: 10.77,
     longitude: 106.69,

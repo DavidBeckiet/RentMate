@@ -29,6 +29,7 @@ test("public search maps verification to a boolean badge in one batched Identity
     title: "Studio sáng",
     monthly_rent: "7500000",
     room_area_sqm: "28.00",
+    max_occupants: null,
     area_name: "Quận 1",
     latitude: 10.772,
     longitude: 106.698,

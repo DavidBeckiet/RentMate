@@ -68,6 +68,7 @@ const listingSeeds = Object.freeze([
     description: "Phong sang, day du noi that, phu hop sinh vien va nguoi di lam tai Quan 3.",
     monthlyRent: 4_200_000,
     roomAreaSqm: 24,
+    maxOccupants: 2,
     addressText: "123 Nguyen Dinh Chieu, Phuong Vo Thi Sau",
     areaName: "Quan 3",
     latitude: 10.7753,
@@ -84,6 +85,7 @@ const listingSeeds = Object.freeze([
     description: "Studio co ban cong thoang, co bep rieng va bao ve 24/7, di chuyen thuan tien.",
     monthlyRent: 6_500_000,
     roomAreaSqm: 32,
+    maxOccupants: 2,
     addressText: "45 Nguyen Cuu Van, Phuong 17",
     areaName: "Binh Thanh",
     latitude: 10.8012,
@@ -100,6 +102,7 @@ const listingSeeds = Object.freeze([
     description: "Can ho mini co thang may, noi that dep va khu dan cu yen tinh gan song Sai Gon.",
     monthlyRent: 8_500_000,
     roomAreaSqm: 38,
+    maxOccupants: 3,
     addressText: "18 Duong 41, Phuong Thao Dien",
     areaName: "Thu Duc",
     latitude: 10.8038,
@@ -116,6 +119,7 @@ const listingSeeds = Object.freeze([
     description: "Phong gia mem, co cho de xe va gio giac tu do, phu hop nguoi di lam.",
     monthlyRent: 3_500_000,
     roomAreaSqm: 20,
+    maxOccupants: 1,
     addressText: "72 Le Van Viet, Phuong Tang Nhon Phu A",
     areaName: "Thu Duc",
     latitude: 10.8424,
@@ -132,6 +136,7 @@ const listingSeeds = Object.freeze([
     description: "Studio co gac nho, day du tien nghi, phu hop o mot nguoi hoac hai nguoi.",
     monthlyRent: 5_200_000,
     roomAreaSqm: 28,
+    maxOccupants: 2,
     addressText: "9 Bach Dang, Phuong 2",
     areaName: "Tan Binh",
     latitude: 10.8125,
@@ -148,6 +153,7 @@ const listingSeeds = Object.freeze([
     description: "Tin dang nay dang cho admin kiem tra thong tin va hinh anh.",
     monthlyRent: 4_800_000,
     roomAreaSqm: 25,
+    maxOccupants: 2,
     addressText: "26 Phan Dinh Phung, Phuong 2",
     areaName: "Phu Nhuan",
     latitude: 10.7984,
@@ -164,6 +170,7 @@ const listingSeeds = Object.freeze([
     description: "Tin dang mau de kiem tra giao dien hien thi ly do tu choi.",
     monthlyRent: 4_000_000,
     roomAreaSqm: 22,
+    maxOccupants: 2,
     addressText: "88 Cach Mang Thang Tam, Phuong 5",
     areaName: "Tan Binh",
     latitude: 10.7896,
@@ -180,6 +187,7 @@ const listingSeeds = Object.freeze([
     description: "Tin dang mau de kiem tra trang thai bi an va lich su moderation.",
     monthlyRent: 4_600_000,
     roomAreaSqm: 23,
+    maxOccupants: 2,
     addressText: "14 Nguyen Van Troi, Phuong 15",
     areaName: "Phu Nhuan",
     latitude: 10.7989,
@@ -196,6 +204,7 @@ const listingSeeds = Object.freeze([
     description: "Tin dang mau de kiem tra trang thai landlord tam dung nhan lien he.",
     monthlyRent: 5_000_000,
     roomAreaSqm: 26,
+    maxOccupants: 2,
     addressText: "31 Hoang Van Thu, Phuong 4",
     areaName: "Tan Binh",
     latitude: 10.8004,
@@ -212,6 +221,7 @@ const listingSeeds = Object.freeze([
     description: "Ban nhap mau de landlord tiep tuc chinh sua truoc khi gui duyet.",
     monthlyRent: 5_700_000,
     roomAreaSqm: 30,
+    maxOccupants: 3,
     addressText: "102 Vo Van Tan, Phuong 6",
     areaName: "Quan 3",
     latitude: 10.7737,
@@ -459,8 +469,8 @@ async function seedListing(demo, existingListingIds) {
           `
             INSERT INTO listings (
               landlord_id, property_type_id, status, business_status, title, description, monthly_rent, room_area_sqm,
-              address_text, area_name, latitude, longitude
-            ) VALUES ($1, $2, $3::listing_status, $4, $5, $6, $7, $8, $9, $10, $11, $12)
+              max_occupants, address_text, area_name, latitude, longitude
+            ) VALUES ($1, $2, $3::listing_status, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
             RETURNING id
           `,
           [
@@ -472,6 +482,7 @@ async function seedListing(demo, existingListingIds) {
             listing.description,
             listing.monthlyRent,
             listing.roomAreaSqm,
+            listing.maxOccupants,
             listing.addressText,
             listing.areaName,
             listing.latitude,

@@ -13,6 +13,7 @@ export interface PublicListingSummaryRow extends QueryResultRow {
   readonly title: unknown;
   readonly monthly_rent: unknown;
   readonly room_area_sqm: unknown;
+  readonly max_occupants: unknown;
   readonly area_name: unknown;
   readonly latitude: unknown;
   readonly longitude: unknown;
@@ -47,6 +48,7 @@ export interface PublicListingSummary {
   readonly title: string;
   readonly monthlyRent: number;
   readonly roomAreaSqm: number;
+  readonly maxOccupants: number | null;
   readonly areaName: string;
   readonly latitude: number;
   readonly longitude: number;
@@ -105,6 +107,12 @@ function distance(value: unknown): number {
   return value;
 }
 
+function nullableMaxOccupants(value: unknown): number | null {
+  if (value === null) return null;
+  if (!Number.isInteger(value) || (value as number) < 1 || (value as number) > 20) invariant();
+  return value as number;
+}
+
 export function mapPublicListingSummaryRow(row: Readonly<PublicListingSummaryRow>): PublicListingSummary {
   const monthlyRent = mapPgWholeNumeric(row.monthly_rent, "public_listing.monthly_rent");
   const roomAreaSqm = mapPgScaleTwoNumeric(row.room_area_sqm, "public_listing.room_area_sqm");
@@ -120,6 +128,7 @@ export function mapPublicListingSummaryRow(row: Readonly<PublicListingSummaryRow
     title: nonblank(row.title),
     monthlyRent,
     roomAreaSqm,
+    maxOccupants: nullableMaxOccupants(row.max_occupants),
     areaName: nonblank(row.area_name),
     latitude: coordinate(row.latitude, -90, 90),
     longitude: coordinate(row.longitude, -180, 180),

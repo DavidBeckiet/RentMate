@@ -27,6 +27,7 @@ interface LockedListingRow extends QueryResultRow {
   readonly description: unknown;
   readonly monthly_rent: unknown;
   readonly room_area_sqm: unknown;
+  readonly max_occupants: unknown;
   readonly address_text: unknown;
   readonly area_name: unknown;
   readonly latitude: unknown;
@@ -56,6 +57,7 @@ export interface LockedOwnedListing {
   readonly description: string | null;
   readonly monthlyRent: number | null;
   readonly roomAreaSqm: number | null;
+  readonly maxOccupants: number | null;
   readonly addressText: string | null;
   readonly areaName: string | null;
   readonly latitude: number | null;
@@ -73,6 +75,7 @@ export interface UpdateListingContentRecord {
   readonly description: string | null;
   readonly monthlyRent: number | null;
   readonly roomAreaSqm: number | null;
+  readonly maxOccupants: number | null;
   readonly addressText: string | null;
   readonly areaName: string | null;
   readonly latitude: number | null;
@@ -144,6 +147,13 @@ function locked(row: Readonly<LockedListingRow>): LockedOwnedListing {
     description: row.description as string | null,
     monthlyRent: mapNullablePgWholeNumeric(row.monthly_rent, "monthly_rent"),
     roomAreaSqm: mapNullablePgScaleTwoNumeric(row.room_area_sqm, "room_area_sqm"),
+    maxOccupants:
+      row.max_occupants === null ||
+      (Number.isInteger(row.max_occupants) && (row.max_occupants as number) >= 1 && (row.max_occupants as number) <= 20)
+        ? (row.max_occupants as number | null)
+        : (() => {
+            throw new RepositoryInvariantError("Locked listing max occupants value is invalid.");
+          })(),
     addressText: row.address_text as string | null,
     areaName: row.area_name as string | null,
     latitude,
@@ -159,7 +169,7 @@ export function createListingUpdateRepository(executor: SqlExecutor): ListingUpd
       return queryOptional(
         executor,
         {
-          text: `SELECT l.id, l.status, l.property_type_id, pt.code AS property_type_code, pt.label AS property_type_label, pt.is_active AS property_type_is_active, l.title, l.description, l.monthly_rent, l.room_area_sqm, l.address_text, l.area_name, l.latitude, l.longitude, l.created_at, l.updated_at FROM listings AS l LEFT JOIN property_types AS pt ON pt.id = l.property_type_id WHERE l.id = $1 AND l.landlord_id = $2 FOR UPDATE OF l`,
+          text: `SELECT l.id, l.status, l.property_type_id, pt.code AS property_type_code, pt.label AS property_type_label, pt.is_active AS property_type_is_active, l.title, l.description, l.monthly_rent, l.room_area_sqm, l.max_occupants, l.address_text, l.area_name, l.latitude, l.longitude, l.created_at, l.updated_at FROM listings AS l LEFT JOIN property_types AS pt ON pt.id = l.property_type_id WHERE l.id = $1 AND l.landlord_id = $2 FOR UPDATE OF l`,
           values: [listingId, landlordId]
         },
         locked
@@ -198,7 +208,7 @@ export function createListingUpdateRepository(executor: SqlExecutor): ListingUpd
     },
     async updateListingContent(record: UpdateListingContentRecord) {
       const count = await executeCommand(executor, {
-        text: `UPDATE listings SET property_type_id = $4, status = $5, title = $6, description = $7, monthly_rent = $8, room_area_sqm = $9, address_text = $10, area_name = $11, latitude = $12, longitude = $13, updated_at = CURRENT_TIMESTAMP WHERE id = $1 AND landlord_id = $2 AND status = $3::listing_status`,
+        text: `UPDATE listings SET property_type_id = $4, status = $5, title = $6, description = $7, monthly_rent = $8, room_area_sqm = $9, max_occupants = $10, address_text = $11, area_name = $12, latitude = $13, longitude = $14, updated_at = CURRENT_TIMESTAMP WHERE id = $1 AND landlord_id = $2 AND status = $3::listing_status`,
         values: [
           record.listingId,
           record.landlordId,
@@ -209,6 +219,7 @@ export function createListingUpdateRepository(executor: SqlExecutor): ListingUpd
           record.description,
           record.monthlyRent,
           record.roomAreaSqm,
+          record.maxOccupants,
           record.addressText,
           record.areaName,
           record.latitude,

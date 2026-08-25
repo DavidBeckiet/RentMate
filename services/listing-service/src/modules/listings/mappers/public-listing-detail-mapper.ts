@@ -20,6 +20,7 @@ export interface PublicListingDetailRow extends QueryResultRow {
   readonly description: unknown;
   readonly monthly_rent: unknown;
   readonly room_area_sqm: unknown;
+  readonly max_occupants: unknown;
   readonly area_name: unknown;
   readonly latitude: unknown;
   readonly longitude: unknown;
@@ -58,6 +59,7 @@ export interface PublicListingDetail {
   readonly description: string;
   readonly monthlyRent: number;
   readonly roomAreaSqm: number;
+  readonly maxOccupants: number | null;
   readonly areaName: string;
   readonly latitude: number;
   readonly longitude: number;
@@ -144,6 +146,12 @@ function coordinate(value: unknown, minimum: number, maximum: number): number {
   return Math.round(value * 1_000) / 1_000;
 }
 
+function nullableMaxOccupants(value: unknown): number | null {
+  if (value === null) return null;
+  if (!Number.isInteger(value) || (value as number) < 1 || (value as number) > 20) invariant();
+  return value as number;
+}
+
 function mapContact(emailValue: unknown, phoneValue: unknown): LandlordContact {
   const email = nonblank(emailValue, 320);
   const phone = nonblank(phoneValue, 16);
@@ -166,6 +174,7 @@ export function mapPublicListingDetailRow(row: Readonly<PublicListingDetailRow>)
     description: nonblank(row.description, 5_000),
     monthlyRent,
     roomAreaSqm,
+    maxOccupants: nullableMaxOccupants(row.max_occupants),
     areaName: nonblank(row.area_name, 120),
     latitude: coordinate(row.latitude, -90, 90),
     longitude: coordinate(row.longitude, -180, 180),
@@ -204,6 +213,7 @@ export function enrichPublicListingDetail(
     description: detail.description,
     monthlyRent: detail.monthlyRent,
     roomAreaSqm: detail.roomAreaSqm,
+    maxOccupants: detail.maxOccupants,
     areaName: detail.areaName,
     latitude: detail.latitude,
     longitude: detail.longitude,

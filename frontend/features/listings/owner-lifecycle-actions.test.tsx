@@ -42,6 +42,7 @@ function detail(status: ListingStatus, overrides: Partial<OwnerListingDetail> = 
     description: "Mô tả",
     monthlyRent: 7_500_000,
     roomAreaSqm: 28.5,
+    maxOccupants: null,
     addressText: "101 Nguyễn Huệ",
     areaName: "Quận 1",
     latitude: 10.77,

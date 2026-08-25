@@ -315,6 +315,15 @@ export function ListingDetail({ listingId, actions }: ListingDetailProps) {
                   <strong>{detail.propertyType.label}</strong>
                 </div>
               </div>
+              {detail.maxOccupants !== null ? (
+                <div className={styles.fact}>
+                  <Icon name="users" className="h-5 w-5" />
+                  <div>
+                    <span>Sức chứa</span>
+                    <strong>{detail.maxOccupants} người tối đa</strong>
+                  </div>
+                </div>
+              ) : null}
             </div>
           </section>
 

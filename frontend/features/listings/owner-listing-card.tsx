@@ -40,6 +40,7 @@ export function OwnerListingCard({ listing }: { readonly listing: OwnerListingSu
           <ListingPrice monthlyRent={listing.monthlyRent} />
           <ListingMetadata>
             {listing.propertyType?.label ?? "Chưa chọn loại"} · {listing.areaName ?? "Chưa nhập khu vực"}
+            {listing.maxOccupants !== null ? ` · ${listing.maxOccupants} người tối đa` : ""}
           </ListingMetadata>
           {reason ? (
             <div className="rounded-control border border-red-200 bg-red-50 p-3 text-sm text-red-950">

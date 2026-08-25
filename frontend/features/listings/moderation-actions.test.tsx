@@ -17,6 +17,7 @@ const detail = (status: AdminListingDetail["status"] = "PENDING", active = true)
   description: "Mô tả",
   monthlyRent: 5000000,
   roomAreaSqm: 20,
+  maxOccupants: null,
   addressText: "Địa chỉ",
   areaName: "Quận 1",
   latitude: 10.77,

@@ -43,6 +43,7 @@ function detail(id: number): PublicListingDetail {
     description: "Phòng sáng.",
     monthlyRent: id === 41 ? 6_000_000 : 7_500_000,
     roomAreaSqm: id === 41 ? 24 : 28,
+    maxOccupants: null,
     areaName: id === 41 ? "Quận 3" : "Quận 1",
     latitude: 10.77,
     longitude: 106.69,

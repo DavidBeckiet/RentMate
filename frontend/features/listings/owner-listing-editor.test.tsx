@@ -59,6 +59,7 @@ function detail(overrides: Partial<OwnerListingDetail> = {}): OwnerListingDetail
     description: "Mô tả",
     monthlyRent: 7_500_000,
     roomAreaSqm: 28.5,
+    maxOccupants: null,
     addressText: "101 Nguyễn Huệ",
     areaName: "Quận 1",
     latitude: 10.77,
@@ -185,6 +186,29 @@ describe("OwnerListingEditor", () => {
     change("Diện tích (m²)", value);
     save();
     expect(screen.getByText(/Diện tích phải là số dương/)).toBeInTheDocument();
+    expect(apiMocks.updateOwned).not.toHaveBeenCalled();
+  });
+
+  it("sends a valid max occupants value and can clear an existing value", async () => {
+    apiMocks.updateOwned.mockResolvedValueOnce(detail({ maxOccupants: 4 })).mockResolvedValueOnce(detail());
+    render(<Harness initial={detail()} />);
+    fireEvent.change(document.getElementById("owner-max-occupants")!, { target: { value: "4" } });
+    save();
+    await waitFor(() => expect(apiMocks.updateOwned).toHaveBeenCalledOnce());
+    expect(apiMocks.updateOwned.mock.calls[0][1]).toEqual({ maxOccupants: 4 });
+
+    await waitFor(() => expect(document.getElementById("owner-max-occupants")).toHaveValue(4));
+    fireEvent.change(document.getElementById("owner-max-occupants")!, { target: { value: "" } });
+    save();
+    await waitFor(() => expect(apiMocks.updateOwned).toHaveBeenCalledTimes(2));
+    expect(apiMocks.updateOwned.mock.calls[1][1]).toEqual({ maxOccupants: null });
+  });
+
+  it.each(["0", "-1", "1.5", "21"])("validates max occupants %s", (value) => {
+    render(<Harness />);
+    fireEvent.change(document.getElementById("owner-max-occupants")!, { target: { value } });
+    save();
+    expect(screen.getByText(/Sức chứa phải là số nguyên từ 1 đến 20/)).toBeInTheDocument();
     expect(apiMocks.updateOwned).not.toHaveBeenCalled();
   });
 

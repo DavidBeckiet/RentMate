@@ -14,6 +14,7 @@ function listing(overrides: Partial<PublicListingSummary> = {}): PublicListingSu
     title: "Studio sáng gần trung tâm",
     monthlyRent: 7_500_000,
     roomAreaSqm: 28.5,
+    maxOccupants: null,
     areaName: "Bến Thành, Quận 1",
     latitude: 10.772,
     longitude: 106.698,
@@ -27,6 +28,13 @@ function listing(overrides: Partial<PublicListingSummary> = {}): PublicListingSu
 }
 
 describe("ListingCard", () => {
+  it("shows the optional maximum occupancy without leaking it when absent", () => {
+    const view = render(<ListingCard listing={listing({ maxOccupants: 2 })} />);
+    expect(screen.getByText("2 người tối đa")).toBeInTheDocument();
+    view.rerender(<ListingCard listing={listing({ maxOccupants: null })} />);
+    expect(screen.queryByText("2 người tối đa")).not.toBeInTheDocument();
+  });
+
   it("renders only the public summary presentation and detail link", () => {
     render(<ListingCard listing={listing()} />);
 

@@ -22,6 +22,7 @@ const detail: OwnerListingDetail = {
   description: "Description",
   monthlyRent: 7_500_000,
   roomAreaSqm: 28.5,
+  maxOccupants: null,
   addressText: "Private address",
   areaName: "District 1",
   latitude: 10.77,

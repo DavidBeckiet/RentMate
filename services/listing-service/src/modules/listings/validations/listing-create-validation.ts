@@ -24,6 +24,7 @@ const createListingFields = [
   "monthlyRent",
   "propertyTypeCode",
   "roomAreaSqm",
+  "maxOccupants",
   "addressText",
   "areaName",
   "latitude",
@@ -38,6 +39,7 @@ export interface CreateListingDraftInput {
   readonly monthlyRent: number | null;
   readonly propertyTypeCode: string | null;
   readonly roomAreaSqm: number | null;
+  readonly maxOccupants: number | null;
   readonly addressText: string | null;
   readonly areaName: string | null;
   readonly latitude: number | null;
@@ -91,6 +93,13 @@ function normalizeNullableNumber(
   validate: (input: unknown, name: string) => number
 ): number | null {
   return value === undefined || value === null ? null : validate(value, field);
+}
+
+function validateMaxOccupants(value: unknown, field: string): number {
+  if (typeof value !== "number" || !Number.isInteger(value) || value < 1 || value > 20) {
+    throwValidationIssue(field, "INVALID_VALUE", `${field} must be an integer between 1 and 20.`);
+  }
+  return value;
 }
 
 function normalizeControlledCode(
@@ -229,6 +238,7 @@ export function validateCreateListingDraftInput(value: unknown): CreateListingDr
   let monthlyRent: number | null = null;
   let propertyTypeCode: string | null = null;
   let roomAreaSqm: number | null = null;
+  let maxOccupants: number | null = null;
   let addressText: string | null = null;
   let areaName: string | null = null;
 
@@ -248,6 +258,9 @@ export function validateCreateListingDraftInput(value: unknown): CreateListingDr
     roomAreaSqm = normalizeNullableNumber(body.roomAreaSqm, "roomAreaSqm", validateRoomArea);
   });
   appendValidationIssues(collector, () => {
+    maxOccupants = normalizeNullableNumber(body.maxOccupants, "maxOccupants", validateMaxOccupants);
+  });
+  appendValidationIssues(collector, () => {
     addressText = normalizeNullableText(body.addressText, "addressText", textMaximumLengths.addressText);
   });
   appendValidationIssues(collector, () => {
@@ -265,6 +278,7 @@ export function validateCreateListingDraftInput(value: unknown): CreateListingDr
     monthlyRent,
     propertyTypeCode,
     roomAreaSqm,
+    maxOccupants,
     addressText,
     areaName,
     latitude: coordinates.latitude,

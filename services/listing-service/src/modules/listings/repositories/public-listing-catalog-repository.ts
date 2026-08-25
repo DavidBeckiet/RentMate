@@ -45,6 +45,7 @@ export function createPublicListingCatalogRepository(executor: SqlExecutor): Pub
                 l.title,
                 l.monthly_rent,
                 l.room_area_sqm,
+                l.max_occupants,
                 l.area_name,
                 l.latitude,
                 l.longitude,

@@ -90,6 +90,12 @@ export function ListingCard({ listing, showFavorite = true, href, variant = "def
               <Icon name="ruler" className="h-4 w-4" />
               {formatAreaSqm(listing.roomAreaSqm)} · {listing.propertyType.label}
             </span>
+            {listing.maxOccupants !== null ? (
+              <span className="inline-flex items-center gap-1.5">
+                <Icon name="users" className="h-4 w-4" />
+                {listing.maxOccupants} người tối đa
+              </span>
+            ) : null}
             {listing.amenities.slice(0, 1).map((amenity) => (
               <span
                 key={amenity.code}

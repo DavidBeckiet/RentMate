@@ -78,6 +78,7 @@ function detail(overrides: Partial<OwnerDetail> = {}): OwnerDetail {
     description: "Mô tả chính xác",
     monthlyRent: 7_500_000,
     roomAreaSqm: 28.5,
+    maxOccupants: null,
     addressText: "101 Nguyễn Huệ, Quận 1",
     areaName: "Quận 1",
     latitude: 10.7731,

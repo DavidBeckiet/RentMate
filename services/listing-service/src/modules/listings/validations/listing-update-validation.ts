@@ -10,6 +10,7 @@ export interface ListingUpdateInput {
   readonly monthlyRent: ListingUpdateField<number | null>;
   readonly propertyTypeCode: ListingUpdateField<string | null>;
   readonly roomAreaSqm: ListingUpdateField<number | null>;
+  readonly maxOccupants: ListingUpdateField<number | null>;
   readonly addressText: ListingUpdateField<string | null>;
   readonly areaName: ListingUpdateField<string | null>;
   readonly coordinates: ListingUpdateField<Readonly<{ latitude: number | null; longitude: number | null }>>;
@@ -38,6 +39,7 @@ export function validateListingUpdateInput(value: unknown): ListingUpdateInput {
     monthlyRent: field(body, "monthlyRent", normalized.monthlyRent),
     propertyTypeCode: field(body, "propertyTypeCode", normalized.propertyTypeCode),
     roomAreaSqm: field(body, "roomAreaSqm", normalized.roomAreaSqm),
+    maxOccupants: field(body, "maxOccupants", normalized.maxOccupants),
     addressText: field(body, "addressText", normalized.addressText),
     areaName: field(body, "areaName", normalized.areaName),
     coordinates:

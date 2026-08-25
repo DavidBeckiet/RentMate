@@ -84,6 +84,7 @@ export function createListingCreateService(dependencies: ListingCreateServiceDep
           description: input.description,
           monthlyRent: input.monthlyRent,
           roomAreaSqm: input.roomAreaSqm,
+          maxOccupants: input.maxOccupants,
           addressText: input.addressText,
           areaName: input.areaName,
           latitude: input.latitude,

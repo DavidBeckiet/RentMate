@@ -52,6 +52,7 @@ const detail: Detail = {
   description: "Mô tả",
   monthlyRent: 5000000,
   roomAreaSqm: 20,
+  maxOccupants: null,
   addressText: "12 Đường Chính Xác",
   areaName: "Quận 1",
   latitude: 10.77123,

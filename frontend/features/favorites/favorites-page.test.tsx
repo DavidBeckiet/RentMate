@@ -48,6 +48,7 @@ function listing(id: number, title: string): PublicListingSummary {
     title,
     monthlyRent: 7_500_000 + id,
     roomAreaSqm: 28.5,
+    maxOccupants: null,
     areaName: "Bến Thành, Quận 1",
     latitude: 10.772,
     longitude: 106.698,

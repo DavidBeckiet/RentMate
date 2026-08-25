@@ -59,6 +59,7 @@ function detail(overrides: Partial<PublicListingDetail> = {}): PublicListingDeta
     description: "Phòng có ánh sáng tự nhiên.",
     monthlyRent: 7_500_000,
     roomAreaSqm: 28.5,
+    maxOccupants: null,
     areaName: "Bến Thành, Quận 1",
     latitude: 10.772,
     longitude: 106.698,
@@ -86,6 +87,12 @@ beforeEach(() => {
 });
 
 describe("ListingDetail", () => {
+  it("shows the optional maximum occupancy in the public detail facts", async () => {
+    apiMocks.getPublicDetail.mockResolvedValue(detail({ maxOccupants: 3 }));
+    render(<ListingDetail listingId="42" />);
+    expect(await screen.findByText("3 người tối đa")).toBeInTheDocument();
+  });
+
   it("renders a generic action only after public detail succeeds", async () => {
     apiMocks.getPublicDetail.mockResolvedValue(detail());
     render(<ListingDetail listingId="42" actions={<button type="button">Tác vụ ngoài</button>} />);

@@ -57,6 +57,7 @@ export interface PublicListingSummary {
   readonly title: string;
   readonly monthlyRent: number;
   readonly roomAreaSqm: number;
+  readonly maxOccupants: number | null;
   readonly areaName: string;
   readonly latitude: number;
   readonly longitude: number;
@@ -86,6 +87,7 @@ export interface OwnerListingSummary {
   readonly businessStatus: ListingBusinessStatus;
   readonly title: string | null;
   readonly monthlyRent: number | null;
+  readonly maxOccupants: number | null;
   readonly areaName: string | null;
   readonly propertyType: PropertyType | null;
   readonly coverImage: OwnerImage | null;
@@ -101,6 +103,7 @@ export interface OwnerListingDetail {
   readonly description: string | null;
   readonly monthlyRent: number | null;
   readonly roomAreaSqm: number | null;
+  readonly maxOccupants: number | null;
   readonly addressText: string | null;
   readonly areaName: string | null;
   readonly latitude: number | null;
@@ -224,6 +227,7 @@ export interface ListingContentBody {
   readonly monthlyRent?: number | null;
   readonly propertyTypeCode?: string | null;
   readonly roomAreaSqm?: number | null;
+  readonly maxOccupants?: number | null;
   readonly addressText?: string | null;
   readonly areaName?: string | null;
   readonly latitude?: number | null;

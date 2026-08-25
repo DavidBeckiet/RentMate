@@ -27,6 +27,7 @@ export interface InsertListingDraftRecord {
   readonly description: string | null;
   readonly monthlyRent: number | null;
   readonly roomAreaSqm: number | null;
+  readonly maxOccupants: number | null;
   readonly addressText: string | null;
   readonly areaName: string | null;
   readonly latitude: number | null;
@@ -114,12 +115,13 @@ export function createListingCreateRepository(executor: SqlExecutor): ListingCre
               description,
               monthly_rent,
               room_area_sqm,
+              max_occupants,
               address_text,
               area_name,
               latitude,
               longitude
             )
-            VALUES ($1, $2, 'DRAFT', $3, $4, $5, $6, $7, $8, $9, $10)
+            VALUES ($1, $2, 'DRAFT', $3, $4, $5, $6, $7, $8, $9, $10, $11)
             RETURNING
               id,
               status,
@@ -128,6 +130,7 @@ export function createListingCreateRepository(executor: SqlExecutor): ListingCre
               description,
               monthly_rent,
               room_area_sqm,
+              max_occupants,
               address_text,
               area_name,
               latitude,
@@ -142,6 +145,7 @@ export function createListingCreateRepository(executor: SqlExecutor): ListingCre
             record.description,
             record.monthlyRent,
             record.roomAreaSqm,
+            record.maxOccupants,
             record.addressText,
             record.areaName,
             record.latitude,
