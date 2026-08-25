@@ -2,7 +2,10 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import type { SqlExecutor } from "../../shared/src/runtime/db/sql-executor.js";
 import type { AuthenticatedPrincipal } from "../../shared/src/runtime/shared/types/authentication.js";
-import type { EngagementNotificationClient, ListingModerationNotificationInput } from "../../shared/engagement-notification-client.js";
+import type {
+  EngagementNotificationClient,
+  ListingModerationNotificationInput
+} from "../../shared/engagement-notification-client.js";
 import type { ModerationHistoryItem } from "../src/modules/listings/mappers/moderation-history-mapper.js";
 import type {
   LockedModerationListing,
@@ -21,6 +24,7 @@ const executor: SqlExecutor = {
 
 function setup(status: LockedModerationListing["status"], notificationFailure = false) {
   const notifications: ListingModerationNotificationInput[] = [];
+  const publishedListingIds: number[] = [];
   const warnings: unknown[] = [];
   const listing: LockedModerationListing = Object.freeze({ id: 42, landlordId: 30, status });
   const repository: ModerationActionRepository = {
@@ -41,6 +45,9 @@ function setup(status: LockedModerationListing["status"], notificationFailure = 
     notifyListingModerationResult: async (input) => {
       notifications.push(input);
       if (notificationFailure) throw new Error("Engagement unavailable.");
+    },
+    notifyListingPublished: async ({ listingId }) => {
+      publishedListingIds.push(listingId);
     }
   };
   const transactionRunner: TransactionRunner = (operation) => operation(executor);
@@ -50,7 +57,7 @@ function setup(status: LockedModerationListing["status"], notificationFailure = 
     notificationClient,
     logger: { warn: (...args: unknown[]) => warnings.push(args) }
   });
-  return { service, notifications, warnings };
+  return { service, notifications, publishedListingIds, warnings };
 }
 
 const cases = [
@@ -77,15 +84,15 @@ test("sends one notification for every completed moderation transition", async (
         eventType
       }
     ]);
+    if (target === "APPROVED") assert.deepEqual(fixture.publishedListingIds, [42]);
+    else assert.deepEqual(fixture.publishedListingIds, []);
   }
 });
 
 test("keeps a successful moderation result when notification delivery fails", async () => {
   const fixture = setup("PENDING", true);
 
-  await assert.doesNotReject(() =>
-    fixture.service.moderateListing(admin, 42, { action: "APPROVE", reason: null })
-  );
+  await assert.doesNotReject(() => fixture.service.moderateListing(admin, 42, { action: "APPROVE", reason: null }));
 
   assert.equal(fixture.notifications.length, 1);
   assert.equal(fixture.warnings.length, 1);

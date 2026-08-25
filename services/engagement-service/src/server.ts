@@ -23,6 +23,8 @@ import { createInquiryRealtimeHub } from "./modules/contact/realtime/inquiry-rea
 import { createSavedSearchRepository } from "./modules/saved-searches/repositories/saved-search-repository.js";
 import { registerSavedSearchRoutes } from "./modules/saved-searches/routes.js";
 import { createSavedSearchService } from "./modules/saved-searches/services/saved-search-service.js";
+import { createSavedSearchNotificationRepository } from "./modules/saved-searches/repositories/saved-search-notification-repository.js";
+import { createSavedSearchNotificationService } from "./modules/saved-searches/services/saved-search-notification-service.js";
 import { createReviewRepository } from "./modules/reviews/repositories/review-repository.js";
 import { createReviewService } from "./modules/reviews/services/review-service.js";
 import { registerReviewRoutes } from "./modules/reviews/routes.js";
@@ -37,7 +39,10 @@ import { registerAnalyticsRoutes } from "./modules/analytics/routes.js";
 import { createListingNoteRepository } from "./modules/listing-notes/repositories/listing-note-repository.js";
 import { createListingNoteService } from "./modules/listing-notes/services/listing-note-service.js";
 import { registerListingNoteRoutes } from "./modules/listing-notes/routes.js";
-import { validateListingModerationNotificationBody } from "./modules/contact/validations/internal-notification-validation.js";
+import {
+  validateListingModerationNotificationBody,
+  validateListingPublishedNotificationBody
+} from "./modules/contact/validations/internal-notification-validation.js";
 
 function listen(server: Server, port: number): Promise<void> {
   return new Promise((resolve, reject) => {
@@ -112,6 +117,12 @@ async function startEngagementService(): Promise<void> {
   const landlordRole = createRoleMiddleware(["LANDLORD"]);
   const savedSearchService = createSavedSearchService({
     repository: createSavedSearchRepository(),
+    transactionRunner: {
+      run: (operation) => withTransaction(databasePool, logger, operation)
+    }
+  });
+  const savedSearchNotificationService = createSavedSearchNotificationService({
+    repository: createSavedSearchNotificationRepository(),
     transactionRunner: {
       run: (operation) => withTransaction(databasePool, logger, operation)
     }
@@ -214,6 +225,19 @@ async function startEngagementService(): Promise<void> {
                 eventType: input.eventType
               })
             );
+            response.status(204).end();
+          })().catch(next);
+        }
+      );
+      internalApp.post(
+        "/internal/v1/notifications/listing-published",
+        internalServiceGuard,
+        (request, response, next) => {
+          void (async () => {
+            const input = validateListingPublishedNotificationBody(request.body);
+            const summaries = await listingCatalogClient.loadPublicSummariesByIds([input.listingId]);
+            const listing = summaries[0];
+            if (listing) await savedSearchNotificationService.notifyListingPublished(listing);
             response.status(204).end();
           })().catch(next);
         }

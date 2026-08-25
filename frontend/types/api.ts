@@ -10,7 +10,8 @@ export type NotificationEventType =
   | "LEAD_REMINDER_DUE"
   | "LISTING_APPROVED"
   | "LISTING_REJECTED"
-  | "LISTING_HIDDEN";
+  | "LISTING_HIDDEN"
+  | "SAVED_SEARCH_MATCHED";
 
 export type ModerationAction = "APPROVE" | "REJECT" | "HIDE" | "RESTORE";
 

@@ -1,6 +1,9 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { validateListingModerationNotificationBody } from "../src/modules/contact/validations/internal-notification-validation.js";
+import {
+  validateListingModerationNotificationBody,
+  validateListingPublishedNotificationBody
+} from "../src/modules/contact/validations/internal-notification-validation.js";
 
 test("normalizes a valid listing moderation notification payload", () => {
   assert.deepEqual(
@@ -51,4 +54,10 @@ test("rejects unsupported events, invalid ids, and unknown fields", () => {
       }),
     /invalid data/i
   );
+});
+
+test("validates a listing-published notification payload", () => {
+  assert.deepEqual(validateListingPublishedNotificationBody({ listingId: 42 }), { listingId: 42 });
+  assert.throws(() => validateListingPublishedNotificationBody({ listingId: 0 }), /invalid data/i);
+  assert.throws(() => validateListingPublishedNotificationBody({ listingId: 42, extra: true }), /invalid data/i);
 });

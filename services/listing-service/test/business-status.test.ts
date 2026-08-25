@@ -23,13 +23,22 @@ const executor: SqlExecutor = {
 const landlord: AuthenticatedPrincipal = Object.freeze({ userId: 30, role: "LANDLORD" });
 const tenant: AuthenticatedPrincipal = Object.freeze({ userId: 31, role: "TENANT" });
 
-function setup(options: { readonly found?: boolean; readonly updateResult?: boolean } = {}) {
-  let currentStatus: ListingBusinessStatus = "AVAILABLE";
+function setup(
+  options: {
+    readonly found?: boolean;
+    readonly updateResult?: boolean;
+    readonly currentStatus?: ListingBusinessStatus;
+    readonly listingStatus?: "DRAFT" | "PENDING" | "APPROVED" | "REJECTED" | "INACTIVE" | "HIDDEN";
+  } = {}
+) {
+  let currentStatus: ListingBusinessStatus = options.currentStatus ?? "AVAILABLE";
+  const listingStatus = options.listingStatus ?? "APPROVED";
   const updates: unknown[] = [];
+  const publishedListingIds: number[] = [];
   const base: OwnerListingDetailBase = Object.freeze({
     id: 42,
-    status: "APPROVED",
-    businessStatus: "AVAILABLE",
+    status: listingStatus,
+    businessStatus: currentStatus,
     title: "Studio",
     description: "Description",
     monthlyRent: 7_500_000,
@@ -43,7 +52,8 @@ function setup(options: { readonly found?: boolean; readonly updateResult?: bool
     updatedAt: new Date("2026-08-02T00:00:00.000Z")
   });
   const repository: ListingBusinessStatusRepository = {
-    lockOwnedListing: async () => (options.found === false ? null : { id: 42, businessStatus: currentStatus }),
+    lockOwnedListing: async () =>
+      options.found === false ? null : { id: 42, status: listingStatus, businessStatus: currentStatus },
     updateBusinessStatus: async (record) => {
       updates.push(record);
       if (options.updateResult === false) return false;
@@ -63,9 +73,14 @@ function setup(options: { readonly found?: boolean; readonly updateResult?: bool
   const service = createListingBusinessStatusService({
     transactionRunner,
     repositoryFactory,
-    ownerReadRepositoryFactory: () => ownerReadRepository
+    ownerReadRepositoryFactory: () => ownerReadRepository,
+    notificationClient: {
+      notifyListingPublished: async ({ listingId }) => {
+        publishedListingIds.push(listingId);
+      }
+    }
   });
-  return { service, updates };
+  return { service, updates, publishedListingIds };
 }
 
 test("normalizes business status and rejects malformed input", () => {
@@ -102,6 +117,14 @@ test("a no-op status update does not write", async () => {
 
   assert.equal(result.businessStatus, "AVAILABLE");
   assert.equal(fixture.updates.length, 0);
+});
+
+test("notifies saved searches when an approved listing becomes public again", async () => {
+  const fixture = setup({ currentStatus: "PAUSED" });
+
+  await fixture.service.updateOwnedBusinessStatus(landlord, 42, { businessStatus: "AVAILABLE" });
+
+  assert.deepEqual(fixture.publishedListingIds, [42]);
 });
 
 test("enforces landlord ownership and reports concurrent changes", async () => {

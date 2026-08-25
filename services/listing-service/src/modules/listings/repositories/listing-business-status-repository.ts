@@ -6,16 +6,19 @@ import {
 } from "../../../../../shared/src/runtime/db/repository-primitives.js";
 import type { SqlExecutor } from "../../../../../shared/src/runtime/db/sql-executor.js";
 import { isListingBusinessStatus, type ListingBusinessStatus } from "../../../../../shared/listing-business-status.js";
+import { isListingStatus, type ListingStatus } from "../mappers/owner-listing-mapper.js";
 
 const maximumListingId = 2_147_483_647;
 
 interface LockedBusinessStatusRow extends QueryResultRow {
   readonly id: unknown;
+  readonly status: unknown;
   readonly business_status: unknown;
 }
 
 export interface LockedBusinessStatusListing {
   readonly id: number;
+  readonly status: ListingStatus;
   readonly businessStatus: ListingBusinessStatus;
 }
 
@@ -38,12 +41,13 @@ function mapLockedBusinessStatusRow(row: Readonly<LockedBusinessStatusRow>): Loc
     !Number.isSafeInteger(row.id) ||
     (row.id as number) < 1 ||
     (row.id as number) > maximumListingId ||
+    !isListingStatus(row.status) ||
     !isListingBusinessStatus(row.business_status)
   ) {
     throw new RepositoryInvariantError("Locked listing business status row is invalid.");
   }
 
-  return Object.freeze({ id: row.id as number, businessStatus: row.business_status });
+  return Object.freeze({ id: row.id as number, status: row.status, businessStatus: row.business_status });
 }
 
 export function createListingBusinessStatusRepository(executor: SqlExecutor): ListingBusinessStatusRepository {
@@ -52,7 +56,7 @@ export function createListingBusinessStatusRepository(executor: SqlExecutor): Li
       return queryOptional<LockedBusinessStatusRow, LockedBusinessStatusListing>(
         executor,
         {
-          text: "SELECT id, business_status FROM listings WHERE id = $1 AND landlord_id = $2 FOR UPDATE",
+          text: "SELECT id, status, business_status FROM listings WHERE id = $1 AND landlord_id = $2 FOR UPDATE",
           values: [listingId, landlordId]
         },
         mapLockedBusinessStatusRow

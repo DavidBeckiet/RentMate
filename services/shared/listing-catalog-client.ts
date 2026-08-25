@@ -1,4 +1,5 @@
 import type { PublicListingSummary } from "./public-listing-summary.js";
+import { isListingBusinessStatus } from "./listing-business-status.js";
 import { assertPublicInquiryTarget, type PublicInquiryTarget } from "./public-inquiry-target.js";
 
 export interface ListingCatalogClientOptions {
@@ -22,6 +23,7 @@ function isPublicListingSummary(value: unknown): value is PublicListingSummary {
   return (
     Number.isSafeInteger(summary.id) &&
     (summary.id ?? 0) > 0 &&
+    isListingBusinessStatus(summary.businessStatus) &&
     typeof summary.title === "string" &&
     typeof summary.monthlyRent === "number" &&
     typeof summary.roomAreaSqm === "number" &&

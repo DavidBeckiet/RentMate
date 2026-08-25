@@ -15,6 +15,7 @@ function notificationLabel(notification: Notification): string {
   if (notification.eventType === "LISTING_APPROVED") return "Tin đăng đã được duyệt.";
   if (notification.eventType === "LISTING_REJECTED") return "Tin đăng cần được chỉnh sửa.";
   if (notification.eventType === "LISTING_HIDDEN") return "Tin đăng đã bị ẩn khỏi kết quả tìm kiếm.";
+  if (notification.eventType === "SAVED_SEARCH_MATCHED") return "Có tin đăng mới phù hợp với bộ lọc đã lưu.";
   return "Trạng thái yêu cầu đã được cập nhật.";
 }
 
@@ -23,6 +24,8 @@ export function NotificationsPage() {
   const [items, setItems] = useState<readonly Notification[]>([]);
   const [state, setState] = useState<"loading" | "success" | "error">("loading");
   const [error, setError] = useState<ApiError | null>(null);
+  const [actionError, setActionError] = useState<string | null>(null);
+  const [markAllPending, setMarkAllPending] = useState(false);
   const [retry, setRetry] = useState(0);
 
   useEffect(() => {
@@ -35,6 +38,7 @@ export function NotificationsPage() {
         if (!controller.signal.aborted) {
           setItems(page.data);
           setState("success");
+          setActionError(null);
         }
       })
       .catch((caught: unknown) => {
@@ -56,7 +60,23 @@ export function NotificationsPage() {
     }
   };
 
-  if (authStatus === "loading" || state === "loading") return <LoadingState message="Đang tải thông báo…" />;
+  const markAllRead = async () => {
+    if (markAllPending || !items.some((item) => !item.isRead)) return;
+    setMarkAllPending(true);
+    setActionError(null);
+    try {
+      await api.contact.markAllNotificationsRead();
+      setItems((current) => current.map((item) => ({ ...item, isRead: true })));
+    } catch {
+      setActionError("Chưa thể đánh dấu tất cả thông báo đã đọc. Vui lòng thử lại.");
+    } finally {
+      setMarkAllPending(false);
+    }
+  };
+
+  if (authStatus === "loading" || (authStatus === "authenticated" && state === "loading")) {
+    return <LoadingState message="Đang tải thông báo…" />;
+  }
   if (authStatus !== "authenticated")
     return (
       <EmptyState
@@ -87,7 +107,22 @@ export function NotificationsPage() {
         <p className="text-sm font-medium text-slate-700">
           Theo dõi yêu cầu mới và phản hồi trong các cuộc trò chuyện.
         </p>
+        {items.some((item) => !item.isRead) ? (
+          <Button
+            variant="secondary"
+            pending={markAllPending}
+            pendingLabel="Đang cập nhật…"
+            onClick={() => void markAllRead()}
+          >
+            Đánh dấu tất cả đã đọc
+          </Button>
+        ) : null}
       </header>
+      {actionError ? (
+        <p role="alert" className="border-2 border-heroDark-950 bg-rent-coral p-3 text-sm font-bold">
+          {actionError}
+        </p>
+      ) : null}
       {items.length === 0 ? (
         <EmptyState
           title="Chưa có thông báo mới"

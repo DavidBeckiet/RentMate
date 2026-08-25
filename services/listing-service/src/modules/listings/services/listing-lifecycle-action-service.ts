@@ -2,6 +2,8 @@ import type { SqlExecutor } from "../../../../../shared/src/runtime/db/sql-execu
 import { ApplicationError } from "../../../../../shared/src/runtime/shared/errors/application-error.js";
 import { forbiddenRoleMessage } from "../../../../../shared/src/runtime/shared/middleware/role.js";
 import type { AuthenticatedPrincipal } from "../../../../../shared/src/runtime/shared/types/authentication.js";
+import type { EngagementNotificationClient } from "../../../../../shared/engagement-notification-client.js";
+import type { Logger } from "../../../../../shared/src/runtime/shared/logging/logger.js";
 import type { TransactionRunner } from "./listing-create-service.js";
 import {
   createListingLifecycleActionRepository,
@@ -9,7 +11,10 @@ import {
   type ListingLifecycleActionRepositoryFactory
 } from "../repositories/listing-lifecycle-action-repository.js";
 import type { OwnerListingDetail } from "../mappers/owner-listing-mapper.js";
-import { createOwnerListingReadRepository, type OwnerListingReadRepository } from "../repositories/owner-listing-read-repository.js";
+import {
+  createOwnerListingReadRepository,
+  type OwnerListingReadRepository
+} from "../repositories/owner-listing-read-repository.js";
 import { createOwnerListingReadService } from "./owner-listing-read-service.js";
 
 const resourceNotFoundMessage = "The requested resource was not found.";
@@ -53,6 +58,8 @@ interface ListingLifecycleActionServiceDependencies {
   readonly transactionRunner: TransactionRunner;
   readonly repositoryFactory?: ListingLifecycleActionRepositoryFactory;
   readonly ownerReadRepositoryFactory?: (executor: SqlExecutor) => OwnerListingReadRepository;
+  readonly notificationClient?: Pick<EngagementNotificationClient, "notifyListingPublished">;
+  readonly logger?: Pick<Logger, "warn">;
 }
 
 export function createListingLifecycleActionService(
@@ -70,7 +77,7 @@ export function createListingLifecycleActionService(
       throw new ApplicationError("FORBIDDEN", forbiddenRoleMessage);
     }
 
-    return dependencies.transactionRunner(async (executor) => {
+    const outcome = await dependencies.transactionRunner(async (executor) => {
       const repository = repositoryFactory(executor);
       const listing = await repository.lockOwnedListing(listingId, principal.userId);
       if (listing === null) {
@@ -91,8 +98,24 @@ export function createListingLifecycleActionService(
         throw new ApplicationError("CONCURRENT_MODIFICATION", concurrentModificationMessage);
       }
 
-      return createOwnerListingReadService(ownerReadFactory(executor)).getOwnedDetail(principal, listingId);
+      return Object.freeze({
+        detail: await createOwnerListingReadService(ownerReadFactory(executor)).getOwnedDetail(principal, listingId),
+        notifySavedSearches: action.name === "REACTIVATE"
+      });
     });
+
+    if (outcome.notifySavedSearches && dependencies.notificationClient) {
+      try {
+        await dependencies.notificationClient.notifyListingPublished({ listingId });
+      } catch (error) {
+        dependencies.logger?.warn("Saved search notification delivery failed", {
+          errorType: error instanceof Error ? error.name : "UnknownError",
+          listingId
+        });
+      }
+    }
+
+    return outcome.detail;
   }
 
   return Object.freeze({

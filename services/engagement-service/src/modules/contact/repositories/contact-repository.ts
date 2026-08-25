@@ -17,12 +17,10 @@ export type NotificationEventType =
   | "LEAD_REMINDER_DUE"
   | "LISTING_APPROVED"
   | "LISTING_REJECTED"
-  | "LISTING_HIDDEN";
+  | "LISTING_HIDDEN"
+  | "SAVED_SEARCH_MATCHED";
 
-export type ListingModerationNotificationEvent =
-  | "LISTING_APPROVED"
-  | "LISTING_REJECTED"
-  | "LISTING_HIDDEN";
+export type ListingModerationNotificationEvent = "LISTING_APPROVED" | "LISTING_REJECTED" | "LISTING_HIDDEN";
 
 export interface InquiryMessage {
   readonly id: number;
@@ -142,13 +140,12 @@ function mapMessage(row: Readonly<MessageRow>, viewerRole: "TENANT" | "LANDLORD"
 
 function mapNotification(row: Readonly<NotificationRow>): Notification {
   const eventType = String(row.event_type);
-  const inquiryEvent = [
-    "INQUIRY_CREATED",
-    "MESSAGE_CREATED",
-    "INQUIRY_STATUS_CHANGED",
-    "LEAD_REMINDER_DUE"
-  ].includes(eventType);
-  const listingEvent = ["LISTING_APPROVED", "LISTING_REJECTED", "LISTING_HIDDEN"].includes(eventType);
+  const inquiryEvent = ["INQUIRY_CREATED", "MESSAGE_CREATED", "INQUIRY_STATUS_CHANGED", "LEAD_REMINDER_DUE"].includes(
+    eventType
+  );
+  const listingEvent = ["LISTING_APPROVED", "LISTING_REJECTED", "LISTING_HIDDEN", "SAVED_SEARCH_MATCHED"].includes(
+    eventType
+  );
   const inquiryId = row.inquiry_id === null ? null : positiveInteger(row.inquiry_id, "notification.inquiry_id");
   const listingId = row.listing_id === null ? null : positiveInteger(row.listing_id, "notification.listing_id");
   if (
@@ -214,7 +211,10 @@ export interface ContactRepository {
     executor: SqlExecutor,
     input: {
       readonly recipientId: number;
-      readonly eventType: Extract<NotificationEventType, "INQUIRY_CREATED" | "MESSAGE_CREATED" | "INQUIRY_STATUS_CHANGED">;
+      readonly eventType: Extract<
+        NotificationEventType,
+        "INQUIRY_CREATED" | "MESSAGE_CREATED" | "INQUIRY_STATUS_CHANGED"
+      >;
       readonly inquiryId: number;
     }
   ) => Promise<Notification>;

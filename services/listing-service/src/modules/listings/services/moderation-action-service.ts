@@ -106,6 +106,17 @@ export function createModerationActionService(
             listingId
           });
         }
+
+        if (outcome.history.newStatus === "APPROVED") {
+          try {
+            await dependencies.notificationClient.notifyListingPublished({ listingId });
+          } catch (error) {
+            dependencies.logger?.warn("Saved search notification delivery failed", {
+              errorType: error instanceof Error ? error.name : "UnknownError",
+              listingId
+            });
+          }
+        }
       }
 
       return outcome.history;

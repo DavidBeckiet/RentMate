@@ -16,6 +16,10 @@ export interface ListingModerationNotificationInput {
   readonly eventType: ListingModerationNotificationEvent;
 }
 
+export interface ListingPublishedNotificationInput {
+  readonly listingId: number;
+}
+
 function parsePositiveId(value: unknown, field: string): number {
   if (!Number.isSafeInteger(value)) {
     throwValidationIssue(field, "INVALID_TYPE", `${field} must be a positive integer.`);
@@ -34,7 +38,10 @@ export function validateListingModerationNotificationBody(value: unknown): Listi
     throwValidationIssue("moderationHistoryId", "REQUIRED", "moderationHistoryId is required.");
   }
   if (!("eventType" in body)) throwValidationIssue("eventType", "REQUIRED", "eventType is required.");
-  if (typeof body.eventType !== "string" || !listingModerationEvents.includes(body.eventType as ListingModerationNotificationEvent)) {
+  if (
+    typeof body.eventType !== "string" ||
+    !listingModerationEvents.includes(body.eventType as ListingModerationNotificationEvent)
+  ) {
     throwValidationIssue("eventType", "INVALID_VALUE", "eventType is not supported.");
   }
 
@@ -44,4 +51,10 @@ export function validateListingModerationNotificationBody(value: unknown): Listi
     moderationHistoryId: parsePositiveId(body.moderationHistoryId, "moderationHistoryId"),
     eventType: body.eventType as ListingModerationNotificationEvent
   });
+}
+
+export function validateListingPublishedNotificationBody(value: unknown): ListingPublishedNotificationInput {
+  const body = validateBodyFields(value, ["listingId"]);
+  if (!("listingId" in body)) throwValidationIssue("listingId", "REQUIRED", "listingId is required.");
+  return Object.freeze({ listingId: parsePositiveId(body.listingId, "listingId") });
 }

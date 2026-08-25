@@ -160,9 +160,17 @@ async function startListingService(): Promise<void> {
           })
         ),
         listingUpdateService: createListingUpdateService({ transactionRunner }),
-        listingBusinessStatusService: createListingBusinessStatusService({ transactionRunner }),
+        listingBusinessStatusService: createListingBusinessStatusService({
+          transactionRunner,
+          notificationClient: moderationNotificationClient,
+          logger
+        }),
         listingSubmitService: createListingSubmitService({ transactionRunner }),
-        listingLifecycleActionService: createListingLifecycleActionService({ transactionRunner }),
+        listingLifecycleActionService: createListingLifecycleActionService({
+          transactionRunner,
+          notificationClient: moderationNotificationClient,
+          logger
+        }),
         listingDeleteService: createListingDeleteService({
           transactionRunner,
           cleanupHandoff: listingDeleteCleanupHandoff,

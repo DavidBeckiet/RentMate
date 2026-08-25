@@ -715,6 +715,18 @@ async function seedEngagement(demo, listingData) {
         `,
         [tenant(0)]
       );
+      await executor.query(
+        `
+          INSERT INTO notifications (recipient_id, event_type, listing_id, resource_path, dedupe_key)
+          SELECT searches.tenant_id, 'SAVED_SEARCH_MATCHED', $2, '/listings/' || ($2::integer)::text,
+                 'saved-search:' || searches.id::text || ':listing:' || ($2::integer)::text
+          FROM saved_searches AS searches
+          WHERE searches.tenant_id = $1
+            AND searches.name IN ('Phong gan Quan 3', 'Gan toi trong ban kinh 5km')
+          ON CONFLICT DO NOTHING
+        `,
+        [tenant(0), listing("demo-approved-room-1")]
+      );
 
       await executor.query(
         `
