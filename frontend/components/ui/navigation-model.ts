@@ -55,7 +55,7 @@ const tenantPrimaryItems: readonly NavigationItem[] = [
     icon: "message",
     exactPaths: ["/inquiries"],
     pathPrefixes: ["/inquiries/"]
-  },
+  }
 ];
 
 const landlordMarketplaceItems: readonly NavigationItem[] = [

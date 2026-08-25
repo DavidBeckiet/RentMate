@@ -174,13 +174,17 @@ export function InquiryDetailPage({ inquiryId }: Readonly<{ inquiryId: string }>
     }
   };
 
-  const updateBlockState = (nextState: { readonly canSendMessage: boolean; readonly blockedByCurrentUser: boolean }) => {
+  const updateBlockState = (nextState: {
+    readonly canSendMessage: boolean;
+    readonly blockedByCurrentUser: boolean;
+  }) => {
     setInquiry((current) => (current === null ? current : { ...current, ...nextState }));
   };
 
   const toggleBlock = async () => {
     if (!inquiry || safetyPending) return;
-    if (!inquiry.blockedByCurrentUser && !window.confirm("Chặn liên hệ này? Hai bên sẽ không thể gửi tin nhắn mới.")) return;
+    if (!inquiry.blockedByCurrentUser && !window.confirm("Chặn liên hệ này? Hai bên sẽ không thể gửi tin nhắn mới."))
+      return;
     setSafetyPending(true);
     setSafetyError(null);
     try {
@@ -190,7 +194,9 @@ export function InquiryDetailPage({ inquiryId }: Readonly<{ inquiryId: string }>
       updateBlockState(nextState);
       setSafetyMenuOpen(false);
     } catch (caught: unknown) {
-      setSafetyError(caught instanceof ApiError ? "Chưa thể cập nhật trạng thái chặn. Vui lòng thử lại." : "Đã có lỗi xảy ra.");
+      setSafetyError(
+        caught instanceof ApiError ? "Chưa thể cập nhật trạng thái chặn. Vui lòng thử lại." : "Đã có lỗi xảy ra."
+      );
     } finally {
       setSafetyPending(false);
     }
