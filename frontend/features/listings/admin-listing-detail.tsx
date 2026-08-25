@@ -130,7 +130,9 @@ function CanonicalDetail({
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div>
             <h2 className="text-2xl font-semibold text-rent-ink">{detail.title ?? "Chưa có tiêu đề"}</h2>
-            <p className="mt-2 text-sm text-rent-secondary">Cập nhật {new Date(detail.updatedAt).toLocaleString("vi-VN")}</p>
+            <p className="mt-2 text-sm text-rent-secondary">
+              Cập nhật {new Date(detail.updatedAt).toLocaleString("vi-VN")}
+            </p>
           </div>
           <ListingStatusBadge status={detail.status} />
           <BusinessStatusBadge status={detail.businessStatus} />
@@ -141,7 +143,9 @@ function CanonicalDetail({
             <p className="mt-1 whitespace-pre-wrap">{detail.currentModerationReason}</p>
           </div>
         ) : null}
-        <div className="mt-6"><ListingPrice monthlyRent={detail.monthlyRent} /></div>
+        <div className="mt-6">
+          <ListingPrice monthlyRent={detail.monthlyRent} />
+        </div>
         <dl className="mt-5 grid gap-4 border-t border-rent-line pt-5 text-sm text-rent-secondary sm:grid-cols-2 lg:grid-cols-3">
           <div>
             <dt className="font-semibold text-rent-ink">Giá thuê</dt>
@@ -176,7 +180,13 @@ function CanonicalDetail({
         </div>
         <div className="mt-6">
           <h3 className="font-semibold text-rent-ink">Tiện ích</h3>
-          {detail.amenities.length ? <div className="mt-2"><ListingAmenityChips amenities={detail.amenities} /></div> : <p className="mt-2 text-sm text-rent-secondary">Chưa có tiện ích</p>}
+          {detail.amenities.length ? (
+            <div className="mt-2">
+              <ListingAmenityChips amenities={detail.amenities} />
+            </div>
+          ) : (
+            <p className="mt-2 text-sm text-rent-secondary">Chưa có tiện ích</p>
+          )}
         </div>
       </section>
 
@@ -197,7 +207,7 @@ function CanonicalDetail({
       ) : null}
 
       <div className="grid gap-8 lg:grid-cols-2">
-          <section className="rounded-card border border-rent-line bg-white p-5">
+        <section className="rounded-card border border-rent-line bg-white p-5">
           <h2 className="text-xl font-semibold text-rent-ink">Người cho thuê</h2>
           <dl className="mt-4 space-y-3 text-sm">
             <div>

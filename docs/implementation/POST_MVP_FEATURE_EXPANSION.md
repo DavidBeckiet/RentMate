@@ -713,3 +713,75 @@ Hoàn thiện giao diện hiện có, không redesign toàn bộ. Các luồng c
 - Có deployment checklist, backward-compatible migration path và cách rollback application version mà không rollback migration phá dữ liệu.
 
 Mục 6 chỉ hoàn thành khi toàn bộ flow trên chạy qua Gateway và không còn lỗi nghiêm trọng về dữ liệu, authorization, privacy hoặc giao diện.
+
+#### Trạng thái release gate local ngày 25/08/2026
+
+- [x] External migration manifest đã được kiểm tra bằng `--plan-only`: Identity ở version `4`, Listing ở version `7`, Engagement ở version `13`; không có migration chưa áp dụng trên database local.
+- [x] PostgreSQL, Identity, Listing, Engagement, backend compatibility và Gateway đều báo healthy trong Docker.
+- [x] Smoke E2E contact flow đã chạy qua Gateway: public privacy, role/ownership, chat realtime, block/unblock, contact report và admin xử lý report.
+- [x] Identity test `20/20`, Listing test `30/30`, Engagement test `45/45`, Gateway test `5/5` và frontend test `575/575` đã pass.
+- [x] Typecheck, lint và production build đã pass; production build dùng một HTTPS API origin hợp lệ truyền qua environment.
+- [x] Playwright Chromium đã kiểm tra Listing Detail tại `375`, `768`, `1024` và `1440px`; không có horizontal overflow và AppShell hiển thị cùng phần đầu listing.
+- [x] Các file frontend được thêm/sửa trong mục 5 đã được format riêng và kiểm tra lại.
+- [x] Full frontend `format:check` đã pass sau khi format 17 source file và loại 2 artifact Playwright khỏi phạm vi kiểm tra.
+- [ ] Chưa kết nối webhook email/SMS thật; local vẫn dùng memory preview dành cho development/test.
+- [ ] Chưa chạy trọn bộ E2E release trên môi trường staging có provider thật và cookie production.
+
+#### Checklist thực hiện phần còn lại
+
+##### Bước 1 — dọn format frontend có kiểm soát
+
+- [x] Bổ sung `playwright-report/` và `test-results/` vào ignore vì hai thư mục này chỉ là artifact QA, không phải source cần kiểm tra format.
+- [x] Chia 17 source file còn lại thành các nhóm nhỏ: shared shell/map, listing card/detail, owner workflow và search workflow.
+- [x] Chạy Prettier theo từng nhóm, chỉ chấp nhận thay đổi formatting; không trộn sửa giao diện hoặc business logic.
+- [x] Sau mỗi nhóm chạy `format:check`, frontend typecheck, lint và focused tests liên quan.
+- [ ] Commit riêng phần dọn format sau khi diff không có thay đổi hành vi.
+
+##### Bước 2 — kết nối provider email/SMS staging
+
+- [ ] Chọn dịch vụ gửi email, dịch vụ gửi SMS và cấu hình sender/domain/phone number cho staging.
+- [ ] Chuẩn bị một webhook adapter nhận payload `{ channel, destination, secret }`, xác thực header `x-rentmate-verification-token` và điều phối sang provider tương ứng.
+- [ ] Webhook chỉ trả kết quả thành công/thất bại tối thiểu; không log token, OTP, email, số điện thoại hoặc raw provider response không cần thiết.
+- [ ] Chốt timeout, retry/idempotency và cách xử lý provider tạm lỗi để không gửi trùng mã ngoài ý muốn.
+- [ ] Lưu `VERIFICATION_DELIVERY_URL` và `VERIFICATION_DELIVERY_TOKEN` trong secret store của staging; không ghi secret thật vào `.env.example`, Git hoặc log.
+- [ ] Kiểm tra production config từ chối URL HTTP, placeholder, token rỗng và memory preview.
+- [ ] Gửi thử một email link và một SMS OTP qua staging, sau đó xác nhận mã qua Gateway và kiểm tra timestamp verified.
+
+Phần này cần chủ dự án cung cấp hoặc tạo tài khoản provider, sender được phép gửi và secret staging. RentMate đã có contract webhook và flow xác minh; không cần đổi API công khai nếu provider tuân thủ contract trên.
+
+##### Bước 3 — hoàn tất E2E nghiệp vụ qua Gateway
+
+- [ ] Landlord mới: đăng ký → email verified → phone verified → gửi hồ sơ → admin duyệt → badge verified xuất hiện trên listing public.
+- [ ] Listing: tạo draft có `maxOccupants` → sửa → gửi duyệt → admin approve → tenant tìm kiếm và xem detail mà không lộ dữ liệu riêng tư.
+- [ ] Availability: đưa clock test đến mốc nhắc → nhận notification → xác nhận lại; kiểm tra quá grace period thì auto-pause và biến mất khỏi public search.
+- [ ] Contact: tenant tạo inquiry → hai phía nhận realtime message → block hai chiều → unblock → report → admin điều tra và kết luận.
+- [ ] Regression: favorite, saved search, review, notification, landlord lead note/reminder và analytics cơ bản.
+- [ ] Authorization matrix: anonymous/tenant/landlord/admin cho các trường hợp `401`, `403`, owner-scoped `404`, stale transition `409` và unsafe Origin `403`.
+- [ ] Privacy: public payload không có exact address/coordinates, contact, moderation hoặc report nội bộ; admin contact report chỉ có evidence tối thiểu.
+
+##### Bước 4 — migration và deployment dry-run
+
+- [ ] Tạo manifest riêng cho staging của Identity, Listing và Engagement; manifest không chứa credential hoặc database URL.
+- [ ] Sao lưu database staging trước khi apply và ghi nhận thời điểm/phiên bản application tương ứng.
+- [ ] Chạy `--plan-only`, đối chiếu chính xác migration được chọn, sau đó mới apply theo từng service.
+- [ ] Chạy post-check schema, health/readiness và smoke read/write tối thiểu trước khi cập nhật `appliedVersion` trong manifest.
+- [ ] Kiểm tra scheduler dừng sạch khi service shutdown, Gateway timeout đúng contract và log không chứa secret/contact/message body ngoài nhu cầu vận hành.
+- [ ] Chuẩn bị rollback application image/config; không rollback migration phá dữ liệu. Nếu cần sửa schema, dùng forward migration mới.
+
+##### Bước 5 — quality gate và quyết định release
+
+- [ ] Typecheck, lint, full format check, toàn bộ test service, frontend test và production build đều pass trên commit release candidate.
+- [ ] Playwright desktop/mobile pass tại `375/768/1024/1440px`, bao gồm keyboard, focus, touch target, loading/empty/error và horizontal overflow.
+- [ ] Provider email/SMS staging pass, migration manifest đã cập nhật sau post-check và toàn bộ container/service healthy.
+- [ ] Không còn lỗi severity cao về authorization, privacy, dữ liệu, migration hoặc giao diện.
+- [ ] Gắn release candidate vào đúng commit SHA và lưu checklist/bằng chứng chạy test ngoài source tree.
+
+#### Quy tắc đối với dữ liệu smoke local
+
+- Message/report được tạo khi smoke chỉ là dữ liệu trong PostgreSQL Docker local, không phải production data và không chặn release.
+- Không tự động reset toàn bộ seed chỉ để xóa một report. Nếu cần dọn, phải xác minh đúng database local và chọn xóa chính xác dữ liệu smoke hoặc chạy lại seed sau khi được người dùng đồng ý.
+- Smoke script, cookie jar, manifest tạm và screenshot phải nằm ngoài repository; không commit các artifact này.
+
+#### Thứ tự đề xuất
+
+Thực hiện `Bước 1 → Bước 2 → Bước 3 → Bước 4 → Bước 5`. Có thể chuẩn bị Bước 2 song song với Bước 1, nhưng không đánh dấu release gate hoàn thành khi chưa có provider staging thật và full quality gate chưa pass.

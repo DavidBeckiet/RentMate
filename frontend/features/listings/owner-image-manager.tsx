@@ -384,10 +384,7 @@ export function OwnerImageManager({
     : null;
 
   return (
-    <section
-      aria-labelledby="owner-images-heading"
-      className="rm-workspace-panel space-y-6 p-5 sm:p-6"
-    >
+    <section aria-labelledby="owner-images-heading" className="rm-workspace-panel space-y-6 p-5 sm:p-6">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <h2 id="owner-images-heading" className="text-xl font-semibold text-rent-ink">
@@ -485,7 +482,10 @@ export function OwnerImageManager({
             const deleteForbidden = detail.status !== "DRAFT" && canonicalImages.length === 1;
             const isConfirming = confirmingDelete?.imageId === image.id && !confirmingDelete.replacement;
             return (
-              <article key={image.id} className="group space-y-3 rounded-control border border-rent-line bg-white p-3 transition-[border-color,box-shadow,transform] duration-200 hover:-translate-y-0.5 hover:border-teal-300 hover:shadow-card-hover">
+              <article
+                key={image.id}
+                className="group space-y-3 rounded-control border border-rent-line bg-white p-3 transition-[border-color,box-shadow,transform] duration-200 hover:-translate-y-0.5 hover:border-teal-300 hover:shadow-card-hover"
+              >
                 <div className="relative aspect-[4/3] overflow-hidden rounded-control bg-rent-surface-muted">
                   <Image
                     src={image.url}
@@ -538,7 +538,7 @@ export function OwnerImageManager({
                   <p className="text-xs text-amber-900">Tin không phải bản nháp phải giữ ít nhất một ảnh.</p>
                 ) : null}
                 {isConfirming ? (
-                    <div className="space-y-2 rounded-control border border-red-200 bg-red-50 p-3">
+                  <div className="space-y-2 rounded-control border border-red-200 bg-red-50 p-3">
                     <p className="text-sm font-semibold text-red-950">Xóa ảnh này?</p>
                     <div className="flex flex-wrap gap-2">
                       <Button variant="danger" pending={pendingAction === "delete"} onClick={confirmDelete}>

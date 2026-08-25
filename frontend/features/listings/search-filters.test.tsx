@@ -57,10 +57,7 @@ describe("SearchFilters", () => {
     });
     fireEvent.click(screen.getByRole("button", { name: "Tìm kiếm" }));
 
-    expect(onApply).toHaveBeenCalledWith(
-      { minMonthlyRent: 5000000, maxMonthlyRent: 7000000, amenities: [] },
-      "newest"
-    );
+    expect(onApply).toHaveBeenCalledWith({ minMonthlyRent: 5000000, maxMonthlyRent: 7000000, amenities: [] }, "newest");
   });
 
   it("keeps the two budget handles on one scale and prevents them from crossing", () => {
@@ -73,10 +70,7 @@ describe("SearchFilters", () => {
     });
     fireEvent.click(screen.getByRole("button", { name: "Tìm kiếm" }));
 
-    expect(onApply).toHaveBeenCalledWith(
-      { minMonthlyRent: 6000000, maxMonthlyRent: 7000000, amenities: [] },
-      "newest"
-    );
+    expect(onApply).toHaveBeenCalledWith({ minMonthlyRent: 6000000, maxMonthlyRent: 7000000, amenities: [] }, "newest");
   });
 
   it("validates a custom area pair", () => {

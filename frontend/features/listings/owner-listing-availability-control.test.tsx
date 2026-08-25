@@ -44,9 +44,7 @@ describe("OwnerListingAvailabilityControl", () => {
     render(<OwnerListingAvailabilityControl detail={detail} onDetailChange={onDetailChange} />);
     fireEvent.click(screen.getByRole("button", { name: "Xác nhận còn phòng" }));
 
-    await waitFor(() =>
-      expect(apiMocks.confirmAvailability).toHaveBeenCalledWith(42, expect.any(AbortSignal))
-    );
+    await waitFor(() => expect(apiMocks.confirmAvailability).toHaveBeenCalledWith(42, expect.any(AbortSignal)));
     expect(onDetailChange).toHaveBeenCalledWith(updated);
   });
 

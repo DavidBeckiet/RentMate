@@ -55,13 +55,9 @@ function draftFromState(state: SearchQueryState): FilterDraft {
     q: values.q ?? "",
     areaName: values.areaName ?? "",
     minMonthlyRent:
-      values.minMonthlyRent === undefined || values.minMonthlyRent <= BUDGET_MIN
-        ? ""
-        : String(values.minMonthlyRent),
+      values.minMonthlyRent === undefined || values.minMonthlyRent <= BUDGET_MIN ? "" : String(values.minMonthlyRent),
     maxMonthlyRent:
-      values.maxMonthlyRent === undefined || values.maxMonthlyRent >= BUDGET_MAX
-        ? ""
-        : String(values.maxMonthlyRent),
+      values.maxMonthlyRent === undefined || values.maxMonthlyRent >= BUDGET_MAX ? "" : String(values.maxMonthlyRent),
     minRoomAreaSqm: values.minRoomAreaSqm === undefined ? "" : String(values.minRoomAreaSqm),
     maxRoomAreaSqm: values.maxRoomAreaSqm === undefined ? "" : String(values.maxRoomAreaSqm),
     propertyType: values.propertyType ?? "",
@@ -215,10 +211,7 @@ export function SearchFilters({
 
   const count = activeFilterCount(committed);
   const selectedAreaPreset = customAreaOpen ? "custom" : areaPresetFor(draft);
-  const selectedMaxBudget = Math.max(
-    BUDGET_MIN_GAP,
-    budgetSliderValue(draft.maxMonthlyRent, BUDGET_MAX)
-  );
+  const selectedMaxBudget = Math.max(BUDGET_MIN_GAP, budgetSliderValue(draft.maxMonthlyRent, BUDGET_MAX));
   const selectedMinBudget = Math.min(
     budgetSliderValue(draft.minMonthlyRent, BUDGET_MIN),
     selectedMaxBudget - BUDGET_MIN_GAP
@@ -346,9 +339,7 @@ export function SearchFilters({
                 id="listing-min-budget"
                 aria-label="Giá tối thiểu"
                 aria-valuetext={
-                  selectedMinBudget <= BUDGET_MIN
-                    ? "Không đặt giá tối thiểu"
-                    : formatBudget(selectedMinBudget)
+                  selectedMinBudget <= BUDGET_MIN ? "Không đặt giá tối thiểu" : formatBudget(selectedMinBudget)
                 }
                 className={`${styles.budgetSlider} ${styles.budgetSliderMin}`}
                 name="minMonthlyRent"
@@ -371,9 +362,7 @@ export function SearchFilters({
                 id="listing-max-budget"
                 aria-label="Giá tối đa"
                 aria-valuetext={
-                  selectedMaxBudget >= BUDGET_MAX
-                    ? "15 triệu trở lên, không giới hạn"
-                    : formatBudget(selectedMaxBudget)
+                  selectedMaxBudget >= BUDGET_MAX ? "15 triệu trở lên, không giới hạn" : formatBudget(selectedMaxBudget)
                 }
                 className={`${styles.budgetSlider} ${styles.budgetSliderMax}`}
                 name="maxMonthlyRent"

@@ -73,8 +73,7 @@
   border: 2px solid #092b27;
   background:
     linear-gradient(rgb(9 43 39 / 0.1) 1px, transparent 1px),
-    linear-gradient(90deg, rgb(9 43 39 / 0.1) 1px, transparent 1px),
-    #86b6ff;
+    linear-gradient(90deg, rgb(9 43 39 / 0.1) 1px, transparent 1px), #86b6ff;
   background-size: 24px 24px;
   box-shadow: 5px 5px 0 #092b27;
 }

@@ -3,8 +3,7 @@
   min-height: 100dvh;
   background:
     linear-gradient(rgb(9 43 39 / 0.035) 1px, transparent 1px),
-    linear-gradient(90deg, rgb(9 43 39 / 0.035) 1px, transparent 1px),
-    #f4f1e8;
+    linear-gradient(90deg, rgb(9 43 39 / 0.035) 1px, transparent 1px), #f4f1e8;
   background-size: 32px 32px;
 }
 
@@ -258,8 +257,7 @@
   border: 2px solid #092b27;
   background:
     linear-gradient(rgb(9 43 39 / 0.1) 1px, transparent 1px),
-    linear-gradient(90deg, rgb(9 43 39 / 0.1) 1px, transparent 1px),
-    #86b6ff;
+    linear-gradient(90deg, rgb(9 43 39 / 0.1) 1px, transparent 1px), #86b6ff;
   background-size: 24px 24px;
   padding: 0.8rem;
   box-shadow: 5px 5px 0 #092b27;

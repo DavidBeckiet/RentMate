@@ -399,10 +399,7 @@ export function OwnerListingEditor({
         <p className="rounded-control border border-amber-200 bg-amber-50 p-4 text-sm text-amber-950">{warning}</p>
       ) : null}
 
-      <section
-        aria-labelledby="owner-basic-heading"
-        className="rm-editor-section"
-      >
+      <section aria-labelledby="owner-basic-heading" className="rm-editor-section">
         <h2 id="owner-basic-heading" className="text-xl font-semibold text-rent-ink">
           Thông tin cơ bản
         </h2>
@@ -428,10 +425,7 @@ export function OwnerListingEditor({
         />
       </section>
 
-      <section
-        aria-labelledby="owner-price-heading"
-        className="rm-editor-section"
-      >
+      <section aria-labelledby="owner-price-heading" className="rm-editor-section">
         <h2 id="owner-price-heading" className="text-xl font-semibold text-rent-ink">
           Giá &amp; diện tích
         </h2>
@@ -480,10 +474,7 @@ export function OwnerListingEditor({
         </div>
       </section>
 
-      <section
-        aria-labelledby="owner-location-heading"
-        className="rm-editor-section"
-      >
+      <section aria-labelledby="owner-location-heading" className="rm-editor-section">
         <h2 id="owner-location-heading" className="text-xl font-semibold text-rent-ink">
           Địa chỉ &amp; vị trí
         </h2>
@@ -542,10 +533,7 @@ export function OwnerListingEditor({
         />
       </section>
 
-      <section
-        aria-labelledby="owner-lookup-heading"
-        className="rm-editor-section"
-      >
+      <section aria-labelledby="owner-lookup-heading" className="rm-editor-section">
         <h2 id="owner-lookup-heading" className="text-xl font-semibold text-rent-ink">
           Loại phòng &amp; tiện ích
         </h2>
@@ -643,7 +631,9 @@ export function OwnerListingEditor({
         </p>
       ) : null}
       {dirty || pending ? (
-        <p className="rounded-control border border-amber-200 bg-amber-50 p-3 text-sm text-amber-950">Bạn có thay đổi chưa lưu. Hãy lưu hoặc hoàn tác trước.</p>
+        <p className="rounded-control border border-amber-200 bg-amber-50 p-3 text-sm text-amber-950">
+          Bạn có thay đổi chưa lưu. Hãy lưu hoặc hoàn tác trước.
+        </p>
       ) : null}
 
       <div className="flex flex-wrap gap-3 bg-rent-surface-muted/60 p-5 sm:p-6">

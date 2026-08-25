@@ -33,8 +33,7 @@ export function OwnerListingAvailabilityControl({
   const [feedback, setFeedback] = useState<string | null>(null);
   const controllerRef = useRef<AbortController | null>(null);
   const tracked = detail.availabilityStatus !== "NOT_APPLICABLE";
-  const needsConfirmation =
-    detail.availabilityStatus === "REMINDER_DUE" || detail.availabilityStatus === "AUTO_PAUSED";
+  const needsConfirmation = detail.availabilityStatus === "REMINDER_DUE" || detail.availabilityStatus === "AUTO_PAUSED";
 
   useEffect(
     () => () => {

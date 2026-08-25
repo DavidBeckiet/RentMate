@@ -191,10 +191,7 @@ export function MarketplaceHome({
               </p>
             </div>
 
-            <div
-              className={styles.heroVisual}
-              aria-label={usingDemo ? "Phòng mẫu nổi bật" : "Phòng công khai nổi bật"}
-            >
+            <div className={styles.heroVisual} aria-label={usingDemo ? "Phòng mẫu nổi bật" : "Phòng công khai nổi bật"}>
               <div className={styles.heroListingWrap}>
                 <span className={styles.heroVisualLabel}>{usingDemo ? "Phòng demo" : "Vừa cập nhật"}</span>
                 <HeroListingPreview listing={featuredListing} demo={usingDemo} />

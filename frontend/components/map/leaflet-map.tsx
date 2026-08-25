@@ -84,13 +84,10 @@ export default function LeafletMap({
   onMarkerMove,
   className
 }: MapBaseProps) {
-  const containerClass = className ?? "h-80 w-full min-w-0 overflow-hidden rounded-xl border border-stone-300 sm:h-96 lg:h-[28rem]";
+  const containerClass =
+    className ?? "h-80 w-full min-w-0 overflow-hidden rounded-xl border border-stone-300 sm:h-96 lg:h-[28rem]";
   return (
-    <div
-      role="region"
-      aria-label={ariaLabel}
-      className={containerClass}
-    >
+    <div role="region" aria-label={ariaLabel} className={containerClass}>
       <MapContainer center={[center.latitude, center.longitude]} zoom={zoom} scrollWheelZoom className="h-full w-full">
         <TileLayer
           url="https://tile.openstreetmap.org/{z}/{x}/{y}.png"

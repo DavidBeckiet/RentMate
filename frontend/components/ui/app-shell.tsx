@@ -398,9 +398,7 @@ function WorkspaceShell({
               <Link href="/" className={buttonClassName("ghost", "sm")}>
                 Trang chủ
               </Link>
-              {ready ? (
-                <NotificationLink pathname={pathname} />
-              ) : null}
+              {ready ? <NotificationLink pathname={pathname} /> : null}
               {ready && user ? (
                 <div className="hidden lg:block">
                   <AccountMenu user={user} logoutPending={logoutPending} onLogout={onLogout} />
