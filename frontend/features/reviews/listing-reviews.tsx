@@ -54,7 +54,11 @@ export function ListingReviews({ listingId }: Readonly<{ listingId: number }>) {
         />
       ) : null}
       {status === "success" && result?.data.length === 0 ? (
-        <EmptyState title="Chưa có đánh giá đã duyệt" description="Các đánh giá hợp lệ sẽ xuất hiện tại đây." />
+        <EmptyState
+          visual={<Icon name="star" className="h-8 w-8" />}
+          title="Chưa có đánh giá đã duyệt"
+          description="Các đánh giá hợp lệ sẽ xuất hiện tại đây."
+        />
       ) : null}
       {status === "success" && result && result.data.length > 0 ? (
         <div className="space-y-4">

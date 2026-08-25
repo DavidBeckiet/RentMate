@@ -117,11 +117,37 @@ describe("ListingDetail", () => {
     expect(await screen.findByRole("heading", { level: 1, name: "Studio sáng gần trung tâm" })).toBeInTheDocument();
     const images = screen.getAllByRole("img");
     expect(images[0]).toHaveAccessibleName("Ảnh chính của Studio sáng gần trung tâm");
-    expect(images[1]).toHaveAccessibleName("Ảnh thứ hai");
+    expect(screen.getAllByRole("img", { name: "Ảnh thứ hai" }).length).toBeGreaterThan(0);
     expect(screen.getByRole("region", { name: "Bản đồ vị trí xấp xỉ của tin đăng" })).toBeInTheDocument();
     expect(screen.getAllByText(/Vị trí xấp xỉ/i).length).toBeGreaterThan(0);
+    expect(screen.getByRole("heading", { name: "Lưu ý an toàn" })).toBeInTheDocument();
     expect(document.body).not.toHaveTextContent(/10\.772|106\.698|addressText|landlordId|moderation/i);
     expect(screen.getByRole("link", { name: "Đăng nhập bằng tài khoản người thuê" })).toHaveAttribute("href", "/login");
+    expect(screen.getByRole("link", { name: "Liên hệ chủ trọ" })).toHaveAttribute("href", "#contact-panel");
+  });
+
+  it("supports keyboard and button navigation through the public gallery", async () => {
+    apiMocks.getPublicDetail.mockResolvedValue(detail());
+    render(<ListingDetail listingId="42" />);
+
+    const gallery = await screen.findByRole("group", { name: /Ảnh 1 trên 2/i });
+    expect(screen.getByRole("button", { name: "Ảnh tiếp theo" })).toBeInTheDocument();
+    fireEvent.keyDown(gallery, { key: "ArrowRight" });
+    expect((await screen.findAllByRole("img", { name: "Ảnh thứ hai" })).length).toBeGreaterThan(0);
+    expect(screen.getByRole("group", { name: /Ảnh 2 trên 2/i })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Ảnh trước" }));
+    expect(await screen.findByRole("img", { name: "Ảnh chính của Studio sáng gần trung tâm" })).toBeInTheDocument();
+  });
+
+  it("keeps the contact sidebar sticky region separate from the reviews section", async () => {
+    apiMocks.getPublicDetail.mockResolvedValue(detail());
+    render(<ListingDetail listingId="42" />);
+
+    const contactSidebar = await screen.findByTestId("sticky-contact");
+    const reviewsSection = screen.getByTestId("reviews-section");
+    expect(contactSidebar).toHaveAttribute("data-sticky-contact");
+    expect(contactSidebar).not.toContainElement(reviewsSection);
+    expect(reviewsSection).not.toContainElement(contactSidebar);
   });
 
   it("renders email and phone only when landlordContact exists in the backend response", async () => {
