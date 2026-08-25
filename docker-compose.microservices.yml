@@ -135,6 +135,33 @@ services:
       listing:
         condition: service_healthy
 
+  verification-delivery:
+    profiles: ["brevo"]
+    build:
+      context: .
+      dockerfile: Dockerfile.microservices
+      args:
+        SERVICE: verification-delivery-adapter
+    environment:
+      NODE_ENV: ${NODE_ENV:-production}
+      VERIFICATION_DELIVERY_ADAPTER_PORT: ${VERIFICATION_DELIVERY_ADAPTER_PORT:-4400}
+      VERIFICATION_DELIVERY_TOKEN: ${VERIFICATION_DELIVERY_TOKEN:-}
+      BREVO_API_KEY: ${BREVO_API_KEY:-}
+      BREVO_EMAIL_SENDER: ${BREVO_EMAIL_SENDER:-}
+      BREVO_EMAIL_SENDER_NAME: ${BREVO_EMAIL_SENDER_NAME:-RentMate}
+      BREVO_API_BASE_URL: ${BREVO_API_BASE_URL:-https://api.brevo.com}
+      BREVO_TIMEOUT_MS: ${BREVO_TIMEOUT_MS:-5000}
+      SPEEDSMS_ACCESS_TOKEN: ${SPEEDSMS_ACCESS_TOKEN:-}
+      SPEEDSMS_API_BASE_URL: ${SPEEDSMS_API_BASE_URL:-https://api.speedsms.vn/index.php}
+      SPEEDSMS_TIMEOUT_MS: ${SPEEDSMS_TIMEOUT_MS:-5000}
+    expose:
+      - "${VERIFICATION_DELIVERY_ADAPTER_PORT:-4400}"
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -O - http://127.0.0.1:${VERIFICATION_DELIVERY_ADAPTER_PORT:-4400}/api/ready | grep -q 'status.*ready'"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+
   gateway:
     build:
       context: .

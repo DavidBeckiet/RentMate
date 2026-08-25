@@ -11,6 +11,9 @@ RUN npm ci --omit=dev --prefix services/listing-service
 COPY services/engagement-service/package.json services/engagement-service/package-lock.json ./services/engagement-service/
 RUN npm ci --omit=dev --prefix services/engagement-service
 
+COPY services/verification-delivery-adapter/package.json services/verification-delivery-adapter/package-lock.json ./services/verification-delivery-adapter/
+RUN npm ci --omit=dev --prefix services/verification-delivery-adapter
+
 COPY services/shared/package.json services/shared/package-lock.json ./services/shared/
 RUN npm ci --omit=dev --prefix services/shared
 
