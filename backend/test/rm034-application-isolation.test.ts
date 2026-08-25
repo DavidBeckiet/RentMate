@@ -21,7 +21,7 @@ const browserAutocompleteAttribute =
   /(<[A-Za-z][^<>]*?)\s+autocomplete\s*=\s*(?:"[^"\r\n]*"|'[^'\r\n]*'|\{[^}\r\n]*\})/gi;
 const directProviderOrReverseGeocoding = /nominatim|reverse.?geocod/i;
 const geocodingContext = /geocod|address|location/i;
-const automaticGeocodingBehavior = /autocomplete|typeahead/i;
+const automaticGeocodingBehavior = /autocomplete(?!\s*=\s*["']one-time-code["'])|typeahead/i;
 
 function hasUnsupportedFrontendGeocoding(relativePath: string, source: string): boolean {
   const semanticSource = source.replace(browserAutocompleteAttribute, "$1");

@@ -29,7 +29,7 @@ export interface InquiryRealtimeHub {
 export function createInquiryRealtimeHub(): InquiryRealtimeHub {
   const subscribers = new Map<number, Set<InquiryRealtimeSubscriber>>();
 
-  return Object.freeze({
+  const hub: InquiryRealtimeHub = {
     subscribe(inquiryId, subscriber) {
       const inquirySubscribers = subscribers.get(inquiryId) ?? new Set<InquiryRealtimeSubscriber>();
       inquirySubscribers.add(subscriber);
@@ -54,5 +54,6 @@ export function createInquiryRealtimeHub(): InquiryRealtimeHub {
     subscriberCount(inquiryId) {
       return subscribers.get(inquiryId)?.size ?? 0;
     }
-  });
+  };
+  return Object.freeze(hub);
 }

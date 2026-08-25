@@ -28,7 +28,7 @@ export function createListingNoteService(dependencies: {
   readonly loadPublicSummariesByIds: (listingIds: readonly number[]) => Promise<readonly PublicListingSummary[]>;
 }): ListingNoteService {
   const { repository, transactionRunner, loadPublicSummariesByIds } = dependencies;
-  return Object.freeze({
+  const service: ListingNoteService = {
     list(principal, listingIds) {
       const tenantId = requireTenant(principal);
       return transactionRunner.run((executor) => repository.list(executor, tenantId, listingIds));
@@ -51,5 +51,6 @@ export function createListingNoteService(dependencies: {
       const tenantId = requireTenant(principal);
       return transactionRunner.run((executor) => repository.remove(executor, tenantId, listingId));
     }
-  });
+  };
+  return Object.freeze(service);
 }

@@ -156,6 +156,10 @@ export function createUsersRepository(executor: SqlExecutor): UsersRepository {
             SET
               display_name = CASE WHEN $2::boolean THEN $3::varchar ELSE display_name END,
               phone_e164 = CASE WHEN $4::boolean THEN $5::varchar ELSE phone_e164 END,
+              phone_verified_at = CASE
+                WHEN $4::boolean AND phone_e164 IS DISTINCT FROM $5::varchar THEN NULL
+                ELSE phone_verified_at
+              END,
               updated_at = CURRENT_TIMESTAMP
             WHERE id = $1
               AND is_active = true

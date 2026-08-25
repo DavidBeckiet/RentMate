@@ -35,8 +35,33 @@ function isPublicListingSummary(value: unknown): value is PublicListingSummary {
     summary.propertyType !== null &&
     typeof summary.coverImage === "object" &&
     summary.coverImage !== null &&
-    Array.isArray(summary.amenities)
+    Array.isArray(summary.amenities) &&
+    (summary.landlordVerified === undefined || typeof summary.landlordVerified === "boolean")
   );
+}
+
+function mapPublicListingSummary(summary: PublicListingSummary): PublicListingSummary {
+  return Object.freeze({
+    id: summary.id,
+    businessStatus: summary.businessStatus,
+    title: summary.title,
+    monthlyRent: summary.monthlyRent,
+    roomAreaSqm: summary.roomAreaSqm,
+    areaName: summary.areaName,
+    latitude: summary.latitude,
+    longitude: summary.longitude,
+    propertyType: Object.freeze({ code: summary.propertyType.code, label: summary.propertyType.label }),
+    amenities: Object.freeze(
+      summary.amenities.map((amenity) => Object.freeze({ code: amenity.code, label: amenity.label }))
+    ),
+    coverImage: Object.freeze({
+      url: summary.coverImage.url,
+      altText: summary.coverImage.altText,
+      displayOrder: summary.coverImage.displayOrder
+    }),
+    ...(summary.landlordVerified === undefined ? {} : { landlordVerified: summary.landlordVerified }),
+    updatedAt: summary.updatedAt
+  });
 }
 
 export function createListingCatalogClient(options: ListingCatalogClientOptions): ListingCatalogClient {
@@ -71,7 +96,7 @@ export function createListingCatalogClient(options: ListingCatalogClientOptions)
       if (!Array.isArray(summaries) || summaries.some((summary) => !isPublicListingSummary(summary))) {
         throw new Error("Listing service catalog response is invalid.");
       }
-      return Object.freeze([...summaries]);
+      return Object.freeze(summaries.map(mapPublicListingSummary));
     },
 
     async loadPublicInquiryTarget(listingId: number): Promise<PublicInquiryTarget | null> {

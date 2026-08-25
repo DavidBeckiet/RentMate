@@ -69,9 +69,17 @@ landlord and admin authorization/profile checks use the internal Identity contra
 
 ```powershell
 $env:LISTING_DB_NAME = "rentmate_listing"
-npm.cmd --prefix services/listing-service run migrate
+npm.cmd --prefix services/listing-service run migrate -- clean --plan-only
+npm.cmd --prefix services/listing-service run migrate -- clean
 npm.cmd --prefix services/listing-service run backfill
 npm.cmd --prefix services/listing-service run backfill -- --apply
+```
+
+For an existing Listing database, use an operator-owned version record and select only newer migrations:
+
+```powershell
+npm.cmd --prefix services/listing-service run migrate -- existing --manifest .\listing-version.json --plan-only
+npm.cmd --prefix services/listing-service run migrate -- existing --manifest .\listing-version.json
 ```
 
 The backfill copies IDs and timestamps in one target transaction. Without `--apply`, it only reports source counts. The
@@ -85,9 +93,17 @@ Listing; tenant authorization is checked through Identity and visible listing su
 
 ```powershell
 $env:ENGAGEMENT_DB_NAME = "rentmate_engagement"
-npm.cmd --prefix services/engagement-service run migrate
+npm.cmd --prefix services/engagement-service run migrate -- clean --plan-only
+npm.cmd --prefix services/engagement-service run migrate -- clean
 npm.cmd --prefix services/engagement-service run backfill
 npm.cmd --prefix services/engagement-service run backfill -- --apply
+```
+
+For an existing Engagement database, use an operator-owned version record and select only newer migrations:
+
+```powershell
+npm.cmd --prefix services/engagement-service run migrate -- existing --manifest .\engagement-version.json --plan-only
+npm.cmd --prefix services/engagement-service run migrate -- existing --manifest .\engagement-version.json
 ```
 
 The favorite backfill preserves tenant/listing IDs and timestamps in one transaction. Without `--apply`, it only reports
@@ -123,8 +139,8 @@ docker compose -f docker-compose.microservices.yml config --quiet
 docker compose -f docker-compose.microservices.yml up -d postgres
 docker compose -f docker-compose.microservices.yml run --rm backend node dist/db/bootstrap/cli.js
 docker compose -f docker-compose.microservices.yml run --rm --no-deps identity npm --prefix services/identity-service run migrate -- clean
-docker compose -f docker-compose.microservices.yml run --rm --no-deps listing npm --prefix services/listing-service run migrate
-docker compose -f docker-compose.microservices.yml run --rm --no-deps engagement npm --prefix services/engagement-service run migrate
+docker compose -f docker-compose.microservices.yml run --rm --no-deps listing npm --prefix services/listing-service run migrate -- clean
+docker compose -f docker-compose.microservices.yml run --rm --no-deps engagement npm --prefix services/engagement-service run migrate -- clean
 docker compose -f docker-compose.microservices.yml up -d --build identity listing engagement gateway
 ```
 
@@ -165,8 +181,8 @@ already-applied migration against a shared database:
 
 ```powershell
 docker compose -f docker-compose.microservices.yml run --rm --no-deps identity npm --prefix services/identity-service run migrate -- clean
-docker compose -f docker-compose.microservices.yml run --rm --no-deps listing npm --prefix services/listing-service run migrate
-docker compose -f docker-compose.microservices.yml run --rm --no-deps engagement npm --prefix services/engagement-service run migrate
+docker compose -f docker-compose.microservices.yml run --rm --no-deps listing npm --prefix services/listing-service run migrate -- clean
+docker compose -f docker-compose.microservices.yml run --rm --no-deps engagement npm --prefix services/engagement-service run migrate -- clean
 ```
 
 Then inspect the backfill plan and apply it only after the source/target counts have been reviewed:

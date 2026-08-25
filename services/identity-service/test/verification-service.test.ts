@@ -17,7 +17,7 @@ const executor: SqlExecutor = {
   }
 };
 
-function harness() {
+function harness(options: { readonly contactsVerified?: boolean } = {}) {
   const rows = new Map<number, LandlordVerification>();
   let nextId = 1;
   const repository: VerificationRepository = {
@@ -42,6 +42,9 @@ function harness() {
     },
     async findBlockingForLandlord(_executor, landlordId) {
       return [...rows.values()].find((row) => row.landlord.id === landlordId && row.status !== "REJECTED") ?? null;
+    },
+    async hasVerifiedContacts() {
+      return options.contactsVerified ?? true;
     },
     async list(_executor, input) {
       return [...rows.values()]
@@ -75,6 +78,15 @@ function harness() {
     service: createVerificationService({ repository, transactionRunner: (operation) => operation(executor) })
   };
 }
+
+test("requires verified email and phone before accepting a manual landlord profile", async () => {
+  const subject = harness({ contactsVerified: false });
+  await assert.rejects(
+    () => subject.service.create(landlord, { displayName: "Nguyễn Văn An", note: null }),
+    /email and phone verification are required/i
+  );
+  assert.equal(subject.rows.size, 0);
+});
 
 test("allows a landlord to submit once while a request is active", async () => {
   const subject = harness();

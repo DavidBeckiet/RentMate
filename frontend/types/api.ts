@@ -64,6 +64,7 @@ export interface PublicListingSummary {
   readonly amenities: readonly Amenity[];
   readonly coverImage: PublicImage;
   readonly distanceKm?: number;
+  readonly landlordVerified?: boolean;
   readonly updatedAt: string;
 }
 
@@ -279,6 +280,20 @@ export interface LandlordVerification {
   readonly decisionNote: string | null;
   readonly submittedAt: string;
   readonly reviewedAt: string | null;
+}
+
+export interface ContactVerificationStatus {
+  readonly email: {
+    readonly address: string;
+    readonly verified: boolean;
+    readonly verifiedAt: string | null;
+  };
+  readonly phone: {
+    readonly number: string | null;
+    readonly verified: boolean;
+    readonly verifiedAt: string | null;
+  };
+  readonly profile: LandlordVerification | null;
 }
 
 export interface AdminLandlordVerification extends LandlordVerification {

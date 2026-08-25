@@ -146,7 +146,9 @@ async function startListingService(): Promise<void> {
         listingCreateService: createListingCreateService({ transactionRunner }),
         ownerListingReadService: createOwnerListingReadService(createOwnerListingReadRepository(sqlExecutor)),
         publicListingSearchService: createPublicListingSearchService(
-          createPublicListingSearchRepository(sqlExecutor),
+          createPublicListingSearchRepository(sqlExecutor, {
+            loadVerifiedLandlordIds: identityAccountClient.loadVerifiedLandlordIds
+          }),
           {
             deploymentRegion: config.deployment.region,
             maximumSearchRadiusKm: config.deployment.maximumSearchRadiusKm

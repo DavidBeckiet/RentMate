@@ -65,7 +65,7 @@ export interface ListingNoteRepository {
 }
 
 export function createListingNoteRepository(): ListingNoteRepository {
-  return Object.freeze({
+  const repository: ListingNoteRepository = {
     list(executor, tenantId, listingIds) {
       return queryMany<ListingNoteRow, ListingNote>(
         executor,
@@ -112,5 +112,6 @@ export function createListingNoteRepository(): ListingNoteRepository {
         values: [tenantId, listingId]
       });
     }
-  });
+  };
+  return Object.freeze(repository);
 }

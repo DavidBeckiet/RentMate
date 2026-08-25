@@ -5,7 +5,7 @@ import type { UserProfile } from "../../types/api";
 
 const apiMocks = vi.hoisted(() => ({
   updateCurrent: vi.fn(),
-  getCurrentVerification: vi.fn(),
+  getContactVerificationStatus: vi.fn(),
   submitVerification: vi.fn()
 }));
 const useAuthMock = vi.hoisted(() => vi.fn<() => AuthContextValue>());
@@ -58,9 +58,13 @@ function backendError(status: number, details: ConstructorParameters<typeof ApiE
 describe("LandlordProfile", () => {
   beforeEach(() => {
     apiMocks.updateCurrent.mockReset();
-    apiMocks.getCurrentVerification.mockReset();
+    apiMocks.getContactVerificationStatus.mockReset();
     apiMocks.submitVerification.mockReset();
-    apiMocks.getCurrentVerification.mockResolvedValue(null);
+    apiMocks.getContactVerificationStatus.mockResolvedValue({
+      email: { address: "owner@example.com", verified: true, verifiedAt: "2026-08-23T00:00:00.000Z" },
+      phone: { number: "+84901234567", verified: true, verifiedAt: "2026-08-23T00:00:00.000Z" },
+      profile: null
+    });
     refresh.mockReset();
     updateUser.mockReset();
     refresh.mockResolvedValue();

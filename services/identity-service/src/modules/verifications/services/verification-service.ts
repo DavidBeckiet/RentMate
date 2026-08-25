@@ -11,6 +11,7 @@ import type {
 
 const notFoundMessage = "The requested resource was not found.";
 const blockingMessage = "A pending or approved verification already exists for this landlord.";
+const contactsRequiredMessage = "Email and phone verification are required before submitting a landlord profile.";
 const staleMessage = "The verification decision is no longer allowed from its current state.";
 
 export interface VerificationPage {
@@ -52,6 +53,9 @@ export function createVerificationService(dependencies: {
       const landlordId = requireRole(principal, "LANDLORD");
       try {
         return await transactionRunner(async (executor) => {
+          if (!(await repository.hasVerifiedContacts(executor, landlordId))) {
+            throw new ApplicationError("VALIDATION_FAILED", contactsRequiredMessage);
+          }
           if ((await repository.findBlockingForLandlord(executor, landlordId)) !== null) {
             throw new ApplicationError("CONCURRENT_MODIFICATION", blockingMessage);
           }

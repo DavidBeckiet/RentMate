@@ -108,6 +108,25 @@ test("handles allowed preflight and rejects unsafe requests from another origin"
   }
 });
 
+test("does not expose internal service routes through the browser gateway", async () => {
+  const gateway = createGatewayServer({
+    BACKEND_URL: "http://127.0.0.1:1",
+    IDENTITY_SERVICE_URL: "http://identity:4100",
+    SERVICE_INTERNAL_TOKEN: "test-internal-token"
+  });
+  const gatewayPort = await listen(gateway);
+
+  try {
+    const result = await fetch(`http://127.0.0.1:${gatewayPort}/internal/v1/accounts/7`);
+    assert.equal(result.status, 404);
+    assert.deepEqual(await result.json(), {
+      error: { code: "NOT_FOUND", message: "The requested route was not found." }
+    });
+  } finally {
+    await close(gateway);
+  }
+});
+
 test("keeps an authorized inquiry event stream open beyond the ordinary upstream timeout", async () => {
   let resolveUpstreamClosed;
   const upstreamClosed = new Promise((resolve) => {

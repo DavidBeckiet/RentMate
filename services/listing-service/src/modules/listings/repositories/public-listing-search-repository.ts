@@ -1,5 +1,5 @@
 import type { QueryResultRow } from "pg";
-import { queryMany } from "../../../../../shared/src/runtime/db/repository-primitives.js";
+import { RepositoryInvariantError } from "../../../../../shared/src/runtime/db/repository-primitives.js";
 import type { ParameterizedQuery, SqlExecutor } from "../../../../../shared/src/runtime/db/sql-executor.js";
 import type {
   BoundsPublicListingSearch,
@@ -48,6 +48,10 @@ export interface PublicListingSearchRepository {
     boundingBox: RadiusBoundingBox,
     activeLandlordIds?: readonly number[]
   ) => Promise<readonly PublicRadiusListingSummary[]>;
+}
+
+export interface PublicListingSearchRepositoryDependencies {
+  readonly loadVerifiedLandlordIds?: (userIds: readonly number[]) => Promise<readonly number[]>;
 }
 
 const orders: Readonly<Record<OrdinaryPublicSearchSort, { readonly candidate: string; readonly page: string }>> =
@@ -109,6 +113,7 @@ function publicAggregateQuery(prefix: string, order: string, includeDistance: bo
   return `${prefix}
       SELECT
         pc.id,
+        pc.landlord_id,
         pc.business_status,
         pc.title,
         pc.monthly_rent,
@@ -175,6 +180,7 @@ function nonRadiusPageQuery(
       WITH page_candidates AS (
         SELECT
           l.id,
+          l.landlord_id,
           l.business_status,
           l.title,
           l.monthly_rent,
@@ -237,6 +243,7 @@ function radiusPageQuery(
       WITH filtered_candidates AS (
         SELECT
           l.id,
+          l.landlord_id,
           l.business_status,
           l.title,
           l.monthly_rent,
@@ -276,7 +283,46 @@ function radiusPageQuery(
   };
 }
 
-export function createPublicListingSearchRepository(executor: SqlExecutor): PublicListingSearchRepository {
+function readLandlordId(value: unknown): number {
+  if (!Number.isSafeInteger(value) || (value as number) < 1) {
+    throw new RepositoryInvariantError("Public listing landlord representation is invalid.");
+  }
+  return value as number;
+}
+
+async function loadVerifiedIds(
+  landlordIds: readonly number[],
+  dependency: PublicListingSearchRepositoryDependencies["loadVerifiedLandlordIds"]
+): Promise<ReadonlySet<number>> {
+  if (dependency === undefined || landlordIds.length === 0) return new Set<number>();
+  // The query deliberately fetches one extra row for pagination; Identity accepts at most 100 IDs.
+  const verifiedIds = await dependency(landlordIds.slice(0, 100));
+  return new Set(verifiedIds);
+}
+
+async function mapListingRows<Row extends PublicListingSummaryRow, Value extends PublicListingSummary>(
+  executor: SqlExecutor,
+  query: ParameterizedQuery,
+  mapper: (row: Readonly<Row>) => Value,
+  loadVerifiedLandlordIds: PublicListingSearchRepositoryDependencies["loadVerifiedLandlordIds"]
+): Promise<readonly Value[]> {
+  const result = await executor.query<Row>(query);
+  const landlordIds = Object.freeze([...new Set(result.rows.map((row) => readLandlordId(row.landlord_id)))]);
+  const verifiedIds = await loadVerifiedIds(landlordIds, loadVerifiedLandlordIds);
+  return Object.freeze(
+    result.rows.map((row) =>
+      mapper({
+        ...row,
+        landlord_verified: verifiedIds.has(readLandlordId(row.landlord_id))
+      } as Row)
+    )
+  );
+}
+
+export function createPublicListingSearchRepository(
+  executor: SqlExecutor,
+  dependencies: PublicListingSearchRepositoryDependencies = {}
+): PublicListingSearchRepository {
   return Object.freeze({
     async findKnownSearchCodes(input: SearchCodeInput): Promise<KnownSearchCodes> {
       const rows = await executor.query<KnownSearchCodeRow>({
@@ -306,12 +352,11 @@ export function createPublicListingSearchRepository(executor: SqlExecutor): Publ
       search: OrdinaryPublicListingSearch,
       activeLandlordIds?: readonly number[]
     ): Promise<readonly PublicListingSummary[]> {
-      return Object.freeze(
-        await queryMany<PublicListingSummaryRow, PublicListingSummary>(
-          executor,
-          nonRadiusPageQuery(search, activeLandlordIds),
-          mapPublicListingSummaryRow
-        )
+      return mapListingRows(
+        executor,
+        nonRadiusPageQuery(search, activeLandlordIds),
+        mapPublicListingSummaryRow,
+        dependencies.loadVerifiedLandlordIds
       );
     },
 
@@ -319,12 +364,11 @@ export function createPublicListingSearchRepository(executor: SqlExecutor): Publ
       search: BoundsPublicListingSearch,
       activeLandlordIds?: readonly number[]
     ): Promise<readonly PublicListingSummary[]> {
-      return Object.freeze(
-        await queryMany<PublicListingSummaryRow, PublicListingSummary>(
-          executor,
-          nonRadiusPageQuery(search, activeLandlordIds),
-          mapPublicListingSummaryRow
-        )
+      return mapListingRows(
+        executor,
+        nonRadiusPageQuery(search, activeLandlordIds),
+        mapPublicListingSummaryRow,
+        dependencies.loadVerifiedLandlordIds
       );
     },
 
@@ -333,12 +377,11 @@ export function createPublicListingSearchRepository(executor: SqlExecutor): Publ
       boundingBox: RadiusBoundingBox,
       activeLandlordIds?: readonly number[]
     ): Promise<readonly PublicRadiusListingSummary[]> {
-      return Object.freeze(
-        await queryMany<PublicRadiusListingSummaryRow, PublicRadiusListingSummary>(
-          executor,
-          radiusPageQuery(search, boundingBox, activeLandlordIds),
-          mapPublicRadiusListingSummaryRow
-        )
+      return mapListingRows(
+        executor,
+        radiusPageQuery(search, boundingBox, activeLandlordIds),
+        mapPublicRadiusListingSummaryRow,
+        dependencies.loadVerifiedLandlordIds
       );
     }
   });

@@ -27,6 +27,9 @@ import { createInternalServiceGuard } from "../../shared/internal-service-auth.j
 import { createVerificationRepository } from "./modules/verifications/repositories/verification-repository.js";
 import { createVerificationService } from "./modules/verifications/services/verification-service.js";
 import { registerVerificationRoutes } from "./modules/verifications/routes.js";
+import { createContactVerificationRepository } from "./modules/verifications/repositories/contact-verification-repository.js";
+import { createContactVerificationService } from "./modules/verifications/services/contact-verification-service.js";
+import { createContactVerificationDelivery } from "./modules/verifications/contact-verification-delivery.js";
 import type { TransactionRunner } from "./shared/transaction.js";
 
 function listen(server: Server, port: number): Promise<void> {
@@ -79,12 +82,25 @@ async function startIdentityService(): Promise<void> {
   });
   const usersService = createUsersService(usersRepository);
   const verificationRepository = createVerificationRepository();
+  const contactVerificationRepository = createContactVerificationRepository();
   const transactionRunner: TransactionRunner = (operation) => withTransaction(databasePool, logger, operation);
   const adminUserService = createAdminUserService({
     repository: createAdminUserRepository(sqlExecutor),
     transactionRunner
   });
   const verificationService = createVerificationService({ repository: verificationRepository, transactionRunner });
+  const contactVerificationDelivery = createContactVerificationDelivery({
+    nodeEnvironment: config.nodeEnv,
+    deliveryUrl: config.verification.deliveryUrl,
+    deliveryToken: config.verification.deliveryToken
+  });
+  const contactVerificationService = createContactVerificationService({
+    contactRepository: contactVerificationRepository,
+    verificationRepository,
+    transactionRunner,
+    delivery: contactVerificationDelivery,
+    secretPepper: config.auth.jwtSecret
+  });
   const requiredAuthentication = createProtectedAuthenticationMiddleware({
     verifySessionToken: sessionTokenService.verify,
     loadAuthenticationAccount: usersRepository.findAuthenticationAccountById
@@ -92,6 +108,7 @@ async function startIdentityService(): Promise<void> {
   const adminRole = createRoleMiddleware(["ADMIN"]);
   const landlordRole = createRoleMiddleware(["LANDLORD"]);
   const authRateLimitStore = new InMemoryRateLimitStore();
+  const contactVerificationRateLimitStore = new InMemoryRateLimitStore();
   const internalServiceGuard = createInternalServiceGuard(process.env.SERVICE_INTERNAL_TOKEN);
   const app = createApp({
     frontendOrigin: config.frontendOrigin,
@@ -116,7 +133,9 @@ async function startIdentityService(): Promise<void> {
         authenticationMiddleware: requiredAuthentication,
         landlordRoleMiddleware: landlordRole,
         adminRoleMiddleware: adminRole,
-        service: verificationService
+        service: verificationService,
+        contactVerificationService,
+        contactVerificationRateLimitStore
       });
     },
     registerInternalRoutes: (internalApp) => {
@@ -197,6 +216,17 @@ async function startIdentityService(): Promise<void> {
           .then((verifiedIds) => response.status(200).json({ data: verifiedIds }))
           .catch(next);
       });
+      const latestVerificationPreview = contactVerificationDelivery.latestPreview;
+      if (config.nodeEnv !== "production" && latestVerificationPreview) {
+        internalApp.get("/internal/v1/verification-delivery/preview", internalServiceGuard, (request, response) => {
+          const channel = request.query.channel;
+          if (channel !== undefined && channel !== "EMAIL" && channel !== "PHONE") {
+            response.status(400).end();
+            return;
+          }
+          response.status(200).json({ data: latestVerificationPreview(channel as "EMAIL" | "PHONE" | undefined) });
+        });
+      }
     }
   });
   const server = createServer(app);

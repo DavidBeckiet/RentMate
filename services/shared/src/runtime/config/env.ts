@@ -46,6 +46,10 @@ export interface RuntimeConfig {
     readonly baseUrl: string;
     readonly userAgent: string;
   };
+  readonly verification: {
+    readonly deliveryUrl: string;
+    readonly deliveryToken: string;
+  };
   readonly images: {
     readonly maximumCount: 8;
     readonly maximumBytes: 5242880;
@@ -286,6 +290,36 @@ function readNominatimBaseUrl(source: EnvironmentSource, production: boolean, is
   return defaultNominatimBaseUrl;
 }
 
+function readVerificationDeliveryUrl(source: EnvironmentSource, production: boolean, issues: string[]): string {
+  const value = readString(source, "VERIFICATION_DELIVERY_URL", "", production, issues, {
+    rejectPlaceholder: production
+  });
+  if (!value) return "";
+
+  try {
+    const parsed = new URL(value);
+    const hasCredentials = parsed.username.length > 0 || parsed.password.length > 0;
+    if (
+      (parsed.protocol !== "http:" && parsed.protocol !== "https:") ||
+      !parsed.hostname ||
+      parsed.search.length > 0 ||
+      parsed.hash.length > 0 ||
+      parsed.hostname.includes("*") ||
+      hasCredentials
+    ) {
+      issues.push("VERIFICATION_DELIVERY_URL must be an absolute HTTP or HTTPS URL without credentials");
+    } else if (production && parsed.protocol !== "https:") {
+      issues.push("VERIFICATION_DELIVERY_URL must use HTTPS in production");
+    } else {
+      return parsed.href.replace(/\/$/, "");
+    }
+  } catch {
+    issues.push("VERIFICATION_DELIVERY_URL must be a valid URL");
+  }
+
+  return "";
+}
+
 function requireExactValue(
   source: EnvironmentSource,
   key: string,
@@ -384,6 +418,13 @@ export function parseEnvironment(source: EnvironmentSource): RuntimeConfig {
     nominatim: {
       baseUrl: readNominatimBaseUrl(source, production, issues),
       userAgent: readString(source, "NOMINATIM_USER_AGENT", defaultNominatimUserAgent, production, issues, {
+        rejectPlaceholder: production
+      })
+    },
+    verification: {
+      deliveryUrl: readVerificationDeliveryUrl(source, production, issues),
+      deliveryToken: readString(source, "VERIFICATION_DELIVERY_TOKEN", "", production, issues, {
+        trim: false,
         rejectPlaceholder: production
       })
     },

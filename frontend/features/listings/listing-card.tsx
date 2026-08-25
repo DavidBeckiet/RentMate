@@ -75,6 +75,12 @@ export function ListingCard({ listing, showFavorite = true, href, variant = "def
               <Icon name="pin" className="h-4 w-4 shrink-0" />
               <span className="truncate">{listing.areaName}</span>
             </p>
+            {listing.landlordVerified ? (
+              <span className="mt-3 inline-flex items-center gap-1.5 border-2 border-heroDark-950 bg-rent-accent px-2 py-1 font-display text-[10px] font-bold uppercase tracking-[0.08em] shadow-glass-sm">
+                <Icon name="shield" className="h-3.5 w-3.5" />
+                {"\u0110\u00e3 x\u00e1c minh"}
+              </span>
+            ) : null}
           </div>
 
           <div

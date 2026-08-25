@@ -45,6 +45,9 @@ interface VerificationRow extends QueryResultRow {
 interface IdRow extends QueryResultRow {
   id: unknown;
 }
+interface ContactVerificationRow extends QueryResultRow {
+  contacts_verified: unknown;
+}
 
 const projection = `
   v.id, v.landlord_id, u.email AS landlord_email, u.phone_e164 AS landlord_phone,
@@ -113,6 +116,7 @@ export interface VerificationRepository {
   ) => Promise<LandlordVerification>;
   readonly findLatestForLandlord: (executor: SqlExecutor, landlordId: number) => Promise<LandlordVerification | null>;
   readonly findBlockingForLandlord: (executor: SqlExecutor, landlordId: number) => Promise<LandlordVerification | null>;
+  readonly hasVerifiedContacts: (executor: SqlExecutor, landlordId: number) => Promise<boolean>;
   readonly list: (
     executor: SqlExecutor,
     input: { readonly status: VerificationStatus; readonly limit: number; readonly offset: number }
@@ -171,6 +175,25 @@ export function createVerificationRepository(): VerificationRepository {
         mapVerification
       );
     },
+    async hasVerifiedContacts(executor, landlordId) {
+      return queryExactlyOne<ContactVerificationRow, boolean>(
+        executor,
+        {
+          text: `
+            SELECT (email_verified_at IS NOT NULL AND phone_verified_at IS NOT NULL) AS contacts_verified
+            FROM users
+            WHERE id = $1 AND is_active = true
+          `,
+          values: [landlordId]
+        },
+        (row) => {
+          if (typeof row.contacts_verified !== "boolean") {
+            throw new RepositoryInvariantError("landlordVerification.contactsVerified is invalid.");
+          }
+          return row.contacts_verified;
+        }
+      );
+    },
     list(executor, input) {
       return queryMany<VerificationRow, LandlordVerification>(
         executor,
@@ -211,7 +234,17 @@ export function createVerificationRepository(): VerificationRepository {
         await queryMany<IdRow, number>(
           executor,
           {
-            text: `SELECT DISTINCT landlord_id AS id FROM landlord_verifications WHERE status = 'APPROVED' AND landlord_id = ANY($1::integer[]) ORDER BY landlord_id ASC`,
+            text: `
+              SELECT DISTINCT v.landlord_id AS id
+              FROM landlord_verifications AS v
+              JOIN users AS u ON u.id = v.landlord_id
+              WHERE v.status = 'APPROVED'
+                AND u.is_active = true
+                AND u.email_verified_at IS NOT NULL
+                AND u.phone_verified_at IS NOT NULL
+                AND v.landlord_id = ANY($1::integer[])
+              ORDER BY v.landlord_id ASC
+            `,
             values: [[...landlordIds]]
           },
           (row) => positiveId(row.id, "verifiedLandlord.id")

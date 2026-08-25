@@ -5,7 +5,7 @@ import { Button } from "../../components/ui/button";
 import { Icon } from "../../components/ui/icon";
 import { api, ApiError } from "../../lib/api/client";
 import { useAuth } from "../../lib/auth/auth-provider";
-import type { LandlordVerification } from "../../types/api";
+import type { ContactVerificationStatus, LandlordVerification } from "../../types/api";
 
 const statusLabels = {
   PENDING: "Đang chờ duyệt",
@@ -13,14 +13,28 @@ const statusLabels = {
   REJECTED: "Cần gửi lại"
 } as const;
 
+type PendingAction = "email-request" | "email-confirm" | "phone-request" | "phone-confirm" | "profile" | null;
+
+function contactStatusLabel(verified: boolean): string {
+  return verified ? "Đã xác minh" : "Chưa xác minh";
+}
+
+function updateProfile(status: ContactVerificationStatus, profile: LandlordVerification): ContactVerificationStatus {
+  return Object.freeze({ ...status, profile });
+}
+
 export function LandlordVerificationPanel() {
-  const { status, user } = useAuth();
-  const ready = status === "authenticated" && user?.role === "LANDLORD";
-  const [verification, setVerification] = useState<LandlordVerification | null>(null);
+  const { status: authStatus, user } = useAuth();
+  const ready = authStatus === "authenticated" && user?.role === "LANDLORD";
+  const [verification, setVerification] = useState<ContactVerificationStatus | null>(null);
   const [loadState, setLoadState] = useState<"idle" | "loading" | "success" | "error">("idle");
   const [displayName, setDisplayName] = useState("");
   const [note, setNote] = useState("");
-  const [pending, setPending] = useState(false);
+  const [emailToken, setEmailToken] = useState("");
+  const [phoneCode, setPhoneCode] = useState("");
+  const [emailRequested, setEmailRequested] = useState(false);
+  const [phoneRequested, setPhoneRequested] = useState(false);
+  const [pendingAction, setPendingAction] = useState<PendingAction>(null);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -28,11 +42,11 @@ export function LandlordVerificationPanel() {
     const controller = new AbortController();
     setLoadState("loading");
     void api.users
-      .getCurrentVerification(controller.signal)
+      .getContactVerificationStatus(controller.signal)
       .then((result) => {
         if (!controller.signal.aborted) {
           setVerification(result);
-          setDisplayName(result?.displayName ?? "");
+          setDisplayName(result.profile?.displayName ?? "");
           setLoadState("success");
         }
       })
@@ -44,17 +58,42 @@ export function LandlordVerificationPanel() {
 
   if (!ready) return null;
 
-  const submit = async () => {
+  const runContactAction = async (
+    action: Exclude<PendingAction, "profile" | null>,
+    operation: () => Promise<ContactVerificationStatus>
+  ) => {
+    setPendingAction(action);
+    setError(null);
+    try {
+      const result = await operation();
+      setVerification(result);
+      if (action.startsWith("email")) setEmailRequested(true);
+      if (action.startsWith("phone")) setPhoneRequested(true);
+    } catch (caught) {
+      const apiError = caught instanceof ApiError ? caught : null;
+      setError(
+        apiError?.status === 429
+          ? "Bạn thao tác quá nhiều lần. Vui lòng thử lại sau ít phút."
+          : apiError?.status === 502 || apiError?.status === 503
+            ? "Kênh gửi mã đang tạm thời không khả dụng. Vui lòng thử lại sau."
+            : "Không thể cập nhật xác minh. Vui lòng kiểm tra lại thông tin."
+      );
+    } finally {
+      setPendingAction(null);
+    }
+  };
+
+  const submitProfile = async () => {
     const normalizedName = displayName.trim();
     if (normalizedName.length < 2) {
       setError("Tên trong hồ sơ xác minh cần có ít nhất 2 ký tự.");
       return;
     }
-    setPending(true);
+    setPendingAction("profile");
     setError(null);
     try {
       const created = await api.users.submitVerification({ displayName: normalizedName, note: note.trim() || null });
-      setVerification(created);
+      setVerification((current) => (current ? updateProfile(current, created) : current));
       setNote("");
     } catch (caught) {
       const apiError = caught instanceof ApiError ? caught : null;
@@ -64,9 +103,12 @@ export function LandlordVerificationPanel() {
           : "Chưa thể gửi yêu cầu xác minh. Vui lòng thử lại."
       );
     } finally {
-      setPending(false);
+      setPendingAction(null);
     }
   };
+
+  const profile = verification?.profile ?? null;
+  const contactsVerified = verification?.email.verified === true && verification.phone.verified === true;
 
   return (
     <section
@@ -81,7 +123,7 @@ export function LandlordVerificationPanel() {
           Xác minh hồ sơ chủ trọ
         </h2>
         <p className="mt-2 text-sm leading-6 text-rent-secondary">
-          RentMate chỉ duyệt hồ sơ và thông tin liên hệ hiện có. Luồng này không phải eKYC và không yêu cầu tải giấy tờ.
+          Hoàn tất email và số điện thoại trước khi gửi hồ sơ để admin duyệt. RentMate không yêu cầu tải giấy tờ.
         </p>
       </header>
 
@@ -91,21 +133,129 @@ export function LandlordVerificationPanel() {
           Không thể tải trạng thái xác minh.
         </p>
       ) : null}
+      {error ? (
+        <p role="alert" className="border-l-4 border-red-800 pl-3 text-sm font-bold text-red-800">
+          {error}
+        </p>
+      ) : null}
 
       {loadState === "success" && verification ? (
-        <div className="space-y-3 border-2 border-heroDark-950 bg-[#e5eefc] p-4">
-          <p className="inline-flex items-center gap-2 text-sm font-extrabold">
-            <Icon name={verification.status === "APPROVED" ? "check" : "shield"} className="h-4 w-4" />
-            {statusLabels[verification.status]}
-          </p>
-          <p className="text-sm font-bold">Tên trong hồ sơ xác minh: {verification.displayName}</p>
-          {verification.decisionNote ? (
-            <p className="text-sm leading-6">Phản hồi: {verification.decisionNote}</p>
-          ) : null}
+        <div className="grid gap-3 sm:grid-cols-2">
+          <article className="space-y-2 border-2 border-heroDark-950 bg-[#e5eefc] p-4">
+            <p className="text-sm font-extrabold">Email</p>
+            <p className="break-all text-sm text-rent-secondary">{verification.email.address}</p>
+            <p className="inline-flex items-center gap-2 text-sm font-extrabold">
+              <Icon name={verification.email.verified ? "check" : "mail"} className="h-4 w-4" />
+              {contactStatusLabel(verification.email.verified)}
+            </p>
+            {!verification.email.verified ? (
+              <div className="space-y-2 pt-1">
+                <Button
+                  pending={pendingAction === "email-request"}
+                  pendingLabel="Đang gửi…"
+                  onClick={() => void runContactAction("email-request", () => api.users.requestEmailVerification())}
+                >
+                  Gửi mã email
+                </Button>
+                {emailRequested ? (
+                  <div className="space-y-2">
+                    <label className="block text-sm font-bold" htmlFor="landlord-email-token">
+                      Mã xác minh trong email
+                    </label>
+                    <input
+                      id="landlord-email-token"
+                      value={emailToken}
+                      onChange={(event) => setEmailToken(event.target.value)}
+                      className="min-h-11 w-full border-2 border-heroDark-950 bg-white px-3 outline-none focus:ring-4 focus:ring-brandBlue-500/30"
+                      autoComplete="one-time-code"
+                    />
+                    <Button
+                      pending={pendingAction === "email-confirm"}
+                      pendingLabel="Đang xác nhận…"
+                      onClick={() =>
+                        void runContactAction("email-confirm", () =>
+                          api.users.confirmEmailVerification(emailToken.trim())
+                        )
+                      }
+                    >
+                      Xác nhận email
+                    </Button>
+                  </div>
+                ) : null}
+              </div>
+            ) : null}
+          </article>
+
+          <article className="space-y-2 border-2 border-heroDark-950 bg-[#e5eefc] p-4">
+            <p className="text-sm font-extrabold">Số điện thoại</p>
+            <p className="break-all text-sm text-rent-secondary">{verification.phone.number ?? "Chưa cập nhật"}</p>
+            <p className="inline-flex items-center gap-2 text-sm font-extrabold">
+              <Icon name={verification.phone.verified ? "check" : "phone"} className="h-4 w-4" />
+              {contactStatusLabel(verification.phone.verified)}
+            </p>
+            {!verification.phone.verified && verification.phone.number ? (
+              <div className="space-y-2 pt-1">
+                <Button
+                  pending={pendingAction === "phone-request"}
+                  pendingLabel="Đang gửi…"
+                  onClick={() => void runContactAction("phone-request", () => api.users.requestPhoneVerification())}
+                >
+                  Gửi mã OTP
+                </Button>
+                {phoneRequested ? (
+                  <div className="space-y-2">
+                    <label className="block text-sm font-bold" htmlFor="landlord-phone-code">
+                      Mã OTP 6 số
+                    </label>
+                    <input
+                      id="landlord-phone-code"
+                      value={phoneCode}
+                      maxLength={6}
+                      inputMode="numeric"
+                      onChange={(event) => setPhoneCode(event.target.value.replace(/\D/g, "").slice(0, 6))}
+                      className="min-h-11 w-full border-2 border-heroDark-950 bg-white px-3 outline-none focus:ring-4 focus:ring-brandBlue-500/30"
+                      autoComplete="one-time-code"
+                    />
+                    <Button
+                      pending={pendingAction === "phone-confirm"}
+                      pendingLabel="Đang xác nhận…"
+                      onClick={() =>
+                        void runContactAction("phone-confirm", () =>
+                          api.users.confirmPhoneVerification(phoneCode.trim())
+                        )
+                      }
+                    >
+                      Xác nhận số điện thoại
+                    </Button>
+                  </div>
+                ) : null}
+              </div>
+            ) : null}
+          </article>
         </div>
       ) : null}
 
-      {loadState === "success" && verification?.status !== "PENDING" && verification?.status !== "APPROVED" ? (
+      {loadState === "success" && profile ? (
+        <div className="space-y-3 border-2 border-heroDark-950 bg-[#e5eefc] p-4">
+          <p className="inline-flex items-center gap-2 text-sm font-extrabold">
+            <Icon name={profile.status === "APPROVED" ? "check" : "shield"} className="h-4 w-4" />
+            {statusLabels[profile.status]}
+          </p>
+          <p className="text-sm font-bold">Tên trong hồ sơ xác minh: {profile.displayName}</p>
+          {profile.decisionNote ? <p className="text-sm leading-6">Phản hồi: {profile.decisionNote}</p> : null}
+        </div>
+      ) : null}
+
+      {loadState === "success" && !contactsVerified ? (
+        <p className="border-l-4 border-brandBlue-700 pl-3 text-sm font-bold text-rent-secondary">
+          Vui lòng xác minh cả email và số điện thoại để mở bước duyệt hồ sơ.
+        </p>
+      ) : null}
+
+      {loadState === "success" &&
+      contactsVerified &&
+      profile?.status !== "PENDING" &&
+      profile?.status !== "APPROVED" ? (
         <div className="space-y-4">
           <label className="block text-sm font-extrabold" htmlFor="verification-display-name">
             Tên trong hồ sơ xác minh
@@ -131,13 +281,8 @@ export function LandlordVerificationPanel() {
             onChange={(event) => setNote(event.target.value)}
             className="w-full resize-y border-2 border-heroDark-950 bg-white p-3 outline-none focus:ring-4 focus:ring-brandBlue-500/30"
           />
-          {error ? (
-            <p role="alert" className="border-l-4 border-red-800 pl-3 text-sm font-bold text-red-800">
-              {error}
-            </p>
-          ) : null}
-          <Button pending={pending} pendingLabel="Đang gửi…" onClick={() => void submit()}>
-            {verification?.status === "REJECTED" ? "Gửi lại yêu cầu" : "Gửi yêu cầu xác minh"}
+          <Button pending={pendingAction === "profile"} pendingLabel="Đang gửi…" onClick={() => void submitProfile()}>
+            {profile?.status === "REJECTED" ? "Gửi lại yêu cầu" : "Gửi yêu cầu xác minh"}
           </Button>
         </div>
       ) : null}

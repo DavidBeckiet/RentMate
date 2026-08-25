@@ -8,6 +8,7 @@ const codePattern = /^[A-Z][A-Z0-9_]*$/;
 
 export interface PublicListingSummaryRow extends QueryResultRow {
   readonly id: unknown;
+  readonly landlord_id?: unknown;
   readonly business_status: unknown;
   readonly title: unknown;
   readonly monthly_rent: unknown;
@@ -21,6 +22,7 @@ export interface PublicListingSummaryRow extends QueryResultRow {
   readonly cover_image_url: unknown;
   readonly cover_image_alt_text: unknown;
   readonly cover_image_display_order: unknown;
+  readonly landlord_verified?: unknown;
   readonly updated_at: unknown;
 }
 
@@ -51,6 +53,7 @@ export interface PublicListingSummary {
   readonly propertyType: PublicLookupValue;
   readonly amenities: readonly PublicLookupValue[];
   readonly coverImage: PublicCoverImage;
+  readonly landlordVerified?: boolean;
   readonly updatedAt: string;
 }
 
@@ -109,6 +112,7 @@ export function mapPublicListingSummaryRow(row: Readonly<PublicListingSummaryRow
   if (!isListingBusinessStatus(row.business_status)) invariant();
   if (typeof row.cover_image_url !== "string" || row.cover_image_url.length === 0) invariant();
   if (row.cover_image_alt_text !== null && typeof row.cover_image_alt_text !== "string") invariant();
+  if (row.landlord_verified !== undefined && typeof row.landlord_verified !== "boolean") invariant();
 
   return Object.freeze({
     id: positiveInteger(row.id),
@@ -126,6 +130,7 @@ export function mapPublicListingSummaryRow(row: Readonly<PublicListingSummaryRow
       altText: row.cover_image_alt_text,
       displayOrder: positiveInteger(row.cover_image_display_order)
     }),
+    landlordVerified: row.landlord_verified ?? false,
     updatedAt: formatApiTimestamp(mapPgTimestamptz(row.updated_at, "public_listing.updated_at"))
   });
 }

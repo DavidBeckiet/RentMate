@@ -59,6 +59,13 @@ describe("ListingCard", () => {
     expect(screen.queryByText(/ km$/)).not.toBeInTheDocument();
   });
 
+  it("shows the verified landlord badge without exposing landlord identity", () => {
+    render(<ListingCard listing={listing({ landlordVerified: true })} />);
+
+    expect(screen.getByText(/\u0110\u00e3 x\u00e1c minh/)).toBeInTheDocument();
+    expect(document.body).not.toHaveTextContent(/landlordId|landlord_id|owner@example.com|\+84901234567/i);
+  });
+
   it("uses a restrained placeholder for a defensive runtime payload without a cover image", () => {
     const withoutCover = { ...listing(), coverImage: null } as unknown as PublicListingSummary;
     render(<ListingCard listing={withoutCover} />);

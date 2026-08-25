@@ -19,6 +19,12 @@ export interface ReviewVerificationInput {
   readonly status: Exclude<VerificationStatus, "PENDING">;
   readonly note: string;
 }
+export interface ConfirmEmailVerificationInput {
+  readonly token: string;
+}
+export interface ConfirmPhoneVerificationInput {
+  readonly code: string;
+}
 export interface VerificationCollectionQuery {
   readonly status: VerificationStatus;
   readonly page: number;
@@ -55,6 +61,35 @@ export function validateReviewVerificationBody(value: unknown): ReviewVerificati
   const note = optionalNote(body.note);
   if (note === null) throwValidationIssue("note", "REQUIRED", "note is required for a verification decision.");
   return Object.freeze({ status, note });
+}
+
+export function validateConfirmEmailVerificationBody(value: unknown): ConfirmEmailVerificationInput {
+  const body = validateBodyFields(value, ["token"]);
+  if (!("token" in body)) throwValidationIssue("token", "REQUIRED", "token is required.");
+  const token = validateJsonText(body.token, "token", {
+    maximumLength: 128,
+    nullable: false,
+    nonblank: true
+  }) as string;
+  if (!/^[A-Za-z0-9_-]{32,128}$/u.test(token)) {
+    throwValidationIssue("token", "INVALID_VALUE", "token is invalid.");
+  }
+  return Object.freeze({ token });
+}
+
+export function validateConfirmPhoneVerificationBody(value: unknown): ConfirmPhoneVerificationInput {
+  const body = validateBodyFields(value, ["code"]);
+  if (!("code" in body)) throwValidationIssue("code", "REQUIRED", "code is required.");
+  const code = validateJsonText(body.code, "code", {
+    maximumLength: 6,
+    nullable: false,
+    nonblank: true,
+    trim: false
+  }) as string;
+  if (!/^\d{6}$/u.test(code)) {
+    throwValidationIssue("code", "INVALID_VALUE", "code must contain six digits.");
+  }
+  return Object.freeze({ code });
 }
 
 export function validateVerificationCollectionQuery(value: unknown): VerificationCollectionQuery {
