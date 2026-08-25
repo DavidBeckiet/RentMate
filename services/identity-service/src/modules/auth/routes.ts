@@ -11,6 +11,11 @@ import {
   type LoginControllerDependencies
 } from "./controllers/login-controller.js";
 import {
+  createGoogleCallbackHandler,
+  createGoogleStartHandler,
+  type GoogleAuthControllerDependencies
+} from "./controllers/google-auth-controller.js";
+import {
   createPasswordResetConfirmationHandler,
   createPasswordResetRequestHandler
 } from "./controllers/password-reset-controller.js";
@@ -46,6 +51,7 @@ export const passwordResetConfirmRateLimitPolicy = Object.freeze({
 
 export interface AuthRouteDependencies extends RegistrationControllerDependencies, LoginControllerDependencies {
   readonly passwordResetService: PasswordResetService;
+  readonly googleAuth: GoogleAuthControllerDependencies;
   readonly registrationRateLimitStore?: RateLimitStore;
   readonly registrationRateLimitClock?: Clock;
   readonly loginRateLimitStore?: RateLimitStore;
@@ -86,6 +92,8 @@ export function registerAuthRoutes(router: Router, dependencies: AuthRouteDepend
   router.post("/auth/register/landlord", registrationRateLimiter, createRegistrationHandler("LANDLORD", dependencies));
   router.post("/auth/login", loginRateLimiter, createLoginHandler(dependencies));
   router.post("/auth/logout", createLogoutHandler(dependencies));
+  router.post("/auth/google/start", loginRateLimiter, createGoogleStartHandler(dependencies.googleAuth));
+  router.get("/auth/google/callback", createGoogleCallbackHandler(dependencies.googleAuth));
   router.post(
     "/auth/password-reset/request",
     passwordResetRequestRateLimiter,

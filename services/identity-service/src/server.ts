@@ -15,6 +15,10 @@ import { createPasswordResetService } from "./modules/auth/services/password-res
 import { registerAuthRoutes } from "./modules/auth/routes.js";
 import { createSessionCookieService } from "./modules/auth/session-cookie.js";
 import { createSessionTokenService } from "./modules/auth/session-token.js";
+import { createGoogleOAuthClient } from "./modules/auth/google-oauth-client.js";
+import { createGoogleOAuthStateService } from "./modules/auth/google-oauth-state.js";
+import { createGoogleAuthRepository } from "./modules/auth/repositories/google-auth-repository.js";
+import { createGoogleAuthService } from "./modules/auth/services/google-auth-service.js";
 import { createAdminUserRepository } from "./modules/users/repositories/admin-user-repository.js";
 import { createAdminUserService } from "./modules/users/services/admin-user-service.js";
 import { registerUsersRoutes } from "./modules/users/routes.js";
@@ -75,6 +79,18 @@ async function startIdentityService(): Promise<void> {
   const sessionTokenService = createSessionTokenService({ secret: config.auth.jwtSecret });
   const sessionCookieService = createSessionCookieService({ secure: config.auth.cookieSecure });
   const authRepository = createAuthRepository(sqlExecutor);
+  const googleOAuthStateService = createGoogleOAuthStateService({
+    secret: config.auth.jwtSecret,
+    secure: config.auth.cookieSecure
+  });
+  const googleOAuthClient = config.googleOAuth.enabled
+    ? createGoogleOAuthClient({
+        clientId: config.googleOAuth.clientId,
+        clientSecret: config.googleOAuth.clientSecret,
+        redirectUri: config.googleOAuth.redirectUri
+      })
+    : null;
+  const googleAuthRepository = createGoogleAuthRepository(sqlExecutor);
   const passwordResetRepository = createPasswordResetRepository(sqlExecutor);
   const usersRepository = createUsersRepository(sqlExecutor);
   const registrationService = createRegistrationService({ passwordService, authRepository });
@@ -88,6 +104,15 @@ async function startIdentityService(): Promise<void> {
   const verificationRepository = createVerificationRepository();
   const contactVerificationRepository = createContactVerificationRepository();
   const transactionRunner: TransactionRunner = (operation) => withTransaction(databasePool, logger, operation);
+  const googleAuthService = googleOAuthClient
+    ? createGoogleAuthService({
+        client: googleOAuthClient,
+        repository: googleAuthRepository,
+        loginRepository: authRepository,
+        passwordService,
+        transactionRunner
+      })
+    : null;
   const adminUserService = createAdminUserService({
     repository: createAdminUserRepository(sqlExecutor),
     transactionRunner
@@ -140,6 +165,14 @@ async function startIdentityService(): Promise<void> {
         passwordResetService,
         sessionTokenService,
         sessionCookieService,
+        googleAuth: {
+          client: googleOAuthClient,
+          service: googleAuthService,
+          stateService: googleOAuthStateService,
+          sessionTokenService,
+          sessionCookieService,
+          frontendOrigin: config.frontendOrigin
+        },
         registrationRateLimitStore: authRateLimitStore,
         loginRateLimitStore: authRateLimitStore
       });

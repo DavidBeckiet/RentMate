@@ -175,7 +175,7 @@ export function LoginForm({ requiredRole, successDestination = "/" }: LoginFormP
         <Icon name="logIn" className="h-4 w-4" />
         Đăng nhập
       </Button>
-      <GoogleAuthSeam mode="login" />
+      {requiredRole === "ADMIN" ? null : <GoogleAuthSeam mode="login" />}
     </form>
   );
 }

@@ -63,12 +63,12 @@ describe("RegistrationForm", () => {
     expect(document.body).not.toHaveTextContent(/\+849/);
   });
 
-  it.each(["tenant", "landlord"] as const)("renders a disabled Google seam for %s without calling an API", (mode) => {
+  it.each(["tenant", "landlord"] as const)("renders a disabled Google seam for %s until configured", (mode) => {
     render(<RegistrationForm mode={mode} />);
 
     const google = screen.getByRole("button", { name: "Đăng ký nhanh bằng Google" });
     expect(google).toBeDisabled();
-    expect(screen.getByText("Sắp hỗ trợ")).toBeInTheDocument();
+    expect(screen.getByText("Google chưa được cấu hình")).toBeInTheDocument();
     fireEvent.click(google);
     expect(apiMocks.registerTenant).not.toHaveBeenCalled();
     expect(apiMocks.registerLandlord).not.toHaveBeenCalled();

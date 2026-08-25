@@ -50,6 +50,12 @@ export interface RuntimeConfig {
     readonly deliveryUrl: string;
     readonly deliveryToken: string;
   };
+  readonly googleOAuth: {
+    readonly enabled: boolean;
+    readonly clientId: string;
+    readonly clientSecret: string;
+    readonly redirectUri: string;
+  };
   readonly images: {
     readonly maximumCount: 8;
     readonly maximumBytes: 5242880;
@@ -326,6 +332,70 @@ function readVerificationDeliveryUrl(source: EnvironmentSource, production: bool
   return "";
 }
 
+function readGoogleOAuthRedirectUri(source: EnvironmentSource, production: boolean, issues: string[]): string {
+  const value = readString(source, "GOOGLE_OAUTH_REDIRECT_URI", "", false, issues, {
+    rejectPlaceholder: true
+  });
+  if (!value) return "";
+
+  try {
+    const parsed = new URL(value);
+    const hasCredentials = parsed.username.length > 0 || parsed.password.length > 0;
+    if (
+      (parsed.protocol !== "http:" && parsed.protocol !== "https:") ||
+      !parsed.hostname ||
+      parsed.search.length > 0 ||
+      parsed.hash.length > 0 ||
+      parsed.hostname.includes("*") ||
+      hasCredentials ||
+      parsed.pathname === "/"
+    ) {
+      issues.push(
+        "GOOGLE_OAUTH_REDIRECT_URI must be an absolute HTTP or HTTPS URL without credentials or query parameters"
+      );
+    } else if (production && parsed.protocol !== "https:") {
+      issues.push("GOOGLE_OAUTH_REDIRECT_URI must use HTTPS in production");
+    } else {
+      return parsed.href;
+    }
+  } catch {
+    issues.push("GOOGLE_OAUTH_REDIRECT_URI must be a valid URL");
+  }
+
+  return "";
+}
+
+function readGoogleOAuthConfig(
+  source: EnvironmentSource,
+  production: boolean,
+  issues: string[]
+): RuntimeConfig["googleOAuth"] {
+  const clientId = readString(source, "GOOGLE_OAUTH_CLIENT_ID", "", false, issues, {
+    rejectPlaceholder: true
+  });
+  const clientSecret = readString(source, "GOOGLE_OAUTH_CLIENT_SECRET", "", false, issues, {
+    trim: false,
+    rejectPlaceholder: true
+  });
+  const configured = Boolean(clientId || clientSecret);
+  const redirectUri = configured ? readGoogleOAuthRedirectUri(source, production, issues) : "";
+
+  if (!configured) {
+    return Object.freeze({ enabled: false, clientId: "", clientSecret: "", redirectUri: "" });
+  }
+
+  if (!clientId) issues.push("GOOGLE_OAUTH_CLIENT_ID is required when Google OAuth is configured");
+  if (!clientSecret) issues.push("GOOGLE_OAUTH_CLIENT_SECRET is required when Google OAuth is configured");
+  if (!redirectUri) issues.push("GOOGLE_OAUTH_REDIRECT_URI is required when Google OAuth is configured");
+
+  return Object.freeze({
+    enabled: Boolean(clientId && clientSecret && redirectUri),
+    clientId,
+    clientSecret,
+    redirectUri
+  });
+}
+
 function requireExactValue(
   source: EnvironmentSource,
   key: string,
@@ -434,6 +504,7 @@ export function parseEnvironment(source: EnvironmentSource): RuntimeConfig {
         rejectPlaceholder: production
       })
     },
+    googleOAuth: readGoogleOAuthConfig(source, production, issues),
     images: {
       maximumCount: requireExactValue(
         source,

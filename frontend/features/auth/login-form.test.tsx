@@ -201,12 +201,12 @@ describe("LoginForm", () => {
     expect(screen.queryByText(/Ghi nhớ đăng nhập/i)).not.toBeInTheDocument();
   });
 
-  it("shows Google as a disabled future option without login or navigation", () => {
+  it("shows Google as disabled until the provider is configured without calling the API", () => {
     render(<LoginForm />);
 
     const google = screen.getByRole("button", { name: "Đăng nhập nhanh bằng Google" });
     expect(google).toBeDisabled();
-    expect(screen.getByText("Sắp hỗ trợ")).toBeInTheDocument();
+    expect(screen.getByText("Google chưa được cấu hình")).toBeInTheDocument();
     fireEvent.click(google);
     expect(apiMocks.login).not.toHaveBeenCalled();
     expect(authMocks.refresh).not.toHaveBeenCalled();

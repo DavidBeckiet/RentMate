@@ -198,6 +198,16 @@ export interface LoginBody {
   readonly password: string;
 }
 
+export interface GoogleAuthStartBody {
+  readonly intent: "LOGIN" | "REGISTER";
+  readonly role?: "TENANT" | "LANDLORD";
+  readonly phone?: string;
+}
+
+export interface GoogleAuthStartResponse {
+  readonly redirectUrl: string;
+}
+
 export interface PasswordResetRequestBody {
   readonly email: string;
 }

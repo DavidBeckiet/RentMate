@@ -1,5 +1,7 @@
 import type {
   LandlordRegistrationBody,
+  GoogleAuthStartBody,
+  GoogleAuthStartResponse,
   LoginBody,
   PasswordResetConfirmationBody,
   PasswordResetRequestBody,
@@ -19,6 +21,9 @@ export function createAuthApi(transport: ApiTransport) {
 
     login: (body: LoginBody, signal?: AbortSignal): Promise<UserProfile> =>
       transport.object("/api/v1/auth/login", { method: "POST", json: body, signal }),
+
+    startGoogle: (body: GoogleAuthStartBody, signal?: AbortSignal): Promise<GoogleAuthStartResponse> =>
+      transport.object("/api/v1/auth/google/start", { method: "POST", json: body, signal }),
 
     requestPasswordReset: (
       body: PasswordResetRequestBody,

@@ -259,7 +259,11 @@ export function RegistrationForm({ mode }: { readonly mode: RegistrationMode }) 
         <Icon name="userPlus" className="h-4 w-4" />
         {submitLabel}
       </Button>
-      <GoogleAuthSeam mode="register" />
+      <GoogleAuthSeam
+        mode="register"
+        role={mode === "landlord" ? "LANDLORD" : "TENANT"}
+        phone={mode === "landlord" ? phone : undefined}
+      />
     </form>
   );
 }
