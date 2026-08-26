@@ -511,6 +511,8 @@ Các hạng mục tiếp theo được triển khai theo thứ tự:
 
 > Cập nhật triển khai ngày 25/08/2026: giai đoạn post-MVP 1, 2 và 3 đã được triển khai ở mức code/test; các giới hạn provider thật và E2E staging vẫn giữ nguyên là release blocker.
 
+> Quyết định ngày 26/08/2026: chốt checkpoint local/demo để làm mốc ổn định và tiếp tục phát triển. Checkpoint này không đồng nghĩa với release public production; Email/SMS thật và E2E staging được tạm hoãn.
+
 1. **Rà soát và sửa giao diện responsive**
    - Kiểm tra trang tìm kiếm, chi tiết listing, form đăng tin và dashboard landlord/admin.
    - Bắt buộc kiểm tra các mốc khoảng 375px, 768px, 1024px và desktop.
@@ -714,19 +716,22 @@ Hoàn thiện giao diện hiện có, không redesign toàn bộ. Các luồng c
 - Kiểm tra responsive tại `375/768/1024/1440px`, keyboard-only, focus, touch target, empty/loading/error và không có horizontal overflow.
 - Có deployment checklist, backward-compatible migration path và cách rollback application version mà không rollback migration phá dữ liệu.
 
-Mục 6 chỉ hoàn thành khi toàn bộ flow trên chạy qua Gateway và không còn lỗi nghiêm trọng về dữ liệu, authorization, privacy hoặc giao diện.
+Release gate public chỉ hoàn thành khi toàn bộ flow trên chạy qua Gateway và không còn lỗi nghiêm trọng về dữ liệu, authorization, privacy hoặc giao diện.
 
-#### Trạng thái release gate local ngày 25/08/2026
+#### Trạng thái checkpoint local/demo ngày 26/08/2026
 
+- [x] Đã chốt checkpoint local/demo; Email/SMS thật không nằm trong điều kiện hoàn thành checkpoint này và chưa xem đây là bản public production.
 - [x] External migration manifest đã được kiểm tra bằng `--plan-only`: Identity ở version `4`, Listing ở version `7`, Engagement ở version `13`; không có migration chưa áp dụng trên database local.
 - [x] PostgreSQL, Identity, Listing, Engagement, backend compatibility và Gateway đều báo healthy trong Docker.
+- [x] Google OAuth đăng nhập/đăng ký local đã được kiểm tra thành công sau khi sửa callback authorization code và metadata phản hồi.
+- [x] Verification-delivery adapter đã có contract test `14/14`, readiness và Docker Compose hợp lệ; provider thật vẫn được tạm hoãn.
 - [x] Smoke E2E contact flow đã chạy qua Gateway: public privacy, role/ownership, chat realtime, block/unblock, contact report và admin xử lý report.
 - [x] Identity test `22/22`, Listing test `30/30`, Engagement test `45/45`, Gateway test `5/5` và frontend test `575/575` đã pass.
 - [x] Typecheck, lint và production build đã pass; production build dùng một HTTPS API origin hợp lệ truyền qua environment.
 - [x] Playwright Chromium đã kiểm tra Listing Detail tại `375`, `768`, `1024` và `1440px`; không có horizontal overflow và AppShell hiển thị cùng phần đầu listing.
 - [x] Các file frontend được thêm/sửa trong mục 5 đã được format riêng và kiểm tra lại.
 - [x] Full frontend `format:check` đã pass sau khi format 17 source file và loại 2 artifact Playwright khỏi phạm vi kiểm tra.
-- [ ] Chưa kết nối webhook email/SMS thật; local vẫn dùng memory preview dành cho development/test.
+- [ ] Chưa kết nối provider email/SMS thật; local vẫn dùng memory preview dành cho development/test (hạng mục tạm hoãn, không chặn checkpoint local/demo).
 - [ ] Chưa chạy trọn bộ E2E release trên môi trường staging có provider thật và cookie production.
 
 #### Checklist thực hiện phần còn lại
@@ -743,9 +748,9 @@ Mục 6 chỉ hoàn thành khi toàn bộ flow trên chạy qua Gateway và khô
 
 - [ ] Chọn dịch vụ gửi email, dịch vụ gửi SMS và cấu hình sender/domain/phone number cho staging.
 - [x] Lớp delivery của RentMate đã gửi đúng payload `{ channel, destination, secret }`, xác thực bằng header `x-rentmate-verification-token`, có timeout và trả lỗi an toàn; không retry để tránh gửi trùng OTP/email.
-- [ ] Chuẩn bị webhook adapter bên ngoài nhận payload `{ channel, destination, secret }`, xác thực header `x-rentmate-verification-token` và điều phối sang provider tương ứng.
-- [ ] Webhook chỉ trả kết quả thành công/thất bại tối thiểu; không log token, OTP, email, số điện thoại hoặc raw provider response không cần thiết.
-- [ ] Chốt timeout, retry/idempotency và cách xử lý provider tạm lỗi để không gửi trùng mã ngoài ý muốn.
+- [x] Chuẩn bị webhook adapter bên ngoài nhận payload `{ channel, destination, secret }`, xác thực header `x-rentmate-verification-token` và điều phối sang provider tương ứng.
+- [x] Webhook chỉ trả kết quả thành công/thất bại tối thiểu; không log token, OTP, email, số điện thoại hoặc raw provider response không cần thiết.
+- [x] Chốt timeout, retry/idempotency và cách xử lý provider tạm lỗi để không gửi trùng mã ngoài ý muốn.
 - [ ] Lưu `VERIFICATION_DELIVERY_URL` và `VERIFICATION_DELIVERY_TOKEN` trong secret store của staging; không ghi secret thật vào `.env.example`, Git hoặc log.
 - [ ] Kiểm tra production config từ chối URL HTTP, placeholder, token rỗng và memory preview.
 - [ ] Gửi thử một email link và một SMS OTP qua staging, sau đó xác nhận mã qua Gateway và kiểm tra timestamp verified.
@@ -787,7 +792,7 @@ Phần này cần chủ dự án cung cấp hoặc tạo tài khoản provider, 
 
 #### Thứ tự đề xuất
 
-Thực hiện `Bước 1 → Bước 2 → Bước 3 → Bước 4 → Bước 5`. Có thể chuẩn bị Bước 2 song song với Bước 1, nhưng không đánh dấu release gate hoàn thành khi chưa có provider staging thật và full quality gate chưa pass.
+Thực hiện `Bước 1 → Bước 2 → Bước 3 → Bước 4 → Bước 5`. Với checkpoint local/demo, dừng ở phần kiểm tra local và ghi nhận provider thật/staging là hạng mục tạm hoãn. Không đánh dấu release gate public hoàn thành khi chưa có provider staging thật và full quality gate chưa pass.
 
 ## 18. Cập nhật triển khai — giai đoạn 1, 2 và 3
 
@@ -816,4 +821,4 @@ Thực hiện `Bước 1 → Bước 2 → Bước 3 → Bước 4 → Bước 5
 
 - Provider email/SMS thật và credential staging chưa có, nên chưa thể xác nhận gửi Gmail/SMS thật.
 - Push notification chưa triển khai; chat realtime vẫn ưu tiên nhận trực tiếp trong app theo quyết định sản phẩm.
-- Chưa đánh dấu release gate hoàn tất khi chưa có provider staging, full E2E qua Gateway và quality gate cuối.
+- Release gate public chưa hoàn tất vì chưa có provider staging, full E2E qua Gateway và quality gate cuối; checkpoint local/demo đã được chốt riêng để tiếp tục phát triển.
