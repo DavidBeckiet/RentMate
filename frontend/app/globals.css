@@ -144,6 +144,38 @@ summary {
   filter: hue-rotate(105deg) saturate(1.4) drop-shadow(0 2px 0 rgb(9 43 39 / 0.72));
 }
 
+.rentmate-map-cluster {
+  display: grid;
+  place-items: center;
+  border: 2px solid var(--rm-ink);
+  border-radius: 9999px;
+  background: var(--rm-lime);
+  box-shadow: 3px 3px 0 var(--rm-ink);
+  color: var(--rm-ink);
+  font-family:
+    var(--font-space-grotesk),
+    Arial Black,
+    sans-serif;
+  font-size: 0.875rem;
+  font-weight: 800;
+}
+
+.rentmate-map-cluster-button {
+  display: grid;
+  min-width: 2.75rem;
+  min-height: 2.75rem;
+  place-items: center;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+}
+
+.rentmate-map-cluster-button:focus-visible {
+  outline: 3px solid var(--rm-coral);
+  outline-offset: 2px;
+}
+
 ::selection {
   background: var(--rm-lime);
   color: var(--rm-ink);

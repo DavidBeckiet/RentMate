@@ -106,6 +106,7 @@ describe("SearchMap", () => {
     expect(screen.getByText("Phòng A — Quận 1")).toBeInTheDocument();
     expect(screen.getByText("Phòng B — Quận 3")).toBeInTheDocument();
     const received = mapState.props as MapBaseProps;
+    expect(received.clusterMarkers).toBe(true);
     expect(received.markers?.map((marker) => marker.position)).toEqual([
       { latitude: 10.77, longitude: 106.69 },
       { latitude: 10.78, longitude: 106.68 }
@@ -144,6 +145,7 @@ describe("SearchMap", () => {
     const received = mapState.props as MapBaseProps;
     received.onMapClick?.({ latitude: 10.74, longitude: 106.66 });
     expect(onRadiusCenterSelected).toHaveBeenCalledWith({ latitude: 10.74, longitude: 106.66 });
+    expect(received.markers?.at(-1)).toMatchObject({ id: "radius-search-center", clusterable: false });
   });
 
   it("marks the active listing and forwards marker selection without exposing coordinates", () => {

@@ -29,6 +29,7 @@ export interface MapMarker {
   readonly draggable?: boolean;
   readonly selected?: boolean;
   readonly popup?: ReactNode;
+  readonly clusterable?: boolean;
 }
 
 export interface MapRadiusCircle {
@@ -42,6 +43,7 @@ export interface MapBaseProps {
   readonly center: MapPoint;
   readonly zoom: number;
   readonly markers?: readonly MapMarker[];
+  readonly clusterMarkers?: boolean;
   readonly radiusCircle?: MapRadiusCircle;
   readonly onViewportChange?: (viewport: MapViewport) => void;
   readonly onMapClick?: (point: MapPoint) => void;

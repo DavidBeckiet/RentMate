@@ -26,6 +26,7 @@ const leafletMocks = vi.hoisted(() => {
     events: {} as MapEvents,
     markerEvents: new Map<string, MarkerEvents>(),
     markerIcons: new Map<string, unknown>(),
+    clusterOptions: null as null | Record<string, unknown>,
     tile: null as null | { url: string; attribution: string },
     setView: vi.fn(),
     fitBounds: vi.fn()
@@ -60,6 +61,7 @@ vi.mock("next/dynamic", () => ({
 
 vi.mock("leaflet", () => ({
   Icon: class Icon {},
+  divIcon: (options: unknown) => options,
   latLng: (latitude: number, longitude: number) => ({
     toBounds: (sizeInMeters: number) => ({ latitude, longitude, sizeInMeters })
   })
@@ -107,6 +109,13 @@ vi.mock("react-leaflet", () => ({
   }
 }));
 
+vi.mock("react-leaflet-cluster", () => ({
+  default: ({ children, ...props }: { children: ReactNode } & Record<string, unknown>) => {
+    leafletMocks.state.clusterOptions = props;
+    return <div data-testid="marker-cluster-group">{children}</div>;
+  }
+}));
+
 import LeafletMap from "./leaflet-map";
 import { MapBase } from "./map-base";
 import { MapSearchControl } from "./map-search-control";
@@ -124,6 +133,7 @@ beforeEach(() => {
   leafletMocks.state.events = {};
   leafletMocks.state.markerEvents.clear();
   leafletMocks.state.markerIcons.clear();
+  leafletMocks.state.clusterOptions = null;
   leafletMocks.state.tile = null;
   leafletMocks.state.setView.mockClear();
   leafletMocks.state.fitBounds.mockClear();
@@ -265,6 +275,41 @@ describe("LeafletMap", () => {
     );
 
     expect(screen.getByTestId("map-popup")).toHaveTextContent("Tóm tắt");
+  });
+
+  it("clusters only when enabled and keeps viewport updates separate from search callbacks", () => {
+    const onViewportChange = vi.fn();
+    render(
+      <LeafletMap
+        ariaLabel="Bản đồ gom cụm"
+        center={initialViewport.center}
+        zoom={initialViewport.zoom}
+        clusterMarkers
+        onViewportChange={onViewportChange}
+        markers={[
+          { id: "listing-1", label: "Phòng 1", position: initialViewport.center },
+          { id: "listing-2", label: "Phòng 2", position: { latitude: 10.771, longitude: 106.701 } }
+        ]}
+      />
+    );
+
+    expect(screen.getByTestId("marker-cluster-group")).toBeInTheDocument();
+    expect(leafletMocks.state.clusterOptions).toMatchObject({
+      chunkedLoading: true,
+      maxClusterRadius: 48,
+      showCoverageOnHover: false,
+      spiderfyOnMaxZoom: true,
+      zoomToBoundsOnClick: true
+    });
+    const createClusterIcon = leafletMocks.state.clusterOptions?.iconCreateFunction as (cluster: {
+      getChildCount: () => number;
+    }) => { html: string; className: string };
+    expect(createClusterIcon({ getChildCount: () => 3 })).toMatchObject({
+      className: "rentmate-map-cluster",
+      html: expect.stringContaining('aria-label="3 phòng trong cụm"')
+    });
+    act(() => leafletMocks.state.events.moveend?.());
+    expect(onViewportChange).toHaveBeenCalledTimes(1);
   });
 
   it("fits the viewport to and renders an optional radius circle", () => {

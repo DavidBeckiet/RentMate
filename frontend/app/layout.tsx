@@ -4,6 +4,8 @@ import { Manrope, Space_Grotesk } from "next/font/google";
 import { AppShell } from "../components/ui/app-shell";
 import { AuthProvider } from "../lib/auth/auth-provider";
 import "leaflet/dist/leaflet.css";
+import "react-leaflet-cluster/dist/assets/MarkerCluster.css";
+import "react-leaflet-cluster/dist/assets/MarkerCluster.Default.css";
 import "./globals.css";
 
 const manrope = Manrope({

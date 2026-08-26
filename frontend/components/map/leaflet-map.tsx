@@ -1,12 +1,13 @@
 "use client";
 
-import { Icon, latLng, type Marker as LeafletMarker } from "leaflet";
+import { divIcon, Icon, latLng, type Marker as LeafletMarker } from "leaflet";
 import markerIconUrl from "leaflet/dist/images/marker-icon.png";
 import markerIconRetinaUrl from "leaflet/dist/images/marker-icon-2x.png";
 import markerShadowUrl from "leaflet/dist/images/marker-shadow.png";
 import { useEffect } from "react";
 import { Circle, MapContainer, Marker, Popup, TileLayer, Tooltip, useMap, useMapEvents } from "react-leaflet";
-import type { MapBaseProps, MapViewport } from "./map-base";
+import MarkerClusterGroup from "react-leaflet-cluster";
+import type { MapBaseProps, MapMarker, MapViewport } from "./map-base";
 
 function assetUrl(asset: string | { readonly src: string }) {
   return typeof asset === "string" ? asset : asset.src;
@@ -34,6 +35,81 @@ const selectedMarkerIcon = new Icon({
   shadowSize: [41, 41],
   className: "rentmate-map-marker-selected"
 });
+
+function clusterIcon(cluster: { getChildCount: () => number }) {
+  const count = cluster.getChildCount();
+  return divIcon({
+    html: `<button type="button" class="rentmate-map-cluster-button" aria-label="${count} phòng trong cụm">${count}</button>`,
+    className: "rentmate-map-cluster",
+    iconSize: [48, 48]
+  });
+}
+
+function MarkerLayer({
+  markers,
+  onMarkerSelect,
+  onMarkerMove
+}: {
+  readonly markers: readonly MapMarker[];
+  readonly onMarkerSelect?: MapBaseProps["onMarkerSelect"];
+  readonly onMarkerMove?: MapBaseProps["onMarkerMove"];
+}) {
+  return (
+    <>
+      {markers.map((marker) => (
+        <Marker
+          key={marker.id}
+          position={[marker.position.latitude, marker.position.longitude]}
+          icon={marker.selected ? selectedMarkerIcon : markerIcon}
+          draggable={marker.draggable}
+          title={marker.label}
+          alt={marker.label}
+          eventHandlers={{
+            click() {
+              onMarkerSelect?.(marker.id);
+            },
+            dragend(event) {
+              const position = (event.target as LeafletMarker).getLatLng();
+              onMarkerMove?.(marker.id, { latitude: position.lat, longitude: position.lng });
+            }
+          }}
+        >
+          <Tooltip>{marker.label}</Tooltip>
+          {marker.popup ? <Popup>{marker.popup}</Popup> : null}
+        </Marker>
+      ))}
+    </>
+  );
+}
+
+function ClusteredMarkers({
+  markers,
+  onMarkerSelect,
+  onMarkerMove
+}: {
+  readonly markers: readonly MapMarker[];
+  readonly onMarkerSelect?: MapBaseProps["onMarkerSelect"];
+  readonly onMarkerMove?: MapBaseProps["onMarkerMove"];
+}) {
+  const clusterableMarkers = markers.filter((marker) => marker.clusterable !== false);
+  const standaloneMarkers = markers.filter((marker) => marker.clusterable === false);
+
+  return (
+    <>
+      <MarkerClusterGroup
+        chunkedLoading
+        maxClusterRadius={48}
+        showCoverageOnHover={false}
+        spiderfyOnMaxZoom
+        zoomToBoundsOnClick
+        iconCreateFunction={clusterIcon}
+      >
+        <MarkerLayer markers={clusterableMarkers} onMarkerSelect={onMarkerSelect} onMarkerMove={onMarkerMove} />
+      </MarkerClusterGroup>
+      <MarkerLayer markers={standaloneMarkers} onMarkerSelect={onMarkerSelect} onMarkerMove={onMarkerMove} />
+    </>
+  );
+}
 
 function currentViewport(map: ReturnType<typeof useMap>): MapViewport {
   const center = map.getCenter();
@@ -90,6 +166,7 @@ export default function LeafletMap({
   center,
   zoom,
   markers = [],
+  clusterMarkers = false,
   radiusCircle,
   onViewportChange,
   onMapClick,
@@ -122,28 +199,11 @@ export default function LeafletMap({
             {radiusCircle.label ? <Tooltip sticky>{radiusCircle.label}</Tooltip> : null}
           </Circle>
         ) : null}
-        {markers.map((marker) => (
-          <Marker
-            key={marker.id}
-            position={[marker.position.latitude, marker.position.longitude]}
-            icon={marker.selected ? selectedMarkerIcon : markerIcon}
-            draggable={marker.draggable}
-            title={marker.label}
-            alt={marker.label}
-            eventHandlers={{
-              click() {
-                onMarkerSelect?.(marker.id);
-              },
-              dragend(event) {
-                const position = (event.target as LeafletMarker).getLatLng();
-                onMarkerMove?.(marker.id, { latitude: position.lat, longitude: position.lng });
-              }
-            }}
-          >
-            <Tooltip>{marker.label}</Tooltip>
-            {marker.popup ? <Popup>{marker.popup}</Popup> : null}
-          </Marker>
-        ))}
+        {clusterMarkers ? (
+          <ClusteredMarkers markers={markers} onMarkerSelect={onMarkerSelect} onMarkerMove={onMarkerMove} />
+        ) : (
+          <MarkerLayer markers={markers} onMarkerSelect={onMarkerSelect} onMarkerMove={onMarkerMove} />
+        )}
       </MapContainer>
     </div>
   );

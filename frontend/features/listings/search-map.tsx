@@ -43,7 +43,14 @@ export function SearchMap({
       popup: <SearchMapListingPopup listing={listing} />
     })),
     ...(proposedRadiusCenter
-      ? [{ id: "radius-search-center", position: proposedRadiusCenter, label: "Tâm tìm kiếm theo bán kính" }]
+      ? [
+          {
+            id: "radius-search-center",
+            position: proposedRadiusCenter,
+            label: "Tâm tìm kiếm theo bán kính",
+            clusterable: false
+          }
+        ]
       : [])
   ];
 
@@ -78,6 +85,7 @@ export function SearchMap({
         center={center}
         zoom={listings.length > 0 || proposedRadiusCenter ? 13 : 11}
         markers={markers}
+        clusterMarkers
         onViewportChange={onViewportChange}
         onMapClick={selectingRadiusCenter ? onRadiusCenterSelected : undefined}
         onMarkerSelect={(id) => {
