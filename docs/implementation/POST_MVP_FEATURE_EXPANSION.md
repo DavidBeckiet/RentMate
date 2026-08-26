@@ -866,6 +866,8 @@ Sau khi chốt checkpoint local/demo, các tính năng tiếp theo nên tập tr
 ### 19.3 Quy tắc triển khai tiếp theo
 
 - Thực hiện từng tính năng một, kiểm tra và commit riêng.
+- Khi một chức năng độc lập hoàn tất và các kiểm tra liên quan đã pass, commit ngay chức năng đó; không gom nhiều chức năng đã hoàn tất vào một commit lớn.
+- Trên Windows, nếu cần chạy script Python thì dùng lệnh `py`; không dùng lệnh `python`.
 - Ưu tiên tính năng không cần thay đổi database hoặc public API nếu giá trị sử dụng tương đương.
 - Không đánh dấu release public hoàn tất chỉ vì đã hoàn thành các tính năng local/demo.
 
@@ -878,3 +880,8 @@ Sau khi chốt checkpoint local/demo, các tính năng tiếp theo nên tập tr
 - [x] Trung tâm trợ giúp — FAQ, checklist an toàn, form gửi yêu cầu và hàng đợi admin; commit `a881a14`, `8f4d2ba` và `6ef2e3e`.
 - [x] Migration Engagement `0017_support_requests.sql` đã được chạy trên database local sau khi `--plan-only` xác nhận chỉ chọn migration `0017`. Manifest external local đã được cập nhật lên version `17`; staging/production vẫn cần operator thực hiện riêng.
 - [ ] Email/SMS/push thật, E2E staging qua Gateway và quality gate public vẫn là phần chưa đóng.
+
+## 20. Tài liệu kế hoạch bổ sung
+
+- [Kế hoạch tính năng bản đồ hậu MVP](POST_MVP_MAP_FEATURES.md)
+- [Kế hoạch tính năng AI hậu MVP](POST_MVP_AI_FEATURES.md)
