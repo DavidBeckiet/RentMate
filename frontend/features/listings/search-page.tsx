@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter, useSearchParams } from "next/navigation";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { MapPoint, MapViewport } from "../../components/map/map-base";
 import { Button } from "../../components/ui/button";
 import { ErrorState, LoadingState } from "../../components/ui/feedback-states";
@@ -39,6 +39,19 @@ function searchErrorMessage(error: ApiError | null): string {
 
 function initialLookup<T>(): LookupResource<T> {
   return { status: "loading", data: [] };
+}
+
+function sameViewport(left: MapViewport | null, right: MapViewport): boolean {
+  return Boolean(
+    left &&
+      left.center.latitude === right.center.latitude &&
+      left.center.longitude === right.center.longitude &&
+      left.zoom === right.zoom &&
+      left.bounds.north === right.bounds.north &&
+      left.bounds.south === right.bounds.south &&
+      left.bounds.east === right.bounds.east &&
+      left.bounds.west === right.bounds.west
+  );
 }
 
 export function SearchPage() {
@@ -174,6 +187,19 @@ export function SearchPage() {
     const query = serializeSearchState(state).toString();
     router.push(query ? `/search?${query}` : "/search");
   };
+
+  const handleListingSelect = useCallback((listingId: number) => {
+    setActiveListingId(listingId);
+    const card = document.getElementById(`listing-card-${listingId}`);
+    if (card && typeof card.scrollIntoView === "function") {
+      const prefersReducedMotion = window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
+      card.scrollIntoView({ behavior: prefersReducedMotion ? "auto" : "smooth", block: "nearest" });
+    }
+  }, []);
+
+  const handleViewportChange = useCallback((viewport: MapViewport) => {
+    setPendingViewport((current) => (sameViewport(current, viewport) ? current : viewport));
+  }, []);
 
   const clearSearch = () => {
     setPendingViewport(null);
@@ -335,16 +361,9 @@ export function SearchPage() {
                     proposedRadiusCenter={proposedRadiusCenter}
                     selectingRadiusCenter={selectingRadiusCenter}
                     activeListingId={activeListingId}
-                    onViewportChange={setPendingViewport}
+                    onViewportChange={handleViewportChange}
                     onSearchBounds={(viewport) => navigate(withBounds(committed, viewport.bounds))}
-                    onListingSelect={(listingId) => {
-                      setActiveListingId(listingId);
-                      const card = document.getElementById(`listing-card-${listingId}`);
-                      if (card && typeof card.scrollIntoView === "function") {
-                        const prefersReducedMotion = window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
-                        card.scrollIntoView({ behavior: prefersReducedMotion ? "auto" : "smooth", block: "nearest" });
-                      }
-                    }}
+                    onListingSelect={handleListingSelect}
                     onRadiusCenterSelected={(point) => {
                       if (!selectingRadiusCenter) return;
                       setProposedRadiusCenter(point);

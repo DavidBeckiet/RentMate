@@ -329,4 +329,26 @@ describe("LeafletMap", () => {
     expect(screen.getByTestId("radius-circle")).toHaveAttribute("data-radius", "5000");
     expect(screen.getByText("Bán kính 5 km")).toBeInTheDocument();
   });
+
+  it("restores saved bounds without changing the map search callback", () => {
+    const onViewportChange = vi.fn();
+    render(
+      <LeafletMap
+        ariaLabel="Bản đồ vùng đã lưu"
+        center={initialViewport.center}
+        zoom={13}
+        viewportBounds={{ north: 10.9, south: 10.6, east: 106.9, west: 106.5 }}
+        onViewportChange={onViewportChange}
+      />
+    );
+
+    expect(leafletMocks.state.fitBounds).toHaveBeenCalledWith(
+      [
+        [10.6, 106.5],
+        [10.9, 106.9]
+      ],
+      { padding: [28, 28] }
+    );
+    expect(onViewportChange).not.toHaveBeenCalled();
+  });
 });

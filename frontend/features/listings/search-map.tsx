@@ -1,5 +1,6 @@
 "use client";
 
+import { useCallback, useMemo } from "react";
 import { MapBase, type MapBounds, type MapPoint, type MapViewport } from "../../components/map/map-base";
 import { MapSearchControl } from "../../components/map/map-search-control";
 import type { PublicListingSummary } from "../../types/api";
@@ -33,35 +34,47 @@ export function SearchMap({
   onListingSelect
 }: SearchMapProps) {
   const firstListing = listings[0];
-  const center =
-    proposedRadiusCenter ??
-    (viewportBounds
-      ? {
-          latitude: (viewportBounds.north + viewportBounds.south) / 2,
-          longitude: (viewportBounds.east + viewportBounds.west) / 2
-        }
-      : firstListing
-        ? { latitude: firstListing.latitude, longitude: firstListing.longitude }
-        : defaultMapCenter);
-  const markers = [
-    ...listings.map((listing) => ({
-      id: listing.id,
-      position: { latitude: listing.latitude, longitude: listing.longitude },
-      label: `${listing.title} — ${listing.areaName}`,
-      selected: activeListingId === listing.id,
-      popup: <SearchMapListingPopup listing={listing} />
-    })),
-    ...(proposedRadiusCenter
-      ? [
-          {
-            id: "radius-search-center",
-            position: proposedRadiusCenter,
-            label: "Tâm tìm kiếm theo bán kính",
-            clusterable: false
+  const center = useMemo(
+    () =>
+      proposedRadiusCenter ??
+      (viewportBounds
+        ? {
+            latitude: (viewportBounds.north + viewportBounds.south) / 2,
+            longitude: (viewportBounds.east + viewportBounds.west) / 2
           }
-        ]
-      : [])
-  ];
+        : firstListing
+          ? { latitude: firstListing.latitude, longitude: firstListing.longitude }
+          : defaultMapCenter),
+    [firstListing, proposedRadiusCenter, viewportBounds]
+  );
+  const markers = useMemo(
+    () => [
+      ...listings.map((listing) => ({
+        id: listing.id,
+        position: { latitude: listing.latitude, longitude: listing.longitude },
+        label: `${listing.title} — ${listing.areaName}`,
+        selected: activeListingId === listing.id,
+        popup: <SearchMapListingPopup listing={listing} />
+      })),
+      ...(proposedRadiusCenter
+        ? [
+            {
+              id: "radius-search-center",
+              position: proposedRadiusCenter,
+              label: "Tâm tìm kiếm theo bán kính",
+              clusterable: false
+            }
+          ]
+        : [])
+    ],
+    [activeListingId, listings, proposedRadiusCenter]
+  );
+  const handleMarkerSelect = useCallback(
+    (id: string | number) => {
+      if (typeof id === "number" && Number.isSafeInteger(id)) onListingSelect(id);
+    },
+    [onListingSelect]
+  );
 
   return (
     <section
@@ -98,10 +111,8 @@ export function SearchMap({
         viewportBounds={viewportBounds ?? undefined}
         onViewportChange={onViewportChange}
         onMapClick={selectingRadiusCenter ? onRadiusCenterSelected : undefined}
-        onMarkerSelect={(id) => {
-          if (typeof id === "number" && Number.isSafeInteger(id)) onListingSelect(id);
-        }}
-        className="lg:h-[36rem]"
+        onMarkerSelect={handleMarkerSelect}
+        className="h-80 w-full min-w-0 overflow-hidden rounded-xl border border-stone-300 sm:h-96 lg:h-[36rem]"
       />
     </section>
   );

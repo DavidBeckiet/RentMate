@@ -45,6 +45,35 @@ function clusterIcon(cluster: { getChildCount: () => number }) {
   });
 }
 
+function markerElement(
+  marker: MapMarker,
+  onMarkerSelect?: MapBaseProps["onMarkerSelect"],
+  onMarkerMove?: MapBaseProps["onMarkerMove"]
+) {
+  return (
+    <Marker
+      key={marker.id}
+      position={[marker.position.latitude, marker.position.longitude]}
+      icon={marker.selected ? selectedMarkerIcon : markerIcon}
+      draggable={marker.draggable}
+      title={marker.label}
+      alt={marker.label}
+      eventHandlers={{
+        click() {
+          onMarkerSelect?.(marker.id);
+        },
+        dragend(event) {
+          const position = (event.target as LeafletMarker).getLatLng();
+          onMarkerMove?.(marker.id, { latitude: position.lat, longitude: position.lng });
+        }
+      }}
+    >
+      <Tooltip>{marker.label}</Tooltip>
+      {marker.popup ? <Popup>{marker.popup}</Popup> : null}
+    </Marker>
+  );
+}
+
 function MarkerLayer({
   markers,
   onMarkerSelect,
@@ -54,32 +83,7 @@ function MarkerLayer({
   readonly onMarkerSelect?: MapBaseProps["onMarkerSelect"];
   readonly onMarkerMove?: MapBaseProps["onMarkerMove"];
 }) {
-  return (
-    <>
-      {markers.map((marker) => (
-        <Marker
-          key={marker.id}
-          position={[marker.position.latitude, marker.position.longitude]}
-          icon={marker.selected ? selectedMarkerIcon : markerIcon}
-          draggable={marker.draggable}
-          title={marker.label}
-          alt={marker.label}
-          eventHandlers={{
-            click() {
-              onMarkerSelect?.(marker.id);
-            },
-            dragend(event) {
-              const position = (event.target as LeafletMarker).getLatLng();
-              onMarkerMove?.(marker.id, { latitude: position.lat, longitude: position.lng });
-            }
-          }}
-        >
-          <Tooltip>{marker.label}</Tooltip>
-          {marker.popup ? <Popup>{marker.popup}</Popup> : null}
-        </Marker>
-      ))}
-    </>
-  );
+  return <>{markers.map((marker) => markerElement(marker, onMarkerSelect, onMarkerMove))}</>;
 }
 
 function ClusteredMarkers({
@@ -104,7 +108,7 @@ function ClusteredMarkers({
         zoomToBoundsOnClick
         iconCreateFunction={clusterIcon}
       >
-        <MarkerLayer markers={clusterableMarkers} onMarkerSelect={onMarkerSelect} onMarkerMove={onMarkerMove} />
+        {clusterableMarkers.map((marker) => markerElement(marker, onMarkerSelect, onMarkerMove))}
       </MarkerClusterGroup>
       <MarkerLayer markers={standaloneMarkers} onMarkerSelect={onMarkerSelect} onMarkerMove={onMarkerMove} />
     </>
