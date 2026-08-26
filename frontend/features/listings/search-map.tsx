@@ -8,22 +8,26 @@ const defaultMapCenter: MapPoint = Object.freeze({ latitude: 10.776, longitude: 
 
 export interface SearchMapProps {
   readonly listings: readonly PublicListingSummary[];
+  readonly activeListingId: number | null;
   readonly pendingViewport: MapViewport | null;
   readonly proposedRadiusCenter: MapPoint | null;
   readonly selectingRadiusCenter: boolean;
   readonly onViewportChange: (viewport: MapViewport) => void;
   readonly onSearchBounds: (viewport: MapViewport) => void;
   readonly onRadiusCenterSelected: (point: MapPoint) => void;
+  readonly onListingSelect: (listingId: number) => void;
 }
 
 export function SearchMap({
   listings,
+  activeListingId,
   pendingViewport,
   proposedRadiusCenter,
   selectingRadiusCenter,
   onViewportChange,
   onSearchBounds,
-  onRadiusCenterSelected
+  onRadiusCenterSelected,
+  onListingSelect
 }: SearchMapProps) {
   const firstListing = listings[0];
   const center =
@@ -33,7 +37,8 @@ export function SearchMap({
     ...listings.map((listing) => ({
       id: listing.id,
       position: { latitude: listing.latitude, longitude: listing.longitude },
-      label: `${listing.title} — ${listing.areaName}`
+      label: `${listing.title} — ${listing.areaName}`,
+      selected: activeListingId === listing.id
     })),
     ...(proposedRadiusCenter
       ? [{ id: "radius-search-center", position: proposedRadiusCenter, label: "Tâm tìm kiếm theo bán kính" }]
@@ -73,6 +78,9 @@ export function SearchMap({
         markers={markers}
         onViewportChange={onViewportChange}
         onMapClick={selectingRadiusCenter ? onRadiusCenterSelected : undefined}
+        onMarkerSelect={(id) => {
+          if (typeof id === "number" && Number.isSafeInteger(id)) onListingSelect(id);
+        }}
         className="lg:h-[36rem]"
       />
     </section>

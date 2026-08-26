@@ -11,7 +11,14 @@ vi.mock("../../components/map/map-base", () => ({
     return (
       <div role="region" aria-label={props.ariaLabel}>
         {props.markers?.map((marker) => (
-          <span key={marker.id}>{marker.label}</span>
+          <button
+            key={marker.id}
+            type="button"
+            aria-pressed={marker.selected}
+            onClick={() => props.onMarkerSelect?.(marker.id)}
+          >
+            {marker.label}
+          </button>
         ))}
       </div>
     );
@@ -78,12 +85,14 @@ function props(
 ): React.ComponentProps<typeof SearchMap> {
   return {
     listings,
+    activeListingId: null,
     pendingViewport: null,
     proposedRadiusCenter: null,
     selectingRadiusCenter: false,
     onViewportChange: vi.fn(),
     onSearchBounds: vi.fn(),
     onRadiusCenterSelected: vi.fn(),
+    onListingSelect: vi.fn(),
     ...overrides
   };
 }
@@ -133,5 +142,15 @@ describe("SearchMap", () => {
     const received = mapState.props as MapBaseProps;
     received.onMapClick?.({ latitude: 10.74, longitude: 106.66 });
     expect(onRadiusCenterSelected).toHaveBeenCalledWith({ latitude: 10.74, longitude: 106.66 });
+  });
+
+  it("marks the active listing and forwards marker selection without exposing coordinates", () => {
+    const onListingSelect = vi.fn();
+    render(<SearchMap {...props({ activeListingId: 2, onListingSelect })} />);
+
+    expect(screen.getByRole("button", { name: "Phòng B — Quận 3" })).toHaveAttribute("aria-pressed", "true");
+    fireEvent.click(screen.getByRole("button", { name: "Phòng A — Quận 1" }));
+    expect(onListingSelect).toHaveBeenCalledWith(1);
+    expect(screen.queryByText(/10\.77|106\.69/)).not.toBeInTheDocument();
   });
 });

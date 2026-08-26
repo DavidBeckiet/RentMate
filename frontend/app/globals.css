@@ -136,6 +136,14 @@ summary {
   cursor: pointer;
 }
 
+.leaflet-marker-icon {
+  cursor: pointer;
+}
+
+.rentmate-map-marker-selected {
+  filter: hue-rotate(105deg) saturate(1.4) drop-shadow(0 2px 0 rgb(9 43 39 / 0.72));
+}
+
 ::selection {
   background: var(--rm-lime);
   color: var(--rm-ink);

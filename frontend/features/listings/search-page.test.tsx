@@ -26,7 +26,28 @@ vi.mock("../../lib/api/client", async () => {
 });
 
 vi.mock("./listing-card", () => ({
-  ListingCard: ({ listing }: { listing: PublicListingSummary }) => <article>card:{listing.title}</article>
+  ListingCard: ({
+    listing,
+    mapSelected,
+    onMapFocus,
+    onMapSelect
+  }: {
+    listing: PublicListingSummary;
+    mapSelected?: boolean;
+    onMapFocus?: () => void;
+    onMapSelect?: () => void;
+  }) => (
+    <article
+      data-testid={`card-${listing.id}`}
+      aria-current={mapSelected ? "true" : undefined}
+      onMouseEnter={onMapFocus}
+      onFocus={onMapFocus}
+    >
+      <button type="button" onClick={onMapSelect}>
+        card:{listing.title}
+      </button>
+    </article>
+  )
 }));
 
 vi.mock("./search-filters", () => ({
@@ -68,7 +89,9 @@ vi.mock("./search-map", () => ({
     listings,
     pendingViewport,
     onViewportChange,
-    onSearchBounds
+    onSearchBounds,
+    activeListingId,
+    onListingSelect
   }: {
     listings: readonly PublicListingSummary[];
     pendingViewport: null | {
@@ -86,6 +109,8 @@ vi.mock("./search-map", () => ({
       zoom: number;
       bounds: { north: number; south: number; east: number; west: number };
     }) => void;
+    activeListingId: number | null;
+    onListingSelect: (listingId: number) => void;
   }) => {
     const viewport = {
       center: { latitude: 10.75, longitude: 106.7 },
@@ -95,7 +120,15 @@ vi.mock("./search-map", () => ({
     return (
       <div>
         {listings.map((listing) => (
-          <span key={listing.id}>marker:{listing.title}</span>
+          <button
+            key={listing.id}
+            type="button"
+            aria-label={`marker:${listing.title}`}
+            aria-pressed={activeListingId === listing.id}
+            onClick={() => onListingSelect(listing.id)}
+          >
+            marker:{listing.title}
+          </button>
         ))}
         <button type="button" onClick={() => onViewportChange(viewport)}>
           Move map
@@ -160,6 +193,21 @@ describe("SearchPage", () => {
       { page: 1, pageSize: 20, sort: "newest" },
       expect.any(AbortSignal)
     );
+  });
+
+  it("syncs map selection with cards and opens the map from a card action", async () => {
+    navigation.query = "sort=newest";
+    apiMocks.searchPublic.mockResolvedValue(page([listing(1, "Phòng A"), listing(2, "Phòng B")]));
+    render(<SearchPage />);
+    await screen.findByText("card:Phòng A");
+
+    fireEvent.click(screen.getByRole("button", { name: "card:Phòng A" }));
+    expect(screen.getByRole("button", { name: "Đóng bản đồ" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "marker:Phòng A" })).toHaveAttribute("aria-pressed", "true");
+
+    fireEvent.click(screen.getByRole("button", { name: "marker:Phòng B" }));
+    expect(screen.getByTestId("card-2")).toHaveAttribute("aria-current", "true");
+    expect(screen.getByTestId("card-1")).not.toHaveAttribute("aria-current");
   });
 
   it("does not search on map movement, then commits bounds and searches once after URL changes", async () => {

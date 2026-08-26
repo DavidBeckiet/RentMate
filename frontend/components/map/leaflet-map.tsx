@@ -23,6 +23,18 @@ const markerIcon = new Icon({
   shadowSize: [41, 41]
 });
 
+const selectedMarkerIcon = new Icon({
+  iconUrl: assetUrl(markerIconUrl),
+  iconRetinaUrl: assetUrl(markerIconRetinaUrl),
+  shadowUrl: assetUrl(markerShadowUrl),
+  iconSize: [30, 49],
+  iconAnchor: [15, 49],
+  popupAnchor: [1, -42],
+  tooltipAnchor: [18, -31],
+  shadowSize: [41, 41],
+  className: "rentmate-map-marker-selected"
+});
+
 function currentViewport(map: ReturnType<typeof useMap>): MapViewport {
   const center = map.getCenter();
   const bounds = map.getBounds();
@@ -81,6 +93,7 @@ export default function LeafletMap({
   radiusCircle,
   onViewportChange,
   onMapClick,
+  onMarkerSelect,
   onMarkerMove,
   className
 }: MapBaseProps) {
@@ -113,11 +126,14 @@ export default function LeafletMap({
           <Marker
             key={marker.id}
             position={[marker.position.latitude, marker.position.longitude]}
-            icon={markerIcon}
+            icon={marker.selected ? selectedMarkerIcon : markerIcon}
             draggable={marker.draggable}
             title={marker.label}
             alt={marker.label}
             eventHandlers={{
+              click() {
+                onMarkerSelect?.(marker.id);
+              },
               dragend(event) {
                 const position = (event.target as LeafletMarker).getLatLng();
                 onMarkerMove?.(marker.id, { latitude: position.lat, longitude: position.lng });

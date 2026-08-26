@@ -63,6 +63,7 @@ export function SearchPage() {
   const [radiusResetKey, setRadiusResetKey] = useState(0);
   const [mobileMapOpen, setMobileMapOpen] = useState(false);
   const [mobileFiltersOpen, setMobileFiltersOpen] = useState(false);
+  const [activeListingId, setActiveListingId] = useState<number | null>(null);
   const searchRequestIdentity = useRef(0);
 
   useEffect(() => {
@@ -112,6 +113,12 @@ export function SearchPage() {
   }, [committedIdentity, parsed]);
 
   useEffect(() => {
+    if (activeListingId !== null && !items.some((listing) => listing.id === activeListingId)) {
+      setActiveListingId(null);
+    }
+  }, [activeListingId, items]);
+
+  useEffect(() => {
     if (!parsed.ok) {
       ++searchRequestIdentity.current;
       setItems([]);
@@ -119,6 +126,7 @@ export function SearchPage() {
       setHasNextPage(false);
       setSearchError(null);
       setSearchStatus("idle");
+      setActiveListingId(null);
       return;
     }
 
@@ -126,6 +134,7 @@ export function SearchPage() {
     const identity = ++searchRequestIdentity.current;
     let active = true;
     setItems([]);
+    setActiveListingId(null);
     setCurrentPage(parsed.state.page);
     setHasNextPage(false);
     setSearchError(null);
@@ -161,6 +170,7 @@ export function SearchPage() {
     setPendingViewport(null);
     setProposedRadiusCenter(null);
     setSelectingRadiusCenter(false);
+    setActiveListingId(null);
     setMobileMapOpen(false);
     setMobileFiltersOpen(false);
     setRadiusResetKey((key) => key + 1);
@@ -314,8 +324,17 @@ export function SearchPage() {
                     pendingViewport={pendingViewport}
                     proposedRadiusCenter={proposedRadiusCenter}
                     selectingRadiusCenter={selectingRadiusCenter}
+                    activeListingId={activeListingId}
                     onViewportChange={setPendingViewport}
                     onSearchBounds={(viewport) => navigate(withBounds(committed, viewport.bounds))}
+                    onListingSelect={(listingId) => {
+                      setActiveListingId(listingId);
+                      const card = document.getElementById(`listing-card-${listingId}`);
+                      if (card && typeof card.scrollIntoView === "function") {
+                        const prefersReducedMotion = window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
+                        card.scrollIntoView({ behavior: prefersReducedMotion ? "auto" : "smooth", block: "nearest" });
+                      }
+                    }}
                     onRadiusCenterSelected={(point) => {
                       if (!selectingRadiusCenter) return;
                       setProposedRadiusCenter(point);
@@ -365,7 +384,18 @@ export function SearchPage() {
               <div className="space-y-6">
                 <div className={styles.listingGrid}>
                   {items.map((listing) => (
-                    <ListingCard key={listing.id} listing={listing} showFavorite variant="search" />
+                    <ListingCard
+                      key={listing.id}
+                      listing={listing}
+                      showFavorite
+                      variant="search"
+                      mapSelected={activeListingId === listing.id}
+                      onMapFocus={() => setActiveListingId(listing.id)}
+                      onMapSelect={() => {
+                        setActiveListingId(listing.id);
+                        setMobileMapOpen(true);
+                      }}
+                    />
                   ))}
                 </div>
 

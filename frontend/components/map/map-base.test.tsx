@@ -9,6 +9,7 @@ interface MapEvents {
 }
 
 interface MarkerEvents {
+  click?: () => void;
   dragend?: (event: { target: { getLatLng: () => { lat: number; lng: number } } }) => void;
 }
 
@@ -24,6 +25,7 @@ const leafletMocks = vi.hoisted(() => {
     bounds: { north: 10.9, south: 10.6, east: 106.9, west: 106.5 },
     events: {} as MapEvents,
     markerEvents: new Map<string, MarkerEvents>(),
+    markerIcons: new Map<string, unknown>(),
     tile: null as null | { url: string; attribution: string },
     setView: vi.fn(),
     fitBounds: vi.fn()
@@ -76,8 +78,19 @@ vi.mock("react-leaflet", () => ({
     leafletMocks.state.tile = { url, attribution };
     return <div data-testid="tile-layer" />;
   },
-  Marker: ({ children, title, eventHandlers }: { children: ReactNode; title: string; eventHandlers: MarkerEvents }) => {
+  Marker: ({
+    children,
+    title,
+    icon,
+    eventHandlers
+  }: {
+    children: ReactNode;
+    title: string;
+    icon: unknown;
+    eventHandlers: MarkerEvents;
+  }) => {
     leafletMocks.state.markerEvents.set(title, eventHandlers);
+    leafletMocks.state.markerIcons.set(title, icon);
     return <div data-testid={`marker-${title}`}>{children}</div>;
   },
   Circle: ({ children, radius }: { children: ReactNode; radius: number }) => (
@@ -109,6 +122,7 @@ beforeEach(() => {
   leafletMocks.state.bounds = { north: 10.9, south: 10.6, east: 106.9, west: 106.5 };
   leafletMocks.state.events = {};
   leafletMocks.state.markerEvents.clear();
+  leafletMocks.state.markerIcons.clear();
   leafletMocks.state.tile = null;
   leafletMocks.state.setView.mockClear();
   leafletMocks.state.fitBounds.mockClear();
@@ -204,6 +218,39 @@ describe("LeafletMap", () => {
       })
     );
     expect(onMarkerMove).toHaveBeenCalledWith("draft-location", { latitude: 10.76, longitude: 106.69 });
+  });
+
+  it("selects a marker and gives selected markers a distinct presentation", () => {
+    const onMarkerSelect = vi.fn();
+    const marker = {
+      id: "listing-42",
+      label: "Phòng cần chọn",
+      position: initialViewport.center
+    };
+    const view = render(
+      <LeafletMap
+        ariaLabel="Bản đồ chọn phòng"
+        center={initialViewport.center}
+        zoom={initialViewport.zoom}
+        markers={[marker]}
+        onMarkerSelect={onMarkerSelect}
+      />
+    );
+
+    act(() => leafletMocks.state.markerEvents.get(marker.label)?.click?.());
+    expect(onMarkerSelect).toHaveBeenCalledWith(marker.id);
+    const defaultIcon = leafletMocks.state.markerIcons.get(marker.label);
+
+    view.rerender(
+      <LeafletMap
+        ariaLabel="Bản đồ chọn phòng"
+        center={initialViewport.center}
+        zoom={initialViewport.zoom}
+        markers={[{ ...marker, selected: true }]}
+        onMarkerSelect={onMarkerSelect}
+      />
+    );
+    expect(leafletMocks.state.markerIcons.get(marker.label)).not.toBe(defaultIcon);
   });
 
   it("fits the viewport to and renders an optional radius circle", () => {

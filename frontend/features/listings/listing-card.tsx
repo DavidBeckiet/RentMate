@@ -14,15 +14,32 @@ export interface ListingCardProps {
   readonly showFavorite?: boolean;
   readonly href?: string;
   readonly variant?: "default" | "search";
+  readonly mapSelected?: boolean;
+  readonly onMapFocus?: () => void;
+  readonly onMapSelect?: () => void;
 }
 
-export function ListingCard({ listing, showFavorite = true, href, variant = "default" }: ListingCardProps) {
+export function ListingCard({
+  listing,
+  showFavorite = true,
+  href,
+  variant = "default",
+  mapSelected = false,
+  onMapFocus,
+  onMapSelect
+}: ListingCardProps) {
   const coverImage = listing.coverImage;
   const searchVariant = variant === "search";
 
   return (
     <article
-      className={`${styles.card} ${searchVariant ? styles.searchCard : ""} group relative flex h-full flex-col overflow-hidden`}
+      id={onMapFocus || onMapSelect ? `listing-card-${listing.id}` : undefined}
+      aria-current={mapSelected ? "true" : undefined}
+      onMouseEnter={onMapFocus}
+      onFocus={onMapFocus}
+      className={`${styles.card} ${searchVariant ? styles.searchCard : ""} ${
+        mapSelected ? styles.mapSelected : ""
+      } group relative flex h-full flex-col overflow-hidden`}
     >
       <Link href={href ?? `/listings/${listing.id}`} className="flex h-full flex-1 flex-col focus-visible:outline-none">
         <div
@@ -111,6 +128,17 @@ export function ListingCard({ listing, showFavorite = true, href, variant = "def
       </Link>
 
       <div className="absolute right-3 top-3 z-20 flex flex-col gap-2">
+        {onMapSelect ? (
+          <button
+            type="button"
+            aria-label={`Xem ${listing.title} trên bản đồ`}
+            aria-pressed={mapSelected}
+            onClick={onMapSelect}
+            className="grid h-10 w-10 place-items-center border-2 border-heroDark-950 bg-rent-accent shadow-glass-sm transition-transform hover:-translate-y-0.5 focus-visible:outline-none"
+          >
+            <Icon name="map" className="h-4 w-4" />
+          </button>
+        ) : null}
         {showFavorite ? <ListingSaveControl listingId={String(listing.id)} compact /> : null}
         <ComparisonToggle listingId={listing.id} compact />
       </div>

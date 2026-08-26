@@ -26,6 +26,7 @@ export interface MapMarker {
   readonly position: MapPoint;
   readonly label: string;
   readonly draggable?: boolean;
+  readonly selected?: boolean;
 }
 
 export interface MapRadiusCircle {
@@ -42,6 +43,7 @@ export interface MapBaseProps {
   readonly radiusCircle?: MapRadiusCircle;
   readonly onViewportChange?: (viewport: MapViewport) => void;
   readonly onMapClick?: (point: MapPoint) => void;
+  readonly onMarkerSelect?: (id: MapMarker["id"]) => void;
   readonly onMarkerMove?: (id: MapMarker["id"], point: MapPoint) => void;
   readonly className?: string;
 }

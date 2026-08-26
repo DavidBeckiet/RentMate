@@ -24,6 +24,15 @@
   box-shadow: 8px 8px 0 #092b27;
 }
 
+.mapSelected {
+  border-color: #176b4d;
+  box-shadow: 7px 7px 0 #176b4d;
+}
+
+.mapSelected:hover {
+  box-shadow: 10px 10px 0 #176b4d;
+}
+
 .searchCard .media {
   border-bottom: 2px solid #092b27;
 }

@@ -1,4 +1,4 @@
-import { render, screen } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import type { PublicListingSummary } from "../../types/api";
 
@@ -79,5 +79,24 @@ describe("ListingCard", () => {
     render(<ListingCard listing={withoutCover} />);
 
     expect(screen.getByRole("img", { name: "Chưa có ảnh cho Studio sáng gần trung tâm" })).toBeInTheDocument();
+  });
+
+  it("supports map selection without changing the listing link", () => {
+    const onMapFocus = vi.fn();
+    const onMapSelect = vi.fn();
+    render(
+      <ListingCard listing={listing()} variant="search" mapSelected onMapFocus={onMapFocus} onMapSelect={onMapSelect} />
+    );
+
+    const card = screen.getByRole("article");
+    expect(card).toHaveAttribute("id", "listing-card-42");
+    expect(card).toHaveAttribute("aria-current", "true");
+    fireEvent.mouseEnter(card);
+    fireEvent.focus(screen.getByRole("link", { name: /Studio sáng gần trung tâm/ }));
+    fireEvent.click(screen.getByRole("button", { name: "Xem Studio sáng gần trung tâm trên bản đồ" }));
+
+    expect(onMapFocus).toHaveBeenCalledTimes(2);
+    expect(onMapSelect).toHaveBeenCalledOnce();
+    expect(screen.getByRole("link", { name: /Studio sáng gần trung tâm/ })).toHaveAttribute("href", "/listings/42");
   });
 });
