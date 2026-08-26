@@ -822,3 +822,59 @@ Thực hiện `Bước 1 → Bước 2 → Bước 3 → Bước 4 → Bước 5
 - Provider email/SMS thật và credential staging chưa có, nên chưa thể xác nhận gửi Gmail/SMS thật.
 - Push notification chưa triển khai; chat realtime vẫn ưu tiên nhận trực tiếp trong app theo quyết định sản phẩm.
 - Release gate public chưa hoàn tất vì chưa có provider staging, full E2E qua Gateway và quality gate cuối; checkpoint local/demo đã được chốt riêng để tiếp tục phát triển.
+
+## 19. Định hướng tính năng sau checkpoint local/demo
+
+Sau khi chốt checkpoint local/demo, các tính năng tiếp theo nên tập trung vào việc giúp người thuê tìm phòng nhanh hơn và giúp landlord quản lý tin đăng rõ ràng hơn. Không mở rộng sang thanh toán hoặc quản lý vận hành khi các luồng sàn tìm phòng hiện tại chưa có nhu cầu thực tế chứng minh.
+
+### 19.1 Thứ tự ưu tiên đề xuất
+
+1. **Sắp xếp kết quả tìm kiếm**
+   - Bổ sung hoặc hoàn thiện các lựa chọn: giá thấp đến cao, giá cao đến thấp, tin mới nhất và gần vị trí nhất.
+   - Giữ nguyên bộ lọc, privacy projection, giới hạn kết quả và pagination hiện có.
+   - Có test cho thứ tự ổn định, tie-breaker và trạng thái không có kết quả.
+
+2. **Phòng đã xem gần đây**
+   - Lưu khoảng 10–20 listing gần nhất ở trình duyệt bằng `localStorage` hoặc cơ chế tương đương.
+   - Không lưu dữ liệu riêng tư, không cần thêm bảng hoặc API ở giai đoạn đầu.
+   - Có trạng thái rỗng, xóa lịch sử và xử lý listing không còn public.
+
+3. **Nâng cấp quản lý tin đăng cho landlord**
+   - Bổ sung nhân bản tin đăng để tạo tin mới nhanh hơn.
+   - Bổ sung lưu trữ tin cũ và bộ lọc theo trạng thái trong dashboard.
+   - Giữ nguyên ownership, moderation lifecycle và business status hiện có.
+
+4. **Hoàn thiện lớp độ tin cậy**
+   - Hiển thị thời điểm cập nhật hoặc xác nhận còn phòng một cách dễ hiểu.
+   - Cảnh báo tin quá cũ, tin bị báo cáo nhiều hoặc có dấu hiệu trùng lặp để admin xử lý.
+   - Không công khai dữ liệu moderation hoặc thông tin cá nhân của người báo cáo.
+
+5. **Trung tâm trợ giúp cơ bản**
+   - Thêm FAQ và hướng dẫn thuê phòng an toàn.
+   - Cho phép người dùng gửi yêu cầu hỗ trợ cho admin.
+   - Có thể triển khai sau khi các tính năng tìm kiếm và quản lý tin đăng ổn định.
+
+### 19.2 Các tính năng tiếp tục để backlog dài hạn
+
+- Email/SMS/push thật cho notification và verification.
+- Đặt lịch xem phòng.
+- Minh bạch tổng chi phí; task này tiếp tục tạm hoãn theo quyết định sản phẩm.
+- Thanh toán, đặt cọc, hợp đồng điện tử và thu tiền thuê/điện nước.
+- Quản lý nhiều phòng trong một tòa nhà hoặc nhiều thành phố.
+- Đồng bộ Google Calendar, mobile app và gợi ý phòng bằng AI.
+
+### 19.3 Quy tắc triển khai tiếp theo
+
+- Thực hiện từng tính năng một, kiểm tra và commit riêng.
+- Ưu tiên tính năng không cần thay đổi database hoặc public API nếu giá trị sử dụng tương đương.
+- Không đánh dấu release public hoàn tất chỉ vì đã hoàn thành các tính năng local/demo.
+
+### 19.4 Trạng thái triển khai checkpoint local/demo
+
+- [x] Sắp xếp kết quả tìm kiếm — đã kiểm tra tie-breaker và test thứ tự ổn định; commit `9331c59`.
+- [x] Phòng đã xem gần đây — lưu localStorage, trạng thái rỗng, xóa lịch sử và tự loại tin không còn public; commit `01c6889` và `9b39a7d`.
+- [x] Quản lý tin đăng landlord — lọc theo trạng thái, nhóm tin cũ và nhân bản tin; commit `c2baa9d`.
+- [x] Lớp độ tin cậy — nhãn freshness cho người dùng và cảnh báo aggregate cho admin; commit `c40b3d6`.
+- [x] Trung tâm trợ giúp — FAQ, checklist an toàn, form gửi yêu cầu và hàng đợi admin; commit `a881a14`, `8f4d2ba` và `6ef2e3e`.
+- [x] Migration Engagement `0017_support_requests.sql` đã được chạy trên database local sau khi `--plan-only` xác nhận chỉ chọn migration `0017`. Manifest external local đã được cập nhật lên version `17`; staging/production vẫn cần operator thực hiện riêng.
+- [ ] Email/SMS/push thật, E2E staging qua Gateway và quality gate public vẫn là phần chưa đóng.
