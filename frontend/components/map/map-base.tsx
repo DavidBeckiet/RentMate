@@ -1,6 +1,7 @@
 "use client";
 
 import dynamic from "next/dynamic";
+import type { ReactNode } from "react";
 import { LoadingState } from "../ui/feedback-states";
 
 export interface MapPoint {
@@ -27,6 +28,7 @@ export interface MapMarker {
   readonly label: string;
   readonly draggable?: boolean;
   readonly selected?: boolean;
+  readonly popup?: ReactNode;
 }
 
 export interface MapRadiusCircle {

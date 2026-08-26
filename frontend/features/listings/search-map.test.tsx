@@ -3,6 +3,10 @@ import { describe, expect, it, vi } from "vitest";
 import type { MapBaseProps, MapViewport } from "../../components/map/map-base";
 import type { PublicListingSummary } from "../../types/api";
 
+vi.mock("next/image", () => ({
+  default: ({ alt }: { alt: string }) => <span role="img" aria-label={alt} />
+}));
+
 const mapState = vi.hoisted(() => ({ props: null as unknown }));
 
 vi.mock("../../components/map/map-base", () => ({
@@ -11,14 +15,12 @@ vi.mock("../../components/map/map-base", () => ({
     return (
       <div role="region" aria-label={props.ariaLabel}>
         {props.markers?.map((marker) => (
-          <button
-            key={marker.id}
-            type="button"
-            aria-pressed={marker.selected}
-            onClick={() => props.onMarkerSelect?.(marker.id)}
-          >
-            {marker.label}
-          </button>
+          <span key={marker.id}>
+            <button type="button" aria-pressed={marker.selected} onClick={() => props.onMarkerSelect?.(marker.id)}>
+              {marker.label}
+            </button>
+            {marker.popup}
+          </span>
         ))}
       </div>
     );
@@ -152,5 +154,15 @@ describe("SearchMap", () => {
     fireEvent.click(screen.getByRole("button", { name: "Phòng A — Quận 1" }));
     expect(onListingSelect).toHaveBeenCalledWith(1);
     expect(screen.queryByText(/10\.77|106\.69/)).not.toBeInTheDocument();
+  });
+
+  it("builds public-safe marker previews with a detail link", () => {
+    render(<SearchMap {...props()} />);
+
+    expect(screen.getByText("Phòng A")).toBeInTheDocument();
+    expect(screen.getByText(/5[.\s]000[.\s]000/)).toBeInTheDocument();
+    const detailLinks = screen.getAllByRole("link", { name: "Xem chi tiết" });
+    expect(detailLinks[0]).toHaveAttribute("href", "/listings/1");
+    expect(document.body).not.toHaveTextContent(/106\.69|landlord|addressText|moderation/i);
   });
 });

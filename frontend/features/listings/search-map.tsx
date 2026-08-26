@@ -3,6 +3,7 @@
 import { MapBase, type MapPoint, type MapViewport } from "../../components/map/map-base";
 import { MapSearchControl } from "../../components/map/map-search-control";
 import type { PublicListingSummary } from "../../types/api";
+import { SearchMapListingPopup } from "./search-map-listing-popup";
 
 const defaultMapCenter: MapPoint = Object.freeze({ latitude: 10.776, longitude: 106.7 });
 
@@ -38,7 +39,8 @@ export function SearchMap({
       id: listing.id,
       position: { latitude: listing.latitude, longitude: listing.longitude },
       label: `${listing.title} — ${listing.areaName}`,
-      selected: activeListingId === listing.id
+      selected: activeListingId === listing.id,
+      popup: <SearchMapListingPopup listing={listing} />
     })),
     ...(proposedRadiusCenter
       ? [{ id: "radius-search-center", position: proposedRadiusCenter, label: "Tâm tìm kiếm theo bán kính" }]

@@ -5,7 +5,7 @@ import markerIconUrl from "leaflet/dist/images/marker-icon.png";
 import markerIconRetinaUrl from "leaflet/dist/images/marker-icon-2x.png";
 import markerShadowUrl from "leaflet/dist/images/marker-shadow.png";
 import { useEffect } from "react";
-import { Circle, MapContainer, Marker, TileLayer, Tooltip, useMap, useMapEvents } from "react-leaflet";
+import { Circle, MapContainer, Marker, Popup, TileLayer, Tooltip, useMap, useMapEvents } from "react-leaflet";
 import type { MapBaseProps, MapViewport } from "./map-base";
 
 function assetUrl(asset: string | { readonly src: string }) {
@@ -141,6 +141,7 @@ export default function LeafletMap({
             }}
           >
             <Tooltip>{marker.label}</Tooltip>
+            {marker.popup ? <Popup>{marker.popup}</Popup> : null}
           </Marker>
         ))}
       </MapContainer>

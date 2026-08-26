@@ -98,6 +98,7 @@ vi.mock("react-leaflet", () => ({
       {children}
     </div>
   ),
+  Popup: ({ children }: { children: ReactNode }) => <div data-testid="map-popup">{children}</div>,
   Tooltip: ({ children }: { children: ReactNode }) => <span>{children}</span>,
   useMap: () => leafletMocks.map,
   useMapEvents: (events: MapEvents) => {
@@ -251,6 +252,19 @@ describe("LeafletMap", () => {
       />
     );
     expect(leafletMocks.state.markerIcons.get(marker.label)).not.toBe(defaultIcon);
+  });
+
+  it("renders an optional marker popup without changing markers that have no popup", () => {
+    render(
+      <LeafletMap
+        ariaLabel="Bản đồ có xem nhanh"
+        center={initialViewport.center}
+        zoom={initialViewport.zoom}
+        markers={[{ id: "listing-42", label: "Phòng xem nhanh", position: initialViewport.center, popup: "Tóm tắt" }]}
+      />
+    );
+
+    expect(screen.getByTestId("map-popup")).toHaveTextContent("Tóm tắt");
   });
 
   it("fits the viewport to and renders an optional radius circle", () => {
