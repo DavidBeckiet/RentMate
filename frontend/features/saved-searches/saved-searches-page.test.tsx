@@ -92,4 +92,31 @@ describe("SavedSearchesPage", () => {
     expect(screen.getByRole("link", { name: "Đăng nhập" })).toHaveAttribute("href", "/login");
     expect(apiMocks.list).not.toHaveBeenCalled();
   });
+
+  it("shows the saved map area in a radius summary", async () => {
+    apiMocks.list.mockResolvedValue(
+      page([
+        {
+          ...item,
+          id: 13,
+          name: "Gần trung tâm",
+          query: {
+            ...item.query,
+            mode: "radius",
+            north: null,
+            south: null,
+            east: null,
+            west: null,
+            centerLat: 10.776,
+            centerLng: 106.7,
+            radiusKm: 5,
+            sort: "distance_asc"
+          }
+        }
+      ])
+    );
+    render(<SavedSearchesPage />);
+
+    expect(await screen.findByText("Khu vực: bán kính 5 km quanh điểm đã chọn")).toBeInTheDocument();
+  });
 });

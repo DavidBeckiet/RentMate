@@ -130,9 +130,10 @@ function ViewportBridge({
   center,
   zoom,
   radiusCircle,
+  viewportBounds,
   onViewportChange,
   onMapClick
-}: Pick<MapBaseProps, "center" | "zoom" | "radiusCircle" | "onViewportChange" | "onMapClick">) {
+}: Pick<MapBaseProps, "center" | "zoom" | "radiusCircle" | "viewportBounds" | "onViewportChange" | "onMapClick">) {
   const map = useMap();
 
   useEffect(() => {
@@ -143,11 +144,21 @@ function ViewportBridge({
       map.fitBounds(bounds, { padding: [28, 28], maxZoom: 15 });
       return;
     }
+    if (viewportBounds) {
+      map.fitBounds(
+        [
+          [viewportBounds.south, viewportBounds.west],
+          [viewportBounds.north, viewportBounds.east]
+        ],
+        { padding: [28, 28] }
+      );
+      return;
+    }
     const currentCenter = map.getCenter();
     if (currentCenter.lat !== center.latitude || currentCenter.lng !== center.longitude || map.getZoom() !== zoom) {
       map.setView([center.latitude, center.longitude], zoom);
     }
-  }, [center.latitude, center.longitude, map, radiusCircle, zoom]);
+  }, [center.latitude, center.longitude, map, radiusCircle, viewportBounds, zoom]);
 
   useMapEvents({
     moveend() {
@@ -168,6 +179,7 @@ export default function LeafletMap({
   markers = [],
   clusterMarkers = false,
   radiusCircle,
+  viewportBounds,
   onViewportChange,
   onMapClick,
   onMarkerSelect,
@@ -187,6 +199,7 @@ export default function LeafletMap({
           center={center}
           zoom={zoom}
           radiusCircle={radiusCircle}
+          viewportBounds={viewportBounds}
           onViewportChange={onViewportChange}
           onMapClick={onMapClick}
         />

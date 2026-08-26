@@ -1,6 +1,6 @@
 "use client";
 
-import { MapBase, type MapPoint, type MapViewport } from "../../components/map/map-base";
+import { MapBase, type MapBounds, type MapPoint, type MapViewport } from "../../components/map/map-base";
 import { MapSearchControl } from "../../components/map/map-search-control";
 import type { PublicListingSummary } from "../../types/api";
 import { SearchMapListingPopup } from "./search-map-listing-popup";
@@ -11,6 +11,7 @@ export interface SearchMapProps {
   readonly listings: readonly PublicListingSummary[];
   readonly activeListingId: number | null;
   readonly pendingViewport: MapViewport | null;
+  readonly viewportBounds: MapBounds | null;
   readonly proposedRadiusCenter: MapPoint | null;
   readonly selectingRadiusCenter: boolean;
   readonly onViewportChange: (viewport: MapViewport) => void;
@@ -23,6 +24,7 @@ export function SearchMap({
   listings,
   activeListingId,
   pendingViewport,
+  viewportBounds,
   proposedRadiusCenter,
   selectingRadiusCenter,
   onViewportChange,
@@ -33,7 +35,14 @@ export function SearchMap({
   const firstListing = listings[0];
   const center =
     proposedRadiusCenter ??
-    (firstListing ? { latitude: firstListing.latitude, longitude: firstListing.longitude } : defaultMapCenter);
+    (viewportBounds
+      ? {
+          latitude: (viewportBounds.north + viewportBounds.south) / 2,
+          longitude: (viewportBounds.east + viewportBounds.west) / 2
+        }
+      : firstListing
+        ? { latitude: firstListing.latitude, longitude: firstListing.longitude }
+        : defaultMapCenter);
   const markers = [
     ...listings.map((listing) => ({
       id: listing.id,
@@ -86,6 +95,7 @@ export function SearchMap({
         zoom={listings.length > 0 || proposedRadiusCenter ? 13 : 11}
         markers={markers}
         clusterMarkers
+        viewportBounds={viewportBounds ?? undefined}
         onViewportChange={onViewportChange}
         onMapClick={selectingRadiusCenter ? onRadiusCenterSelected : undefined}
         onMarkerSelect={(id) => {

@@ -30,8 +30,8 @@ function filterSummary(item: SavedSearch): readonly string[] {
   }
   if (query.propertyType) parts.push(`Loại: ${query.propertyType.replaceAll("_", " ")}`);
   if (query.amenities.length > 0) parts.push(`${query.amenities.length} tiện ích`);
-  if (query.mode === "radius") parts.push(`Trong bán kính ${query.radiusKm} km`);
-  if (query.mode === "bounds") parts.push("Theo vùng bản đồ");
+  if (query.mode === "radius") parts.push(`Khu vực: bán kính ${query.radiusKm} km quanh điểm đã chọn`);
+  if (query.mode === "bounds") parts.push("Khu vực: vùng bản đồ đã chọn");
   return parts.length > 0 ? parts : ["Tất cả tin đăng mới nhất"];
 }
 
@@ -162,7 +162,7 @@ export function SavedSearchesPage() {
     content = (
       <EmptyState
         title="Bạn chưa lưu bộ lọc nào"
-        description="Thiết lập khu vực, mức giá hoặc tiện ích trên trang tìm phòng rồi chọn “Lưu bộ lọc”."
+        description="Thiết lập khu vực, mức giá hoặc tiện ích trên trang tìm phòng rồi chọn “Lưu bộ lọc” hoặc “Lưu tìm kiếm khu vực này”."
         action={
           <Link className={styles.primaryLink} href="/search">
             <Icon name="search" className="h-4 w-4" /> Tạo bộ lọc đầu tiên

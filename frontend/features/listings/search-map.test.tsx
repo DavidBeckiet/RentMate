@@ -89,6 +89,7 @@ function props(
     listings,
     activeListingId: null,
     pendingViewport: null,
+    viewportBounds: null,
     proposedRadiusCenter: null,
     selectingRadiusCenter: false,
     onViewportChange: vi.fn(),
@@ -146,6 +147,20 @@ describe("SearchMap", () => {
     received.onMapClick?.({ latitude: 10.74, longitude: 106.66 });
     expect(onRadiusCenterSelected).toHaveBeenCalledWith({ latitude: 10.74, longitude: 106.66 });
     expect(received.markers?.at(-1)).toMatchObject({ id: "radius-search-center", clusterable: false });
+  });
+
+  it("restores the saved bounds center before falling back to the first listing", () => {
+    render(
+      <SearchMap
+        {...props({
+          viewportBounds: { north: 10.9, south: 10.6, east: 106.9, west: 106.5 }
+        })}
+      />
+    );
+
+    const received = mapState.props as MapBaseProps;
+    expect(received.center).toEqual({ latitude: 10.75, longitude: 106.7 });
+    expect(received.viewportBounds).toEqual({ north: 10.9, south: 10.6, east: 106.9, west: 106.5 });
   });
 
   it("marks the active listing and forwards marker selection without exposing coordinates", () => {

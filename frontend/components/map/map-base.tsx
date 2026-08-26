@@ -44,6 +44,7 @@ export interface MapBaseProps {
   readonly zoom: number;
   readonly markers?: readonly MapMarker[];
   readonly clusterMarkers?: boolean;
+  readonly viewportBounds?: MapBounds;
   readonly radiusCircle?: MapRadiusCircle;
   readonly onViewportChange?: (viewport: MapViewport) => void;
   readonly onMapClick?: (point: MapPoint) => void;

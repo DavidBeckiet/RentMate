@@ -47,6 +47,15 @@ export function SearchPage() {
   const rawQuery = searchParams.toString();
   const parsed = useMemo(() => parseSearchQuery(new URLSearchParams(rawQuery)), [rawQuery]);
   const committedIdentity = parsed.ok ? serializeSearchState(parsed.state).toString() : `invalid:${rawQuery}`;
+  const savedViewportBounds = useMemo(() => {
+    if (!parsed.ok || parsed.state.mode !== "bounds") return null;
+    return {
+      north: parsed.state.north,
+      south: parsed.state.south,
+      east: parsed.state.east,
+      west: parsed.state.west
+    };
+  }, [parsed]);
   const [items, setItems] = useState<readonly PublicListingSummary[]>([]);
   const [currentPage, setCurrentPage] = useState(1);
   const [hasNextPage, setHasNextPage] = useState(false);
@@ -322,6 +331,7 @@ export function SearchPage() {
                   <SearchMap
                     listings={items}
                     pendingViewport={pendingViewport}
+                    viewportBounds={savedViewportBounds}
                     proposedRadiusCenter={proposedRadiusCenter}
                     selectingRadiusCenter={selectingRadiusCenter}
                     activeListingId={activeListingId}

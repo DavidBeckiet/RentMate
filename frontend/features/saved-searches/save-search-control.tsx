@@ -16,6 +16,7 @@ export function SaveSearchControl({ search }: { readonly search: SearchQueryStat
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [saved, setSaved] = useState(false);
+  const saveLabel = search.mode === "ordinary" ? "Lưu bộ lọc" : "Lưu tìm kiếm khu vực này";
 
   if (status === "authenticated" && user?.role !== "TENANT") return null;
   if (status === "anonymous") {
@@ -24,7 +25,7 @@ export function SaveSearchControl({ search }: { readonly search: SearchQueryStat
         className="inline-flex min-h-10 items-center gap-2 border-2 border-heroDark-950 bg-white px-3 text-xs font-extrabold shadow-glass-sm hover:bg-rent-accent focus-visible:outline-none"
         href="/login"
       >
-        <Icon name="plus" className="h-4 w-4" /> Lưu bộ lọc
+        <Icon name="plus" className="h-4 w-4" /> {saveLabel}
       </Link>
     );
   }
@@ -41,7 +42,7 @@ export function SaveSearchControl({ search }: { readonly search: SearchQueryStat
           }}
           className="inline-flex min-h-10 items-center gap-2 border-2 border-heroDark-950 bg-rent-accent px-3 text-xs font-extrabold shadow-glass-sm transition-transform hover:-translate-y-0.5 focus-visible:outline-none"
         >
-          <Icon name="plus" className="h-4 w-4" /> Lưu bộ lọc
+          <Icon name="plus" className="h-4 w-4" /> {saveLabel}
         </button>
         {saved ? (
           <Link className="text-xs font-extrabold underline decoration-2 underline-offset-4" href="/saved-searches">
@@ -72,7 +73,7 @@ export function SaveSearchControl({ search }: { readonly search: SearchQueryStat
     <div
       className="flex min-w-0 flex-1 flex-wrap items-center gap-2 sm:flex-initial"
       role="group"
-      aria-label="Lưu bộ lọc hiện tại"
+      aria-label={`${saveLabel} hiện tại`}
     >
       <label className="sr-only" htmlFor="saved-search-name">
         Tên bộ lọc

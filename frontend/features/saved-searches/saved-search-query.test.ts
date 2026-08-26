@@ -33,5 +33,26 @@ describe("saved search query mapping", () => {
     expect(savedSearchUrl(query)).toContain("radiusKm=8");
     expect(savedSearchUrl(query)).toContain("sort=distance_asc");
     expect(savedSearchUrl(query)).not.toContain("page=2");
+    expect(savedSearchUrl(query)).not.toContain("north=");
+  });
+
+  it("keeps a bounds search complete without leaking radius fields", () => {
+    const query = toSavedSearchQuery({
+      mode: "bounds",
+      amenities: [],
+      north: 10.9,
+      south: 10.6,
+      east: 106.9,
+      west: 106.5,
+      page: 2,
+      pageSize: 15,
+      sort: "rent_asc"
+    });
+
+    expect(savedSearchUrl(query)).toContain("north=10.9");
+    expect(savedSearchUrl(query)).toContain("south=10.6");
+    expect(savedSearchUrl(query)).toContain("sort=rent_asc");
+    expect(savedSearchUrl(query)).not.toContain("centerLat=");
+    expect(savedSearchUrl(query)).not.toContain("radiusKm=");
   });
 });
