@@ -646,6 +646,9 @@ function PublicFooter({ actor }: Readonly<{ actor: NavigationActor }>) {
           <Link href="/compare" className="min-h-11 py-2 text-[#d8e5df] hover:text-rent-accent">
             So sánh tin
           </Link>
+          <Link href="/help" className="min-h-11 py-2 text-[#d8e5df] hover:text-rent-accent">
+            Trung tâm trợ giúp
+          </Link>
         </nav>
         <nav aria-label="Tài khoản RentMate" className="flex flex-col items-start gap-2 text-ui-sm">
           <p className="mb-1 font-semibold text-rent-accent">Tài khoản</p>
