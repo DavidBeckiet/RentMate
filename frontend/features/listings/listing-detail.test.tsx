@@ -81,6 +81,7 @@ function backendError(status: number): ApiError {
 }
 
 beforeEach(() => {
+  window.localStorage.clear();
   apiMocks.getPublicDetail.mockReset();
   apiMocks.listReviews.mockResolvedValue({ data: [], pagination: { page: 1, pageSize: 10, hasNextPage: false } });
   apiMocks.listSimilar.mockReset();

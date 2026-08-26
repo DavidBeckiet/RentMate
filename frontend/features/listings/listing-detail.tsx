@@ -19,6 +19,7 @@ import { ListingReviews } from "../reviews/listing-reviews";
 import { ReportListingControl } from "../reports/report-listing-control";
 import { formatAreaSqm } from "./format";
 import { ListingAmenityChips, ListingPrice } from "./listing-presentation";
+import { rememberRecentListing } from "./recently-viewed-storage";
 import { SimilarListings } from "./similar-listings";
 import styles from "./listing-detail.module.css";
 
@@ -206,6 +207,7 @@ export function ListingDetail({ listingId, actions }: ListingDetailProps) {
       .then((result) => {
         if (!active || controller.signal.aborted || identity !== requestIdentity.current) return;
         setDetail(result);
+        rememberRecentListing(result.id);
         setStatus("success");
       })
       .catch((caught: unknown) => {

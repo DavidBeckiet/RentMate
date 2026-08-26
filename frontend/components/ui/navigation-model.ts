@@ -36,6 +36,13 @@ const marketplaceItems: readonly NavigationItem[] = [
     href: "/near-me",
     icon: "compass",
     exactPaths: ["/near-me"]
+  },
+  {
+    key: "recently-viewed",
+    label: "Đã xem",
+    href: "/recently-viewed",
+    icon: "eye",
+    exactPaths: ["/recently-viewed"]
   }
 ];
 
