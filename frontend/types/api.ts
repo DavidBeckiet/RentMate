@@ -576,6 +576,49 @@ export interface UpdateContactReportStatusBody {
   readonly note?: string | null;
 }
 
+export type SupportRequestCategory = "ACCOUNT" | "LISTING" | "SAFETY" | "TECHNICAL" | "OTHER";
+export type SupportRequestStatus = "OPEN" | "IN_PROGRESS" | "RESOLVED";
+
+export interface CreateSupportRequestBody {
+  readonly category: SupportRequestCategory;
+  readonly subject: string;
+  readonly message: string;
+}
+
+export interface SupportRequestReceipt {
+  readonly id: number;
+  readonly status: "OPEN";
+  readonly createdAt: string;
+}
+
+export interface AdminSupportRequest {
+  readonly id: number;
+  readonly requester: {
+    readonly id: number;
+    readonly role: UserRole;
+    readonly email: string;
+    readonly isActive: boolean;
+  };
+  readonly category: SupportRequestCategory;
+  readonly subject: string;
+  readonly message: string;
+  readonly status: SupportRequestStatus;
+  readonly resolutionNote: string | null;
+  readonly assignedAdminId: number | null;
+  readonly createdAt: string;
+  readonly updatedAt: string;
+  readonly resolvedAt: string | null;
+}
+
+export interface AdminSupportRequestQuery extends PaginationQuery {
+  readonly status?: SupportRequestStatus;
+}
+
+export interface UpdateSupportRequestStatusBody {
+  readonly status: Exclude<SupportRequestStatus, "OPEN">;
+  readonly note?: string | null;
+}
+
 export interface AdminReportQuery extends PaginationQuery {
   readonly status?: ReportStatus;
   readonly category?: ReportCategory;

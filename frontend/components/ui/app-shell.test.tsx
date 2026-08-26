@@ -194,6 +194,7 @@ describe("AppShell", () => {
     ["/admin/users", "Người dùng"],
     ["/admin/reports", "Báo cáo"],
     ["/admin/contact-reports", "Báo cáo contact"],
+    ["/admin/support-requests", "Yêu cầu hỗ trợ"],
     ["/admin/reviews", "Reviews"],
     ["/admin/verifications", "Xác minh"]
   ])("renders the admin workspace and active item at %s", (pathname, activeLabel) => {

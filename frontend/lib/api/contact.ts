@@ -2,6 +2,7 @@ import type {
   ApiPage,
   CreateInquiryBody,
   CreateContactReportBody,
+  CreateSupportRequestBody,
   ContactBlockState,
   ContactReportReceipt,
   CreateReviewBody,
@@ -12,7 +13,8 @@ import type {
   Notification,
   NotificationUnreadCount,
   PaginationQuery,
-  ReviewEligibility
+  ReviewEligibility,
+  SupportRequestReceipt
 } from "../../types/api";
 import type { ApiTransport } from "./transport";
 
@@ -20,6 +22,8 @@ export function createContactApi(transport: ApiTransport) {
   return {
     createInquiry: (body: CreateInquiryBody, signal?: AbortSignal): Promise<Inquiry> =>
       transport.object("/api/v1/inquiries", { method: "POST", json: body, signal }),
+    createSupportRequest: (body: CreateSupportRequestBody, signal?: AbortSignal): Promise<SupportRequestReceipt> =>
+      transport.object("/api/v1/support-requests", { method: "POST", json: body, signal }),
     listTenantInquiries: (query: PaginationQuery = {}, signal?: AbortSignal): Promise<ApiPage<Inquiry>> =>
       transport.page("/api/v1/tenant/inquiries", { query, signal }),
     listLandlordInquiries: (query: PaginationQuery = {}, signal?: AbortSignal): Promise<ApiPage<Inquiry>> =>

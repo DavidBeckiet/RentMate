@@ -3,6 +3,8 @@ import type {
   AdminLandlordVerification,
   AdminContactReport,
   AdminContactReportQuery,
+  AdminSupportRequest,
+  AdminSupportRequestQuery,
   AdminListingReview,
   AdminReviewReport,
   AdminReviewReportQuery,
@@ -22,6 +24,7 @@ import type {
   ReviewVerificationBody,
   UpdateReportStatusBody,
   UpdateContactReportStatusBody,
+  UpdateSupportRequestStatusBody,
   UserProfile,
   VerificationQuery
 } from "../../types/api";
@@ -82,6 +85,22 @@ export function createAdminApi(transport: ApiTransport) {
       signal?: AbortSignal
     ): Promise<AdminContactReport> =>
       transport.object(`/api/v1/admin/contact-reports/${reportId}/status`, { method: "PATCH", json: body, signal }),
+
+    listSupportRequests: (
+      query: AdminSupportRequestQuery = {},
+      signal?: AbortSignal
+    ): Promise<ApiPage<AdminSupportRequest>> => transport.page("/api/v1/admin/support-requests", { query, signal }),
+
+    updateSupportRequestStatus: (
+      supportRequestId: number,
+      body: UpdateSupportRequestStatusBody,
+      signal?: AbortSignal
+    ): Promise<AdminSupportRequest> =>
+      transport.object(`/api/v1/admin/support-requests/${supportRequestId}/status`, {
+        method: "PATCH",
+        json: body,
+        signal
+      }),
 
     listVerifications: (
       query: VerificationQuery = {},
