@@ -1,5 +1,6 @@
 import { queryMany, queryOptional } from "../../../../../shared/src/runtime/db/repository-primitives.js";
 import type { SqlExecutor } from "../../../../../shared/src/runtime/db/sql-executor.js";
+import type { ListingBusinessStatus } from "../../../../../shared/listing-business-status.js";
 import {
   createCurrentModerationReasonRepository,
   type CurrentModerationReasonRepository
@@ -22,6 +23,7 @@ import {
 export interface OwnerListingPageInput {
   readonly landlordId: number;
   readonly status: ListingStatus | null;
+  readonly businessStatus: ListingBusinessStatus | null;
   readonly limit: number;
   readonly offset: number;
 }
@@ -114,13 +116,17 @@ export function createOwnerListingReadRepository(executor: SqlExecutor): OwnerLi
                   $2::listing_status IS NULL
                   OR l.status = $2::listing_status
                 )
+                AND (
+                  $3::listing_business_status IS NULL
+                  OR l.business_status = $3::listing_business_status
+                )
               ORDER BY
                 l.updated_at DESC,
                 l.id DESC
-              LIMIT $3
-              OFFSET $4
+              LIMIT $4
+              OFFSET $5
             `,
-            values: [input.landlordId, input.status, input.limit, input.offset]
+            values: [input.landlordId, input.status, input.businessStatus, input.limit, input.offset]
           },
           mapOwnerListingSummaryRow
         )

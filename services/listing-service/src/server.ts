@@ -28,6 +28,7 @@ import { createListingBusinessStatusService } from "./modules/listings/services/
 import { createListingAvailabilityService } from "./modules/listings/services/listing-availability-service.js";
 import { createListingAvailabilityRepository } from "./modules/listings/repositories/listing-availability-repository.js";
 import { createListingAvailabilityScheduler } from "./modules/listings/services/listing-availability-scheduler.js";
+import { createListingDuplicateService } from "./modules/listings/services/listing-duplicate-service.js";
 import { createLookupRepository } from "./modules/listings/repositories/lookup-repository.js";
 import { createModerationActionService } from "./modules/listings/services/moderation-action-service.js";
 import { createOwnerListingReadRepository } from "./modules/listings/repositories/owner-listing-read-repository.js";
@@ -184,6 +185,7 @@ async function startListingService(): Promise<void> {
           logger
         }),
         listingAvailabilityService,
+        listingDuplicateService: createListingDuplicateService({ transactionRunner }),
         listingSubmitService: createListingSubmitService({ transactionRunner }),
         listingLifecycleActionService: createListingLifecycleActionService({
           transactionRunner,

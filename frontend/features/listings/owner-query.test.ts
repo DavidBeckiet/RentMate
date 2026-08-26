@@ -1,11 +1,13 @@
 import { describe, expect, it } from "vitest";
 import {
   ownerListingStatuses,
+  ownerBusinessStatuses,
   ownerListingsUrl,
   parseOwnerQuery,
   serializeOwnerQuery,
   toOwnedListingQuery,
   withOwnerPage,
+  withOwnerBusinessStatus,
   withOwnerStatus
 } from "./owner-query";
 
@@ -16,6 +18,12 @@ describe("owner-query", () => {
     if (parsed.ok) expect(serializeOwnerQuery(parsed.state).toString()).toBe(`status=${status}`);
   });
 
+  it.each(ownerBusinessStatuses)("parses and canonicalizes business status %s", (businessStatus) => {
+    const parsed = parseOwnerQuery(new URLSearchParams(`businessStatus=${businessStatus.toLowerCase()}`));
+    expect(parsed).toEqual({ ok: true, state: { businessStatus, page: 1 } });
+    if (parsed.ok) expect(serializeOwnerQuery(parsed.state).toString()).toBe(`businessStatus=${businessStatus}`);
+  });
+
   it("omits the all-status and default page while preserving pageSize", () => {
     const parsed = parseOwnerQuery(new URLSearchParams("pageSize=40&utm_source=test"));
     expect(parsed).toEqual({ ok: true, state: { page: 1, pageSize: 40 } });
@@ -24,35 +32,53 @@ describe("owner-query", () => {
     expect(toOwnedListingQuery(parsed.state)).toEqual({ page: 1, pageSize: 40 });
   });
 
-  it("serializes keys in stable status/page/pageSize order", () => {
-    expect(serializeOwnerQuery({ status: "APPROVED", page: 2, pageSize: 40 }).toString()).toBe(
-      "status=APPROVED&page=2&pageSize=40"
+  it("serializes keys in stable filter/page/pageSize order", () => {
+    expect(serializeOwnerQuery({ status: "APPROVED", businessStatus: "AVAILABLE", page: 2, pageSize: 40 }).toString()).toBe(
+      "status=APPROVED&businessStatus=AVAILABLE&page=2&pageSize=40"
     );
-    expect(withOwnerPage({ status: "APPROVED", page: 1, pageSize: 40 }, 3)).toEqual({
+    expect(withOwnerPage({ status: "APPROVED", businessStatus: "AVAILABLE", page: 1, pageSize: 40 }, 3)).toEqual({
       status: "APPROVED",
+      businessStatus: "AVAILABLE",
       page: 3,
       pageSize: 40
     });
   });
 
   it("resets page on status changes and preserves a valid pageSize", () => {
-    expect(withOwnerStatus({ status: "DRAFT", page: 4, pageSize: 40 }, "HIDDEN")).toEqual({
+    expect(withOwnerStatus({ status: "DRAFT", businessStatus: "RENTED", page: 4, pageSize: 40 }, "HIDDEN")).toEqual({
       status: "HIDDEN",
+      businessStatus: "RENTED",
       page: 1,
       pageSize: 40
     });
     expect(withOwnerStatus({ status: "DRAFT", page: 4 })).toEqual({ page: 1 });
   });
 
+  it("resets page on business status changes while preserving moderation status", () => {
+    expect(withOwnerBusinessStatus({ status: "APPROVED", page: 4, pageSize: 40 }, "PAUSED")).toEqual({
+      status: "APPROVED",
+      businessStatus: "PAUSED",
+      page: 1,
+      pageSize: 40
+    });
+    expect(toOwnedListingQuery({ status: "APPROVED", businessStatus: "RENTED", page: 2 })).toEqual({
+      status: "APPROVED",
+      businessStatus: "RENTED",
+      page: 2
+    });
+  });
+
   it.each([
     "status=ALL",
     "status=unknown",
+    "businessStatus=SOLD",
     "page=0",
     "page=-1",
     "page=abc",
     "pageSize=0",
     "pageSize=101",
     "status=DRAFT&status=PENDING",
+    "businessStatus=AVAILABLE&businessStatus=RENTED",
     "page=1&page=2",
     "pageSize=20&pageSize=40"
   ])("rejects malformed known query %s", (query) => {

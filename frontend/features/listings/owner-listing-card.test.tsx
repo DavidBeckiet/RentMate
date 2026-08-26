@@ -72,4 +72,14 @@ describe("OwnerListingCard", () => {
     render(<OwnerListingCard listing={listing({ status, currentModerationReason: "Lý do cũ" })} />);
     expect(screen.queryByText("Lý do cũ")).not.toBeInTheDocument();
   });
+
+  it("offers duplication outside the detail link and reports pending state", () => {
+    const onDuplicate = vi.fn();
+    render(<OwnerListingCard listing={listing()} onDuplicate={onDuplicate} duplicatePending />);
+
+    const duplicateButton = screen.getByRole("button", { name: "Đang nhân bản…" });
+    expect(duplicateButton).toBeDisabled();
+    expect(screen.getByText("Tạo tin mới từ nội dung này, ảnh sẽ không được sao chép.")).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: /Studio trung tâm/ })).toHaveAttribute("href", "/landlord/listings/42");
+  });
 });

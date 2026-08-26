@@ -53,6 +53,9 @@ export function createListingsApi(transport: ApiTransport) {
     createDraft: (body: ListingContentBody = {}, signal?: AbortSignal): Promise<OwnerListingDetail> =>
       transport.object("/api/v1/landlord/listings", { method: "POST", json: body, signal }),
 
+    duplicate: (listingId: number, signal?: AbortSignal): Promise<OwnerListingDetail> =>
+      transport.object(`/api/v1/landlord/listings/${listingId}/duplicate`, { method: "POST", signal }),
+
     listOwned: (query: OwnedListingQuery = {}, signal?: AbortSignal): Promise<ApiPage<OwnerListingSummary>> =>
       transport.page("/api/v1/landlord/listings", { query, signal }),
 

@@ -1,12 +1,14 @@
 import { throwValidationIssue } from "../../../../../shared/src/runtime/shared/validation/issues.js";
 import { parsePagination } from "../../../../../shared/src/runtime/shared/validation/parsing.js";
 import { readScalarQueryValue, validateQueryKeys } from "../../../../../shared/src/runtime/shared/validation/request.js";
+import { isListingBusinessStatus, type ListingBusinessStatus } from "../../../../../shared/listing-business-status.js";
 import { isListingStatus, type ListingStatus } from "../mappers/owner-listing-mapper.js";
 
-const collectionQueryKeys = ["status", "page", "pageSize"] as const;
+const collectionQueryKeys = ["status", "businessStatus", "page", "pageSize"] as const;
 
 export interface OwnerListingCollectionQuery {
   readonly status: ListingStatus | null;
+  readonly businessStatus: ListingBusinessStatus | null;
   readonly page: number;
   readonly pageSize: number;
   readonly offset: number;
@@ -26,9 +28,22 @@ function parseStatus(value: unknown): ListingStatus | null {
   return normalized;
 }
 
+function parseBusinessStatus(value: unknown): ListingBusinessStatus | null {
+  const scalar = readScalarQueryValue(value, "businessStatus");
+  if (scalar === undefined) return null;
+
+  const normalized = scalar.trim().toUpperCase();
+  if (!isListingBusinessStatus(normalized)) {
+    throwValidationIssue("businessStatus", "INVALID_VALUE", "businessStatus must be a valid business status.");
+  }
+
+  return normalized;
+}
+
 export function validateOwnerListingCollectionQuery(value: unknown): OwnerListingCollectionQuery {
   const query = validateQueryKeys(value, collectionQueryKeys);
   const status = parseStatus(query.status);
+  const businessStatus = parseBusinessStatus(query.businessStatus);
   const { page, pageSize } = parsePagination(query);
   const offset = (page - 1) * pageSize;
 
@@ -36,7 +51,7 @@ export function validateOwnerListingCollectionQuery(value: unknown): OwnerListin
     throwValidationIssue("page", "OUT_OF_RANGE", "page produces an offset outside the allowed range.");
   }
 
-  return Object.freeze({ status, page, pageSize, offset });
+  return Object.freeze({ status, businessStatus, page, pageSize, offset });
 }
 
 export function validateOwnerListingReadBody(value: unknown): void {

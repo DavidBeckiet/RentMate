@@ -277,6 +277,7 @@ export interface ListingBusinessStatusBody {
 
 export interface OwnedListingQuery extends PaginationQuery {
   readonly status?: ListingStatus;
+  readonly businessStatus?: ListingBusinessStatus;
 }
 
 export interface UploadImageInput {

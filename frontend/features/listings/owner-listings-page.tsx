@@ -9,15 +9,17 @@ import { SelectField } from "../../components/ui/form-controls";
 import { Pagination } from "../../components/ui/pagination";
 import { api, ApiError } from "../../lib/api/client";
 import { useAuth } from "../../lib/auth/auth-provider";
-import type { ApiPage, ListingStatus, OwnerListingSummary } from "../../types/api";
+import type { ApiPage, ListingBusinessStatus, ListingStatus, OwnerListingSummary } from "../../types/api";
 import { OwnerListingCard } from "./owner-listing-card";
 import {
   ownerListingStatuses,
+  ownerBusinessStatuses,
   ownerListingsUrl,
   parseOwnerQuery,
   serializeOwnerQuery,
   toOwnedListingQuery,
   withOwnerPage,
+  withOwnerBusinessStatus,
   withOwnerStatus
 } from "./owner-query";
 import styles from "./owner-listings-page.module.css";
@@ -31,6 +33,13 @@ const statusLabels: Record<ListingStatus, string> = {
   REJECTED: "Bị từ chối",
   HIDDEN: "Đã ẩn",
   INACTIVE: "Ngừng hoạt động"
+};
+
+const businessStatusLabels: Record<ListingBusinessStatus, string> = {
+  AVAILABLE: "Còn phòng",
+  PAUSED: "Tạm dừng",
+  RENTED: "Đã thuê",
+  UNKNOWN: "Chưa xác định"
 };
 
 function ownerListError(error: ApiError | null): string {
@@ -65,6 +74,8 @@ export function OwnerListingsPage() {
   const [retryKey, setRetryKey] = useState(0);
   const [createPending, setCreatePending] = useState(false);
   const [createFeedback, setCreateFeedback] = useState<string | null>(null);
+  const [duplicatePendingId, setDuplicatePendingId] = useState<number | null>(null);
+  const [duplicateFeedback, setDuplicateFeedback] = useState<string | null>(null);
   const requestIdentity = useRef(0);
   const authRefreshAttempted = useRef(false);
   const createPendingRef = useRef(false);
@@ -137,6 +148,39 @@ export function OwnerListingsPage() {
     }
   }, [refresh, router]);
 
+  const duplicateListing = useCallback(
+    async (listingId: number) => {
+      if (duplicatePendingId !== null) return;
+      setDuplicatePendingId(listingId);
+      setDuplicateFeedback(null);
+      const controller = new AbortController();
+      try {
+        const created = await api.listings.duplicate(listingId, controller.signal);
+        if (!controller.signal.aborted) router.push(`/landlord/listings/${created.id}`);
+      } catch (caught: unknown) {
+        if (controller.signal.aborted) return;
+        const error = caught instanceof ApiError ? caught : null;
+        if (error?.status === 401) {
+          setDuplicateFeedback("Phiên đăng nhập không còn hợp lệ. Vui lòng đăng nhập lại.");
+          await refresh().catch(() => undefined);
+        } else if (error?.status === 403) {
+          setDuplicateFeedback("Bạn không có quyền nhân bản tin này.");
+        } else if (error?.status === 404) {
+          setDuplicateFeedback("Tin đăng không còn tồn tại hoặc bạn không thể truy cập.");
+        } else if (error?.status === 409) {
+          setDuplicateFeedback("Tin đã thay đổi. Hãy tải lại danh sách rồi thử lại.");
+        } else if (error?.code === "NETWORK_ERROR") {
+          setDuplicateFeedback("Không thể xác nhận việc nhân bản. Hãy kiểm tra danh sách trước khi thử lại.");
+        } else {
+          setDuplicateFeedback("Không thể nhân bản tin lúc này. Vui lòng thử lại sau.");
+        }
+      } finally {
+        setDuplicatePendingId(null);
+      }
+    },
+    [duplicatePendingId, refresh, router]
+  );
+
   let content: ReactNode;
   if (authStatus === "loading") {
     content = <LoadingState message="Đang kiểm tra tài khoản…" />;
@@ -190,6 +234,25 @@ export function OwnerListingsPage() {
       />
     );
   } else if (result) {
+    const archivedListings = result.data.filter(
+      (listing) => listing.status === "INACTIVE" || listing.businessStatus === "RENTED"
+    );
+    const currentListings = result.data.filter(
+      (listing) => listing.status !== "INACTIVE" && listing.businessStatus !== "RENTED"
+    );
+    const renderCards = (listings: readonly OwnerListingSummary[]) => (
+      <div className="space-y-4" aria-label="Tin đăng của bạn">
+        {listings.map((listing) => (
+          <OwnerListingCard
+            key={listing.id}
+            listing={listing}
+            duplicatePending={duplicatePendingId === listing.id}
+            onDuplicate={() => void duplicateListing(listing.id)}
+          />
+        ))}
+      </div>
+    );
+
     content = (
       <div className="space-y-6">
         {result.data.some(
@@ -204,9 +267,13 @@ export function OwnerListingsPage() {
         ) : null}
         {result.data.length === 0 ? (
           <EmptyState
-            title={parsed.state.status === undefined ? "Bạn chưa có tin đăng." : "Không có tin ở trạng thái này."}
+            title={
+              parsed.state.status === undefined && parsed.state.businessStatus === undefined
+                ? "Bạn chưa có tin đăng."
+                : "Không có tin ở bộ lọc này."
+            }
             action={
-              parsed.state.status === undefined ? (
+              parsed.state.status === undefined && parsed.state.businessStatus === undefined ? (
                 <Button pending={createPending} pendingLabel="Đang tạo…" onClick={() => void createDraft()}>
                   Tạo tin mới
                 </Button>
@@ -214,11 +281,29 @@ export function OwnerListingsPage() {
             }
           />
         ) : (
-          <div className="space-y-4" aria-label="Tin đăng của bạn">
-            {result.data.map((listing) => (
-              <OwnerListingCard key={listing.id} listing={listing} />
-            ))}
-          </div>
+          <>
+            {currentListings.length > 0 ? (
+              <section aria-labelledby="current-owner-listings-heading" className="space-y-3">
+                <h2 id="current-owner-listings-heading" className="text-xl font-bold text-rent-ink">
+                  Tin đang quản lý
+                </h2>
+                {renderCards(currentListings)}
+              </section>
+            ) : null}
+            {archivedListings.length > 0 ? (
+              <section aria-labelledby="archived-owner-listings-heading" className="space-y-3">
+                <div>
+                  <h2 id="archived-owner-listings-heading" className="text-xl font-bold text-rent-ink">
+                    Tin cũ / đã lưu trữ
+                  </h2>
+                  <p className="text-sm text-rent-secondary">
+                    Tin đã thuê hoặc đã ngừng hoạt động được gom riêng để bạn dễ theo dõi và nhân bản khi cần.
+                  </p>
+                </div>
+                {renderCards(archivedListings)}
+              </section>
+            ) : null}
+          </>
         )}
 
         <Pagination
@@ -262,7 +347,7 @@ export function OwnerListingsPage() {
       </header>
 
       {isLandlord && parsed.ok ? (
-        <div className="max-w-xs border-2 border-heroDark-950 bg-rent-surface p-4 shadow-glass-sm">
+        <div className="grid max-w-2xl gap-4 border-2 border-heroDark-950 bg-rent-surface p-4 shadow-glass-sm sm:grid-cols-2">
           <SelectField
             id="owner-status-filter"
             name="status"
@@ -280,6 +365,24 @@ export function OwnerListingsPage() {
               </option>
             ))}
           </SelectField>
+          <SelectField
+            id="owner-business-status-filter"
+            name="businessStatus"
+            label="Tình trạng phòng"
+            value={committedState.businessStatus ?? ""}
+            onChange={(event) => {
+              const businessStatus =
+                event.target.value === "" ? undefined : (event.target.value as ListingBusinessStatus);
+              router.push(ownerListingsUrl(withOwnerBusinessStatus(committedState, businessStatus)));
+            }}
+          >
+            <option value="">Tất cả tình trạng</option>
+            {ownerBusinessStatuses.map((businessStatus) => (
+              <option key={businessStatus} value={businessStatus}>
+                {businessStatusLabels[businessStatus]}
+              </option>
+            ))}
+          </SelectField>
         </div>
       ) : null}
 
@@ -289,6 +392,14 @@ export function OwnerListingsPage() {
           className="border-2 border-heroDark-950 bg-rent-coral p-4 text-sm font-bold text-rent-ink shadow-glass-sm"
         >
           {createFeedback}
+        </p>
+      ) : null}
+      {duplicateFeedback ? (
+        <p
+          role="alert"
+          className="border-2 border-heroDark-950 bg-rent-coral p-4 text-sm font-bold text-rent-ink shadow-glass-sm"
+        >
+          {duplicateFeedback}
         </p>
       ) : null}
       {content}

@@ -1,9 +1,11 @@
-import type { ListingStatus, OwnedListingQuery } from "../../types/api";
+import type { ListingBusinessStatus, ListingStatus, OwnedListingQuery } from "../../types/api";
 
 export const ownerListingStatuses = ["DRAFT", "PENDING", "APPROVED", "REJECTED", "HIDDEN", "INACTIVE"] as const;
+export const ownerBusinessStatuses = ["AVAILABLE", "PAUSED", "RENTED", "UNKNOWN"] as const;
 
 export interface OwnerQueryState {
   readonly status?: ListingStatus;
+  readonly businessStatus?: ListingBusinessStatus;
   readonly page: number;
   readonly pageSize?: number;
 }
@@ -32,16 +34,28 @@ function listingStatus(value: string | undefined): ListingStatus | undefined {
   return ownerListingStatuses.includes(normalized as ListingStatus) ? (normalized as ListingStatus) : undefined;
 }
 
+function businessStatus(value: string | undefined): ListingBusinessStatus | undefined {
+  if (value === undefined) return undefined;
+  const normalized = value.trim().toUpperCase();
+  return ownerBusinessStatuses.includes(normalized as ListingBusinessStatus)
+    ? (normalized as ListingBusinessStatus)
+    : undefined;
+}
+
 export function parseOwnerQuery(parameters: URLSearchParams): ParsedOwnerQuery {
   try {
     const rawStatus = scalar(parameters, "status");
     const status = listingStatus(rawStatus);
     if (rawStatus !== undefined && status === undefined) throw new Error("invalid");
+    const rawBusinessStatus = scalar(parameters, "businessStatus");
+    const parsedBusinessStatus = businessStatus(rawBusinessStatus);
+    if (rawBusinessStatus !== undefined && parsedBusinessStatus === undefined) throw new Error("invalid");
     const pageSize = positiveInteger(scalar(parameters, "pageSize"), 100);
     return {
       ok: true,
       state: {
         ...(status === undefined ? {} : { status }),
+        ...(parsedBusinessStatus === undefined ? {} : { businessStatus: parsedBusinessStatus }),
         page: positiveInteger(scalar(parameters, "page")) ?? 1,
         ...(pageSize === undefined ? {} : { pageSize })
       }
@@ -54,6 +68,7 @@ export function parseOwnerQuery(parameters: URLSearchParams): ParsedOwnerQuery {
 export function serializeOwnerQuery(state: OwnerQueryState): URLSearchParams {
   const parameters = new URLSearchParams();
   if (state.status !== undefined) parameters.set("status", state.status);
+  if (state.businessStatus !== undefined) parameters.set("businessStatus", state.businessStatus);
   if (state.page > 1) parameters.set("page", String(state.page));
   if (state.pageSize !== undefined) parameters.set("pageSize", String(state.pageSize));
   return parameters;
@@ -67,6 +82,19 @@ export function ownerListingsUrl(state: OwnerQueryState): string {
 export function withOwnerStatus(state: OwnerQueryState, status?: ListingStatus): OwnerQueryState {
   return {
     ...(status === undefined ? {} : { status }),
+    ...(state.businessStatus === undefined ? {} : { businessStatus: state.businessStatus }),
+    page: 1,
+    ...(state.pageSize === undefined ? {} : { pageSize: state.pageSize })
+  };
+}
+
+export function withOwnerBusinessStatus(
+  state: OwnerQueryState,
+  businessStatusValue?: ListingBusinessStatus
+): OwnerQueryState {
+  return {
+    ...(state.status === undefined ? {} : { status: state.status }),
+    ...(businessStatusValue === undefined ? {} : { businessStatus: businessStatusValue }),
     page: 1,
     ...(state.pageSize === undefined ? {} : { pageSize: state.pageSize })
   };
@@ -79,6 +107,7 @@ export function withOwnerPage(state: OwnerQueryState, page: number): OwnerQueryS
 export function toOwnedListingQuery(state: OwnerQueryState): OwnedListingQuery {
   return {
     ...(state.status === undefined ? {} : { status: state.status }),
+    ...(state.businessStatus === undefined ? {} : { businessStatus: state.businessStatus }),
     page: state.page,
     ...(state.pageSize === undefined ? {} : { pageSize: state.pageSize })
   };

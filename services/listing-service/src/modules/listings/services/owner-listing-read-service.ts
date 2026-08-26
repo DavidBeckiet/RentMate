@@ -40,6 +40,7 @@ export function createOwnerListingReadService(repository: OwnerListingReadReposi
       const rows = await repository.findOwnerListingPage({
         landlordId: principal.userId,
         status: query.status,
+        businessStatus: query.businessStatus,
         limit: query.pageSize + 1,
         offset: query.offset
       });

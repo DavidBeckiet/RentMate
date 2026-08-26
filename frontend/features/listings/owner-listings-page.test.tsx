@@ -3,7 +3,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { AuthContextValue } from "../../lib/auth/auth-provider";
 import type { ApiPage, OwnerListingDetail, OwnerListingSummary, UserProfile } from "../../types/api";
 
-const apiMocks = vi.hoisted(() => ({ listOwned: vi.fn(), createDraft: vi.fn() }));
+const apiMocks = vi.hoisted(() => ({ listOwned: vi.fn(), createDraft: vi.fn(), duplicate: vi.fn() }));
 const navigationMocks = vi.hoisted(() => ({ query: "", push: vi.fn(), replace: vi.fn() }));
 const useAuthMock = vi.hoisted(() => vi.fn<() => AuthContextValue>());
 
@@ -17,8 +17,26 @@ vi.mock("../../lib/api/client", async () => {
 });
 vi.mock("../../lib/auth/auth-provider", () => ({ useAuth: useAuthMock }));
 vi.mock("./owner-listing-card", () => ({
-  OwnerListingCard: ({ listing }: { listing: OwnerListingSummary }) => (
-    <article>{listing.title ?? "Chưa có tiêu đề"}</article>
+  OwnerListingCard: ({
+    listing,
+    onDuplicate,
+    duplicatePending
+  }: {
+    listing: OwnerListingSummary;
+    onDuplicate?: () => void;
+    duplicatePending?: boolean;
+  }) => (
+    <article>
+      {listing.title ?? "Chưa có tiêu đề"}
+      {onDuplicate ? (
+        <button
+          type="button"
+          aria-label={duplicatePending ? "Đang nhân bản…" : "Nhân bản"}
+          disabled={duplicatePending}
+          onClick={onDuplicate}
+        />
+      ) : null}
+    </article>
   )
 }));
 
@@ -111,6 +129,7 @@ describe("OwnerListingsPage", () => {
   beforeEach(() => {
     apiMocks.listOwned.mockReset();
     apiMocks.createDraft.mockReset();
+    apiMocks.duplicate.mockReset();
     navigationMocks.query = "";
     navigationMocks.push.mockReset();
     navigationMocks.replace.mockReset();
@@ -160,6 +179,36 @@ describe("OwnerListingsPage", () => {
     expect(document.body).not.toHaveTextContent(/tổng|tổng cộng|trang cuối/i);
   });
 
+  it("passes both owner filters to the API and preserves them during navigation", async () => {
+    navigationMocks.query = "status=APPROVED&businessStatus=AVAILABLE&page=2&pageSize=40";
+    apiMocks.listOwned.mockResolvedValue(page([listing(2, "Tin còn phòng")], 2, false, 40));
+    render(<OwnerListingsPage />);
+    await screen.findByText("Tin còn phòng");
+
+    expect(apiMocks.listOwned).toHaveBeenCalledWith(
+      { status: "APPROVED", businessStatus: "AVAILABLE", page: 2, pageSize: 40 },
+      expect.any(AbortSignal)
+    );
+    fireEvent.change(screen.getByLabelText("Tình trạng phòng"), { target: { value: "RENTED" } });
+    expect(navigationMocks.push).toHaveBeenCalledWith(
+      "/landlord?status=APPROVED&businessStatus=RENTED&pageSize=40"
+    );
+  });
+
+  it("groups rented and inactive listings under the old-listings section", async () => {
+    apiMocks.listOwned.mockResolvedValue(
+      page([listing(1, "Tin còn phòng"), listing(2, "Tin đã thuê")].map((item, index) =>
+        index === 1 ? { ...item, businessStatus: "RENTED" as const } : item
+      ))
+    );
+    render(<OwnerListingsPage />);
+    await screen.findByText("Tin còn phòng");
+
+    expect(screen.getByRole("heading", { name: "Tin đang quản lý" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Tin cũ / đã lưu trữ" })).toBeInTheDocument();
+    expect(screen.getByText("Tin đã thuê")).toBeInTheDocument();
+  });
+
   it("rejects malformed known URL state locally and resets without V1-12", () => {
     navigationMocks.query = "page=1&page=2";
     render(<OwnerListingsPage />);
@@ -176,7 +225,7 @@ describe("OwnerListingsPage", () => {
 
     navigationMocks.query = "status=DRAFT&page=3&pageSize=40";
     view.rerender(<OwnerListingsPage />);
-    expect(await screen.findByText("Không có tin ở trạng thái này.")).toBeInTheDocument();
+    expect(await screen.findByText("Không có tin ở bộ lọc này.")).toBeInTheDocument();
     fireEvent.change(screen.getByLabelText("Trạng thái"), { target: { value: "APPROVED" } });
     expect(navigationMocks.push).toHaveBeenCalledWith("/landlord?status=APPROVED&pageSize=40");
   });
@@ -253,6 +302,32 @@ describe("OwnerListingsPage", () => {
     fireEvent.click(screen.getAllByRole("button", { name: "Tạo tin mới" })[0]);
     expect(await screen.findByRole("alert")).toHaveTextContent("Không thể xác nhận việc tạo bản nháp");
     expect(apiMocks.createDraft).toHaveBeenCalledOnce();
+    expect(navigationMocks.push).not.toHaveBeenCalled();
+  });
+
+  it("duplicates a listing once and navigates to the returned draft", async () => {
+    apiMocks.listOwned.mockResolvedValue(page([listing(42, "Tin gốc")]));
+    apiMocks.duplicate.mockResolvedValue(createdDraft());
+    render(<OwnerListingsPage />);
+    await screen.findByText("Tin gốc");
+
+    fireEvent.click(screen.getByRole("button", { name: "Nhân bản" }));
+    await waitFor(() => expect(apiMocks.duplicate).toHaveBeenCalledOnce());
+    expect(apiMocks.duplicate).toHaveBeenCalledWith(42, expect.any(AbortSignal));
+    expect(navigationMocks.push).toHaveBeenCalledWith("/landlord/listings/88");
+  });
+
+  it("does not retry an ambiguous duplicate result automatically", async () => {
+    apiMocks.listOwned.mockResolvedValue(page([listing(42, "Tin gốc")]));
+    apiMocks.duplicate.mockRejectedValue(
+      new ApiError({ status: null, code: "NETWORK_ERROR", message: "private", category: "network" })
+    );
+    render(<OwnerListingsPage />);
+    await screen.findByText("Tin gốc");
+
+    fireEvent.click(screen.getByRole("button", { name: "Nhân bản" }));
+    expect(await screen.findByRole("alert")).toHaveTextContent("Không thể xác nhận việc nhân bản");
+    expect(apiMocks.duplicate).toHaveBeenCalledOnce();
     expect(navigationMocks.push).not.toHaveBeenCalled();
   });
 });

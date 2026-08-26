@@ -12,7 +12,15 @@ function moderationReason(listing: OwnerListingSummary) {
   return null;
 }
 
-export function OwnerListingCard({ listing }: { readonly listing: OwnerListingSummary }) {
+export function OwnerListingCard({
+  listing,
+  onDuplicate,
+  duplicatePending = false
+}: {
+  readonly listing: OwnerListingSummary;
+  readonly onDuplicate?: () => void;
+  readonly duplicatePending?: boolean;
+}) {
   const title = listing.title ?? "Chưa có tiêu đề";
   const reason = moderationReason(listing);
 
@@ -59,6 +67,20 @@ export function OwnerListingCard({ listing }: { readonly listing: OwnerListingSu
           </div>
         </div>
       </Link>
+      {onDuplicate ? (
+        <div className="flex items-center justify-between gap-3 border-t-2 border-heroDark-950 bg-rent-surface-muted px-4 py-3 sm:px-5">
+          <p className="text-xs text-rent-subtle">Tạo tin mới từ nội dung này, ảnh sẽ không được sao chép.</p>
+          <button
+            type="button"
+            className="shrink-0 border-2 border-heroDark-950 bg-white px-3 py-2 text-sm font-bold text-rent-ink shadow-glass-sm transition-[background-color,box-shadow,transform] hover:-translate-x-0.5 hover:-translate-y-0.5 hover:bg-rent-accent hover:shadow-glass focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-700 disabled:cursor-not-allowed disabled:opacity-60"
+            disabled={duplicatePending}
+            aria-busy={duplicatePending || undefined}
+            onClick={onDuplicate}
+          >
+            {duplicatePending ? "Đang nhân bản…" : "Nhân bản"}
+          </button>
+        </div>
+      ) : null}
     </ListingCardShell>
   );
 }
