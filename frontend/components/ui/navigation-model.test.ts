@@ -13,6 +13,7 @@ describe("actor-aware navigation model", () => {
       "/",
       "/search",
       "/near-me",
+      "/recently-viewed",
       "/favorites",
       "/inquiries",
       "/notifications",

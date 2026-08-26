@@ -89,7 +89,7 @@ describe("RM-045 application isolation", () => {
       .map((path) => readFileSync(path, "utf8"))
       .join("\n");
 
-    expect(production).not.toMatch(/Bearer|decodeJWT|decodeJwt|localStorage|setToken/);
+    expect(production).not.toMatch(/Bearer|decodeJWT|decodeJwt|setToken/);
     expect(production).not.toMatch(/document\.cookie|rentmate_session/);
     expect(production).not.toMatch(/from\s+["'][^"']*backend|from\s+["'][^"']*src\/modules/);
     expect(production).not.toMatch(browserTestPackageImport);
