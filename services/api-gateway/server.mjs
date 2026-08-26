@@ -120,7 +120,9 @@ export function resolveUpstream(pathname, routes) {
       pathname.startsWith("/api/v1/analytics/listings/") ||
       pathname.startsWith("/api/v1/notifications") ||
       pathname.startsWith("/api/v1/admin/contact-reports") ||
+      pathname.startsWith("/api/v1/admin/support-requests") ||
       pathname.startsWith("/api/v1/admin/review-reports") ||
+      pathname.startsWith("/api/v1/support-requests") ||
       pathname.startsWith("/api/v1/saved-searches") ||
       pathname.startsWith("/api/v1/admin/reviews"))
   ) {

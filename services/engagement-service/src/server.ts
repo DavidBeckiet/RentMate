@@ -44,6 +44,9 @@ import { registerAnalyticsRoutes } from "./modules/analytics/routes.js";
 import { createListingNoteRepository } from "./modules/listing-notes/repositories/listing-note-repository.js";
 import { createListingNoteService } from "./modules/listing-notes/services/listing-note-service.js";
 import { registerListingNoteRoutes } from "./modules/listing-notes/routes.js";
+import { createSupportRepository } from "./modules/support/repositories/support-repository.js";
+import { createSupportService } from "./modules/support/services/support-service.js";
+import { registerSupportRoutes } from "./modules/support/routes.js";
 import {
   validateListingModerationNotificationBody,
   validateListingPublishedNotificationBody,
@@ -174,6 +177,13 @@ async function startEngagementService(): Promise<void> {
       run: (operation) => withTransaction(databasePool, logger, operation)
     }
   });
+  const supportService = createSupportService({
+    repository: createSupportRepository(),
+    identityAccountClient,
+    transactionRunner: {
+      run: (operation) => withTransaction(databasePool, logger, operation)
+    }
+  });
   const app = createApp({
     frontendOrigin: config.frontendOrigin,
     logger,
@@ -223,6 +233,11 @@ async function startEngagementService(): Promise<void> {
         authenticationMiddleware: requiredAuthentication,
         tenantRoleMiddleware: tenantRole,
         service: listingNoteService
+      });
+      registerSupportRoutes(router, {
+        authenticationMiddleware: requiredAuthentication,
+        adminRoleMiddleware: adminRole,
+        service: supportService
       });
     },
     registerInternalRoutes: (internalApp) => {
