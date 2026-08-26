@@ -47,6 +47,8 @@ const listing = (id: number, title: string): AdminListingSummary => ({
   title,
   areaName: "Quận 1",
   landlord: { id: 9, email: "owner@example.com", phone: "+8490", isActive: true },
+  openReportCount: 0,
+  possibleDuplicate: false,
   updatedAt: "2026-08-01T00:00:00Z"
 });
 const page = (data: readonly AdminListingSummary[], current = 1): ApiPage<AdminListingSummary> => ({

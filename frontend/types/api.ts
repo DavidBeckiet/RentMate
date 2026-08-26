@@ -139,6 +139,8 @@ export interface AdminListingSummary {
   readonly title: string | null;
   readonly areaName: string | null;
   readonly landlord: AdminListingLandlord;
+  readonly openReportCount: number;
+  readonly possibleDuplicate: boolean;
   readonly updatedAt: string;
 }
 

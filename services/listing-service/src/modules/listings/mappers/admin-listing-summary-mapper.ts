@@ -17,6 +17,8 @@ export interface AdminListingSummaryRow extends QueryResultRow {
   readonly landlord_email: unknown;
   readonly landlord_phone: unknown;
   readonly landlord_is_active: unknown;
+  readonly open_report_count: unknown;
+  readonly possible_duplicate: unknown;
   readonly updated_at: unknown;
 }
 
@@ -34,6 +36,8 @@ export interface AdminListingSummary {
   readonly title: string | null;
   readonly areaName: string | null;
   readonly landlord: AdminListingSummaryLandlord;
+  readonly openReportCount: number;
+  readonly possibleDuplicate: boolean;
   readonly updatedAt: Date;
 }
 
@@ -44,6 +48,8 @@ export interface AdminListingSummaryDto {
   readonly title: string | null;
   readonly areaName: string | null;
   readonly landlord: AdminListingSummaryLandlord;
+  readonly openReportCount: number;
+  readonly possibleDuplicate: boolean;
   readonly updatedAt: string;
 }
 
@@ -70,6 +76,10 @@ function isLandlordPhone(value: unknown): value is string {
   return typeof value === "string" && e164Pattern.test(value);
 }
 
+function isNonNegativeInteger(value: unknown): value is number {
+  return Number.isSafeInteger(value) && (value as number) >= 0;
+}
+
 function copyLandlord(landlord: Readonly<AdminListingSummaryLandlord>): AdminListingSummaryLandlord {
   if (
     !isPositiveIntegerId(landlord.id) ||
@@ -92,7 +102,9 @@ export function mapAdminListingSummaryRow(row: Readonly<AdminListingSummaryRow>)
     !isPositiveIntegerId(row.landlord_id) ||
     !isNormalizedEmail(row.landlord_email) ||
     !isLandlordPhone(row.landlord_phone) ||
-    typeof row.landlord_is_active !== "boolean"
+    typeof row.landlord_is_active !== "boolean" ||
+    !isNonNegativeInteger(row.open_report_count) ||
+    typeof row.possible_duplicate !== "boolean"
   ) {
     throw new AdminListingSummaryMappingError();
   }
@@ -110,6 +122,8 @@ export function mapAdminListingSummaryRow(row: Readonly<AdminListingSummaryRow>)
         phone: row.landlord_phone,
         isActive: row.landlord_is_active
       }),
+      openReportCount: row.open_report_count,
+      possibleDuplicate: row.possible_duplicate,
       updatedAt: mapPgTimestamptz(row.updated_at, "updated_at")
     });
   } catch {
@@ -121,8 +135,11 @@ export function mapAdminListingSummaryToDto(summary: Readonly<AdminListingSummar
   if (
     !isPositiveIntegerId(summary.id) ||
     !isListingStatus(summary.status) ||
+    !isListingBusinessStatus(summary.businessStatus) ||
     !isNullableString(summary.title) ||
-    !isNullableString(summary.areaName)
+    !isNullableString(summary.areaName) ||
+    !isNonNegativeInteger(summary.openReportCount) ||
+    typeof summary.possibleDuplicate !== "boolean"
   ) {
     throw new AdminListingSummaryMappingError();
   }
@@ -134,6 +151,8 @@ export function mapAdminListingSummaryToDto(summary: Readonly<AdminListingSummar
       title: summary.title,
       areaName: summary.areaName,
       landlord: copyLandlord(summary.landlord),
+      openReportCount: summary.openReportCount,
+      possibleDuplicate: summary.possibleDuplicate,
       updatedAt: formatApiTimestamp(summary.updatedAt)
     });
   } catch {

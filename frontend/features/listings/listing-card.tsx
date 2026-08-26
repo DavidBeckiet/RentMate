@@ -6,6 +6,7 @@ import { ComparisonToggle } from "../comparison/comparison-toggle";
 import { BusinessStatusBadge } from "../../components/ui/status-badge";
 import type { PublicListingSummary } from "../../types/api";
 import { formatAreaSqm, formatDistanceKm, formatVnd } from "./format";
+import { ListingFreshnessLabel } from "./listing-freshness";
 import styles from "./listing-card.module.css";
 
 export interface ListingCardProps {
@@ -104,6 +105,7 @@ export function ListingCard({ listing, showFavorite = true, href, variant = "def
                 {amenity.label}
               </span>
             ))}
+            <ListingFreshnessLabel updatedAt={listing.updatedAt} />
           </div>
         </div>
       </Link>

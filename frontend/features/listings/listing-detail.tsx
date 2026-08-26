@@ -19,6 +19,7 @@ import { ListingReviews } from "../reviews/listing-reviews";
 import { ReportListingControl } from "../reports/report-listing-control";
 import { formatAreaSqm } from "./format";
 import { ListingAmenityChips, ListingPrice } from "./listing-presentation";
+import { ListingFreshnessLabel } from "./listing-freshness";
 import { rememberRecentListing } from "./recently-viewed-storage";
 import { SimilarListings } from "./similar-listings";
 import styles from "./listing-detail.module.css";
@@ -298,6 +299,9 @@ export function ListingDetail({ listingId, actions }: ListingDetailProps) {
             <p className={styles.summaryMeta}>
               <Icon name="pin" className="h-5 w-5 shrink-0" />
               <span>{detail.areaName}</span>
+            </p>
+            <p className="text-sm font-semibold text-rent-secondary">
+              <ListingFreshnessLabel updatedAt={detail.updatedAt} />
             </p>
             <div className={styles.factCard} aria-label="Thông tin chính">
               <div className={styles.fact}>

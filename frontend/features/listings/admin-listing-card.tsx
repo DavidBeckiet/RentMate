@@ -2,10 +2,14 @@ import Link from "next/link";
 import { AccountStatusBadge, BusinessStatusBadge, ListingStatusBadge } from "../../components/ui/status-badge";
 import type { AdminListingSummary } from "../../types/api";
 import { ListingMetadata } from "./listing-presentation";
+import { getListingFreshness, ListingFreshnessLabel } from "./listing-freshness";
 
 const dateFormatter = new Intl.DateTimeFormat("vi-VN", { dateStyle: "medium", timeStyle: "short" });
 
 export function AdminListingCard({ listing }: { readonly listing: AdminListingSummary }) {
+  const freshness = getListingFreshness(listing.updatedAt);
+  const hasTrustSignals = freshness.isStale || listing.openReportCount > 0 || listing.possibleDuplicate;
+
   return (
     <article className="rm-admin-row">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
@@ -31,9 +35,21 @@ export function AdminListingCard({ listing }: { readonly listing: AdminListingSu
           <div className="flex flex-wrap items-center gap-3">
             <AccountStatusBadge isActive={listing.landlord.isActive} />
             <span className="text-xs text-rent-subtle">
-              Cập nhật {dateFormatter.format(new Date(listing.updatedAt))}
+              <ListingFreshnessLabel updatedAt={listing.updatedAt} /> · {dateFormatter.format(new Date(listing.updatedAt))}
             </span>
           </div>
+          {hasTrustSignals ? (
+            <div className="border-2 border-amber-900 bg-amber-50 p-3 text-sm text-amber-950" role="note">
+              <p className="font-bold">Cần kiểm tra bổ sung</p>
+              <ul className="mt-1 list-disc pl-5">
+                {freshness.isStale ? <li>Tin đã lâu chưa cập nhật.</li> : null}
+                {listing.openReportCount > 0 ? (
+                  <li>{listing.openReportCount} báo cáo đang chờ xử lý.</li>
+                ) : null}
+                {listing.possibleDuplicate ? <li>Có tin khác cùng tiêu đề, cần kiểm tra khả năng trùng lặp.</li> : null}
+              </ul>
+            </div>
+          ) : null}
         </div>
         <Link
           href={`/admin/listings/${listing.id}`}
