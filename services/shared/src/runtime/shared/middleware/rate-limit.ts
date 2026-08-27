@@ -104,7 +104,7 @@ export function createRateLimitMiddleware(options: RateLimitMiddlewareOptions): 
   const store = options.store ?? new InMemoryRateLimitStore();
   const clock = options.clock ?? Date.now;
 
-  return (request, _response, next): void => {
+  return (request, response, next): void => {
     void Promise.resolve()
       .then(async () => {
         const resolvedKey = await options.resolveKey(request);
@@ -120,6 +120,7 @@ export function createRateLimitMiddleware(options: RateLimitMiddlewareOptions): 
         });
 
         if (!result.allowed) {
+          response.setHeader("Retry-After", String(Math.max(1, Math.ceil(policy.windowMs / 1_000))));
           throw new ApplicationError("RATE_LIMITED", rateLimitedMessage);
         }
       })

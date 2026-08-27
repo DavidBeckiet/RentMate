@@ -47,6 +47,10 @@ import { registerListingNoteRoutes } from "./modules/listing-notes/routes.js";
 import { createSupportRepository } from "./modules/support/repositories/support-repository.js";
 import { createSupportService } from "./modules/support/services/support-service.js";
 import { registerSupportRoutes } from "./modules/support/routes.js";
+import { createRoommateRepository } from "./modules/roommate/repositories/roommate-repository.js";
+import { createRoommateService } from "./modules/roommate/services/roommate-service.js";
+import { createRoommateExpirationScheduler } from "./modules/roommate/services/roommate-expiration-scheduler.js";
+import { registerRoommateRoutes } from "./modules/roommate/routes.js";
 import {
   validateListingModerationNotificationBody,
   validateListingPublishedNotificationBody,
@@ -184,6 +188,22 @@ async function startEngagementService(): Promise<void> {
       run: (operation) => withTransaction(databasePool, logger, operation)
     }
   });
+  const roommateRepository = createRoommateRepository();
+  const roommateService = createRoommateService({
+    repository: roommateRepository,
+    identityAccountClient,
+    listingCatalogClient,
+    transactionRunner: {
+      run: (operation) => withTransaction(databasePool, logger, operation)
+    }
+  });
+  const roommateExpirationScheduler = createRoommateExpirationScheduler({
+    repository: roommateRepository,
+    transactionRunner: {
+      run: (operation) => withTransaction(databasePool, logger, operation)
+    },
+    logger
+  });
   const app = createApp({
     frontendOrigin: config.frontendOrigin,
     logger,
@@ -238,6 +258,11 @@ async function startEngagementService(): Promise<void> {
         authenticationMiddleware: requiredAuthentication,
         adminRoleMiddleware: adminRole,
         service: supportService
+      });
+      registerRoommateRoutes(router, {
+        authenticationMiddleware: requiredAuthentication,
+        tenantRoleMiddleware: tenantRole,
+        service: roommateService
       });
     },
     registerInternalRoutes: (internalApp) => {
@@ -306,11 +331,13 @@ async function startEngagementService(): Promise<void> {
   }
 
   leadReminderScheduler.start();
+  roommateExpirationScheduler.start();
   logger.info("Engagement service started", { nodeEnvironment: config.nodeEnv, port: config.port });
   const shutdown = createShutdownHandler({
     server,
     closeDatabase: async () => {
       leadReminderScheduler.stop();
+      roommateExpirationScheduler.stop();
       await closeRuntimePool();
     },
     logger

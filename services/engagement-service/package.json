@@ -10,6 +10,7 @@
     "start": "tsx src/server.ts",
     "test": "node --import tsx --test test/*.test.ts",
     "test:roommate-foundation:database": "node --import tsx --test test/roommate-foundation-schema.database.ts",
+    "test:roommate:database": "node --import tsx --test test/roommate-lifecycle.database.ts",
     "migrate": "tsx migrate.ts",
     "backfill": "tsx backfill.ts"
   },

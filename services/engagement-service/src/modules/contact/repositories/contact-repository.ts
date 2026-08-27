@@ -19,7 +19,15 @@ export type NotificationEventType =
   | "LISTING_REJECTED"
   | "LISTING_HIDDEN"
   | "SAVED_SEARCH_MATCHED"
-  | "LISTING_AVAILABILITY_REMINDER";
+  | "LISTING_AVAILABILITY_REMINDER"
+  | "ROOMMATE_INTEREST_RECEIVED"
+  | "ROOMMATE_INTEREST_ACCEPTED"
+  | "ROOMMATE_INTEREST_REJECTED"
+  | "ROOMMATE_INTEREST_WITHDRAWN"
+  | "ROOMMATE_MESSAGE_RECEIVED"
+  | "ROOMMATE_CONNECTION_LEFT"
+  | "ROOMMATE_REQUEST_EXPIRING"
+  | "ROOMMATE_REQUEST_EXPIRED";
 
 export type ListingModerationNotificationEvent = "LISTING_APPROVED" | "LISTING_REJECTED" | "LISTING_HIDDEN";
 
@@ -49,6 +57,8 @@ export interface Notification {
   readonly eventType: NotificationEventType;
   readonly inquiryId: number | null;
   readonly listingId: number | null;
+  readonly roommateRequestId?: number | null;
+  readonly roommateInterestId?: number | null;
   readonly resourcePath: string;
   readonly isRead: boolean;
   readonly createdAt: string;
@@ -80,6 +90,8 @@ interface NotificationRow extends QueryResultRow {
   event_type: unknown;
   inquiry_id: unknown;
   listing_id: unknown;
+  roommate_request_id: unknown;
+  roommate_interest_id: unknown;
   resource_path: unknown;
   is_read: unknown;
   created_at: unknown;
@@ -151,12 +163,35 @@ function mapNotification(row: Readonly<NotificationRow>): Notification {
     "SAVED_SEARCH_MATCHED",
     "LISTING_AVAILABILITY_REMINDER"
   ].includes(eventType);
+  const interestEvent = [
+    "ROOMMATE_INTEREST_RECEIVED",
+    "ROOMMATE_INTEREST_ACCEPTED",
+    "ROOMMATE_INTEREST_REJECTED",
+    "ROOMMATE_INTEREST_WITHDRAWN",
+    "ROOMMATE_MESSAGE_RECEIVED",
+    "ROOMMATE_CONNECTION_LEFT"
+  ].includes(eventType);
+  const requestEvent = ["ROOMMATE_REQUEST_EXPIRING", "ROOMMATE_REQUEST_EXPIRED"].includes(eventType);
   const inquiryId = row.inquiry_id === null ? null : positiveInteger(row.inquiry_id, "notification.inquiry_id");
   const listingId = row.listing_id === null ? null : positiveInteger(row.listing_id, "notification.listing_id");
+  const roommateRequestId =
+    row.roommate_request_id == null
+      ? null
+      : positiveInteger(row.roommate_request_id, "notification.roommate_request_id");
+  const roommateInterestId =
+    row.roommate_interest_id == null
+      ? null
+      : positiveInteger(row.roommate_interest_id, "notification.roommate_interest_id");
   if (
-    (!inquiryEvent && !listingEvent) ||
-    (inquiryEvent && (inquiryId === null || listingId !== null)) ||
-    (listingEvent && (listingId === null || inquiryId !== null)) ||
+    (!inquiryEvent && !listingEvent && !interestEvent && !requestEvent) ||
+    (inquiryEvent &&
+      (inquiryId === null || listingId !== null || roommateRequestId !== null || roommateInterestId !== null)) ||
+    (listingEvent &&
+      (listingId === null || inquiryId !== null || roommateRequestId !== null || roommateInterestId !== null)) ||
+    (interestEvent &&
+      (roommateInterestId === null || inquiryId !== null || listingId !== null || roommateRequestId !== null)) ||
+    (requestEvent &&
+      (roommateRequestId === null || inquiryId !== null || listingId !== null || roommateInterestId !== null)) ||
     typeof row.resource_path !== "string" ||
     typeof row.is_read !== "boolean"
   ) {
@@ -167,6 +202,8 @@ function mapNotification(row: Readonly<NotificationRow>): Notification {
     eventType: eventType as Notification["eventType"],
     inquiryId,
     listingId,
+    ...(roommateRequestId === null ? {} : { roommateRequestId }),
+    ...(roommateInterestId === null ? {} : { roommateInterestId }),
     resourcePath: row.resource_path,
     isRead: row.is_read,
     createdAt: timestamp(row.created_at, "notification.created_at")
@@ -380,7 +417,7 @@ export function createContactRepository(): ContactRepository {
           text: `
           INSERT INTO notifications (recipient_id, event_type, inquiry_id, resource_path)
           VALUES ($1, $2, $3, $4)
-          RETURNING id, event_type, inquiry_id, listing_id, resource_path, is_read, created_at
+          RETURNING id, event_type, inquiry_id, listing_id, roommate_request_id, roommate_interest_id, resource_path, is_read, created_at
         `,
           values: [input.recipientId, input.eventType, input.inquiryId, `/inquiries/${input.inquiryId}`]
         },
@@ -421,7 +458,7 @@ export function createContactRepository(): ContactRepository {
         executor,
         {
           text: `
-          SELECT id, event_type, inquiry_id, listing_id, resource_path, is_read, created_at
+          SELECT id, event_type, inquiry_id, listing_id, roommate_request_id, roommate_interest_id, resource_path, is_read, created_at
           FROM notifications
           WHERE recipient_id = $1
           ORDER BY created_at DESC, id DESC
