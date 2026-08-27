@@ -17,9 +17,18 @@ import type {
   SmokingEnvironment,
   PetEnvironment
 } from "../validations/roommate-validation.js";
+import type {
+  CreateRoommateInterestInput,
+  RoommateInterestCollectionQuery,
+  RoommateInterestDirection,
+  RoommateInterestPageQuery,
+  RoommateInterestStatus
+} from "../validations/roommate-interest-validation.js";
 import { roommateBusinessDate, validateRoommateRequestContent } from "../validations/roommate-validation.js";
+import { validateCreateRoommateInterestBody } from "../validations/roommate-interest-validation.js";
 import type {
   RoommateDiscoveryCandidate,
+  RoommateInterestRecord,
   RoommateProfileRecord,
   RoommateRepository,
   RoommateRequestRecord
@@ -73,6 +82,35 @@ export interface RoommatePage<Value> {
   readonly hasNextPage: boolean;
 }
 
+export interface RoommateInterestMessageView {
+  readonly id: number;
+  readonly body: string;
+  readonly createdAt: string;
+  readonly isRead: boolean;
+}
+
+export interface RoommateInterestView {
+  readonly id: number;
+  readonly requestId: number;
+  readonly direction: RoommateInterestDirection;
+  readonly status: RoommateInterestStatus;
+  readonly acceptedAt: string | null;
+  readonly endedAt: string | null;
+  readonly createdAt: string;
+  readonly updatedAt: string;
+  readonly request: RoommateRequestView;
+  readonly counterpart: RoommateProfileView | null;
+  readonly initialMessage: RoommateInterestMessageView | null;
+}
+
+export interface RoommateConnectionView {
+  readonly interestId: number;
+  readonly requestId: number;
+  readonly connectedAt: string;
+  readonly counterpart: RoommateProfileView | null;
+  readonly request: RoommateRequestView;
+}
+
 export interface RoommateTransactionRunner {
   readonly run: <Value>(operation: (executor: SqlExecutor) => Promise<Value>) => Promise<Value>;
 }
@@ -114,6 +152,26 @@ export interface RoommateService {
     listingId: number
   ) => Promise<RoommateRequestView>;
   readonly unlinkListing: (principal: AuthenticatedPrincipal, requestId: number) => Promise<RoommateRequestView>;
+  readonly createInterest: (
+    principal: AuthenticatedPrincipal,
+    requestId: number,
+    input: CreateRoommateInterestInput
+  ) => Promise<RoommateInterestView>;
+  readonly listIncomingInterests: (
+    principal: AuthenticatedPrincipal,
+    requestId: number,
+    query: RoommateInterestPageQuery
+  ) => Promise<RoommatePage<RoommateInterestView>>;
+  readonly listInterests: (
+    principal: AuthenticatedPrincipal,
+    query: RoommateInterestCollectionQuery
+  ) => Promise<RoommatePage<RoommateInterestView>>;
+  readonly getInterest: (principal: AuthenticatedPrincipal, interestId: number) => Promise<RoommateInterestView>;
+  readonly acceptInterest: (principal: AuthenticatedPrincipal, interestId: number) => Promise<RoommateInterestView>;
+  readonly rejectInterest: (principal: AuthenticatedPrincipal, interestId: number) => Promise<RoommateInterestView>;
+  readonly withdrawInterest: (principal: AuthenticatedPrincipal, interestId: number) => Promise<RoommateInterestView>;
+  readonly leaveInterest: (principal: AuthenticatedPrincipal, interestId: number) => Promise<RoommateInterestView>;
+  readonly getCurrentConnection: (principal: AuthenticatedPrincipal) => Promise<RoommateConnectionView>;
 }
 
 interface RoommateDependencies {
@@ -148,9 +206,12 @@ function roommateError(
   code:
     | "ROOMMATE_OPEN_REQUEST_EXISTS"
     | "ROOMMATE_ACTIVE_CONNECTION_EXISTS"
+    | "ROOMMATE_CANDIDATE_OPEN_REQUEST"
     | "ROOMMATE_REQUEST_NOT_OPEN"
     | "ROOMMATE_REQUEST_EXPIRED"
-    | "ROOMMATE_LISTING_INELIGIBLE",
+    | "ROOMMATE_INTEREST_NOT_PENDING"
+    | "ROOMMATE_LISTING_INELIGIBLE"
+    | "ROOMMATE_PENDING_INTEREST_LIMIT",
   message: string
 ): ApplicationError {
   return new ApplicationError(code, message);
@@ -238,6 +299,25 @@ function sameContent(
     left.moveInUntil === right.moveInUntil &&
     left.note === right.note
   );
+}
+
+interface RoommateInterestExpiryOutcome {
+  readonly kind: "REQUEST_EXPIRED";
+}
+
+interface RoommateInterestCreatedOutcome {
+  readonly kind: "CREATED";
+  readonly interest: RoommateInterestRecord;
+}
+
+interface RoommateInterestTransitionOutcome {
+  readonly kind: "UPDATED";
+  readonly interest: RoommateInterestRecord;
+}
+
+interface RoommateInterestAcceptedOutcome {
+  readonly kind: "ACCEPTED";
+  readonly interest: RoommateInterestRecord;
 }
 
 function matchesLocalDiscoveryFilters(candidate: RoommateDiscoveryCandidate, query: RoommateDiscoveryQuery): boolean {
@@ -331,7 +411,7 @@ export function createRoommateService(dependencies: RoommateDependencies): Roomm
       records.map((record) => {
         const profile = profiles.get(record.ownerTenantId);
         const identity = publicIdentity(identities, record.ownerTenantId);
-        const validIdentity = validateProjection(identity, record.ownerTenantId, false) ? identity : null;
+        const validIdentity = validateProjection(identity, record.ownerTenantId) ? identity : null;
         const visibleProfile =
           profile && profileComplete(profile) && validIdentity ? publicProfile(profile, validIdentity) : null;
         const listing = record.listingId === null ? null : (listings.get(record.listingId) ?? null);
@@ -362,6 +442,72 @@ export function createRoommateService(dependencies: RoommateDependencies): Roomm
     );
   };
 
+  const decorateInterests = async (
+    records: readonly RoommateInterestRecord[],
+    callerTenantId: number
+  ): Promise<readonly RoommateInterestView[]> => {
+    if (records.length === 0) return Object.freeze([]);
+    const tenantIds = [
+      ...new Set(records.flatMap((record) => [record.requestOwnerTenantId, record.interestedTenantId]))
+    ];
+    const profiles = await transactionRunner.run((executor) => repository.findProfiles(executor, tenantIds));
+    const identities = await loadIdentity(tenantIds);
+    const profileByTenant = new Map(profiles.map((profile) => [profile.tenantId, profile] as const));
+    const listings = await loadListingMap([
+      ...new Set(records.flatMap((record) => (record.request.listingId === null ? [] : [record.request.listingId])))
+    ]);
+    const requestViews = await decorate(
+      records.map((record) => record.request),
+      new Map(
+        records
+          .map((record) => [record.request.ownerTenantId, profileByTenant.get(record.request.ownerTenantId)] as const)
+          .filter((entry): entry is readonly [number, RoommateProfileRecord] => entry[1] !== undefined)
+      ),
+      identities,
+      listings
+    );
+    const requestById = new Map(requestViews.map((view) => [view.id, view] as const));
+    return Object.freeze(
+      records.map((record) => {
+        const request = requestById.get(record.requestId);
+        if (!request) throw new Error("Roommate interest request could not be decorated.");
+        const counterpartTenantId =
+          record.requestOwnerTenantId === callerTenantId ? record.interestedTenantId : record.requestOwnerTenantId;
+        const counterpartProfile = profileByTenant.get(counterpartTenantId) ?? null;
+        const counterpartIdentity = publicIdentity(identities, counterpartTenantId);
+        const counterpart =
+          counterpartProfile && validateProjection(counterpartIdentity, counterpartTenantId)
+            ? profileComplete(counterpartProfile)
+              ? publicProfile(counterpartProfile, counterpartIdentity)
+              : null
+            : null;
+        const message = record.firstMessage;
+        const initialMessage =
+          message === null
+            ? null
+            : Object.freeze({
+                id: message.id,
+                body: message.moderationState === "VISIBLE" ? message.body : "This message is no longer available.",
+                createdAt: message.createdAt,
+                isRead: message.senderTenantId === callerTenantId || message.readAt !== null
+              });
+        return Object.freeze({
+          id: record.id,
+          requestId: record.requestId,
+          direction: record.requestOwnerTenantId === callerTenantId ? ("INCOMING" as const) : ("OUTGOING" as const),
+          status: record.status,
+          acceptedAt: record.acceptedAt,
+          endedAt: record.endedAt,
+          createdAt: record.createdAt,
+          updatedAt: record.updatedAt,
+          request,
+          counterpart,
+          initialMessage
+        });
+      })
+    );
+  };
+
   const expireIfNeeded = async (
     executor: SqlExecutor,
     request: RoommateRequestRecord
@@ -376,6 +522,44 @@ export function createRoommateService(dependencies: RoommateDependencies): Roomm
     const profile = await repository.findProfile(executor, tenantId, true);
     if (!profileComplete(profile)) throw validationProfileIncomplete();
     return profile;
+  };
+
+  const lockTenants = async (executor: SqlExecutor, tenantIds: readonly number[]): Promise<void> => {
+    for (const tenantId of [...new Set(tenantIds)].sort((left, right) => left - right)) {
+      await repository.lockTenant(executor, tenantId);
+    }
+  };
+
+  const requireParticipantInterest = async (
+    executor: SqlExecutor,
+    interestId: number,
+    tenantId: number,
+    forUpdate = false
+  ): Promise<RoommateInterestRecord> => {
+    const interest = await repository.findInterestById(executor, interestId, forUpdate);
+    if (!interest) throw new ApplicationError("RESOURCE_NOT_FOUND", notFoundMessage);
+    if (interest.requestOwnerTenantId !== tenantId && interest.interestedTenantId !== tenantId) {
+      throw new ApplicationError("RESOURCE_NOT_FOUND", notFoundMessage);
+    }
+    if (await repository.isPairBlocked(executor, interest.requestOwnerTenantId, interest.interestedTenantId)) {
+      throw new ApplicationError("RESOURCE_NOT_FOUND", notFoundMessage);
+    }
+    return interest;
+  };
+
+  const activeProjectionMap = async (
+    tenantIds: readonly number[]
+  ): Promise<ReadonlyMap<number, IdentityRoommateTenantProjection>> => {
+    const projections = await loadIdentity(tenantIds);
+    const result = new Map<number, IdentityRoommateTenantProjection>();
+    for (const tenantId of tenantIds) {
+      const projection = publicIdentity(projections, tenantId);
+      if (!validateProjection(projection, tenantId, true)) {
+        throw new ApplicationError("CONCURRENT_MODIFICATION", "The roommate participants are no longer eligible.");
+      }
+      result.set(tenantId, projection);
+    }
+    return result;
   };
 
   const prepareOwnerRequest = async (
@@ -693,6 +877,392 @@ export function createRoommateService(dependencies: RoommateDependencies): Roomm
       const [view] = await decorate([unlinked], profile ? new Map([[tenantId, profile]]) : undefined);
       if (!view) throw new Error("Unlinked roommate request could not be decorated.");
       return view;
+    },
+
+    async createInterest(principal, requestId, input) {
+      const tenantId = requireTenant(principal);
+      const normalizedInput = validateCreateRoommateInterestBody(input);
+      let created: RoommateInterestRecord;
+      try {
+        const outcome = await transactionRunner.run<RoommateInterestCreatedOutcome | RoommateInterestExpiryOutcome>(
+          async (executor) => {
+            const initialRequest = await repository.findRequestById(executor, requestId);
+            if (!initialRequest) throw new ApplicationError("RESOURCE_NOT_FOUND", notFoundMessage);
+            if (initialRequest.ownerTenantId === tenantId) {
+              throw new ApplicationError("CONCURRENT_MODIFICATION", "You cannot express interest in your own request.");
+            }
+            await lockTenants(executor, [tenantId, initialRequest.ownerTenantId]);
+            let request = await repository.findRequestById(executor, requestId, true);
+            if (!request) throw new ApplicationError("RESOURCE_NOT_FOUND", notFoundMessage);
+            if (request.status === "OPEN" && isExpired(request, now())) {
+              await repository.materializeExpired(executor, request.id, now());
+              request = (await repository.findRequestById(executor, request.id, true)) ?? request;
+            }
+            if (request.status === "EXPIRED") {
+              return Object.freeze({ kind: "REQUEST_EXPIRED" as const });
+            }
+            if (request.moderationState !== "VISIBLE") {
+              throw new ApplicationError("RESOURCE_NOT_FOUND", notFoundMessage);
+            }
+            if (request.status !== "OPEN") {
+              throw roommateError("ROOMMATE_REQUEST_NOT_OPEN", requestNotOpenMessage);
+            }
+            if (request.ownerTenantId === tenantId) {
+              throw new ApplicationError("CONCURRENT_MODIFICATION", "You cannot express interest in your own request.");
+            }
+            const identities = await activeProjectionMap([tenantId, request.ownerTenantId]);
+            const profiles = await repository.findProfiles(executor, [tenantId, request.ownerTenantId], true);
+            const profileById = new Map(profiles.map((profile) => [profile.tenantId, profile] as const));
+            if (!profileComplete(profileById.get(tenantId) ?? null)) throw validationProfileIncomplete();
+            if (!profileComplete(profileById.get(request.ownerTenantId) ?? null)) {
+              throw new ApplicationError("RESOURCE_NOT_FOUND", notFoundMessage);
+            }
+            if (!identities.get(tenantId) || !identities.get(request.ownerTenantId)) {
+              throw new ApplicationError(
+                "CONCURRENT_MODIFICATION",
+                "The roommate participants are no longer eligible."
+              );
+            }
+            if (await repository.isPairBlocked(executor, tenantId, request.ownerTenantId)) {
+              throw new ApplicationError("RESOURCE_NOT_FOUND", notFoundMessage);
+            }
+            if (await repository.hasAcceptedConnection(executor, tenantId)) {
+              throw roommateError(
+                "ROOMMATE_ACTIVE_CONNECTION_EXISTS",
+                "You already have an active roommate connection."
+              );
+            }
+            if (await repository.findActiveInterest(executor, request.id, tenantId, true)) {
+              throw new ApplicationError(
+                "CONCURRENT_MODIFICATION",
+                "An active interest already exists for this request."
+              );
+            }
+            if ((await repository.countPendingOutgoing(executor, tenantId, now())) >= 5) {
+              throw roommateError(
+                "ROOMMATE_PENDING_INTEREST_LIMIT",
+                "You already have the maximum number of pending roommate interests."
+              );
+            }
+            if (request.listingId !== null) await requireEligibleListing(request.listingId);
+            if (isExpired(request, now())) {
+              await repository.materializeExpired(executor, request.id, now());
+              return Object.freeze({ kind: "REQUEST_EXPIRED" as const });
+            }
+            return Object.freeze({
+              kind: "CREATED" as const,
+              interest: await repository.createInterestWithMessage(executor, {
+                requestId: request.id,
+                interestedTenantId: tenantId,
+                message: normalizedInput.message
+              })
+            });
+          }
+        );
+        if (outcome.kind === "REQUEST_EXPIRED") throw roommateError("ROOMMATE_REQUEST_EXPIRED", requestExpiredMessage);
+        created = outcome.interest;
+      } catch (error) {
+        if (typeof error === "object" && error !== null && "code" in error && error.code === "23505") {
+          throw new ApplicationError("CONCURRENT_MODIFICATION", "An active interest already exists for this request.", {
+            cause: error
+          });
+        }
+        throw error;
+      }
+      const [view] = await decorateInterests([created], tenantId);
+      if (!view) throw new Error("Created roommate interest could not be decorated.");
+      return view;
+    },
+
+    async listIncomingInterests(principal, requestId, query) {
+      const tenantId = requireTenant(principal);
+      const records = await transactionRunner.run(async (executor) => {
+        let request = await repository.findOwnedRequest(executor, tenantId, requestId, true);
+        if (!request) throw new ApplicationError("RESOURCE_NOT_FOUND", notFoundMessage);
+        request = await expireIfNeeded(executor, request);
+        if (!request) throw new ApplicationError("RESOURCE_NOT_FOUND", notFoundMessage);
+        return repository.listIncomingInterests(executor, requestId, tenantId, query.pageSize + 1, query.offset);
+      });
+      const views = await decorateInterests(records.slice(0, query.pageSize), tenantId);
+      return Object.freeze({
+        data: views,
+        page: query.page,
+        pageSize: query.pageSize,
+        hasNextPage: records.length > query.pageSize
+      });
+    },
+
+    async listInterests(principal, query) {
+      const tenantId = requireTenant(principal);
+      const records = await transactionRunner.run(async (executor) => {
+        const initial = await repository.listInterests(
+          executor,
+          tenantId,
+          query.direction,
+          query.status,
+          query.pageSize + 1,
+          query.offset
+        );
+        for (const record of initial) {
+          if (record.status === "PENDING" && record.request.status === "OPEN" && isExpired(record.request, now())) {
+            await repository.materializeExpired(executor, record.requestId, now());
+          }
+        }
+        return initial.some(
+          (record) =>
+            record.status === "PENDING" && record.request.status === "OPEN" && isExpired(record.request, now())
+        )
+          ? repository.listInterests(
+              executor,
+              tenantId,
+              query.direction,
+              query.status,
+              query.pageSize + 1,
+              query.offset
+            )
+          : initial;
+      });
+      const views = await decorateInterests(records.slice(0, query.pageSize), tenantId);
+      return Object.freeze({
+        data: views,
+        page: query.page,
+        pageSize: query.pageSize,
+        hasNextPage: records.length > query.pageSize
+      });
+    },
+
+    async getInterest(principal, interestId) {
+      const tenantId = requireTenant(principal);
+      const record = await transactionRunner.run(async (executor) => {
+        const initial = await repository.findInterestById(executor, interestId);
+        if (!initial) throw new ApplicationError("RESOURCE_NOT_FOUND", notFoundMessage);
+        if (initial.requestOwnerTenantId !== tenantId && initial.interestedTenantId !== tenantId) {
+          throw new ApplicationError("RESOURCE_NOT_FOUND", notFoundMessage);
+        }
+        await lockTenants(executor, [initial.requestOwnerTenantId, initial.interestedTenantId]);
+        let current = await requireParticipantInterest(executor, interestId, tenantId, true);
+        if (current.status === "PENDING" && current.request.status === "OPEN" && isExpired(current.request, now())) {
+          await repository.materializeExpired(executor, current.requestId, now());
+          current = await requireParticipantInterest(executor, interestId, tenantId, true);
+        }
+        return current;
+      });
+      const [view] = await decorateInterests([record], tenantId);
+      if (!view) throw new Error("Roommate interest could not be decorated.");
+      return view;
+    },
+
+    async acceptInterest(principal, interestId) {
+      const tenantId = requireTenant(principal);
+      let accepted: RoommateInterestRecord;
+      try {
+        const outcome = await transactionRunner.run<RoommateInterestAcceptedOutcome | RoommateInterestExpiryOutcome>(
+          async (executor) => {
+            const initial = await repository.findInterestById(executor, interestId);
+            if (!initial || initial.requestOwnerTenantId !== tenantId) {
+              throw new ApplicationError("RESOURCE_NOT_FOUND", notFoundMessage);
+            }
+            await lockTenants(executor, [initial.requestOwnerTenantId, initial.interestedTenantId]);
+            let current = await repository.findInterestById(executor, interestId, true);
+            if (!current || current.requestOwnerTenantId !== tenantId) {
+              throw new ApplicationError("RESOURCE_NOT_FOUND", notFoundMessage);
+            }
+            if (current.status !== "PENDING") {
+              if (
+                current.status === "WITHDRAWN" &&
+                (await repository.hasAcceptedConnection(executor, current.interestedTenantId))
+              ) {
+                throw roommateError(
+                  "ROOMMATE_ACTIVE_CONNECTION_EXISTS",
+                  "A roommate participant already has an active connection."
+                );
+              }
+              throw roommateError("ROOMMATE_INTEREST_NOT_PENDING", "This roommate interest is no longer pending.");
+            }
+            if (await repository.isPairBlocked(executor, current.requestOwnerTenantId, current.interestedTenantId)) {
+              throw new ApplicationError("RESOURCE_NOT_FOUND", notFoundMessage);
+            }
+            let request = current.request;
+            if (request.status === "OPEN" && isExpired(request, now())) {
+              await repository.materializeExpired(executor, request.id, now());
+              return Object.freeze({ kind: "REQUEST_EXPIRED" as const });
+            }
+            if (request.status === "EXPIRED") throw roommateError("ROOMMATE_REQUEST_EXPIRED", requestExpiredMessage);
+            if (request.status !== "OPEN" || request.moderationState !== "VISIBLE") {
+              throw roommateError("ROOMMATE_REQUEST_NOT_OPEN", requestNotOpenMessage);
+            }
+            const participantIds = [current.requestOwnerTenantId, current.interestedTenantId] as const;
+            await activeProjectionMap(participantIds);
+            const profiles = await repository.findProfiles(executor, participantIds, true);
+            for (const participantId of participantIds) {
+              if (!profileComplete(profiles.find((profile) => profile.tenantId === participantId) ?? null)) {
+                throw new ApplicationError(
+                  "CONCURRENT_MODIFICATION",
+                  "The roommate participants are no longer eligible."
+                );
+              }
+            }
+            if (
+              (await repository.hasAcceptedConnection(executor, current.requestOwnerTenantId)) ||
+              (await repository.hasAcceptedConnection(executor, current.interestedTenantId))
+            ) {
+              throw roommateError(
+                "ROOMMATE_ACTIVE_CONNECTION_EXISTS",
+                "A roommate participant already has an active connection."
+              );
+            }
+            let candidateRequest = await repository.findOpenRequestForOwner(executor, current.interestedTenantId, true);
+            if (candidateRequest && isExpired(candidateRequest, now())) {
+              await repository.materializeExpired(executor, candidateRequest.id, now());
+              candidateRequest = await repository.findOpenRequestForOwner(executor, current.interestedTenantId, true);
+            }
+            if (candidateRequest) {
+              throw roommateError(
+                "ROOMMATE_CANDIDATE_OPEN_REQUEST",
+                "The interested tenant must cancel their open roommate request before acceptance."
+              );
+            }
+            if (request.listingId !== null) await requireEligibleListing(request.listingId);
+            if (isExpired(request, now())) {
+              await repository.materializeExpired(executor, request.id, now());
+              return Object.freeze({ kind: "REQUEST_EXPIRED" as const });
+            }
+            const updatedInterest = await repository.acceptInterest(executor, interestId, request.id);
+            if (!updatedInterest) {
+              throw roommateError("ROOMMATE_INTEREST_NOT_PENDING", "This roommate interest is no longer pending.");
+            }
+            const matchedRequest = await repository.matchRequest(executor, request.id);
+            if (!matchedRequest) throw roommateError("ROOMMATE_REQUEST_NOT_OPEN", requestNotOpenMessage);
+            await repository.cleanupAfterAccept(executor, interestId, request.id, participantIds);
+            const finalInterest = await repository.findInterestById(executor, interestId);
+            if (!finalInterest) throw new Error("Accepted roommate interest could not be loaded.");
+            return Object.freeze({ kind: "ACCEPTED" as const, interest: finalInterest });
+          }
+        );
+        if (outcome.kind === "REQUEST_EXPIRED") throw roommateError("ROOMMATE_REQUEST_EXPIRED", requestExpiredMessage);
+        accepted = outcome.interest;
+      } catch (error) {
+        if (typeof error === "object" && error !== null && "code" in error && error.code === "23505") {
+          throw roommateError(
+            "ROOMMATE_ACTIVE_CONNECTION_EXISTS",
+            "A roommate participant already has an active connection."
+          );
+        }
+        throw error;
+      }
+      const [view] = await decorateInterests([accepted], tenantId);
+      if (!view) throw new Error("Accepted roommate interest could not be decorated.");
+      return view;
+    },
+
+    async rejectInterest(principal, interestId) {
+      const tenantId = requireTenant(principal);
+      const outcome = await transactionRunner.run<RoommateInterestTransitionOutcome | RoommateInterestExpiryOutcome>(
+        async (executor) => {
+          const initial = await repository.findInterestById(executor, interestId);
+          if (!initial || initial.requestOwnerTenantId !== tenantId) {
+            throw new ApplicationError("RESOURCE_NOT_FOUND", notFoundMessage);
+          }
+          await lockTenants(executor, [initial.requestOwnerTenantId, initial.interestedTenantId]);
+          let current = await requireParticipantInterest(executor, interestId, tenantId, true);
+          if (current.status === "PENDING" && current.request.status === "OPEN" && isExpired(current.request, now())) {
+            await repository.materializeExpired(executor, current.requestId, now());
+            current = await requireParticipantInterest(executor, interestId, tenantId, true);
+            if (current.request.status === "EXPIRED") {
+              return Object.freeze({ kind: "REQUEST_EXPIRED" as const });
+            }
+          }
+          if (current.status !== "PENDING") {
+            throw roommateError("ROOMMATE_INTEREST_NOT_PENDING", "This roommate interest is no longer pending.");
+          }
+          const updated = await repository.rejectInterest(executor, interestId, tenantId);
+          if (!updated)
+            throw roommateError("ROOMMATE_INTEREST_NOT_PENDING", "This roommate interest is no longer pending.");
+          return Object.freeze({ kind: "UPDATED" as const, interest: updated });
+        }
+      );
+      if (outcome.kind === "REQUEST_EXPIRED") throw roommateError("ROOMMATE_REQUEST_EXPIRED", requestExpiredMessage);
+      const result = outcome.interest;
+      const [view] = await decorateInterests([result], tenantId);
+      if (!view) throw new Error("Rejected roommate interest could not be decorated.");
+      return view;
+    },
+
+    async withdrawInterest(principal, interestId) {
+      const tenantId = requireTenant(principal);
+      const outcome = await transactionRunner.run<RoommateInterestTransitionOutcome | RoommateInterestExpiryOutcome>(
+        async (executor) => {
+          const initial = await repository.findInterestById(executor, interestId);
+          if (!initial || initial.interestedTenantId !== tenantId) {
+            throw new ApplicationError("RESOURCE_NOT_FOUND", notFoundMessage);
+          }
+          await lockTenants(executor, [initial.requestOwnerTenantId, initial.interestedTenantId]);
+          let current = await requireParticipantInterest(executor, interestId, tenantId, true);
+          if (current.status === "PENDING" && current.request.status === "OPEN" && isExpired(current.request, now())) {
+            await repository.materializeExpired(executor, current.requestId, now());
+            current = await requireParticipantInterest(executor, interestId, tenantId, true);
+            if (current.request.status === "EXPIRED") {
+              return Object.freeze({ kind: "REQUEST_EXPIRED" as const });
+            }
+          }
+          if (current.status !== "PENDING") {
+            throw roommateError("ROOMMATE_INTEREST_NOT_PENDING", "This roommate interest is no longer pending.");
+          }
+          const updated = await repository.withdrawInterest(executor, interestId, tenantId);
+          if (!updated)
+            throw roommateError("ROOMMATE_INTEREST_NOT_PENDING", "This roommate interest is no longer pending.");
+          return Object.freeze({ kind: "UPDATED" as const, interest: updated });
+        }
+      );
+      if (outcome.kind === "REQUEST_EXPIRED") throw roommateError("ROOMMATE_REQUEST_EXPIRED", requestExpiredMessage);
+      const result = outcome.interest;
+      const [view] = await decorateInterests([result], tenantId);
+      if (!view) throw new Error("Withdrawn roommate interest could not be decorated.");
+      return view;
+    },
+
+    async leaveInterest(principal, interestId) {
+      const tenantId = requireTenant(principal);
+      const result = await transactionRunner.run(async (executor) => {
+        const initial = await repository.findInterestById(executor, interestId);
+        if (!initial || (initial.requestOwnerTenantId !== tenantId && initial.interestedTenantId !== tenantId)) {
+          throw new ApplicationError("RESOURCE_NOT_FOUND", notFoundMessage);
+        }
+        await lockTenants(executor, [initial.requestOwnerTenantId, initial.interestedTenantId]);
+        const current = await requireParticipantInterest(executor, interestId, tenantId, true);
+        if (current.status !== "ACCEPTED") {
+          throw roommateError("ROOMMATE_INTEREST_NOT_PENDING", "This roommate interest is not an active connection.");
+        }
+        const updated = await repository.leaveInterest(executor, interestId, tenantId);
+        if (!updated)
+          throw new ApplicationError("CONCURRENT_MODIFICATION", "This roommate connection is no longer active.");
+        return updated;
+      });
+      const [view] = await decorateInterests([result], tenantId);
+      if (!view) throw new Error("Left roommate interest could not be decorated.");
+      return view;
+    },
+
+    async getCurrentConnection(principal) {
+      const tenantId = requireTenant(principal);
+      const record = await transactionRunner.run(async (executor) => {
+        const current = await repository.findCurrentConnection(executor, tenantId);
+        if (!current) throw new ApplicationError("RESOURCE_NOT_FOUND", notFoundMessage);
+        if (await repository.isPairBlocked(executor, current.requestOwnerTenantId, current.interestedTenantId)) {
+          throw new ApplicationError("RESOURCE_NOT_FOUND", notFoundMessage);
+        }
+        return current;
+      });
+      const [view] = await decorateInterests([record], tenantId);
+      if (!view) throw new Error("Current roommate connection could not be decorated.");
+      if (view.acceptedAt === null) throw new Error("Current roommate connection has no accepted timestamp.");
+      return Object.freeze({
+        interestId: view.id,
+        requestId: view.requestId,
+        connectedAt: view.acceptedAt,
+        counterpart: view.counterpart,
+        request: view.request
+      });
     }
   };
   return Object.freeze(service);

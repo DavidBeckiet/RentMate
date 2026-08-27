@@ -19,6 +19,7 @@ import type {
   SleepSchedule,
   SmokingEnvironment
 } from "../validations/roommate-validation.js";
+import type { RoommateInterestDirection, RoommateInterestStatus } from "../validations/roommate-interest-validation.js";
 
 export interface RoommateProfileRecord extends RoommateProfileInput {
   readonly tenantId: number;
@@ -40,6 +41,41 @@ export interface RoommateRequestRecord extends CreateRoommateRequestInput {
 
 export interface RoommateDiscoveryCandidate extends RoommateRequestRecord {
   readonly profile: RoommateProfileRecord;
+}
+
+export type RoommateInterestTerminalReason =
+  | "USER_ACTION"
+  | "REQUEST_CANCELLED"
+  | "REQUEST_EXPIRED"
+  | "COMPETING_INTEREST_ACCEPTED"
+  | "PARTICIPANT_MATCHED_ELSEWHERE"
+  | "PARTICIPANT_BLOCKED"
+  | "MODERATION_ACTION";
+
+export interface RoommateMessageRecord {
+  readonly id: number;
+  readonly interestId: number;
+  readonly senderTenantId: number;
+  readonly body: string;
+  readonly moderationState: "VISIBLE" | "HIDDEN";
+  readonly createdAt: string;
+  readonly readAt: string | null;
+}
+
+export interface RoommateInterestRecord {
+  readonly id: number;
+  readonly requestId: number;
+  readonly requestOwnerTenantId: number;
+  readonly interestedTenantId: number;
+  readonly status: RoommateInterestStatus;
+  readonly acceptedAt: string | null;
+  readonly endedAt: string | null;
+  readonly endedByTenantId: number | null;
+  readonly terminalReason: RoommateInterestTerminalReason | null;
+  readonly createdAt: string;
+  readonly updatedAt: string;
+  readonly request: RoommateRequestRecord;
+  readonly firstMessage: RoommateMessageRecord | null;
 }
 
 interface ProfileRow extends QueryResultRow {
@@ -97,6 +133,50 @@ interface PendingInterestRow extends QueryResultRow {
   interested_tenant_id: unknown;
 }
 
+interface InterestRow extends QueryResultRow {
+  interest_id: unknown;
+  interest_request_id: unknown;
+  interest_owner_tenant_id: unknown;
+  interested_tenant_id: unknown;
+  interest_status: unknown;
+  accepted_at: unknown;
+  ended_at: unknown;
+  ended_by_tenant_id: unknown;
+  terminal_reason: unknown;
+  interest_created_at: unknown;
+  interest_updated_at: unknown;
+  request_id: unknown;
+  owner_tenant_id: unknown;
+  listing_id: unknown;
+  preferred_area_keys: unknown;
+  budget_min_per_person: unknown;
+  budget_max_per_person: unknown;
+  move_in_from: unknown;
+  move_in_until: unknown;
+  note: unknown;
+  status: unknown;
+  expires_at: unknown;
+  listing_linked_at: unknown;
+  moderation_state: unknown;
+  created_at: unknown;
+  updated_at: unknown;
+  first_message_id: unknown;
+  first_message_interest_id: unknown;
+  first_message_sender_tenant_id: unknown;
+  first_message_body: unknown;
+  first_message_moderation_state: unknown;
+  first_message_created_at: unknown;
+  first_message_read_at: unknown;
+}
+
+interface InterestIdRow extends QueryResultRow {
+  id: unknown;
+}
+
+interface CountRow extends QueryResultRow {
+  count: unknown;
+}
+
 const profileColumns = `
   tenant_id, intro, sleep_schedule, cleanliness_level, noise_preference,
   smoking_environment, pet_environment, moderation_state, created_at, updated_at
@@ -106,6 +186,54 @@ const requestColumns = `
   id, owner_tenant_id, listing_id, preferred_area_keys, budget_min_per_person,
   budget_max_per_person, move_in_from, move_in_until, note, status, expires_at,
   listing_linked_at, moderation_state, created_at, updated_at
+`;
+
+const interestColumns = `
+  i.id AS interest_id,
+  i.request_id AS interest_request_id,
+  r.owner_tenant_id AS interest_owner_tenant_id,
+  i.interested_tenant_id,
+  i.status AS interest_status,
+  i.accepted_at,
+  i.ended_at,
+  i.ended_by_tenant_id,
+  i.terminal_reason,
+  i.created_at AS interest_created_at,
+  i.updated_at AS interest_updated_at,
+  r.id AS request_id,
+  r.owner_tenant_id,
+  r.listing_id,
+  r.preferred_area_keys,
+  r.budget_min_per_person,
+  r.budget_max_per_person,
+  r.move_in_from,
+  r.move_in_until,
+  r.note,
+  r.status,
+  r.expires_at,
+  r.listing_linked_at,
+  r.moderation_state,
+  r.created_at,
+  r.updated_at,
+  first_message.id AS first_message_id,
+  first_message.interest_id AS first_message_interest_id,
+  first_message.sender_tenant_id AS first_message_sender_tenant_id,
+  first_message.body AS first_message_body,
+  first_message.moderation_state AS first_message_moderation_state,
+  first_message.created_at AS first_message_created_at,
+  first_message.read_at AS first_message_read_at
+`;
+
+const interestFrom = `
+  FROM roommate_interests i
+  JOIN roommate_requests r ON r.id = i.request_id
+  LEFT JOIN LATERAL (
+    SELECT m.id, m.interest_id, m.sender_tenant_id, m.body, m.moderation_state, m.created_at, m.read_at
+    FROM roommate_messages m
+    WHERE m.interest_id = i.id
+    ORDER BY m.created_at ASC, m.id ASC
+    LIMIT 1
+  ) AS first_message ON true
 `;
 
 function positiveId(value: unknown, field: string): number {
@@ -248,6 +376,95 @@ function mapCandidate(row: Readonly<CandidateRow>): RoommateDiscoveryCandidate {
   return Object.freeze({ ...request, profile });
 }
 
+function mapMessage(row: {
+  readonly first_message_id: unknown;
+  readonly first_message_interest_id: unknown;
+  readonly first_message_sender_tenant_id: unknown;
+  readonly first_message_body: unknown;
+  readonly first_message_moderation_state: unknown;
+  readonly first_message_created_at: unknown;
+  readonly first_message_read_at: unknown;
+}): RoommateMessageRecord | null {
+  if (row.first_message_id === null) return null;
+  return Object.freeze({
+    id: positiveId(row.first_message_id, "roommateMessage.id"),
+    interestId: positiveId(row.first_message_interest_id, "roommateMessage.interestId"),
+    senderTenantId: positiveId(row.first_message_sender_tenant_id, "roommateMessage.senderTenantId"),
+    body: text(row.first_message_body, "roommateMessage.body"),
+    moderationState: enumText(row.first_message_moderation_state, "roommateMessage.moderationState", [
+      "VISIBLE",
+      "HIDDEN"
+    ]),
+    createdAt: timestamp(row.first_message_created_at, "roommateMessage.createdAt"),
+    readAt: nullableTimestamp(row.first_message_read_at, "roommateMessage.readAt")
+  });
+}
+
+function mapInterest(row: Readonly<InterestRow>): RoommateInterestRecord {
+  const request = mapRequest({
+    id: row.request_id,
+    owner_tenant_id: row.owner_tenant_id,
+    listing_id: row.listing_id,
+    preferred_area_keys: row.preferred_area_keys,
+    budget_min_per_person: row.budget_min_per_person,
+    budget_max_per_person: row.budget_max_per_person,
+    move_in_from: row.move_in_from,
+    move_in_until: row.move_in_until,
+    note: row.note,
+    status: row.status,
+    expires_at: row.expires_at,
+    listing_linked_at: row.listing_linked_at,
+    moderation_state: row.moderation_state,
+    created_at: row.created_at,
+    updated_at: row.updated_at
+  });
+  if (request.id !== positiveId(row.interest_request_id, "roommateInterest.requestId")) {
+    throw new RepositoryInvariantError("Roommate interest request mismatch.");
+  }
+  const requestOwnerTenantId = positiveId(row.interest_owner_tenant_id, "roommateInterest.requestOwnerTenantId");
+  if (request.ownerTenantId !== requestOwnerTenantId) {
+    throw new RepositoryInvariantError("Roommate interest owner mismatch.");
+  }
+  const status = enumText(row.interest_status, "roommateInterest.status", [
+    "PENDING",
+    "ACCEPTED",
+    "REJECTED",
+    "WITHDRAWN",
+    "LEFT"
+  ]);
+  const terminalReason =
+    row.terminal_reason === null
+      ? null
+      : enumText(row.terminal_reason, "roommateInterest.terminalReason", [
+          "USER_ACTION",
+          "REQUEST_CANCELLED",
+          "REQUEST_EXPIRED",
+          "COMPETING_INTEREST_ACCEPTED",
+          "PARTICIPANT_MATCHED_ELSEWHERE",
+          "PARTICIPANT_BLOCKED",
+          "MODERATION_ACTION"
+        ]);
+  const firstMessage = mapMessage(row);
+  if (firstMessage !== null && firstMessage.interestId !== positiveId(row.interest_id, "roommateInterest.id")) {
+    throw new RepositoryInvariantError("Roommate interest first message mismatch.");
+  }
+  return Object.freeze({
+    id: positiveId(row.interest_id, "roommateInterest.id"),
+    requestId: request.id,
+    requestOwnerTenantId,
+    interestedTenantId: positiveId(row.interested_tenant_id, "roommateInterest.interestedTenantId"),
+    status,
+    acceptedAt: nullableTimestamp(row.accepted_at, "roommateInterest.acceptedAt"),
+    endedAt: nullableTimestamp(row.ended_at, "roommateInterest.endedAt"),
+    endedByTenantId: nullableId(row.ended_by_tenant_id, "roommateInterest.endedByTenantId"),
+    terminalReason: terminalReason as RoommateInterestTerminalReason | null,
+    createdAt: timestamp(row.interest_created_at, "roommateInterest.createdAt"),
+    updatedAt: timestamp(row.interest_updated_at, "roommateInterest.updatedAt"),
+    request,
+    firstMessage
+  });
+}
+
 function isoDate(value: Date): string {
   if (!(value instanceof Date) || Number.isNaN(value.getTime()))
     throw new RepositoryInvariantError("Roommate time is invalid.");
@@ -335,6 +552,70 @@ export interface RoommateRepository {
     requestId: number,
     terminalReason: "REQUEST_CANCELLED" | "REQUEST_EXPIRED"
   ) => Promise<number>;
+  readonly findProfiles: (
+    executor: SqlExecutor,
+    tenantIds: readonly number[],
+    forUpdate?: boolean
+  ) => Promise<readonly RoommateProfileRecord[]>;
+  readonly findInterestById: (
+    executor: SqlExecutor,
+    interestId: number,
+    forUpdate?: boolean
+  ) => Promise<RoommateInterestRecord | null>;
+  readonly findActiveInterest: (
+    executor: SqlExecutor,
+    requestId: number,
+    interestedTenantId: number,
+    forUpdate?: boolean
+  ) => Promise<RoommateInterestRecord | null>;
+  readonly createInterestWithMessage: (
+    executor: SqlExecutor,
+    input: { readonly requestId: number; readonly interestedTenantId: number; readonly message: string }
+  ) => Promise<RoommateInterestRecord>;
+  readonly countPendingOutgoing: (executor: SqlExecutor, interestedTenantId: number, now?: Date) => Promise<number>;
+  readonly listIncomingInterests: (
+    executor: SqlExecutor,
+    requestId: number,
+    ownerTenantId: number,
+    limit: number,
+    offset: number
+  ) => Promise<readonly RoommateInterestRecord[]>;
+  readonly listInterests: (
+    executor: SqlExecutor,
+    tenantId: number,
+    direction: RoommateInterestDirection,
+    status: RoommateInterestStatus | null,
+    limit: number,
+    offset: number
+  ) => Promise<readonly RoommateInterestRecord[]>;
+  readonly acceptInterest: (
+    executor: SqlExecutor,
+    interestId: number,
+    requestId: number
+  ) => Promise<RoommateInterestRecord | null>;
+  readonly matchRequest: (executor: SqlExecutor, requestId: number) => Promise<RoommateRequestRecord | null>;
+  readonly rejectInterest: (
+    executor: SqlExecutor,
+    interestId: number,
+    actorTenantId: number
+  ) => Promise<RoommateInterestRecord | null>;
+  readonly withdrawInterest: (
+    executor: SqlExecutor,
+    interestId: number,
+    actorTenantId: number
+  ) => Promise<RoommateInterestRecord | null>;
+  readonly leaveInterest: (
+    executor: SqlExecutor,
+    interestId: number,
+    actorTenantId: number
+  ) => Promise<RoommateInterestRecord | null>;
+  readonly cleanupAfterAccept: (
+    executor: SqlExecutor,
+    acceptedInterestId: number,
+    requestId: number,
+    participantTenantIds: readonly number[]
+  ) => Promise<void>;
+  readonly findCurrentConnection: (executor: SqlExecutor, tenantId: number) => Promise<RoommateInterestRecord | null>;
 }
 
 function ownerPredicate(tenantId: number, requestId: number): readonly unknown[] {
@@ -420,6 +701,20 @@ export function createRoommateRepository(): RoommateRepository {
             input.smokingEnvironment,
             input.petEnvironment
           ]
+        },
+        mapProfile
+      );
+    },
+
+    findProfiles(executor, tenantIds, forUpdate = false) {
+      if (tenantIds.length === 0) return Promise.resolve(Object.freeze([]));
+      return queryMany<ProfileRow, RoommateProfileRecord>(
+        executor,
+        {
+          text: `SELECT ${profileColumns} FROM roommate_profiles WHERE tenant_id = ANY($1::integer[]) ${
+            forUpdate ? "FOR UPDATE" : ""
+          }`,
+          values: [[...new Set(tenantIds)]]
         },
         mapProfile
       );
@@ -677,6 +972,279 @@ export function createRoommateRepository(): RoommateRepository {
           values
         },
         mapCandidate
+      );
+    },
+
+    findInterestById(executor, interestId, forUpdate = false) {
+      return queryOptional<InterestRow, RoommateInterestRecord>(
+        executor,
+        {
+          text: `SELECT ${interestColumns} ${interestFrom} WHERE i.id = $1 ${forUpdate ? "FOR UPDATE OF i, r" : ""}`,
+          values: [interestId]
+        },
+        mapInterest
+      );
+    },
+
+    findActiveInterest(executor, requestId, interestedTenantId, forUpdate = false) {
+      return queryOptional<InterestRow, RoommateInterestRecord>(
+        executor,
+        {
+          text: `
+            SELECT ${interestColumns}
+            ${interestFrom}
+            WHERE i.request_id = $1
+              AND i.interested_tenant_id = $2
+              AND i.status IN ('PENDING', 'ACCEPTED')
+            ORDER BY i.id ASC
+            LIMIT 1
+            ${forUpdate ? "FOR UPDATE OF i, r" : ""}
+          `,
+          values: [requestId, interestedTenantId]
+        },
+        mapInterest
+      );
+    },
+
+    async createInterestWithMessage(executor, input) {
+      const inserted = await queryExactlyOne<InterestIdRow, { readonly id: number }>(
+        executor,
+        {
+          text: `
+            INSERT INTO roommate_interests (request_id, interested_tenant_id)
+            VALUES ($1, $2)
+            RETURNING id
+          `,
+          values: [input.requestId, input.interestedTenantId]
+        },
+        (row) => Object.freeze({ id: positiveId(row.id, "roommateInterest.id") })
+      );
+      await executeCommand(executor, {
+        text: `
+          INSERT INTO roommate_messages (interest_id, sender_tenant_id, body)
+          VALUES ($1, $2, $3)
+        `,
+        values: [inserted.id, input.interestedTenantId, input.message]
+      });
+      const interest = await repository.findInterestById(executor, inserted.id);
+      if (!interest) throw new RepositoryInvariantError("Created roommate interest could not be loaded.");
+      return interest;
+    },
+
+    async countPendingOutgoing(executor, interestedTenantId, now = new Date()) {
+      const result = await queryExactlyOne<CountRow, number>(
+        executor,
+        {
+          text: `
+            SELECT count(*)::integer AS count
+            FROM roommate_interests i
+            JOIN roommate_requests r ON r.id = i.request_id
+            WHERE i.interested_tenant_id = $1
+              AND i.status = 'PENDING'
+              AND r.status = 'OPEN'
+              AND r.expires_at > $2::timestamptz
+          `,
+          values: [interestedTenantId, isoDate(now)]
+        },
+        (row) => {
+          const value = typeof row.count === "number" ? row.count : Number(row.count);
+          if (!Number.isSafeInteger(value) || value < 0)
+            throw new RepositoryInvariantError("Interest count is invalid.");
+          return value;
+        }
+      );
+      return result;
+    },
+
+    listIncomingInterests(executor, requestId, ownerTenantId, limit, offset) {
+      return queryMany<InterestRow, RoommateInterestRecord>(
+        executor,
+        {
+          text: `
+            SELECT ${interestColumns}
+            ${interestFrom}
+            WHERE i.request_id = $1
+              AND r.owner_tenant_id = $2
+              AND NOT EXISTS (
+                SELECT 1 FROM contact_blocks b
+                WHERE (b.blocker_id = r.owner_tenant_id AND b.blocked_id = i.interested_tenant_id)
+                   OR (b.blocker_id = i.interested_tenant_id AND b.blocked_id = r.owner_tenant_id)
+              )
+            ORDER BY i.created_at DESC, i.id DESC
+            LIMIT $3 OFFSET $4
+          `,
+          values: [requestId, ownerTenantId, limit, offset]
+        },
+        mapInterest
+      );
+    },
+
+    listInterests(executor, tenantId, direction, status, limit, offset) {
+      const values: unknown[] = [tenantId];
+      const conditions = [
+        direction === "INCOMING" ? "r.owner_tenant_id = $1" : "i.interested_tenant_id = $1",
+        `NOT EXISTS (
+          SELECT 1 FROM contact_blocks b
+          WHERE (b.blocker_id = r.owner_tenant_id AND b.blocked_id = i.interested_tenant_id)
+             OR (b.blocker_id = i.interested_tenant_id AND b.blocked_id = r.owner_tenant_id)
+        )`
+      ];
+      if (status !== null) conditions.push(`i.status = $${values.push(status)}`);
+      const limitIndex = values.push(limit);
+      const offsetIndex = values.push(offset);
+      return queryMany<InterestRow, RoommateInterestRecord>(
+        executor,
+        {
+          text: `
+            SELECT ${interestColumns}
+            ${interestFrom}
+            WHERE ${conditions.join(" AND ")}
+            ORDER BY i.updated_at DESC, i.id DESC
+            LIMIT $${limitIndex} OFFSET $${offsetIndex}
+          `,
+          values
+        },
+        mapInterest
+      );
+    },
+
+    async acceptInterest(executor, interestId, requestId) {
+      const result = await executor.query<InterestIdRow>({
+        text: `
+          UPDATE roommate_interests
+          SET status = 'ACCEPTED', accepted_at = CURRENT_TIMESTAMP, updated_at = CURRENT_TIMESTAMP
+          WHERE id = $1 AND request_id = $2 AND status = 'PENDING'
+          RETURNING id
+        `,
+        values: [interestId, requestId]
+      });
+      if (result.rows.length === 0) return null;
+      const interest = await repository.findInterestById(
+        executor,
+        positiveId(result.rows[0]!.id, "roommateInterest.id")
+      );
+      if (!interest) throw new RepositoryInvariantError("Accepted roommate interest could not be loaded.");
+      return interest;
+    },
+
+    matchRequest(executor, requestId) {
+      return queryOptional<RequestRow, RoommateRequestRecord>(
+        executor,
+        {
+          text: `
+            UPDATE roommate_requests
+            SET status = 'MATCHED', updated_at = CURRENT_TIMESTAMP
+            WHERE id = $1 AND status = 'OPEN'
+            RETURNING ${requestColumns}
+          `,
+          values: [requestId]
+        },
+        mapRequest
+      );
+    },
+
+    async rejectInterest(executor, interestId, actorTenantId) {
+      const result = await executor.query<InterestIdRow>({
+        text: `
+          UPDATE roommate_interests i
+          SET status = 'REJECTED', ended_at = CURRENT_TIMESTAMP,
+              ended_by_tenant_id = $2, terminal_reason = 'USER_ACTION', updated_at = CURRENT_TIMESTAMP
+          FROM roommate_requests r
+          WHERE i.id = $1 AND i.request_id = r.id
+            AND r.owner_tenant_id = $2 AND i.status = 'PENDING'
+          RETURNING i.id
+        `,
+        values: [interestId, actorTenantId]
+      });
+      if (result.rows.length === 0) return null;
+      const interest = await repository.findInterestById(
+        executor,
+        positiveId(result.rows[0]!.id, "roommateInterest.id")
+      );
+      if (!interest) throw new RepositoryInvariantError("Rejected roommate interest could not be loaded.");
+      return interest;
+    },
+
+    async withdrawInterest(executor, interestId, actorTenantId) {
+      const result = await executor.query<InterestIdRow>({
+        text: `
+          UPDATE roommate_interests
+          SET status = 'WITHDRAWN', ended_at = CURRENT_TIMESTAMP,
+              ended_by_tenant_id = $2, terminal_reason = 'USER_ACTION', updated_at = CURRENT_TIMESTAMP
+          WHERE id = $1 AND interested_tenant_id = $2 AND status = 'PENDING'
+          RETURNING id
+        `,
+        values: [interestId, actorTenantId]
+      });
+      if (result.rows.length === 0) return null;
+      const interest = await repository.findInterestById(
+        executor,
+        positiveId(result.rows[0]!.id, "roommateInterest.id")
+      );
+      if (!interest) throw new RepositoryInvariantError("Withdrawn roommate interest could not be loaded.");
+      return interest;
+    },
+
+    async leaveInterest(executor, interestId, actorTenantId) {
+      const result = await executor.query<InterestIdRow>({
+        text: `
+          UPDATE roommate_interests i
+          SET status = 'LEFT', ended_at = CURRENT_TIMESTAMP,
+              ended_by_tenant_id = $2, terminal_reason = 'USER_ACTION', updated_at = CURRENT_TIMESTAMP
+          FROM roommate_requests r
+          WHERE i.id = $1 AND i.request_id = r.id
+            AND (r.owner_tenant_id = $2 OR i.interested_tenant_id = $2)
+            AND i.status = 'ACCEPTED'
+          RETURNING i.id
+        `,
+        values: [interestId, actorTenantId]
+      });
+      if (result.rows.length === 0) return null;
+      const interest = await repository.findInterestById(
+        executor,
+        positiveId(result.rows[0]!.id, "roommateInterest.id")
+      );
+      if (!interest) throw new RepositoryInvariantError("Left roommate interest could not be loaded.");
+      return interest;
+    },
+
+    async cleanupAfterAccept(executor, acceptedInterestId, requestId, participantTenantIds) {
+      await executeCommand(executor, {
+        text: `
+          UPDATE roommate_interests
+          SET status = 'REJECTED', ended_at = CURRENT_TIMESTAMP,
+              terminal_reason = 'COMPETING_INTEREST_ACCEPTED', updated_at = CURRENT_TIMESTAMP
+          WHERE request_id = $1 AND status = 'PENDING' AND id <> $2
+        `,
+        values: [requestId, acceptedInterestId]
+      });
+      await executeCommand(executor, {
+        text: `
+          UPDATE roommate_interests
+          SET status = 'WITHDRAWN', ended_at = CURRENT_TIMESTAMP,
+              terminal_reason = 'PARTICIPANT_MATCHED_ELSEWHERE', updated_at = CURRENT_TIMESTAMP
+          WHERE interested_tenant_id = ANY($1::integer[])
+            AND status = 'PENDING' AND id <> $2 AND request_id <> $3
+        `,
+        values: [[...new Set(participantTenantIds)], acceptedInterestId, requestId]
+      });
+    },
+
+    findCurrentConnection(executor, tenantId) {
+      return queryOptional<InterestRow, RoommateInterestRecord>(
+        executor,
+        {
+          text: `
+            SELECT ${interestColumns}
+            ${interestFrom}
+            WHERE i.status = 'ACCEPTED'
+              AND (r.owner_tenant_id = $1 OR i.interested_tenant_id = $1)
+            ORDER BY i.accepted_at DESC, i.id DESC
+            LIMIT 1
+          `,
+          values: [tenantId]
+        },
+        mapInterest
       );
     },
 
