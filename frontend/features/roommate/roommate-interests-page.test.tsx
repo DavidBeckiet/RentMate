@@ -14,7 +14,11 @@ const apiMocks = vi.hoisted(() => ({
 const useAuthMock = vi.hoisted(() => vi.fn<() => AuthContextValue>());
 const routerMocks = vi.hoisted(() => ({ push: vi.fn() }));
 
-vi.mock("next/navigation", () => ({ useRouter: () => routerMocks, useSearchParams: () => new URLSearchParams() }));
+vi.mock("next/navigation", () => ({
+  usePathname: () => "/roommates/interests",
+  useRouter: () => routerMocks,
+  useSearchParams: () => new URLSearchParams()
+}));
 vi.mock("../../lib/api/client", async () => {
   const actual = await vi.importActual<typeof import("../../lib/api/client")>("../../lib/api/client");
   return { ...actual, api: { roommates: apiMocks } };
@@ -53,6 +57,8 @@ describe("RoommateInterestsPage", () => {
 
     expect(await screen.findByRole("button", { name: "Chấp nhận" })).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "Chấp nhận" }));
+    expect(screen.getByText("Hai bạn sẽ có một kết nối tìm roommate hiện tại.")).toBeInTheDocument();
+    expect(screen.getByText(/không phải đặt chỗ, phê duyệt của chủ nhà hoặc bảo đảm thuê nhà/i)).toBeInTheDocument();
     expect(
       screen.getByText(
         "RentMate không giữ chỗ, thu tiền hoặc bảo đảm giao dịch giữa người ở ghép. Không chuyển tiền hoặc đặt cọc chỉ dựa vào yêu cầu ở ghép hay tin nhắn. Hãy kiểm tra phòng, người cho thuê và điều kiện thuê trước khi giao dịch."
@@ -64,6 +70,7 @@ describe("RoommateInterestsPage", () => {
       "Người này cần đóng yêu cầu tìm người ở ghép của họ trước khi có thể kết nối."
     );
     expect(apiMocks.acceptInterest).toHaveBeenCalledWith(91);
+    expect(screen.getByRole("tabpanel")).toHaveAttribute("aria-labelledby", "roommate-tab-incoming");
   });
 
   it("lets a request owner reject an incoming pending interest", async () => {

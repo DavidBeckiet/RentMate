@@ -11,6 +11,7 @@ const apiMocks = vi.hoisted(() => ({
 }));
 const useAuthMock = vi.hoisted(() => vi.fn<() => AuthContextValue>());
 
+vi.mock("next/navigation", () => ({ usePathname: () => "/roommates/conversations/91" }));
 vi.mock("../../lib/api/client", async () => {
   const actual = await vi.importActual<typeof import("../../lib/api/client")>("../../lib/api/client");
   return { ...actual, api: { roommates: apiMocks } };
@@ -47,6 +48,7 @@ describe("RoommateConversationPage", () => {
     ).toBeInTheDocument();
     expect(screen.getByText("<img src=x onerror=alert(1)>")).toBeInTheDocument();
     expect(document.querySelector("img[src='x']")).toBeNull();
+    expect(screen.getByLabelText("Tin nhắn của người còn lại")).toHaveTextContent("Người còn lại");
     expect(screen.getByText("Trao đổi qua RentMate trước.")).toBeInTheDocument();
 
     fireEvent.change(screen.getByLabelText("Tin nhắn (bắt buộc)"), { target: { value: "Mình sẽ không gửi OTP." } });
@@ -81,8 +83,10 @@ describe("RoommateConversationPage", () => {
     render(<RoommateConversationPage interestId="91" />);
     const input = await screen.findByLabelText("Tin nhắn (bắt buộc)");
     fireEvent.change(input, { target: { value: "Mình muốn trao đổi thêm." } });
+    expect(screen.getByText(`${Array.from("Mình muốn trao đổi thêm.").length}/2000 ký tự`)).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "Gửi tin nhắn" }));
     await waitFor(() => expect(apiMocks.sendMessage).toHaveBeenCalledWith(91, "Mình muốn trao đổi thêm."));
+    expect(await screen.findByLabelText("Tin nhắn của bạn")).toHaveTextContent("Bạn");
   });
 
   it("lets tenants move through paginated message history", async () => {

@@ -186,6 +186,11 @@ function ListingPicker({
           value={keyword}
           maxLength={120}
           onChange={(event) => setKeyword(event.target.value)}
+          onKeyDown={(event) => {
+            if (event.key !== "Enter") return;
+            event.preventDefault();
+            void search();
+          }}
           placeholder="Tìm theo tiêu đề hoặc khu vực"
           className="min-h-11 min-w-0 flex-1 border-2 border-heroDark-950 bg-white px-3 text-ui-sm font-semibold outline-none focus-visible:ring-4 focus-visible:ring-brandBlue-500/40"
         />
@@ -235,25 +240,27 @@ function RequestFields({
 }>) {
   return (
     <div className="grid gap-5 sm:grid-cols-2">
-      <InputField
-        id="roommate-request-areas"
-        name="areas"
-        label="Khu vực quan tâm"
-        hint={
-          requireArea
-            ? "Nhập từ 1 đến 5 khu vực, ngăn cách bằng dấu phẩy."
-            : "Tùy chọn khi đã gắn listing, tối đa 5 khu vực."
-        }
-        required={requireArea}
-        className="sm:col-span-2"
-        value={values.areas}
-        maxLength={600}
-        onChange={(event) => onChange({ ...values, areas: event.target.value })}
-      />
+      <div className="sm:col-span-2">
+        <InputField
+          id="roommate-request-areas"
+          name="areas"
+          label="Khu vực quan tâm"
+          hint={
+            requireArea
+              ? "Nhập từ 1 đến 5 khu vực, ngăn cách bằng dấu phẩy."
+              : "Tùy chọn khi đã gắn listing, tối đa 5 khu vực."
+          }
+          required={requireArea}
+          value={values.areas}
+          maxLength={600}
+          onChange={(event) => onChange({ ...values, areas: event.target.value })}
+        />
+      </div>
       <InputField
         id="roommate-request-budget-min"
         name="budgetMinPerPerson"
         label="Ngân sách tối thiểu mỗi người"
+        hint="Nhập số tiền bằng VND."
         required
         type="number"
         min="1"
@@ -265,6 +272,7 @@ function RequestFields({
         id="roommate-request-budget-max"
         name="budgetMaxPerPerson"
         label="Ngân sách tối đa mỗi người"
+        hint="Nhập số tiền bằng VND."
         required
         type="number"
         min="1"
@@ -290,17 +298,18 @@ function RequestFields({
         value={values.moveInUntil}
         onChange={(event) => onChange({ ...values, moveInUntil: event.target.value })}
       />
-      <TextareaField
-        id="roommate-request-note"
-        name="note"
-        label="Ghi chú thêm"
-        hint="Không bắt buộc, tối đa 500 ký tự. Không chia sẻ thông tin liên hệ hoặc tài chính."
-        className="sm:col-span-2"
-        maxLength={500}
-        rows={4}
-        value={values.note}
-        onChange={(event) => onChange({ ...values, note: event.target.value })}
-      />
+      <div className="sm:col-span-2">
+        <TextareaField
+          id="roommate-request-note"
+          name="note"
+          label="Ghi chú thêm"
+          hint="Không bắt buộc, tối đa 500 ký tự. Không chia sẻ thông tin liên hệ hoặc tài chính."
+          maxLength={500}
+          rows={4}
+          value={values.note}
+          onChange={(event) => onChange({ ...values, note: event.target.value })}
+        />
+      </div>
     </div>
   );
 }
@@ -432,7 +441,7 @@ function CreateRequestForm({
           </p>
         ) : null}
         <RoommateSafetyNotice kind="long" />
-        <Button type="submit" pending={pending} pendingLabel="Đang tạo yêu cầu…">
+        <Button className="w-full sm:w-auto" type="submit" pending={pending} pendingLabel="Đang tạo yêu cầu…">
           Tạo yêu cầu
         </Button>
       </form>
@@ -629,7 +638,12 @@ function ManagedRequest({
             </p>
           </div>
           <RequestFields values={values} onChange={setValues} requireArea={request.listingMode === "UNLINKED"} />
-          <Button pending={pendingAction === "save"} pendingLabel="Đang lưu…" onClick={() => void update()}>
+          <Button
+            className="w-full sm:w-auto"
+            pending={pendingAction === "save"}
+            pendingLabel="Đang lưu…"
+            onClick={() => void update()}
+          >
             Lưu thay đổi
           </Button>
           <section
@@ -657,7 +671,7 @@ function ManagedRequest({
               </p>
             ) : null}
             <ListingPicker selected={selectedListing} onSelect={setSelectedListing} />
-            <div className="flex flex-wrap gap-2">
+            <div className="grid gap-2 sm:flex sm:flex-wrap">
               <Button pending={pendingAction === "link"} pendingLabel="Đang liên kết…" onClick={() => void link()}>
                 Liên kết listing đã chọn
               </Button>
@@ -679,8 +693,9 @@ function ManagedRequest({
                 <p className="text-ui-sm font-semibold">
                   Hủy yêu cầu sẽ từ chối các lời quan tâm đang chờ và không thể mở lại yêu cầu này.
                 </p>
-                <div className="flex flex-wrap gap-2">
+                <div className="grid gap-2 sm:flex sm:flex-wrap">
                   <Button
+                    autoFocus
                     variant="danger"
                     pending={pendingAction === "cancel"}
                     pendingLabel="Đang hủy…"

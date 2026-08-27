@@ -59,13 +59,15 @@ function DiscoveryCard({ request }: Readonly<{ request: RoommateRequest }>) {
           <p className="text-ui-xs font-bold uppercase tracking-[0.12em] text-rent-secondary">
             {request.listingMode === "LINKED" ? "CÙNG CÂN NHẮC LISTING" : "CÙNG TÌM LISTING"}
           </p>
-          <h2 className="mt-1 font-display text-heading-sm font-bold">Yêu cầu ở ghép</h2>
+          <h2 className="mt-1 font-display text-heading-sm font-bold">
+            {request.profile?.displayName ?? "Người thuê RentMate"}
+          </h2>
         </div>
         <span className="border-2 border-heroDark-950 bg-rent-accent px-2 py-1 text-ui-xs font-bold">
           {roommateRequestStatusLabels[request.status]}
         </span>
       </div>
-      <RoommateProfileSummary profile={request.profile} heading="Thông tin người đăng" />
+      <RoommateProfileSummary profile={request.profile} heading="Phong cách sống" showDisplayName={false} />
       <RoommateRequestFacts request={request} />
       {request.note ? (
         <p className="whitespace-pre-wrap border-l-4 border-heroDark-950 pl-3 text-ui-sm leading-6 text-rent-secondary">
@@ -73,12 +75,12 @@ function DiscoveryCard({ request }: Readonly<{ request: RoommateRequest }>) {
         </p>
       ) : null}
       <RoommateListingContext request={request} />
-      <div className="flex flex-wrap items-center justify-between gap-3 border-t-2 border-heroDark-950 pt-4">
+      <div className="grid gap-3 border-t-2 border-heroDark-950 pt-4 sm:flex sm:flex-wrap sm:items-center sm:justify-between">
         <p className="text-ui-xs font-semibold text-rent-secondary">
           Mở từ {formatRoommateDate(request.createdAt.slice(0, 10))}
         </p>
         <Link
-          className="inline-flex min-h-11 items-center gap-2 border-2 border-heroDark-950 bg-heroDark-950 px-4 text-ui-sm font-bold text-white shadow-glass-sm transition-transform hover:-translate-y-0.5"
+          className="inline-flex min-h-11 w-full items-center justify-center gap-2 border-2 border-heroDark-950 bg-heroDark-950 px-4 text-ui-sm font-bold text-white shadow-glass-sm sm:w-auto"
           href={`/roommates/requests/${request.id}`}
         >
           Xem yêu cầu
@@ -127,6 +129,12 @@ function DiscoveryContent() {
     setSubmittedForm(form);
   };
 
+  const reset = () => {
+    setForm(initialForm);
+    setSubmittedForm({ ...initialForm });
+    setPage(1);
+  };
+
   return (
     <div className="space-y-6">
       <RoommatePageHeader
@@ -144,6 +152,12 @@ function DiscoveryContent() {
       <RoommateSubnav />
       <Card>
         <form className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3" onSubmit={submit}>
+          <div className="sm:col-span-2 lg:col-span-3">
+            <h2 className="font-display text-heading-sm font-bold text-heroDark-950">Lọc yêu cầu ở ghép</h2>
+            <p className="mt-1 text-ui-sm leading-6 text-rent-secondary">
+              Chọn các tiêu chí quan trọng; bạn có thể để trống trường chưa cần giới hạn.
+            </p>
+          </div>
           <InputField
             id="roommate-discovery-area"
             name="area"
@@ -202,9 +216,12 @@ function DiscoveryContent() {
             <option value="LINKED">Đang cân nhắc một listing</option>
             <option value="UNLINKED">Cùng tìm listing</option>
           </SelectField>
-          <div className="flex items-end">
+          <div className="grid items-end gap-2 sm:flex sm:col-span-2 lg:col-span-3">
             <Button type="submit" className="w-full sm:w-auto">
               Lọc yêu cầu
+            </Button>
+            <Button type="button" variant="secondary" className="w-full sm:w-auto" onClick={reset}>
+              Xóa bộ lọc
             </Button>
           </div>
         </form>

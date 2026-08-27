@@ -6,6 +6,7 @@ import { roommateOwnedBlock, tenantUser } from "./test-roommate-fixtures";
 const apiMocks = vi.hoisted(() => ({ listOwnedBlocks: vi.fn(), unblockRequest: vi.fn(), unblockInterest: vi.fn() }));
 const useAuthMock = vi.hoisted(() => vi.fn<() => AuthContextValue>());
 
+vi.mock("next/navigation", () => ({ usePathname: () => "/roommates/blocks" }));
 vi.mock("../../lib/api/client", async () => {
   const actual = await vi.importActual<typeof import("../../lib/api/client")>("../../lib/api/client");
   return { ...actual, api: { roommates: apiMocks } };
@@ -36,7 +37,9 @@ describe("RoommateBlockedPage", () => {
     });
     render(<RoommateBlockedPage />);
 
-    expect(await screen.findByRole("heading", { name: "Chưa có tương tác nào bị chặn" })).toBeInTheDocument();
+    expect(
+      await screen.findByRole("heading", { name: "Bạn chưa chặn người dùng nào trong Roommate" })
+    ).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Bỏ chặn" })).not.toBeInTheDocument();
   });
 

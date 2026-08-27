@@ -701,7 +701,11 @@ export function AppShell({ children }: Readonly<{ children: ReactNode }>) {
   const [logoutRequested, setLogoutRequested] = useState(false);
   const { status: authStatus, user, error: authError, logout, refresh } = useAuth();
   const status = mounted ? authStatus : "loading";
-  const actor = navigationActor(user?.role ?? null, status);
+  // Keep auth-dependent shell branches on the same loading tree until the
+  // first client effect has run. The auth provider may resolve its cookie
+  // refresh before this component's descendants hydrate.
+  const visibleUser = mounted ? user : null;
+  const actor = navigationActor(visibleUser?.role ?? null, status);
   const shellKind = resolveShellKind(pathname, actor);
 
   useEffect(() => setMounted(true), []);
@@ -728,7 +732,7 @@ export function AppShell({ children }: Readonly<{ children: ReactNode }>) {
     children,
     pathname,
     authStatus: status,
-    user,
+    user: visibleUser,
     authError: Boolean(logoutRequested && authStatus === "authenticated" && authError),
     logoutPending,
     onLogout: () => void handleLogout(),
@@ -738,6 +742,6 @@ export function AppShell({ children }: Readonly<{ children: ReactNode }>) {
   if (shellKind === "auth") return <AuthShell {...sharedProps} />;
   if (shellKind === "landlord") return <WorkspaceShell {...sharedProps} actor="landlord" />;
   if (shellKind === "admin") return <WorkspaceShell {...sharedProps} actor="admin" />;
-  if (shellKind === "restricted") return <RestrictedShell user={user}>{children}</RestrictedShell>;
+  if (shellKind === "restricted") return <RestrictedShell user={visibleUser}>{children}</RestrictedShell>;
   return <ConsumerShell {...sharedProps} actor={actor} />;
 }

@@ -78,12 +78,15 @@ function InterestComposer({ requestId }: Readonly<{ requestId: number }>) {
           value={message}
           onChange={(event) => setMessage(event.target.value)}
         />
+        <p aria-live="polite" className="text-right text-ui-xs font-semibold text-rent-secondary">
+          {Array.from(message).length}/2000 ký tự
+        </p>
         {error ? (
           <p role="alert" className="border-l-4 border-rose-700 pl-3 text-ui-sm font-semibold text-rose-800">
             {error}
           </p>
         ) : null}
-        <Button type="submit" pending={pending} pendingLabel="Đang gửi…">
+        <Button className="w-full sm:w-auto" type="submit" pending={pending} pendingLabel="Đang gửi…">
           <Icon name="userPlus" className="h-4 w-4" /> Gửi lời quan tâm
         </Button>
       </form>
@@ -193,7 +196,7 @@ function RequestDetailContent({ requestId }: Readonly<{ requestId: number }>) {
           {isOwner ? (
             <Card className="space-y-3">
               <h2 className="font-display text-heading-sm font-bold">Quản lý yêu cầu</h2>
-              <div className="flex flex-wrap gap-2">
+              <div className="grid gap-2 sm:flex sm:flex-wrap">
                 <Link
                   className="inline-flex min-h-11 items-center border-2 border-heroDark-950 bg-heroDark-950 px-4 text-ui-sm font-bold text-white shadow-glass-sm"
                   href="/roommates/my-request"
@@ -247,7 +250,8 @@ function RequestDetailContent({ requestId }: Readonly<{ requestId: number }>) {
           <Card subtle>
             <h2 className="font-display text-ui-base font-bold">Ghi nhớ</h2>
             <p className="mt-2 text-ui-sm leading-6 text-rent-secondary">
-              Accept không phải là sự đồng ý chia sẻ email, số điện thoại hoặc thông tin tài chính.
+              Chấp nhận lời quan tâm chỉ tạo kết nối tìm roommate trong RentMate. Đây không phải đặt chỗ, không phải phê
+              duyệt của chủ nhà và không bảo đảm việc thuê nhà.
             </p>
           </Card>
         </aside>

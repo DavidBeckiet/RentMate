@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useEffect, useMemo, useState, type FormEvent } from "react";
 import { Button } from "../../components/ui/button";
 import { Card } from "../../components/ui/card";
-import { EmptyState, ErrorState, LoadingState } from "../../components/ui/feedback-states";
+import { ErrorState, LoadingState } from "../../components/ui/feedback-states";
 import { TextareaField } from "../../components/ui/form-controls";
 import { Icon } from "../../components/ui/icon";
 import { Pagination } from "../../components/ui/pagination";
@@ -41,12 +41,16 @@ function MessageBubble({ message }: Readonly<{ message: RoommateMessage }>) {
     message.body === "This message is no longer available." ? "Tin nhắn này hiện không còn hiển thị." : message.body;
   return (
     <article
+      aria-label={self ? "Tin nhắn của bạn" : "Tin nhắn của người còn lại"}
       className={`max-w-[42rem] border-2 border-heroDark-950 p-3 shadow-glass-sm ${self ? "ml-auto bg-rent-accent" : "mr-auto bg-rent-surface"}`}
     >
+      <p className="mb-1 text-ui-xs font-bold uppercase tracking-wide text-rent-secondary">
+        {self ? "Bạn" : "Người còn lại"}
+      </p>
       <p className="whitespace-pre-wrap break-words text-ui-sm leading-6 text-heroDark-950">{body}</p>
       <div className="mt-2 flex flex-wrap items-center justify-between gap-3 text-ui-xs font-semibold text-rent-secondary">
         <time dateTime={message.createdAt}>{formatRoommateDateTime(message.createdAt)}</time>
-        <span>{self ? (message.isRead ? "Đã đọc" : "Đã gửi") : "Người còn lại"}</span>
+        {self ? <span>{message.isRead ? "Đã đọc" : "Đã gửi"}</span> : null}
       </div>
       {!self ? (
         <div className="mt-3">
@@ -159,9 +163,6 @@ function ConversationContent({ interestId }: Readonly<{ interestId: number }>) {
                 </Link>
               ) : null}
             </div>
-            {messages.length === 0 ? (
-              <EmptyState title="Chưa có tin nhắn nào" description="Gửi lời nhắn đầu tiên để bắt đầu trao đổi." />
-            ) : null}
             <div className="space-y-3" aria-live="polite" aria-label="Tin nhắn ở ghép">
               {messages.map((message) => (
                 <MessageBubble key={message.id} message={message} />
@@ -184,12 +185,16 @@ function ConversationContent({ interestId }: Readonly<{ interestId: number }>) {
                   id={`roommate-message-${interest.id}`}
                   name="message"
                   label="Tin nhắn"
+                  hint="Tin nhắn là văn bản tự do. Không chia sẻ OTP, mật khẩu hoặc thông tin tài chính."
                   required
                   maxLength={2000}
                   rows={5}
                   value={body}
                   onChange={(event) => setBody(event.target.value)}
                 />
+                <p aria-live="polite" className="text-right text-ui-xs font-semibold text-rent-secondary">
+                  {Array.from(body).length}/2000 ký tự
+                </p>
                 {paymentOrContactHint(body) ? (
                   <p
                     role="note"
@@ -205,13 +210,13 @@ function ConversationContent({ interestId }: Readonly<{ interestId: number }>) {
                     {sendError}
                   </p>
                 ) : null}
-                <Button type="submit" pending={pending} pendingLabel="Đang gửi…">
+                <Button className="w-full sm:w-auto" type="submit" pending={pending} pendingLabel="Đang gửi…">
                   <Icon name="message" className="h-4 w-4" /> Gửi tin nhắn
                 </Button>
               </form>
             </Card>
           ) : (
-            <Card className="border-rose-700 bg-rose-50">
+            <Card subtle>
               <h2 className="font-display text-ui-base font-bold">Cuộc trò chuyện chỉ đọc</h2>
               <p className="mt-2 text-ui-sm leading-6 text-rent-secondary">
                 {isTerminalRoommateInterest(interest.status)
@@ -225,7 +230,7 @@ function ConversationContent({ interestId }: Readonly<{ interestId: number }>) {
           <RoommateProfileSummary profile={interest.counterpart} heading="Hồ sơ người còn lại" />
           <RoommateListingContext request={interest.request} />
           <RoommateSafetyNotice kind="checklist" />
-          <div className="flex flex-wrap gap-2">
+          <div className="grid gap-2 sm:flex sm:flex-wrap">
             <RoommateReportControl target="ROOMMATE_PROFILE" interestId={interest.id} label="Báo cáo" />
             <RoommateBlockControl context="interest" id={interest.id} onBlocked={() => setRetryKey((key) => key + 1)} />
           </div>

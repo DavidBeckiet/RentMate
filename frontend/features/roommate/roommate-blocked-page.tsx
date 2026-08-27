@@ -110,8 +110,8 @@ function BlockedListContent() {
       ) : null}
       {blocks.length === 0 ? (
         <EmptyState
-          title="Chưa có tương tác nào bị chặn"
-          description="Các tài khoản bạn chặn trong Roommate sẽ xuất hiện ở đây để bạn có thể quản lý sau này."
+          title="Bạn chưa chặn người dùng nào trong Roommate"
+          description="Người bạn chủ động chặn sẽ xuất hiện ở đây để bạn có thể xem lại và bỏ chặn khi cần."
         />
       ) : (
         <div className="space-y-5">
@@ -137,11 +137,12 @@ function BlockedListContent() {
                       aria-label="Xác nhận bỏ chặn"
                     >
                       <p className="text-ui-sm font-semibold leading-6">
-                        Bỏ chặn chỉ cho phép các tương tác tương lai qua một workflow Roommate mới hợp lệ. Nội dung và
+                        Bỏ chặn chỉ cho phép các tương tác tương lai qua một quy trình Roommate mới hợp lệ. Nội dung và
                         kết nối cũ không được khôi phục.
                       </p>
-                      <div className="flex flex-wrap gap-2">
+                      <div className="grid gap-2 sm:flex sm:flex-wrap">
                         <Button
+                          autoFocus
                           pending={pending === key}
                           pendingLabel="Đang bỏ chặn…"
                           onClick={() => void unblock(block)}
@@ -154,7 +155,7 @@ function BlockedListContent() {
                       </div>
                     </section>
                   ) : (
-                    <Button variant="outline" onClick={() => setConfirming(key)}>
+                    <Button className="w-full sm:w-auto" variant="outline" onClick={() => setConfirming(key)}>
                       Bỏ chặn
                     </Button>
                   )}

@@ -13,7 +13,7 @@ const apiMocks = vi.hoisted(() => ({
 const useAuthMock = vi.hoisted(() => vi.fn<() => AuthContextValue>());
 const routerMocks = vi.hoisted(() => ({ push: vi.fn() }));
 
-vi.mock("next/navigation", () => ({ useRouter: () => routerMocks }));
+vi.mock("next/navigation", () => ({ usePathname: () => "/roommates/requests/42", useRouter: () => routerMocks }));
 vi.mock("../../lib/api/client", async () => {
   const actual = await vi.importActual<typeof import("../../lib/api/client")>("../../lib/api/client");
   return { ...actual, api: { roommates: apiMocks } };
@@ -60,6 +60,9 @@ describe("RoommateRequestDetailPage", () => {
     fireEvent.change(screen.getByLabelText("Lời nhắn mở đầu (bắt buộc)"), {
       target: { value: "Mình muốn trao đổi thêm về nhu cầu ở ghép." }
     });
+    expect(
+      screen.getByText(`${Array.from("Mình muốn trao đổi thêm về nhu cầu ở ghép.").length}/2000 ký tự`)
+    ).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "Gửi lời quan tâm" }));
     await waitFor(() =>
       expect(apiMocks.createInterest).toHaveBeenCalledWith(42, "Mình muốn trao đổi thêm về nhu cầu ở ghép.")

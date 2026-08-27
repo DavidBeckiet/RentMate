@@ -72,12 +72,6 @@ function InterestCard({
             {roommateInterestStatusLabels[interest.status]}
           </h2>
         </div>
-        <Link
-          className="text-ui-sm font-bold underline decoration-2 underline-offset-4"
-          href={`/roommates/conversations/${interest.id}`}
-        >
-          Mở cuộc trò chuyện
-        </Link>
       </div>
       <RoommateProfileSummary profile={interest.counterpart} heading="Hồ sơ người còn lại" />
       <RoommateRequestFacts request={interest.request} />
@@ -102,13 +96,19 @@ function InterestCard({
               className="space-y-4 border-2 border-heroDark-950 bg-rent-yellow p-4"
               aria-label="Xác nhận chấp nhận lời quan tâm"
             >
-              <p className="text-ui-sm font-semibold leading-6">
-                Trước khi chấp nhận, hãy kiểm tra kỹ thông tin và chỉ tiếp tục khi bạn thấy phù hợp.
-              </p>
+              <div>
+                <h3 className="font-display text-ui-base font-bold">Điều gì xảy ra khi chấp nhận?</h3>
+                <ul className="mt-2 list-disc space-y-1 pl-5 text-ui-sm font-semibold leading-6">
+                  <li>Hai bạn sẽ có một kết nối tìm roommate hiện tại.</li>
+                  <li>Yêu cầu này chuyển sang trạng thái đã ghép; các tương tác đang chờ khác có thể kết thúc.</li>
+                  <li>Đây không phải đặt chỗ, phê duyệt của chủ nhà hoặc bảo đảm thuê nhà.</li>
+                </ul>
+              </div>
               <RoommateSafetyNotice kind="long" />
               <RoommateSafetyNotice kind="checklist" />
-              <div className="flex flex-wrap gap-2">
+              <div className="grid gap-2 sm:flex sm:flex-wrap">
                 <Button
+                  autoFocus
                   pending={action === "accept"}
                   pendingLabel="Đang chấp nhận…"
                   onClick={() => void runAction("accept")}
@@ -121,7 +121,7 @@ function InterestCard({
               </div>
             </section>
           ) : (
-            <div className="flex flex-wrap gap-2">
+            <div className="grid gap-2 sm:flex sm:flex-wrap">
               <Button onClick={() => setConfirmAccept(true)}>Chấp nhận</Button>
               <Button
                 variant="outline"
@@ -137,6 +137,7 @@ function InterestCard({
       ) : null}
       {tab === "outgoing" && interest.status === "PENDING" ? (
         <Button
+          className="w-full sm:w-auto"
           variant="outline"
           pending={action === "withdraw"}
           pendingLabel="Đang rút…"
@@ -147,7 +148,7 @@ function InterestCard({
       ) : null}
       {interest.status === "ACCEPTED" ? (
         <Link
-          className="inline-flex min-h-11 items-center border-2 border-heroDark-950 bg-heroDark-950 px-4 text-ui-sm font-bold text-white shadow-glass-sm"
+          className="inline-flex min-h-11 w-full items-center justify-center border-2 border-heroDark-950 bg-heroDark-950 px-4 text-ui-sm font-bold text-white shadow-glass-sm sm:w-auto"
           href="/roommates/connection"
         >
           Mở kết nối hiện tại
@@ -231,9 +232,11 @@ function InterestsContent() {
       <RoommateSubnav />
       <div className="flex flex-wrap gap-2" role="tablist" aria-label="Loại lời quan tâm">
         <Button
+          id="roommate-tab-incoming"
           variant={tab === "incoming" ? "primary" : "outline"}
           role="tab"
           aria-selected={tab === "incoming"}
+          aria-controls="roommate-interest-panel"
           onClick={() => {
             setTab("incoming");
             setPage(1);
@@ -242,9 +245,11 @@ function InterestsContent() {
           Nhận được
         </Button>
         <Button
+          id="roommate-tab-outgoing"
           variant={tab === "outgoing" ? "primary" : "outline"}
           role="tab"
           aria-selected={tab === "outgoing"}
+          aria-controls="roommate-interest-panel"
           onClick={() => {
             setTab("outgoing");
             setPage(1);
@@ -253,45 +258,60 @@ function InterestsContent() {
           Đã gửi
         </Button>
       </div>
-      {state === "idle" || state === "loading" ? <LoadingState message="Đang tải lời quan tâm…" /> : null}
-      {state === "error" ? (
-        <ErrorState
-          message={roommateErrorMessage(error)}
-          requestId={error?.requestId}
-          action={<Button onClick={() => setReloadKey((value) => value + 1)}>Thử lại</Button>}
-        />
-      ) : null}
-      {state === "success" && result && result.data.length === 0 ? (
-        <EmptyState
-          title={tab === "incoming" ? "Chưa có lời quan tâm" : "Bạn chưa gửi lời quan tâm nào"}
-          description={
-            tab === "incoming"
-              ? "Các lời quan tâm mới sẽ xuất hiện tại đây."
-              : "Duyệt yêu cầu đang mở để gửi lời nhắn mở đầu."
-          }
-        />
-      ) : null}
-      {state === "success" && result && result.data.length > 0 ? (
-        <div className="space-y-5">
-          <div className="grid gap-5 xl:grid-cols-2">
-            {result.data.map((interest) => (
-              <InterestCard
-                key={interest.id}
-                interest={interest}
-                tab={tab}
-                onAction={() => setReloadKey((value) => value + 1)}
-              />
-            ))}
-          </div>
-          <Pagination
-            ariaLabel="Phân trang lời quan tâm ở ghép"
-            page={result.pagination.page}
-            hasNextPage={result.pagination.hasNextPage}
-            onPrevious={() => setPage((value) => Math.max(1, value - 1))}
-            onNext={() => setPage((value) => value + 1)}
+      <div
+        id="roommate-interest-panel"
+        role="tabpanel"
+        aria-labelledby={tab === "incoming" ? "roommate-tab-incoming" : "roommate-tab-outgoing"}
+        tabIndex={0}
+      >
+        {state === "idle" || state === "loading" ? <LoadingState message="Đang tải lời quan tâm…" /> : null}
+        {state === "error" ? (
+          <ErrorState
+            message={roommateErrorMessage(error)}
+            requestId={error?.requestId}
+            action={<Button onClick={() => setReloadKey((value) => value + 1)}>Thử lại</Button>}
           />
-        </div>
-      ) : null}
+        ) : null}
+        {state === "success" && result && result.data.length === 0 ? (
+          <EmptyState
+            title={tab === "incoming" ? "Chưa có lời quan tâm" : "Bạn chưa gửi lời quan tâm nào"}
+            description={
+              tab === "incoming"
+                ? "Các lời quan tâm mới sẽ xuất hiện tại đây."
+                : "Duyệt yêu cầu đang mở để gửi lời nhắn mở đầu."
+            }
+            action={
+              <Link
+                className="font-bold underline decoration-2 underline-offset-4"
+                href={tab === "incoming" ? "/roommates/my-request" : "/roommates"}
+              >
+                {tab === "incoming" ? "Xem yêu cầu của tôi" : "Khám phá yêu cầu ở ghép"}
+              </Link>
+            }
+          />
+        ) : null}
+        {state === "success" && result && result.data.length > 0 ? (
+          <div className="space-y-5">
+            <div className="grid gap-5 xl:grid-cols-2">
+              {result.data.map((interest) => (
+                <InterestCard
+                  key={interest.id}
+                  interest={interest}
+                  tab={tab}
+                  onAction={() => setReloadKey((value) => value + 1)}
+                />
+              ))}
+            </div>
+            <Pagination
+              ariaLabel="Phân trang lời quan tâm ở ghép"
+              page={result.pagination.page}
+              hasNextPage={result.pagination.hasNextPage}
+              onPrevious={() => setPage((value) => Math.max(1, value - 1))}
+              onNext={() => setPage((value) => value + 1)}
+            />
+          </div>
+        ) : null}
+      </div>
     </div>
   );
 }

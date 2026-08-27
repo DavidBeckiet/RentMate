@@ -1,7 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { useState, type ReactNode } from "react";
+import { usePathname } from "next/navigation";
+import { useEffect, useId, useState, type ReactNode } from "react";
 import { Button } from "../../components/ui/button";
 import { Card } from "../../components/ui/card";
 import { EmptyState, ErrorState, LoadingState } from "../../components/ui/feedback-states";
@@ -31,8 +32,11 @@ import {
 
 export function RoommateTenantBoundary({ children }: Readonly<{ children: ReactNode }>) {
   const { status, user, error, refresh } = useAuth();
+  const [mounted, setMounted] = useState(false);
 
-  if (status === "loading") return <LoadingState message="Đang kiểm tra quyền truy cập ở ghép…" />;
+  useEffect(() => setMounted(true), []);
+
+  if (!mounted || status === "loading") return <LoadingState message="Đang kiểm tra quyền truy cập ở ghép…" />;
   if (status === "anonymous") {
     return (
       <EmptyState
@@ -80,20 +84,29 @@ export function RoommatePageHeader({
           <h1 className="font-display text-3xl font-bold tracking-[-0.05em] text-heroDark-950 sm:text-4xl">{title}</h1>
           <p className="mt-3 text-ui-sm leading-6 text-rent-secondary">{description}</p>
         </div>
-        {action ? <div className="shrink-0">{action}</div> : null}
+        {action ? <div className="w-full sm:w-auto sm:shrink-0 [&>*]:w-full sm:[&>*]:w-auto">{action}</div> : null}
       </div>
     </header>
   );
 }
 
 export function RoommateSubnav() {
+  const pathname = usePathname();
   const items = [
-    { href: "/roommates", label: "Khám phá" },
-    { href: "/roommates/my-request", label: "Yêu cầu của tôi" },
-    { href: "/roommates/interests", label: "Lời quan tâm" },
-    { href: "/roommates/connection", label: "Kết nối hiện tại" },
-    { href: "/roommates/blocks", label: "Đã chặn" },
-    { href: "/roommates/profile", label: "Hồ sơ ở ghép" }
+    {
+      href: "/roommates",
+      label: "Khám phá",
+      current: pathname === "/roommates" || pathname.startsWith("/roommates/requests/")
+    },
+    { href: "/roommates/my-request", label: "Yêu cầu của tôi", current: pathname === "/roommates/my-request" },
+    {
+      href: "/roommates/interests",
+      label: "Lời quan tâm",
+      current: pathname === "/roommates/interests" || pathname.startsWith("/roommates/conversations/")
+    },
+    { href: "/roommates/connection", label: "Kết nối hiện tại", current: pathname === "/roommates/connection" },
+    { href: "/roommates/blocks", label: "Đã chặn", current: pathname === "/roommates/blocks" },
+    { href: "/roommates/profile", label: "Hồ sơ ở ghép", current: pathname === "/roommates/profile" }
   ] as const;
 
   return (
@@ -102,7 +115,10 @@ export function RoommateSubnav() {
         <Link
           key={item.href}
           href={item.href}
-          className="whitespace-nowrap border-2 border-heroDark-950 bg-rent-surface px-3 py-2 text-ui-xs font-bold text-heroDark-950 shadow-glass-sm transition-transform hover:-translate-y-0.5 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-brandBlue-500/40"
+          aria-current={item.current ? "page" : undefined}
+          className={`whitespace-nowrap border-2 border-heroDark-950 px-3 py-2 text-ui-xs font-bold shadow-glass-sm focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-brandBlue-500/40 ${
+            item.current ? "bg-heroDark-950 text-white" : "bg-rent-surface text-heroDark-950 hover:bg-rent-accent"
+          }`}
         >
           {item.label}
         </Link>
@@ -115,13 +131,15 @@ export function RoommateSafetyNotice({
   kind,
   className = ""
 }: Readonly<{ kind: "long" | "short" | "checklist"; className?: string }>) {
+  const checklistHeadingId = useId();
+
   if (kind === "checklist") {
     return (
       <section
         className={`border-2 border-heroDark-950 bg-rent-surface p-4 shadow-glass-sm ${className}`}
-        aria-labelledby="roommate-safety-checklist"
+        aria-labelledby={checklistHeadingId}
       >
-        <h2 id="roommate-safety-checklist" className="flex items-center gap-2 font-display text-ui-base font-bold">
+        <h2 id={checklistHeadingId} className="flex items-center gap-2 font-display text-ui-base font-bold">
           <Icon name="shield" className="h-5 w-5" /> Checklist an toàn
         </h2>
         <ul className="mt-3 space-y-2 text-ui-sm leading-6 text-rent-secondary">
@@ -152,8 +170,9 @@ export function RoommateSafetyNotice({
 
 export function RoommateProfileSummary({
   profile,
-  heading = "Hồ sơ ở ghép"
-}: Readonly<{ profile: RoommateProfile | null; heading?: string }>) {
+  heading = "Hồ sơ ở ghép",
+  showDisplayName = true
+}: Readonly<{ profile: RoommateProfile | null; heading?: string; showDisplayName?: boolean }>) {
   if (!profile) {
     return (
       <Card subtle className="text-ui-sm text-rent-secondary">
@@ -175,7 +194,9 @@ export function RoommateProfileSummary({
     <Card className="space-y-4">
       <div>
         <h2 className="font-display text-heading-sm font-bold text-heroDark-950">{heading}</h2>
-        {profile.displayName ? <p className="mt-1 text-ui-base font-semibold">{profile.displayName}</p> : null}
+        {showDisplayName && profile.displayName ? (
+          <p className="mt-1 text-ui-base font-semibold">{profile.displayName}</p>
+        ) : null}
         {memberSince ? (
           <p className="mt-1 text-ui-xs font-semibold text-rent-secondary">Thành viên từ {memberSince}</p>
         ) : null}
@@ -290,6 +311,7 @@ export function RoommateReportControl({
   messageId?: number;
   label?: string;
 }>) {
+  const headingId = useId();
   const [open, setOpen] = useState(false);
   const [category, setCategory] = useState<RoommateReportCategory>("OTHER");
   const [details, setDetails] = useState("");
@@ -336,10 +358,12 @@ export function RoommateReportControl({
   return (
     <section
       className="space-y-3 border-2 border-heroDark-950 bg-[#fff6ef] p-4 shadow-glass-sm"
-      aria-label="Gửi báo cáo ở ghép"
+      aria-labelledby={headingId}
     >
       <div>
-        <h2 className="font-display text-ui-base font-bold">Báo cáo nội dung ở ghép</h2>
+        <h2 id={headingId} className="font-display text-ui-base font-bold">
+          Báo cáo nội dung ở ghép
+        </h2>
         <p className="mt-1 text-ui-xs leading-5 text-rent-secondary">
           Báo cáo không tự động chặn người này. Bạn có thể chặn riêng nếu cần.
         </p>
@@ -382,8 +406,8 @@ export function RoommateReportControl({
           {error}
         </p>
       ) : null}
-      <div className="flex flex-wrap gap-2">
-        <Button pending={pending} pendingLabel="Đang gửi…" onClick={() => void submit()}>
+      <div className="grid gap-2 sm:flex sm:flex-wrap">
+        <Button autoFocus pending={pending} pendingLabel="Đang gửi…" onClick={() => void submit()}>
           Gửi báo cáo
         </Button>
         <Button variant="secondary" disabled={pending} onClick={() => setOpen(false)}>
@@ -399,6 +423,7 @@ export function RoommateBlockControl({
   id,
   onBlocked
 }: Readonly<{ context: "request" | "interest"; id: number; onBlocked?: () => void }>) {
+  const headingId = useId();
   const [confirming, setConfirming] = useState(false);
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -436,8 +461,11 @@ export function RoommateBlockControl({
   return (
     <section
       className="space-y-3 border-2 border-heroDark-950 bg-rent-coral p-4 shadow-glass-sm"
-      aria-label="Xác nhận chặn tương tác"
+      aria-labelledby={headingId}
     >
+      <h2 id={headingId} className="font-display text-ui-base font-bold">
+        Xác nhận chặn tương tác
+      </h2>
       <p className="text-ui-sm font-semibold leading-6">
         Chặn sẽ ngừng tương tác trong ngữ cảnh này và không khôi phục lại lời quan tâm hoặc kết nối cũ khi bỏ chặn.
       </p>
@@ -446,8 +474,8 @@ export function RoommateBlockControl({
           {error}
         </p>
       ) : null}
-      <div className="flex flex-wrap gap-2">
-        <Button variant="danger" pending={pending} pendingLabel="Đang chặn…" onClick={() => void block()}>
+      <div className="grid gap-2 sm:flex sm:flex-wrap">
+        <Button autoFocus variant="danger" pending={pending} pendingLabel="Đang chặn…" onClick={() => void block()}>
           Xác nhận chặn
         </Button>
         <Button variant="secondary" disabled={pending} onClick={() => setConfirming(false)}>

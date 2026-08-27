@@ -7,7 +7,11 @@ const apiMocks = vi.hoisted(() => ({ getProfile: vi.fn(), upsertProfile: vi.fn()
 const useAuthMock = vi.hoisted(() => vi.fn<() => AuthContextValue>());
 const routerMocks = vi.hoisted(() => ({ push: vi.fn() }));
 
-vi.mock("next/navigation", () => ({ useRouter: () => routerMocks, useSearchParams: () => new URLSearchParams() }));
+vi.mock("next/navigation", () => ({
+  usePathname: () => "/roommates/profile",
+  useRouter: () => routerMocks,
+  useSearchParams: () => new URLSearchParams()
+}));
 vi.mock("../../lib/api/client", async () => {
   const actual = await vi.importActual<typeof import("../../lib/api/client")>("../../lib/api/client");
   return { ...actual, api: { roommates: apiMocks } };
@@ -40,6 +44,11 @@ describe("RoommateProfilePage", () => {
     fireEvent.change(intro, {
       target: { value: "Mình ưu tiên không gian gọn gàng, tôn trọng giờ nghỉ và trao đổi rõ ràng." }
     });
+    expect(
+      screen.getByText(
+        `${Array.from("Mình ưu tiên không gian gọn gàng, tôn trọng giờ nghỉ và trao đổi rõ ràng.").length}/500 ký tự`
+      )
+    ).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "Lưu hồ sơ ở ghép" }));
 
     await waitFor(() =>

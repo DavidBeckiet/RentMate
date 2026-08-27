@@ -1,4 +1,5 @@
 import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
+import { renderToString } from "react-dom/server";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { ApiError } from "../../lib/api/transport";
 import type { AuthContextValue } from "../../lib/auth/auth-provider";
@@ -51,6 +52,16 @@ describe("AppShell", () => {
     refresh.mockReset();
     logout.mockReset();
     navigationMocks.replace.mockReset();
+  });
+
+  it("keeps authenticated-only shell controls out of the server tree until hydration", () => {
+    authenticate("TENANT");
+
+    const html = renderToString(<AppShell>Private shell content</AppShell>);
+
+    expect(html).not.toContain('aria-label="Thông báo"');
+    expect(html).not.toContain("tenant@example.com");
+    expect(html).toContain("Private shell content");
   });
 
   it("renders a compact anonymous marketplace shell with semantic landmarks", () => {

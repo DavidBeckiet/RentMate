@@ -13,11 +13,14 @@ const apiMocks = vi.hoisted(() => ({
   unlinkListing: vi.fn(),
   cancelRequest: vi.fn()
 }));
-const listingMocks = vi.hoisted(() => ({ getPublicDetail: vi.fn() }));
+const listingMocks = vi.hoisted(() => ({ getPublicDetail: vi.fn(), searchPublic: vi.fn() }));
 const useAuthMock = vi.hoisted(() => vi.fn<() => AuthContextValue>());
 const searchParamsMocks = vi.hoisted(() => ({ value: "" }));
 
-vi.mock("next/navigation", () => ({ useSearchParams: () => new URLSearchParams(searchParamsMocks.value) }));
+vi.mock("next/navigation", () => ({
+  usePathname: () => "/roommates/my-request",
+  useSearchParams: () => new URLSearchParams(searchParamsMocks.value)
+}));
 vi.mock("../../lib/api/client", async () => {
   const actual = await vi.importActual<typeof import("../../lib/api/client")>("../../lib/api/client");
   return { ...actual, api: { roommates: apiMocks, listings: listingMocks } };
@@ -42,6 +45,11 @@ describe("RoommateRequestPage", () => {
     apiMocks.unlinkListing.mockReset();
     apiMocks.cancelRequest.mockReset();
     listingMocks.getPublicDetail.mockReset();
+    listingMocks.searchPublic.mockReset();
+    listingMocks.searchPublic.mockResolvedValue({
+      data: [listingSummary()],
+      pagination: { page: 1, pageSize: 12, hasNextPage: false }
+    });
     searchParamsMocks.value = "";
     useAuthMock.mockReturnValue(auth());
     apiMocks.listMine.mockResolvedValue({ data: [], pagination: { page: 1, pageSize: 20, hasNextPage: false } });
@@ -100,6 +108,21 @@ describe("RoommateRequestPage", () => {
       )
     );
     expect(listingMocks.getPublicDetail).toHaveBeenCalledWith(23, expect.any(AbortSignal));
+  });
+
+  it("searches listings with Enter without submitting the outer request form", async () => {
+    render(<RoommateRequestPage />);
+    await screen.findByRole("heading", { name: "Tạo yêu cầu tìm người ở ghép" });
+    fireEvent.click(screen.getByRole("button", { name: /Cân nhắc một listing/ }));
+
+    const searchInput = screen.getByLabelText("Tìm listing công khai");
+    fireEvent.change(searchInput, { target: { value: "Quận 3" } });
+    fireEvent.keyDown(searchInput, { key: "Enter" });
+
+    await waitFor(() =>
+      expect(listingMocks.searchPublic).toHaveBeenCalledWith(expect.objectContaining({ q: "Quận 3", minOccupants: 2 }))
+    );
+    expect(apiMocks.createRequest).not.toHaveBeenCalled();
   });
 
   it("preselects a Listing Detail CTA target for an existing open request instead of creating another request", async () => {

@@ -159,6 +159,9 @@ function ProfileEditor() {
               if (introError) setIntroError(null);
             }}
           />
+          <p aria-live="polite" className="text-right text-ui-xs font-semibold text-rent-secondary">
+            {Array.from(profile.intro).length}/500 ký tự
+          </p>
           <div className="grid gap-5 sm:grid-cols-2">
             <SelectField
               id="roommate-sleep-schedule"
@@ -266,7 +269,7 @@ function ProfileEditor() {
               Hồ sơ ở ghép đã được lưu.
             </p>
           ) : null}
-          <Button type="submit" pending={pending} pendingLabel="Đang lưu hồ sơ…">
+          <Button className="w-full sm:w-auto" type="submit" pending={pending} pendingLabel="Đang lưu hồ sơ…">
             Lưu hồ sơ ở ghép
           </Button>
         </form>

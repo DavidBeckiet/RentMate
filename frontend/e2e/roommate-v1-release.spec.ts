@@ -114,6 +114,23 @@ async function expectRoommateShell(page: Page): Promise<void> {
   await expect(page.locator('nav[aria-label="Điều hướng ở ghép"]')).toBeVisible();
 }
 
+function captureHydrationDiagnostics(page: Page): string[] {
+  const diagnostics: string[] = [];
+  page.on("console", (message) => {
+    if (message.type() === "warning" || message.type() === "error") diagnostics.push(message.text());
+  });
+  page.on("pageerror", (error) => diagnostics.push(error.message));
+  return diagnostics;
+}
+
+function expectNoHydrationDiagnostics(diagnostics: readonly string[]): void {
+  expect(
+    diagnostics.filter((message) =>
+      /hydration|hydrated|server rendered html|tree will be regenerated|react tree/iu.test(message)
+    )
+  ).toEqual([]);
+}
+
 async function hasStaticHorizontalOverflow(page: Page): Promise<boolean> {
   return page.evaluate(() =>
     Array.from(document.body.querySelectorAll<HTMLElement>("*"))
@@ -286,18 +303,31 @@ test.describe.serial("ROOMMATE-V1-06 browser and Gateway release verification", 
     await expect(page.getByRole("link", { name: /Khám phá yêu cầu/i })).toBeVisible();
   });
 
-  test("representative mobile and desktop layouts remain usable", async () => {
+  test("representative responsive layouts remain usable", async () => {
     const page = await ownerA.newPage();
+    const hydrationDiagnostics = captureHydrationDiagnostics(page);
     await page.setViewportSize({ width: 375, height: 812 });
     await page.goto("/roommates/connection");
     await expectRoommateShell(page);
     await expect(page.getByRole("link", { name: /Mở trò chuyện/i })).toBeVisible();
     expect(await hasStaticHorizontalOverflow(page)).toBe(false);
 
+    for (const viewport of [
+      { width: 768, height: 1024 },
+      { width: 1024, height: 768 }
+    ]) {
+      await page.setViewportSize(viewport);
+      await page.goto("/roommates/connection");
+      await expectRoommateShell(page);
+      await expect(page.locator('a[href^="/roommates/conversations/"]').first()).toBeVisible();
+      expect(await hasStaticHorizontalOverflow(page)).toBe(false);
+    }
+
     await page.setViewportSize({ width: 1440, height: 900 });
     await page.goto("/roommates");
     await expectRoommateShell(page);
     await expect(page.locator('[name="listingMode"]')).toBeVisible();
     expect(await hasStaticHorizontalOverflow(page)).toBe(false);
+    expectNoHydrationDiagnostics(hydrationDiagnostics);
   });
 });

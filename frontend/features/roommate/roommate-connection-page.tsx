@@ -16,6 +16,7 @@ import {
   RoommatePageHeader,
   RoommateProfileSummary,
   RoommateReportControl,
+  RoommateRequestFacts,
   RoommateSafetyNotice,
   RoommateSubnav,
   RoommateTenantBoundary
@@ -88,7 +89,7 @@ function ConnectionContent() {
   return (
     <div className="space-y-6">
       <RoommatePageHeader
-        title="Kết nối ở ghép hiện tại"
+        title="Kết nối tìm roommate hiện tại"
         description="Kết nối này chỉ giúp hai người tiếp tục trao đổi. RentMate không giữ chỗ, không thu tiền và không bảo đảm giao dịch."
       />
       <RoommateSubnav />
@@ -111,19 +112,20 @@ function ConnectionContent() {
                   <p className="text-ui-xs font-bold uppercase tracking-[0.12em] text-rent-secondary">
                     KẾT NỐI HIỆN TẠI
                   </p>
-                  <h2 className="mt-1 font-display text-heading-sm font-bold">Đang trao đổi</h2>
+                  <h2 className="mt-1 font-display text-heading-sm font-bold">Đã kết nối để tìm roommate</h2>
                   <p className="mt-2 text-ui-sm text-rent-secondary">
                     Kết nối từ {formatRoommateDateTime(connection.connectedAt)}
                   </p>
                 </div>
                 <Link
-                  className="inline-flex min-h-11 items-center border-2 border-heroDark-950 bg-heroDark-950 px-4 text-ui-sm font-bold text-white shadow-glass-sm"
+                  className="inline-flex min-h-11 w-full items-center justify-center border-2 border-heroDark-950 bg-heroDark-950 px-4 text-ui-sm font-bold text-white shadow-glass-sm sm:w-auto"
                   href={`/roommates/conversations/${connection.interestId}`}
                 >
                   <Icon name="message" className="h-4 w-4" /> Mở trò chuyện
                 </Link>
               </div>
               <RoommateProfileSummary profile={connection.counterpart} heading="Hồ sơ người còn lại" />
+              <RoommateRequestFacts request={connection.request} />
               <RoommateListingContext request={connection.request} />
             </Card>
             <RoommateSafetyNotice kind="long" />
@@ -131,19 +133,23 @@ function ConnectionContent() {
             <Card className="space-y-3" aria-label="Kết thúc kết nối ở ghép">
               <h2 className="font-display text-ui-base font-bold">Kết thúc kết nối</h2>
               <p className="text-ui-sm leading-6 text-rent-secondary">
-                Kết thúc kết nối không mở lại yêu cầu cũ. Nếu muốn tìm tiếp, bạn có thể tạo một yêu cầu mới khi không
-                còn commitment đang hoạt động.
+                Kết thúc kết nối không mở lại yêu cầu hoặc lời quan tâm cũ. Nếu muốn tìm tiếp, bạn cần bắt đầu một quy
+                trình Roommate mới hợp lệ sau khi kết nối hiện tại đã kết thúc.
               </p>
               {confirmLeave ? (
                 <div className="space-y-3 border-2 border-heroDark-950 bg-rent-coral p-4">
-                  <p className="text-ui-sm font-semibold">Bạn có chắc muốn kết thúc kết nối này?</p>
+                  <p className="text-ui-sm font-semibold leading-6">
+                    Kết nối này sẽ kết thúc. Yêu cầu và lời quan tâm cũ không được mở lại hoặc khôi phục; hai bên chỉ có
+                    thể tương tác lại qua một quy trình Roommate mới hợp lệ.
+                  </p>
                   {leaveError ? (
                     <p role="alert" className="border-l-4 border-rose-700 pl-3 text-ui-sm font-semibold text-rose-800">
                       {leaveError}
                     </p>
                   ) : null}
-                  <div className="flex flex-wrap gap-2">
+                  <div className="grid gap-2 sm:flex sm:flex-wrap">
                     <Button
+                      autoFocus
                       variant="danger"
                       pending={leavePending}
                       pendingLabel="Đang kết thúc…"
@@ -157,7 +163,7 @@ function ConnectionContent() {
                   </div>
                 </div>
               ) : (
-                <Button variant="outline" onClick={() => setConfirmLeave(true)}>
+                <Button className="w-full sm:w-auto" variant="outline" onClick={() => setConfirmLeave(true)}>
                   Kết thúc kết nối
                 </Button>
               )}

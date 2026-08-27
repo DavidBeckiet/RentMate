@@ -6,6 +6,7 @@ import { roommateProfile, roommateRequest, tenantUser } from "./test-roommate-fi
 const apiMocks = vi.hoisted(() => ({ getCurrentConnection: vi.fn(), leaveInterest: vi.fn() }));
 const useAuthMock = vi.hoisted(() => vi.fn<() => AuthContextValue>());
 
+vi.mock("next/navigation", () => ({ usePathname: () => "/roommates/connection" }));
 vi.mock("../../lib/api/client", async () => {
   const actual = await vi.importActual<typeof import("../../lib/api/client")>("../../lib/api/client");
   return { ...actual, api: { roommates: apiMocks } };
@@ -35,7 +36,7 @@ describe("RoommateConnectionPage", () => {
       request: roommateRequest({ status: "MATCHED" })
     });
     render(<RoommateConnectionPage />);
-    expect(await screen.findByRole("heading", { name: "Kết nối ở ghép hiện tại" })).toBeInTheDocument();
+    expect(await screen.findByRole("heading", { name: "Kết nối tìm roommate hiện tại" })).toBeInTheDocument();
     expect(
       screen.getByText(
         "RentMate không giữ chỗ, thu tiền hoặc bảo đảm giao dịch giữa người ở ghép. Không chuyển tiền hoặc đặt cọc chỉ dựa vào yêu cầu ở ghép hay tin nhắn. Hãy kiểm tra phòng, người cho thuê và điều kiện thuê trước khi giao dịch."
