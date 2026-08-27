@@ -6,6 +6,7 @@ import { listingSummary, roommateProfile, roommateRequest, tenantUser } from "./
 const apiMocks = vi.hoisted(() => ({
   listMine: vi.fn(),
   getProfile: vi.fn(),
+  getCurrentConnection: vi.fn(),
   createRequest: vi.fn(),
   renewRequest: vi.fn(),
   linkListing: vi.fn(),
@@ -34,6 +35,7 @@ describe("RoommateRequestPage", () => {
   beforeEach(() => {
     apiMocks.listMine.mockReset();
     apiMocks.getProfile.mockReset();
+    apiMocks.getCurrentConnection.mockReset();
     apiMocks.createRequest.mockReset();
     apiMocks.renewRequest.mockReset();
     apiMocks.linkListing.mockReset();
@@ -44,6 +46,7 @@ describe("RoommateRequestPage", () => {
     useAuthMock.mockReturnValue(auth());
     apiMocks.listMine.mockResolvedValue({ data: [], pagination: { page: 1, pageSize: 20, hasNextPage: false } });
     apiMocks.getProfile.mockResolvedValue(roommateProfile());
+    apiMocks.getCurrentConnection.mockResolvedValue(null);
   });
 
   it("creates an unlinked Flow B request with area, budget, and move-in data", async () => {
@@ -180,5 +183,23 @@ describe("RoommateRequestPage", () => {
     expect(
       await screen.findByText("Yêu cầu đã được gia hạn thêm 30 ngày. Các lời quan tâm cũ không được khôi phục.")
     ).toBeInTheDocument();
+  });
+
+  it("offers a new request after a matched request has been left", async () => {
+    apiMocks.listMine.mockResolvedValue({
+      data: [
+        roommateRequest({
+          status: "MATCHED",
+          signals: { profileCompleted: true, requestOpen: false, listingCurrentlyAvailable: null }
+        })
+      ],
+      pagination: { page: 1, pageSize: 20, hasNextPage: false }
+    });
+    apiMocks.getCurrentConnection.mockResolvedValue(null);
+
+    render(<RoommateRequestPage />);
+
+    expect(await screen.findByRole("heading", { name: /Tạo yêu cầu tìm người ở ghép/u })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: /Lịch sử yêu cầu/u })).toBeInTheDocument();
   });
 });

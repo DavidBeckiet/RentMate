@@ -8,7 +8,7 @@ import { EmptyState, ErrorState, LoadingState } from "../../components/ui/feedba
 import { Pagination } from "../../components/ui/pagination";
 import { api, ApiError } from "../../lib/api/client";
 import { useAuth } from "../../lib/auth/auth-provider";
-import type { ApiPage, RoommateInterest, RoommateRequest } from "../../types/api";
+import type { ApiPage, RoommateInterest } from "../../types/api";
 import { isTerminalRoommateInterest, roommateErrorMessage, roommateInterestStatusLabels } from "./roommate-content";
 import {
   RoommateBlockControl,
@@ -178,7 +178,6 @@ function InterestsContent() {
   const [tab, setTab] = useState<InterestTab>(initialTab);
   const [page, setPage] = useState(1);
   const [result, setResult] = useState<ApiPage<RoommateInterest> | null>(null);
-  const [requestContext, setRequestContext] = useState<RoommateRequest | null>(null);
   const [state, setState] = useState<"idle" | "loading" | "success" | "error">("idle");
   const [error, setError] = useState<ApiError | null>(null);
   const [reloadKey, setReloadKey] = useState(0);
@@ -193,19 +192,19 @@ function InterestsContent() {
     const controller = new AbortController();
     setState("loading");
     setError(null);
-    setRequestContext(null);
     const load = async () => {
       if (tab === "outgoing") {
         return api.roommates.listInterests({ direction: "OUTGOING", page, pageSize: 20 }, controller.signal);
       }
-      const own = await api.roommates.listMine({ status: "OPEN", page: 1, pageSize: 20 }, controller.signal);
-      const request = requestedRequestId
-        ? (own.data.find((item) => item.id === requestedRequestId) ?? null)
-        : (own.data[0] ?? null);
-      if (!request)
-        return { data: [], pagination: { page: 1, pageSize: 20, hasNextPage: false } } as ApiPage<RoommateInterest>;
-      setRequestContext(request);
-      return api.roommates.listIncoming(request.id, { page, pageSize: 20 }, controller.signal);
+      if (requestedRequestId) {
+        const own = await api.roommates.listMine({ page: 1, pageSize: 50 }, controller.signal);
+        const request = own.data.find((item) => item.id === requestedRequestId);
+        if (!request) {
+          return { data: [], pagination: { page: 1, pageSize: 20, hasNextPage: false } } as ApiPage<RoommateInterest>;
+        }
+        return api.roommates.listIncoming(request.id, { page, pageSize: 20 }, controller.signal);
+      }
+      return api.roommates.listInterests({ direction: "INCOMING", page, pageSize: 20 }, controller.signal);
     };
     void load()
       .then((value) => {
@@ -254,17 +253,6 @@ function InterestsContent() {
           Đã gửi
         </Button>
       </div>
-      {tab === "incoming" && state === "success" && !requestContext ? (
-        <EmptyState
-          title="Bạn chưa có yêu cầu đang mở"
-          description="Tạo yêu cầu trước khi có thể nhận lời quan tâm."
-          action={
-            <Link className="font-bold underline decoration-2 underline-offset-4" href="/roommates/my-request">
-              Tạo yêu cầu
-            </Link>
-          }
-        />
-      ) : null}
       {state === "idle" || state === "loading" ? <LoadingState message="Đang tải lời quan tâm…" /> : null}
       {state === "error" ? (
         <ErrorState
@@ -273,7 +261,7 @@ function InterestsContent() {
           action={<Button onClick={() => setReloadKey((value) => value + 1)}>Thử lại</Button>}
         />
       ) : null}
-      {state === "success" && result && (tab === "outgoing" || requestContext) && result.data.length === 0 ? (
+      {state === "success" && result && result.data.length === 0 ? (
         <EmptyState
           title={tab === "incoming" ? "Chưa có lời quan tâm" : "Bạn chưa gửi lời quan tâm nào"}
           description={

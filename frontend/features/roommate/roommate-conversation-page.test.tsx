@@ -84,4 +84,22 @@ describe("RoommateConversationPage", () => {
     fireEvent.click(screen.getByRole("button", { name: "Gửi tin nhắn" }));
     await waitFor(() => expect(apiMocks.sendMessage).toHaveBeenCalledWith(91, "Mình muốn trao đổi thêm."));
   });
+
+  it("lets tenants move through paginated message history", async () => {
+    const firstPageMessage = roommateMessage({ id: 401, body: "First page message." });
+    const secondPageMessage = roommateMessage({ id: 402, body: "Second page message." });
+    apiMocks.listMessages
+      .mockResolvedValueOnce({ data: [firstPageMessage], pagination: { page: 1, pageSize: 100, hasNextPage: true } })
+      .mockResolvedValueOnce({ data: [secondPageMessage], pagination: { page: 2, pageSize: 100, hasNextPage: false } });
+
+    render(<RoommateConversationPage interestId="91" />);
+
+    expect(await screen.findByText(firstPageMessage.body)).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: /Trang sau/iu }));
+
+    await waitFor(() =>
+      expect(apiMocks.listMessages).toHaveBeenLastCalledWith(91, { page: 2, pageSize: 100 }, expect.any(AbortSignal))
+    );
+    expect(await screen.findByText(secondPageMessage.body)).toBeInTheDocument();
+  });
 });

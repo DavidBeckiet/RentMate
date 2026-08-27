@@ -39,6 +39,10 @@ describe("RoommateInterestsPage", () => {
       data: [roommateInterest({ request })],
       pagination: { page: 1, pageSize: 20, hasNextPage: false }
     });
+    apiMocks.listInterests.mockResolvedValue({
+      data: [roommateInterest()],
+      pagination: { page: 1, pageSize: 20, hasNextPage: false }
+    });
   });
 
   it("shows the full safety warning and checklist before accept, then maps the candidate-open conflict", async () => {
@@ -81,5 +85,21 @@ describe("RoommateInterestsPage", () => {
     fireEvent.click(await screen.findByRole("tab", { name: "Đã gửi" }));
     fireEvent.click(await screen.findByRole("button", { name: "Rút lời quan tâm" }));
     await waitFor(() => expect(apiMocks.withdrawInterest).toHaveBeenCalledWith(91));
+  });
+
+  it("shows incoming terminal history without requiring an open request", async () => {
+    apiMocks.listInterests.mockResolvedValue({
+      data: [roommateInterest({ status: "REJECTED" })],
+      pagination: { page: 1, pageSize: 20, hasNextPage: false }
+    });
+
+    render(<RoommateInterestsPage />);
+
+    expect(await screen.findByRole("heading", { name: /từ chối/iu })).toBeInTheDocument();
+    expect(apiMocks.listInterests).toHaveBeenCalledWith(
+      { direction: "INCOMING", page: 1, pageSize: 20 },
+      expect.any(AbortSignal)
+    );
+    expect(apiMocks.listMine).not.toHaveBeenCalled();
   });
 });

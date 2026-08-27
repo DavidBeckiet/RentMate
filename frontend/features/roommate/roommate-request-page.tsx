@@ -720,6 +720,7 @@ function RequestWorkspace() {
   const tenantReady = authStatus === "authenticated" && user?.role === "TENANT" && user.isActive;
   const [requests, setRequests] = useState<readonly RoommateRequest[]>([]);
   const [profileReady, setProfileReady] = useState<boolean | null>(null);
+  const [hasActiveConnection, setHasActiveConnection] = useState<boolean | null>(null);
   const [state, setState] = useState<"idle" | "loading" | "success" | "error">("idle");
   const [error, setError] = useState<ApiError | null>(null);
   const [refreshKey, setRefreshKey] = useState(0);
@@ -734,14 +735,21 @@ function RequestWorkspace() {
     setState("loading");
     setError(null);
     setProfileReady(null);
+    setHasActiveConnection(null);
+    const connectionPromise = api.roommates.getCurrentConnection(controller.signal).catch((caught: unknown) => {
+      if (caught instanceof ApiError && caught.status === 404) return null;
+      throw caught;
+    });
     void Promise.all([
       api.roommates.listMine({ page: 1, pageSize: 20 }, controller.signal),
-      api.roommates.getProfile(controller.signal)
+      api.roommates.getProfile(controller.signal),
+      connectionPromise
     ])
-      .then(([requestPage, profile]) => {
+      .then(([requestPage, profile, connection]) => {
         if (controller.signal.aborted) return;
         setRequests(requestPage.data);
         setProfileReady(profile.profileCompleted);
+        setHasActiveConnection(connection !== null);
         setState("success");
       })
       .catch((caught: unknown) => {
@@ -760,7 +768,7 @@ function RequestWorkspace() {
 
   const managed =
     requests.find((request) => request.status === "OPEN") ??
-    requests.find((request) => request.status === "MATCHED") ??
+    (hasActiveConnection ? requests.find((request) => request.status === "MATCHED") : null) ??
     requests.find((request) => request.status === "EXPIRED") ??
     null;
   const updateRequest = (updated: RoommateRequest, kind: RequestFeedbackKind) => {

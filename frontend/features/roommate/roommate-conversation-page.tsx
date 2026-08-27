@@ -7,9 +7,10 @@ import { Card } from "../../components/ui/card";
 import { EmptyState, ErrorState, LoadingState } from "../../components/ui/feedback-states";
 import { TextareaField } from "../../components/ui/form-controls";
 import { Icon } from "../../components/ui/icon";
+import { Pagination } from "../../components/ui/pagination";
 import { api, ApiError } from "../../lib/api/client";
 import { useAuth } from "../../lib/auth/auth-provider";
-import type { RoommateInterest, RoommateMessage } from "../../types/api";
+import type { ApiPage, RoommateInterest, RoommateMessage } from "../../types/api";
 import {
   formatRoommateDateTime,
   isTerminalRoommateInterest,
@@ -61,6 +62,12 @@ function ConversationContent({ interestId }: Readonly<{ interestId: number }>) {
   const tenantReady = authStatus === "authenticated" && user?.role === "TENANT" && user.isActive;
   const [interest, setInterest] = useState<RoommateInterest | null>(null);
   const [messages, setMessages] = useState<readonly RoommateMessage[]>([]);
+  const [messagePage, setMessagePage] = useState(1);
+  const [messagePagination, setMessagePagination] = useState<ApiPage<RoommateMessage>["pagination"]>({
+    page: 1,
+    pageSize: 100,
+    hasNextPage: false
+  });
   const [state, setState] = useState<"loading" | "success" | "error">("loading");
   const [error, setError] = useState<ApiError | null>(null);
   const [retryKey, setRetryKey] = useState(0);
@@ -75,12 +82,13 @@ function ConversationContent({ interestId }: Readonly<{ interestId: number }>) {
     setError(null);
     void Promise.all([
       api.roommates.getInterest(interestId, controller.signal),
-      api.roommates.listMessages(interestId, { page: 1, pageSize: 100 }, controller.signal)
+      api.roommates.listMessages(interestId, { page: messagePage, pageSize: 100 }, controller.signal)
     ])
       .then(([interestValue, page]) => {
         if (controller.signal.aborted) return;
         setInterest(interestValue);
         setMessages(page.data);
+        setMessagePagination(page.pagination);
         setState("success");
         void api.roommates.markMessagesRead(interestId).catch(() => undefined);
       })
@@ -91,7 +99,7 @@ function ConversationContent({ interestId }: Readonly<{ interestId: number }>) {
         }
       });
     return () => controller.abort();
-  }, [interestId, retryKey, tenantReady]);
+  }, [interestId, messagePage, retryKey, tenantReady]);
 
   const writable = interest?.status === "PENDING" || interest?.status === "ACCEPTED";
   const submit = async (event: FormEvent<HTMLFormElement>) => {
@@ -104,7 +112,7 @@ function ConversationContent({ interestId }: Readonly<{ interestId: number }>) {
     setSendError(null);
     try {
       const message = await api.roommates.sendMessage(interestId, body.trim());
-      setMessages((current) => [...current, message]);
+      if (!messagePagination.hasNextPage) setMessages((current) => [...current, message]);
       setBody("");
     } catch (caught) {
       setSendError(roommateErrorMessage(caught));
@@ -159,6 +167,15 @@ function ConversationContent({ interestId }: Readonly<{ interestId: number }>) {
                 <MessageBubble key={message.id} message={message} />
               ))}
             </div>
+            {messagePagination.hasNextPage || messagePage > 1 ? (
+              <Pagination
+                ariaLabel="Phân trang tin nhắn ở ghép"
+                page={messagePagination.page}
+                hasNextPage={messagePagination.hasNextPage}
+                onPrevious={() => setMessagePage((current) => Math.max(1, current - 1))}
+                onNext={() => setMessagePage((current) => current + 1)}
+              />
+            ) : null}
           </Card>
           {writable ? (
             <Card>
