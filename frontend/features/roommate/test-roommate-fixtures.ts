@@ -2,6 +2,7 @@ import type {
   PublicListingSummary,
   RoommateInterest,
   RoommateMessage,
+  RoommateOwnedBlock,
   RoommateProfile,
   RoommateRequest,
   UserProfile
@@ -105,6 +106,15 @@ export function roommateMessage(overrides: Partial<RoommateMessage> = {}): Roomm
     body: "Chào bạn, mình có thể trao đổi thêm về nhu cầu ở ghép.",
     createdAt: "2026-08-21T09:00:00.000Z",
     isRead: false,
+    ...overrides
+  };
+}
+
+export function roommateOwnedBlock(overrides: Partial<RoommateOwnedBlock> = {}): RoommateOwnedBlock {
+  return {
+    blockedAt: "2026-08-27T12:00:00.000Z",
+    counterpart: { displayName: "Minh", memberSince: "2026-01" },
+    unblockAction: { kind: "REQUEST", id: 42 },
     ...overrides
   };
 }

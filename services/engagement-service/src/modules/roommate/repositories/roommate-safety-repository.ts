@@ -30,6 +30,12 @@ export interface RoommateBlockRecord {
   readonly requestId: number;
 }
 
+export interface RoommateOwnedBlockRecord extends RoommateBlockRecord {
+  readonly requestOwnerTenantId: number;
+  readonly unblockInterestId: number | null;
+  readonly blockedAt: string;
+}
+
 export interface RoommateReportRecord {
   readonly id: number;
   readonly reporterTenantId: number;
@@ -100,6 +106,12 @@ export interface RoommateSafetyRepository {
     requestId?: number,
     forUpdate?: boolean
   ) => Promise<RoommateBlockRecord | null>;
+  readonly listOwnedRoommateBlocks: (
+    executor: SqlExecutor,
+    blockerTenantId: number,
+    limit: number,
+    offset: number
+  ) => Promise<readonly RoommateOwnedBlockRecord[]>;
   readonly createBlock: (
     executor: SqlExecutor,
     input: { readonly blockerTenantId: number; readonly blockedTenantId: number; readonly requestId: number }
@@ -226,6 +238,12 @@ interface BlockRow extends QueryResultRow {
   blocker_id: unknown;
   blocked_id: unknown;
   roommate_request_id: unknown;
+}
+
+interface OwnedBlockRow extends BlockRow {
+  request_owner_tenant_id: unknown;
+  unblock_interest_id: unknown;
+  created_at: unknown;
 }
 
 interface ReportRow extends QueryResultRow {
@@ -362,6 +380,15 @@ function mapBlock(row: Readonly<BlockRow>): RoommateBlockRecord {
     blockerTenantId: positiveId(row.blocker_id, "roommateBlock.blockerTenantId"),
     blockedTenantId: positiveId(row.blocked_id, "roommateBlock.blockedTenantId"),
     requestId: positiveId(row.roommate_request_id, "roommateBlock.requestId")
+  });
+}
+
+function mapOwnedBlock(row: Readonly<OwnedBlockRow>): RoommateOwnedBlockRecord {
+  return Object.freeze({
+    ...mapBlock(row),
+    requestOwnerTenantId: positiveId(row.request_owner_tenant_id, "roommateBlock.requestOwnerTenantId"),
+    unblockInterestId: nullableId(row.unblock_interest_id, "roommateBlock.unblockInterestId"),
+    blockedAt: timestamp(row.created_at, "roommateBlock.blockedAt")
   });
 }
 
@@ -532,6 +559,39 @@ export function createRoommateSafetyRepository(): RoommateSafetyRepository {
             requestId === undefined ? [blockerTenantId, blockedTenantId] : [blockerTenantId, blockedTenantId, requestId]
         },
         mapBlock
+      );
+    },
+
+    listOwnedRoommateBlocks(executor, blockerTenantId, limit, offset) {
+      return queryMany<OwnedBlockRow, RoommateOwnedBlockRecord>(
+        executor,
+        {
+          text: `
+            SELECT
+              b.blocker_id,
+              b.blocked_id,
+              b.roommate_request_id,
+              b.created_at,
+              r.owner_tenant_id AS request_owner_tenant_id,
+              (
+                SELECT i.id
+                FROM roommate_interests i
+                WHERE i.request_id = b.roommate_request_id
+                  AND r.owner_tenant_id = b.blocker_id
+                  AND i.interested_tenant_id = b.blocked_id
+                ORDER BY i.updated_at DESC, i.id DESC
+                LIMIT 1
+              ) AS unblock_interest_id
+            FROM contact_blocks b
+            JOIN roommate_requests r ON r.id = b.roommate_request_id
+            WHERE b.blocker_id = $1
+              AND b.roommate_request_id IS NOT NULL
+            ORDER BY b.created_at DESC, b.id DESC
+            LIMIT $2 OFFSET $3
+          `,
+          values: [blockerTenantId, limit, offset]
+        },
+        mapOwnedBlock
       );
     },
 

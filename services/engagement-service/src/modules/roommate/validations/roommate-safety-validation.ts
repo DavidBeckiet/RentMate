@@ -51,6 +51,12 @@ export interface RoommateReportCollectionQuery {
   readonly offset: number;
 }
 
+export interface RoommateBlockPageQuery {
+  readonly page: number;
+  readonly pageSize: number;
+  readonly offset: number;
+}
+
 export interface UpdateRoommateReportStatusInput {
   readonly status: Exclude<RoommateReportStatus, "OPEN">;
   readonly note: string | null;
@@ -137,6 +143,14 @@ export function validateRoommateReportCollectionQuery(value: unknown): RoommateR
   const offset = (page - 1) * pageSize;
   if (!Number.isSafeInteger(offset)) throwValidationIssue("page", "OUT_OF_RANGE", "page is too large.");
   return Object.freeze({ source: source as "ROOMMATE", status, category, page, pageSize, offset });
+}
+
+export function validateRoommateBlockPageQuery(value: unknown): RoommateBlockPageQuery {
+  const query = validateQueryKeys(value, ["page", "pageSize"]);
+  const { page, pageSize } = parsePagination(query);
+  const offset = (page - 1) * pageSize;
+  if (!Number.isSafeInteger(offset)) throwValidationIssue("page", "OUT_OF_RANGE", "page is too large.");
+  return Object.freeze({ page, pageSize, offset });
 }
 
 export function validateUpdateRoommateReportStatusBody(value: unknown): UpdateRoommateReportStatusInput {

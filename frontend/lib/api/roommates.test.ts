@@ -76,6 +76,7 @@ describe("createRoommateApi", () => {
     void api.sendMessage(7, "Chào bạn");
     void api.markMessagesRead(7);
     void api.blockRequest(8);
+    void api.listOwnedBlocks({ page: 2, pageSize: 10 });
     void api.reportRequest(8, { targetType: "ROOMMATE_REQUEST", category: "FRAUD", details: null });
     void api.listAdminReports({ status: "OPEN", category: "FRAUD" });
     void api.moderateProfile(7, { state: "HIDDEN", reportId: 12, note: "Đã xem xét." });
@@ -92,6 +93,10 @@ describe("createRoommateApi", () => {
     });
     expect(mock.empty).toHaveBeenCalledWith("/api/v1/roommate-interests/7/read", { method: "POST", signal: undefined });
     expect(mock.object).toHaveBeenCalledWith("/api/v1/roommate-requests/8/block", { method: "PUT", signal: undefined });
+    expect(mock.page).toHaveBeenCalledWith("/api/v1/roommate-blocks/mine", {
+      query: { page: 2, pageSize: 10 },
+      signal: undefined
+    });
     expect(mock.object).toHaveBeenCalledWith("/api/v1/roommate-requests/8/reports", {
       method: "POST",
       json: { targetType: "ROOMMATE_REQUEST", category: "FRAUD", details: null },

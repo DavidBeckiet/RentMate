@@ -92,6 +92,7 @@ export function RoommateSubnav() {
     { href: "/roommates/my-request", label: "Yêu cầu của tôi" },
     { href: "/roommates/interests", label: "Lời quan tâm" },
     { href: "/roommates/connection", label: "Kết nối hiện tại" },
+    { href: "/roommates/blocks", label: "Đã chặn" },
     { href: "/roommates/profile", label: "Hồ sơ ở ghép" }
   ] as const;
 

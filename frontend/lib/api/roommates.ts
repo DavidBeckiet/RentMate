@@ -14,6 +14,7 @@ import type {
   RoommateMineQuery,
   RoommateModerationBody,
   RoommateModerationResult,
+  RoommateOwnedBlock,
   RoommateProfile,
   RoommateProfileBody,
   RoommateReportReceipt,
@@ -128,6 +129,11 @@ export function createRoommateApi(transport: ApiTransport) {
 
     unblockInterest: (interestId: number, signal?: AbortSignal): Promise<RoommateBlockState> =>
       transport.object(`/api/v1/roommate-interests/${interestId}/block`, { method: "DELETE", signal }),
+
+    listOwnedBlocks: (
+      query: { readonly page?: number; readonly pageSize?: number } = {},
+      signal?: AbortSignal
+    ): Promise<ApiPage<RoommateOwnedBlock>> => transport.page("/api/v1/roommate-blocks/mine", { query, signal }),
 
     reportRequest: (
       requestId: number,

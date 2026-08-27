@@ -111,6 +111,7 @@ export function resolveUpstream(pathname, routes) {
   if (
     routes.engagement &&
     (pathname.startsWith("/api/v1/roommate-profiles") ||
+      pathname.startsWith("/api/v1/roommate-blocks") ||
       pathname.startsWith("/api/v1/roommate-requests") ||
       pathname.startsWith("/api/v1/roommate-interests") ||
       pathname.startsWith("/api/v1/roommate-messages") ||

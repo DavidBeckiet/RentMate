@@ -373,6 +373,95 @@ test("applies directional block outcomes without exposing direction or resurrect
   );
 });
 
+test("lists only caller-owned roommate blocks with existing request or interest unblock actions", async () => {
+  await Promise.all([
+    createProfile(2401),
+    createProfile(2402),
+    createProfile(2403),
+    createProfile(2404),
+    createProfile(2405),
+    createProfile(2406)
+  ]);
+
+  const requestContextId = await createRequest(2402);
+  await safetyService.blockRequest(principal(2401), requestContextId);
+
+  const ownerRequestId = await createRequest(2401);
+  const interestContextId = await createInterest(ownerRequestId, 2403);
+  await safetyService.blockInterest(principal(2401), interestContextId);
+  assert.equal(
+    (await queryOne<{ status: string }>("SELECT status FROM roommate_interests WHERE id = $1", [interestContextId]))
+      .status,
+    "REJECTED"
+  );
+
+  await safetyService.blockRequest(principal(2404), ownerRequestId);
+  const inquiryId = await transaction(async (executor) => {
+    const inquiry = await executor.query<{ id: unknown }>({
+      text: `
+        INSERT INTO listing_inquiries (tenant_id, landlord_id, listing_id)
+        VALUES ($1, $2, $3)
+        RETURNING id
+      `,
+      values: [2401, 2406, 991]
+    });
+    const id = Number(inquiry.rows[0]?.id);
+    assert.equal(Number.isSafeInteger(id), true);
+    await executor.query({
+      text: `
+        INSERT INTO contact_blocks (blocker_id, blocked_id, inquiry_id)
+        VALUES ($1, $2, $3)
+      `,
+      values: [2401, 2406, id]
+    });
+    return id;
+  });
+  assert.equal(Number.isSafeInteger(inquiryId), true);
+
+  const firstPage = await safetyService.listOwnedBlocks(principal(2401), { page: 1, pageSize: 1, offset: 0 });
+  const secondPage = await safetyService.listOwnedBlocks(principal(2401), { page: 2, pageSize: 1, offset: 1 });
+  assert.equal(firstPage.data.length, 1);
+  assert.equal(firstPage.hasNextPage, true);
+  assert.equal(secondPage.data.length, 1);
+  assert.equal(secondPage.hasNextPage, false);
+
+  const page = await safetyService.listOwnedBlocks(principal(2401), { page: 1, pageSize: 20, offset: 0 });
+  assert.equal(page.data.length, 2);
+  assert.deepEqual(page.data.map((block) => block.unblockAction.kind).sort(), ["INTEREST", "REQUEST"]);
+  for (const block of page.data) {
+    assert.equal("tenantId" in block, false);
+    assert.equal("blockedTenantId" in block, false);
+    assert.equal("blockerTenantId" in block, false);
+    assert.equal("email" in block.counterpart, false);
+    assert.equal("phone" in block.counterpart, false);
+    assert.equal("terminalReason" in block, false);
+  }
+
+  const requestBlock = page.data.find((block) => block.unblockAction.kind === "REQUEST");
+  const interestBlock = page.data.find((block) => block.unblockAction.kind === "INTEREST");
+  assert.ok(requestBlock);
+  assert.ok(interestBlock);
+
+  const beforeUnblockNotifications = await queryRows<{ id: number }>(
+    "SELECT id FROM notifications WHERE roommate_request_id IN ($1, $2) OR roommate_interest_id = $3",
+    [requestContextId, ownerRequestId, interestContextId]
+  );
+  await safetyService.unblockRequest(principal(2401), requestBlock.unblockAction.id);
+  await safetyService.unblockInterest(principal(2401), interestBlock.unblockAction.id);
+  const afterUnblock = await safetyService.listOwnedBlocks(principal(2401), { page: 1, pageSize: 20, offset: 0 });
+  assert.equal(afterUnblock.data.length, 0);
+  assert.equal(
+    (await queryOne<{ status: string }>("SELECT status FROM roommate_interests WHERE id = $1", [interestContextId]))
+      .status,
+    "REJECTED"
+  );
+  const afterUnblockNotifications = await queryRows<{ id: number }>(
+    "SELECT id FROM notifications WHERE roommate_request_id IN ($1, $2) OR roommate_interest_id = $3",
+    [requestContextId, ownerRequestId, interestContextId]
+  );
+  assert.deepEqual(afterUnblockNotifications, beforeUnblockNotifications);
+});
+
 test("dedupes reports, retains minimal evidence, and enforces admin moderation context", async () => {
   await Promise.all([createProfile(2201), createProfile(2202)]);
   const requestId = await createRequest(2201);

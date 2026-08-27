@@ -24,6 +24,7 @@ import type {
   CreateRoommateInterestReportInput,
   CreateRoommateMessageReportInput,
   CreateRoommateRequestReportInput,
+  RoommateBlockPageQuery,
   RoommateModerationInput,
   RoommateReportCategory,
   RoommateReportCollectionQuery,
@@ -47,6 +48,15 @@ export interface RoommateMessageView {
 
 export interface RoommateBlockView {
   readonly blocked: boolean;
+}
+
+export interface RoommateOwnedBlockView {
+  readonly blockedAt: string;
+  readonly counterpart: Readonly<{
+    displayName: string | null;
+    memberSince: string | null;
+  }>;
+  readonly unblockAction: Readonly<{ kind: "REQUEST"; id: number }> | Readonly<{ kind: "INTEREST"; id: number }>;
 }
 
 export interface RoommateReportReceipt {
@@ -104,6 +114,10 @@ export interface RoommateSafetyService {
   readonly unblockRequest: (principal: AuthenticatedPrincipal, requestId: number) => Promise<RoommateBlockView>;
   readonly blockInterest: (principal: AuthenticatedPrincipal, interestId: number) => Promise<RoommateBlockView>;
   readonly unblockInterest: (principal: AuthenticatedPrincipal, interestId: number) => Promise<RoommateBlockView>;
+  readonly listOwnedBlocks: (
+    principal: AuthenticatedPrincipal,
+    query: RoommateBlockPageQuery
+  ) => Promise<RoommateSafetyPage<RoommateOwnedBlockView>>;
   readonly createRequestReport: (
     principal: AuthenticatedPrincipal,
     requestId: number,
@@ -554,6 +568,42 @@ export function createRoommateSafetyService(dependencies: RoommateSafetyDependen
           blockedTenantId: counterpartId
         });
         return blockView(false);
+      });
+    },
+
+    async listOwnedBlocks(principal, query) {
+      const tenantId = requireTenant(principal);
+      const records = await transactionRunner.run((executor) =>
+        safetyRepository.listOwnedRoommateBlocks(executor, tenantId, query.pageSize + 1, query.offset)
+      );
+      const pageRecords = records.slice(0, query.pageSize);
+      const identities = await loadIdentity([...new Set(pageRecords.map((record) => record.blockedTenantId))]);
+      const identityByTenant = new Map(identities.map((identity) => [identity.tenantId, identity] as const));
+      const data = pageRecords.map((record): RoommateOwnedBlockView => {
+        const counterpart = identityByTenant.get(record.blockedTenantId);
+        let unblockAction: RoommateOwnedBlockView["unblockAction"];
+        if (record.requestOwnerTenantId === tenantId) {
+          if (record.unblockInterestId === null) {
+            throw new Error("A caller-owned roommate block is missing its interest context.");
+          }
+          unblockAction = Object.freeze({ kind: "INTEREST" as const, id: record.unblockInterestId });
+        } else {
+          unblockAction = Object.freeze({ kind: "REQUEST" as const, id: record.requestId });
+        }
+        return Object.freeze({
+          blockedAt: record.blockedAt,
+          counterpart: Object.freeze({
+            displayName: counterpart?.displayName ?? null,
+            memberSince: counterpart?.memberSince ?? null
+          }),
+          unblockAction
+        });
+      });
+      return Object.freeze({
+        data: Object.freeze(data),
+        page: query.page,
+        pageSize: query.pageSize,
+        hasNextPage: records.length > query.pageSize
       });
     },
 

@@ -6,7 +6,8 @@ import { validateBodyFields, validateQueryKeys } from "../../../../../shared/src
 import type {
   RoommateSafetyService,
   RoommateAdminReportView,
-  RoommateMessageView
+  RoommateMessageView,
+  RoommateOwnedBlockView
 } from "../services/roommate-safety-service.js";
 import { parseRoommateInterestId } from "../validations/roommate-interest-validation.js";
 import {
@@ -17,6 +18,7 @@ import {
 import {
   parseRoommateReportId,
   parseRoommateTenantId,
+  validateRoommateBlockPageQuery,
   validateRoommateInterestReportBody,
   validateRoommateMessageReportBody,
   validateRoommateModerationBody,
@@ -64,6 +66,14 @@ function reportDto(report: RoommateAdminReportView, includeDetail: boolean) {
     reporter: report.reporter,
     subject: report.subject,
     ...(includeDetail ? { evidenceSnapshot: report.evidenceSnapshot, events: report.events } : {})
+  };
+}
+
+function ownedBlockDto(block: RoommateOwnedBlockView) {
+  return {
+    blockedAt: block.blockedAt,
+    counterpart: block.counterpart,
+    unblockAction: block.unblockAction
   };
 }
 
@@ -146,6 +156,16 @@ export function unblockRoommateInterestHandler(service: RoommateSafetyService): 
     void service
       .unblockInterest(principal(request), parseRoommateInterestId(request.params.interestId))
       .then((state) => sendObject(response, state))
+      .catch(next);
+  };
+}
+
+export function listOwnedRoommateBlocksHandler(service: RoommateSafetyService): RequestHandler {
+  return (request, response, next) => {
+    emptyBody(request.body);
+    void service
+      .listOwnedBlocks(principal(request), validateRoommateBlockPageQuery(request.query))
+      .then((page) => sendPaginated(response, page.data.map(ownedBlockDto), page))
       .catch(next);
   };
 }

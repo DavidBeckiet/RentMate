@@ -36,6 +36,7 @@ import {
   createRoommateMessageReportHandler,
   createRoommateRequestReportHandler,
   getRoommateAdminReportHandler,
+  listOwnedRoommateBlocksHandler,
   listRoommateAdminReportsHandler,
   listRoommateMessagesHandler,
   markRoommateMessagesReadHandler,
@@ -208,6 +209,7 @@ export function registerRoommateRoutes(
 
   if (dependencies.safetyService) {
     const safetyService = dependencies.safetyService;
+    router.get("/roommate-blocks/mine", ...guards, listOwnedRoommateBlocksHandler(safetyService));
     router.get("/roommate-interests/:interestId/messages", ...guards, listRoommateMessagesHandler(safetyService));
     router.post(
       "/roommate-interests/:interestId/messages",

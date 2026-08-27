@@ -5,6 +5,7 @@ import {
   validateRoommateMessagePageQuery
 } from "../src/modules/roommate/validations/roommate-message-validation.js";
 import {
+  validateRoommateBlockPageQuery,
   validateRoommateInterestReportBody,
   validateRoommateMessageReportBody,
   validateRoommateModerationBody,
@@ -80,6 +81,11 @@ test("validates roommate report targets, categories, details, and admin filters"
     status: "INVESTIGATING",
     note: null
   });
+  assert.deepEqual(validateRoommateBlockPageQuery({ page: "2", pageSize: "10" }), {
+    page: 2,
+    pageSize: 10,
+    offset: 10
+  });
 });
 
 test("rejects target fields on interest/message reports and unsafe report data", () => {
@@ -105,4 +111,5 @@ test("rejects target fields on interest/message reports and unsafe report data",
     /invalid data/i
   );
   assert.throws(() => validateUpdateRoommateReportStatusBody({ status: "RESOLVED" }), /invalid data/i);
+  assert.throws(() => validateRoommateBlockPageQuery({ status: "OPEN" }), /invalid data/i);
 });

@@ -972,6 +972,15 @@ export interface RoommateBlockState {
   readonly blocked: boolean;
 }
 
+export interface RoommateOwnedBlock {
+  readonly blockedAt: string;
+  readonly counterpart: Readonly<{
+    displayName: string | null;
+    memberSince: string | null;
+  }>;
+  readonly unblockAction: Readonly<{ kind: "REQUEST"; id: number }> | Readonly<{ kind: "INTEREST"; id: number }>;
+}
+
 export interface CreateRoommateRequestReportBody {
   readonly targetType: Extract<RoommateReportTargetType, "ROOMMATE_PROFILE" | "ROOMMATE_REQUEST">;
   readonly category: RoommateReportCategory;
