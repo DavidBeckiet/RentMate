@@ -110,7 +110,15 @@ export function resolveUpstream(pathname, routes) {
   }
   if (
     routes.engagement &&
-    (pathname.startsWith("/api/v1/favorites") ||
+    (pathname.startsWith("/api/v1/roommate-profiles") ||
+      pathname.startsWith("/api/v1/roommate-requests") ||
+      pathname.startsWith("/api/v1/roommate-interests") ||
+      pathname.startsWith("/api/v1/roommate-messages") ||
+      pathname.startsWith("/api/v1/roommate-connections") ||
+      pathname.startsWith("/api/v1/admin/roommate-profiles") ||
+      pathname.startsWith("/api/v1/admin/roommate-requests") ||
+      pathname.startsWith("/api/v1/admin/roommate-messages") ||
+      pathname.startsWith("/api/v1/favorites") ||
       pathname.startsWith("/api/v1/inquiries") ||
       pathname.startsWith("/api/v1/tenant/inquiries") ||
       pathname.startsWith("/api/v1/tenant/listing-notes") ||

@@ -71,7 +71,7 @@ export interface RoommateAdminReportView extends RoommateReportReceipt {
   readonly updatedAt: string;
   readonly resolvedAt: string | null;
   readonly reporter: Readonly<{ displayName: string | null; memberSince: string | null }>;
-  readonly subject: Readonly<{ requestId: number; messageId: number | null }>;
+  readonly subject: Readonly<{ requestId: number; messageId: number | null; profileTenantId?: number }>;
   readonly evidenceSnapshot?: Readonly<Record<string, unknown>>;
   readonly events?: readonly RoommateAdminReportEventView[];
 }
@@ -365,6 +365,7 @@ export function createRoommateSafetyService(dependencies: RoommateSafetyDependen
     events?: readonly RoommateReportEvent[]
   ): Promise<RoommateAdminReportView> => {
     const [identity] = await loadIdentity([report.reporterTenantId]);
+    const profileTenantId = includeEvidence && report.targetType === "ROOMMATE_PROFILE" ? report.subjectTenantId : null;
     const safeEvents = events?.map(
       (event): RoommateAdminReportEventView =>
         Object.freeze({
@@ -385,7 +386,11 @@ export function createRoommateSafetyService(dependencies: RoommateSafetyDependen
         displayName: identity?.displayName ?? null,
         memberSince: identity?.memberSince ?? null
       }),
-      subject: Object.freeze({ requestId: report.requestId, messageId: report.messageId }),
+      subject: Object.freeze({
+        requestId: report.requestId,
+        messageId: report.messageId,
+        ...(profileTenantId === null ? {} : { profileTenantId })
+      }),
       ...(includeEvidence ? { evidenceSnapshot: report.evidenceSnapshot } : {}),
       ...(safeEvents === undefined ? {} : { events: Object.freeze(safeEvents) })
     });

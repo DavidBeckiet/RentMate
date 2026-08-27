@@ -12,6 +12,7 @@ import { createLeadsApi } from "./leads";
 import { createAnalyticsApi } from "./analytics";
 import { createListingNotesApi } from "./listing-notes";
 import { createReviewsApi } from "./reviews";
+import { createRoommateApi } from "./roommates";
 
 export function createApiClient(transport: ApiTransport = createTransport()) {
   return {
@@ -29,6 +30,7 @@ export function createApiClient(transport: ApiTransport = createTransport()) {
     analytics: createAnalyticsApi(transport),
     listingNotes: createListingNotesApi(transport),
     reviews: createReviewsApi(transport),
+    roommates: createRoommateApi(transport),
     admin: createAdminApi(transport)
   } as const;
 }

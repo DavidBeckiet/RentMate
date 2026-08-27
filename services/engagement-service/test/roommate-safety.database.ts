@@ -433,9 +433,15 @@ test("dedupes reports, retains minimal evidence, and enforces admin moderation c
     offset: 0
   });
   const messageAdminRow = adminPage.data.find((report) => report.id === messageReportId)!;
+  const profileAdminRow = adminPage.data.find((report) => report.id === profileReport.id)!;
   assert.equal(messageAdminRow.reporter.displayName, "Tenant 2202");
   assert.equal("assignedAdminId" in messageAdminRow, false);
   assert.equal("reporterTenantId" in messageAdminRow, false);
+  assert.equal("profileTenantId" in messageAdminRow.subject, false);
+  assert.equal("profileTenantId" in profileAdminRow.subject, false);
+
+  const profileDetail = await safetyService.getAdminReport(admin, profileReport.id);
+  assert.equal(profileDetail?.subject.profileTenantId, 2201);
 
   await safetyService.moderateMessage(admin, message.id, {
     state: "HIDDEN",

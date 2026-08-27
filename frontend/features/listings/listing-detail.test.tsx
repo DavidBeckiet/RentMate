@@ -5,12 +5,14 @@ import type { PublicListingDetail, UserProfile } from "../../types/api";
 
 const apiMocks = vi.hoisted(() => ({ getPublicDetail: vi.fn(), listReviews: vi.fn(), listSimilar: vi.fn() }));
 const useAuthMock = vi.hoisted(() => vi.fn<() => AuthContextValue>());
+const navigationMocks = vi.hoisted(() => ({ push: vi.fn() }));
 
 vi.mock("../../lib/api/client", async () => {
   const actual = await vi.importActual<typeof import("../../lib/api/client")>("../../lib/api/client");
   return { ...actual, api: { listings: apiMocks } };
 });
 vi.mock("../../lib/auth/auth-provider", () => ({ useAuth: useAuthMock }));
+vi.mock("next/navigation", () => ({ useRouter: () => navigationMocks }));
 vi.mock("next/image", () => ({
   default: ({ alt }: { alt: string }) => <span role="img" aria-label={alt} />
 }));
@@ -90,6 +92,21 @@ beforeEach(() => {
 });
 
 describe("ListingDetail", () => {
+  it("shows the Roommate CTA and its safe linked-listing wording only for eligible listings", async () => {
+    useAuthMock.mockReturnValue(authValue({ status: "authenticated", user: tenant }));
+    apiMocks.getPublicDetail.mockResolvedValue(detail({ maxOccupants: 2, businessStatus: "AVAILABLE" }));
+    const eligible = render(<ListingDetail listingId="42" />);
+
+    expect(await screen.findByText("Tenant đang tìm một người để cân nhắc cùng thuê listing này.")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Tìm người ở ghép cho listing này" })).toBeInTheDocument();
+    eligible.unmount();
+
+    apiMocks.getPublicDetail.mockResolvedValue(detail({ maxOccupants: 1, businessStatus: "AVAILABLE" }));
+    render(<ListingDetail listingId="42" />);
+    await screen.findByRole("heading", { level: 1, name: "Studio sáng gần trung tâm" });
+    expect(screen.queryByRole("button", { name: "Tìm người ở ghép cho listing này" })).not.toBeInTheDocument();
+  });
+
   it("shows the optional maximum occupancy in the public detail facts", async () => {
     apiMocks.getPublicDetail.mockResolvedValue(detail({ maxOccupants: 3 }));
     render(<ListingDetail listingId="42" />);

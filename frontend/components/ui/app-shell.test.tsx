@@ -90,6 +90,7 @@ describe("AppShell", () => {
     const navigation = screen.getByRole("navigation", { name: "Điều hướng marketplace" });
     expect(within(navigation).getByRole("link", { name: "Yêu thích" })).toHaveAttribute("aria-current", "page");
     expect(within(navigation).getByRole("link", { name: "Tin nhắn" })).toHaveAttribute("href", "/inquiries");
+    expect(within(navigation).getByRole("link", { name: "Ở ghép" })).toHaveAttribute("href", "/roommates");
     expect(within(navigation).queryByRole("link", { name: "Thông báo" })).not.toBeInTheDocument();
     expect(within(screen.getByRole("banner")).getByRole("link", { name: "Thông báo" })).toHaveAttribute(
       "href",
@@ -194,6 +195,7 @@ describe("AppShell", () => {
     ["/admin/users", "Người dùng"],
     ["/admin/reports", "Báo cáo"],
     ["/admin/contact-reports", "Báo cáo contact"],
+    ["/admin/roommate-reports", "Báo cáo ở ghép"],
     ["/admin/support-requests", "Yêu cầu hỗ trợ"],
     ["/admin/reviews", "Reviews"],
     ["/admin/verifications", "Xác minh"]

@@ -13,7 +13,15 @@ export type NotificationEventType =
   | "LISTING_REJECTED"
   | "LISTING_HIDDEN"
   | "SAVED_SEARCH_MATCHED"
-  | "LISTING_AVAILABILITY_REMINDER";
+  | "LISTING_AVAILABILITY_REMINDER"
+  | "ROOMMATE_INTEREST_RECEIVED"
+  | "ROOMMATE_INTEREST_ACCEPTED"
+  | "ROOMMATE_INTEREST_REJECTED"
+  | "ROOMMATE_INTEREST_WITHDRAWN"
+  | "ROOMMATE_MESSAGE_RECEIVED"
+  | "ROOMMATE_CONNECTION_LEFT"
+  | "ROOMMATE_REQUEST_EXPIRING"
+  | "ROOMMATE_REQUEST_EXPIRED";
 
 export type ModerationAction = "APPROVE" | "REJECT" | "HIDE" | "RESTORE";
 
@@ -397,6 +405,8 @@ export interface Notification {
   readonly eventType: NotificationEventType;
   readonly inquiryId: number | null;
   readonly listingId: number | null;
+  readonly roommateRequestId: number | null;
+  readonly roommateInterestId: number | null;
   readonly resourcePath: string;
   readonly isRead: boolean;
   readonly createdAt: string;
@@ -816,4 +826,214 @@ export interface LandlordAnalytics {
 export interface HealthResponse {
   readonly status: "ok" | "error";
   readonly database: "connected" | "unavailable";
+}
+
+export type RoommateSleepSchedule = "EARLY" | "STANDARD" | "LATE" | "FLEXIBLE";
+export type RoommateCleanlinessLevel = "RELAXED" | "BALANCED" | "TIDY";
+export type RoommateNoisePreference = "QUIET" | "BALANCED" | "SOCIAL";
+export type RoommateSmokingEnvironment = "SMOKE_FREE" | "OUTDOOR_ONLY" | "NO_PREFERENCE";
+export type RoommatePetEnvironment = "NO_PETS" | "OK_WITH_PETS" | "HAS_PET";
+export type RoommateRequestStatus = "OPEN" | "MATCHED" | "CANCELLED" | "EXPIRED";
+export type RoommateListingMode = "ALL" | "LINKED" | "UNLINKED";
+export type RoommateInterestStatus = "PENDING" | "ACCEPTED" | "REJECTED" | "WITHDRAWN" | "LEFT";
+export type RoommateInterestDirection = "INCOMING" | "OUTGOING";
+export type RoommateReportTargetType = "ROOMMATE_PROFILE" | "ROOMMATE_REQUEST" | "ROOMMATE_MESSAGE";
+export type RoommateReportCategory =
+  | "FRAUD"
+  | "PAYMENT_SCAM"
+  | "SPAM"
+  | "HARASSMENT"
+  | "IMPERSONATION"
+  | "INAPPROPRIATE_CONTENT"
+  | "OTHER";
+export type RoommateReportStatus = "OPEN" | "INVESTIGATING" | "RESOLVED" | "DISMISSED";
+export type RoommateModerationState = "VISIBLE" | "HIDDEN";
+
+export interface RoommateProfile {
+  readonly intro: string;
+  readonly sleepSchedule: RoommateSleepSchedule;
+  readonly cleanlinessLevel: RoommateCleanlinessLevel;
+  readonly noisePreference: RoommateNoisePreference;
+  readonly smokingEnvironment: RoommateSmokingEnvironment;
+  readonly petEnvironment: RoommatePetEnvironment;
+  readonly displayName: string | null;
+  readonly memberSince: string;
+  readonly profileCompleted: boolean;
+}
+
+export interface RoommateProfileBody {
+  readonly intro: string;
+  readonly sleepSchedule: RoommateSleepSchedule;
+  readonly cleanlinessLevel: RoommateCleanlinessLevel;
+  readonly noisePreference: RoommateNoisePreference;
+  readonly smokingEnvironment: RoommateSmokingEnvironment;
+  readonly petEnvironment: RoommatePetEnvironment;
+}
+
+export interface RoommateRequest {
+  readonly id: number;
+  readonly listingId: number | null;
+  readonly listingMode: Exclude<RoommateListingMode, "ALL">;
+  readonly preferredAreaKeys: readonly string[];
+  readonly budgetMinPerPerson: number;
+  readonly budgetMaxPerPerson: number;
+  readonly moveInFrom: string;
+  readonly moveInUntil: string;
+  readonly note: string | null;
+  readonly status: RoommateRequestStatus;
+  readonly expiresAt: string;
+  readonly listingLinkedAt: string | null;
+  readonly createdAt: string;
+  readonly updatedAt: string;
+  readonly profile: RoommateProfile | null;
+  readonly listing: PublicListingSummary | null;
+  readonly signals: {
+    readonly profileCompleted: boolean;
+    readonly requestOpen: boolean;
+    readonly listingCurrentlyAvailable: boolean | null;
+  };
+}
+
+export interface CreateRoommateRequestBody {
+  readonly listingId: number | null;
+  readonly preferredAreaKeys: readonly string[];
+  readonly budgetMinPerPerson: number;
+  readonly budgetMaxPerPerson: number;
+  readonly moveInFrom: string;
+  readonly moveInUntil: string;
+  readonly note?: string | null;
+}
+
+export interface UpdateRoommateRequestBody {
+  readonly preferredAreaKeys?: readonly string[];
+  readonly budgetMinPerPerson?: number;
+  readonly budgetMaxPerPerson?: number;
+  readonly moveInFrom?: string;
+  readonly moveInUntil?: string;
+  readonly note?: string | null;
+}
+
+export interface RoommateDiscoveryQuery extends PaginationQuery {
+  readonly area?: string;
+  readonly budgetMinPerPerson?: number;
+  readonly budgetMaxPerPerson?: number;
+  readonly moveInFrom?: string;
+  readonly moveInUntil?: string;
+  readonly listingMode?: RoommateListingMode;
+}
+
+export interface RoommateMineQuery extends PaginationQuery {
+  readonly status?: RoommateRequestStatus;
+}
+
+export interface RoommateInterestMessage {
+  readonly id: number;
+  readonly body: string;
+  readonly createdAt: string;
+  readonly isRead: boolean;
+}
+
+export interface RoommateInterest {
+  readonly id: number;
+  readonly requestId: number;
+  readonly direction: RoommateInterestDirection;
+  readonly status: RoommateInterestStatus;
+  readonly acceptedAt: string | null;
+  readonly endedAt: string | null;
+  readonly createdAt: string;
+  readonly updatedAt: string;
+  readonly request: RoommateRequest;
+  readonly counterpart: RoommateProfile | null;
+  readonly initialMessage: RoommateInterestMessage | null;
+}
+
+export interface RoommateInterestQuery extends PaginationQuery {
+  readonly direction: RoommateInterestDirection;
+  readonly status?: RoommateInterestStatus;
+}
+
+export interface RoommateConnection {
+  readonly interestId: number;
+  readonly requestId: number;
+  readonly connectedAt: string;
+  readonly counterpart: RoommateProfile | null;
+  readonly request: RoommateRequest;
+}
+
+export interface RoommateMessage {
+  readonly id: number;
+  readonly sender: "SELF" | "COUNTERPART";
+  readonly body: string;
+  readonly createdAt: string;
+  readonly isRead: boolean;
+}
+
+export interface RoommateBlockState {
+  readonly blocked: boolean;
+}
+
+export interface CreateRoommateRequestReportBody {
+  readonly targetType: Extract<RoommateReportTargetType, "ROOMMATE_PROFILE" | "ROOMMATE_REQUEST">;
+  readonly category: RoommateReportCategory;
+  readonly details?: string | null;
+}
+
+export interface CreateRoommateReportBody {
+  readonly category: RoommateReportCategory;
+  readonly details?: string | null;
+}
+
+export interface RoommateReportReceipt {
+  readonly id: number;
+  readonly targetType: RoommateReportTargetType;
+  readonly category: RoommateReportCategory;
+  readonly status: RoommateReportStatus;
+  readonly createdAt: string;
+}
+
+export interface AdminRoommateReportEvent {
+  readonly eventType: string;
+  readonly previousStatus: string | null;
+  readonly newStatus: string;
+  readonly note: string | null;
+  readonly createdAt: string;
+}
+
+export interface AdminRoommateReport extends RoommateReportReceipt {
+  readonly details: string | null;
+  readonly resolutionNote: string | null;
+  readonly updatedAt: string;
+  readonly resolvedAt: string | null;
+  readonly reporter: {
+    readonly displayName: string | null;
+    readonly memberSince: string | null;
+  };
+  readonly subject: {
+    readonly requestId: number;
+    readonly messageId: number | null;
+    readonly profileTenantId?: number;
+  };
+  readonly evidenceSnapshot?: Readonly<Record<string, unknown>>;
+  readonly events?: readonly AdminRoommateReportEvent[];
+}
+
+export interface AdminRoommateReportQuery extends PaginationQuery {
+  readonly status?: RoommateReportStatus;
+  readonly category?: RoommateReportCategory;
+}
+
+export interface UpdateRoommateReportStatusBody {
+  readonly status: Exclude<RoommateReportStatus, "OPEN">;
+  readonly note?: string | null;
+}
+
+export interface RoommateModerationBody {
+  readonly state: RoommateModerationState;
+  readonly note?: string | null;
+  readonly reportId: number;
+}
+
+export interface RoommateModerationResult {
+  readonly targetType: RoommateReportTargetType;
+  readonly state: RoommateModerationState;
 }

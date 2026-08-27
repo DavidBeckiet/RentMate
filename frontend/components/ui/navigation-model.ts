@@ -62,6 +62,14 @@ const tenantPrimaryItems: readonly NavigationItem[] = [
     icon: "message",
     exactPaths: ["/inquiries"],
     pathPrefixes: ["/inquiries/"]
+  },
+  {
+    key: "roommates",
+    label: "Ở ghép",
+    href: "/roommates",
+    icon: "users",
+    exactPaths: ["/roommates"],
+    pathPrefixes: ["/roommates/"]
   }
 ];
 
@@ -174,6 +182,13 @@ export const adminNavigationItems: readonly NavigationItem[] = [
     href: "/admin/contact-reports",
     icon: "message",
     pathPrefixes: ["/admin/contact-reports"]
+  },
+  {
+    key: "admin-roommate-reports",
+    label: "Báo cáo ở ghép",
+    href: "/admin/roommate-reports",
+    icon: "users",
+    pathPrefixes: ["/admin/roommate-reports"]
   },
   {
     key: "admin-support-requests",

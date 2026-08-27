@@ -17,6 +17,7 @@ import { ListingNoteEditor } from "../comparison/listing-note-editor";
 import { ShareListingControl } from "../comparison/share-listing-control";
 import { ListingReviews } from "../reviews/listing-reviews";
 import { ReportListingControl } from "../reports/report-listing-control";
+import { RoommateListingCta } from "../roommate/roommate-listing-cta";
 import { formatAreaSqm } from "./format";
 import { ListingAmenityChips, ListingPrice } from "./listing-presentation";
 import { ListingFreshnessLabel } from "./listing-freshness";
@@ -267,6 +268,11 @@ export function ListingDetail({ listingId, actions }: ListingDetailProps) {
 
   if (!detail) return null;
 
+  const roommateListingEligible =
+    detail.maxOccupants !== null &&
+    detail.maxOccupants >= 2 &&
+    (detail.businessStatus === "AVAILABLE" || detail.businessStatus === "UNKNOWN");
+
   return (
     <article className={styles.detail}>
       <nav className={styles.breadcrumbs} aria-label="Điều hướng tin đăng">
@@ -400,7 +406,12 @@ export function ListingDetail({ listingId, actions }: ListingDetailProps) {
             <div className={styles.cardKicker}>MỨC GIÁ THUÊ</div>
             <ListingPrice monthlyRent={detail.monthlyRent} emphasis="prominent" />
             <p className={styles.priceNote}>Giá tham khảo theo tháng · chưa bao gồm chi phí phát sinh</p>
-            {actions ? <div className={styles.primaryAction}>{actions}</div> : null}
+            {actions || roommateListingEligible ? (
+              <div className={styles.primaryAction}>
+                {actions}
+                <RoommateListingCta listingId={detail.id} eligible={roommateListingEligible} />
+              </div>
+            ) : null}
             <div className={styles.secondaryActions}>
               <ComparisonToggle listingId={detail.id} />
               <ShareListingControl listingId={detail.id} title={detail.title} />

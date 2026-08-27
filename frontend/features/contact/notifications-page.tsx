@@ -19,7 +19,38 @@ function notificationLabel(notification: Notification): string {
   if (notification.eventType === "LISTING_AVAILABILITY_REMINDER") {
     return "Tin đăng cần cập nhật tình trạng còn phòng.";
   }
+  if (notification.eventType === "ROOMMATE_INTEREST_RECEIVED") return "Bạn có một lời quan tâm ở ghép mới.";
+  if (notification.eventType === "ROOMMATE_INTEREST_ACCEPTED") return "Lời quan tâm ở ghép của bạn đã được chấp nhận.";
+  if (notification.eventType === "ROOMMATE_INTEREST_REJECTED") return "Một lời quan tâm ở ghép đã được từ chối.";
+  if (notification.eventType === "ROOMMATE_INTEREST_WITHDRAWN") return "Một lời quan tâm ở ghép đã được rút lại.";
+  if (notification.eventType === "ROOMMATE_MESSAGE_RECEIVED") return "Cuộc trò chuyện ở ghép có tin nhắn mới.";
+  if (notification.eventType === "ROOMMATE_CONNECTION_LEFT") return "Kết nối ở ghép đã được kết thúc.";
+  if (notification.eventType === "ROOMMATE_REQUEST_EXPIRING") return "Yêu cầu tìm người ở ghép của bạn sắp hết hạn.";
+  if (notification.eventType === "ROOMMATE_REQUEST_EXPIRED") return "Yêu cầu tìm người ở ghép của bạn đã hết hạn.";
   return "Trạng thái yêu cầu đã được cập nhật.";
+}
+
+function notificationDestination(notification: Notification): string {
+  if (
+    (notification.eventType === "ROOMMATE_REQUEST_EXPIRING" || notification.eventType === "ROOMMATE_REQUEST_EXPIRED") &&
+    notification.roommateRequestId !== null
+  ) {
+    return "/roommates/my-request";
+  }
+  if (
+    [
+      "ROOMMATE_INTEREST_RECEIVED",
+      "ROOMMATE_INTEREST_ACCEPTED",
+      "ROOMMATE_INTEREST_REJECTED",
+      "ROOMMATE_INTEREST_WITHDRAWN",
+      "ROOMMATE_MESSAGE_RECEIVED",
+      "ROOMMATE_CONNECTION_LEFT"
+    ].includes(notification.eventType) &&
+    notification.roommateInterestId !== null
+  ) {
+    return `/roommates/conversations/${notification.roommateInterestId}`;
+  }
+  return notification.resourcePath;
 }
 
 export function NotificationsPage() {
@@ -136,7 +167,7 @@ export function NotificationsPage() {
           {items.map((item) => (
             <Link
               key={item.id}
-              href={item.resourcePath}
+              href={notificationDestination(item)}
               onClick={() => void markRead(item)}
               className={`block border-2 border-heroDark-950 p-4 shadow-glass-sm transition-transform hover:-translate-y-0.5 focus-visible:outline-none focus-visible:shadow-glass ${item.isRead ? "bg-rent-surface" : "bg-rent-yellow"}`}
             >

@@ -25,6 +25,15 @@ test("keeps the monolith as the default upstream and switches configured boundar
   assert.equal(resolveUpstream("/api/v1/listings", routes).hostname, "listing");
   assert.equal(resolveUpstream("/api/v1/landlord/listings/42", routes).hostname, "listing");
   assert.equal(resolveUpstream("/api/v1/favorites", routes).hostname, "engagement");
+  assert.equal(resolveUpstream("/api/v1/roommate-profiles/me", routes).hostname, "engagement");
+  assert.equal(resolveUpstream("/api/v1/roommate-requests?listingMode=LINKED", routes).hostname, "engagement");
+  assert.equal(resolveUpstream("/api/v1/roommate-requests/42/interests", routes).hostname, "engagement");
+  assert.equal(resolveUpstream("/api/v1/roommate-interests/42/messages", routes).hostname, "engagement");
+  assert.equal(resolveUpstream("/api/v1/roommate-messages/42/reports", routes).hostname, "engagement");
+  assert.equal(resolveUpstream("/api/v1/roommate-connections/current", routes).hostname, "engagement");
+  assert.equal(resolveUpstream("/api/v1/admin/roommate-profiles/42/moderation", routes).hostname, "engagement");
+  assert.equal(resolveUpstream("/api/v1/admin/roommate-requests/42/moderation", routes).hostname, "engagement");
+  assert.equal(resolveUpstream("/api/v1/admin/roommate-messages/42/moderation", routes).hostname, "engagement");
   assert.equal(resolveUpstream("/api/v1/tenant/listing-notes?listingIds=1,2", routes).hostname, "engagement");
   assert.equal(resolveUpstream("/api/v1/inquiries", routes).hostname, "engagement");
   assert.equal(resolveUpstream("/api/v1/landlord/leads", routes).hostname, "engagement");

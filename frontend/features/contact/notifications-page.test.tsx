@@ -34,6 +34,8 @@ const notification: Notification = {
   eventType: "SAVED_SEARCH_MATCHED",
   inquiryId: null,
   listingId: 501,
+  roommateRequestId: null,
+  roommateInterestId: null,
   resourcePath: "/listings/501",
   isRead: false,
   createdAt: "2026-08-25T00:00:00.000Z"
@@ -78,5 +80,24 @@ describe("NotificationsPage", () => {
 
     expect(screen.getByRole("link", { name: "Đăng nhập" })).toHaveAttribute("href", "/login");
     expect(apiMocks.listNotifications).not.toHaveBeenCalled();
+  });
+
+  it("labels roommate notifications without including message or contact content and uses a frontend conversation route", async () => {
+    apiMocks.listNotifications.mockResolvedValue(
+      page([
+        {
+          ...notification,
+          eventType: "ROOMMATE_MESSAGE_RECEIVED",
+          roommateInterestId: 9,
+          resourcePath: "/roommate-interests/9"
+        }
+      ])
+    );
+    render(<NotificationsPage />);
+    expect(await screen.findByText("Cuộc trò chuyện ở ghép có tin nhắn mới.")).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: /Cuộc trò chuyện ở ghép có tin nhắn mới/i })).toHaveAttribute(
+      "href",
+      "/roommates/conversations/9"
+    );
   });
 });
