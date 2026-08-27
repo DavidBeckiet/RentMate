@@ -49,11 +49,12 @@ export default defineConfig({
       }
     },
     {
-      command: "npm run build && npm run start -- --hostname localhost --port 3100",
+      command: "npm run dev -- --hostname localhost --port 3100",
       cwd: frontendDirectory,
       url: "http://localhost:3100",
       reuseExistingServer: false,
       env: {
+        NODE_ENV: "development",
         NEXT_PUBLIC_API_BASE_URL: "http://localhost:4100"
       }
     }

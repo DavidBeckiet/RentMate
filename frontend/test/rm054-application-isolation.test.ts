@@ -23,6 +23,9 @@ describe("RM-054 application isolation", () => {
     expect(config).toContain("retries: 0");
     expect(config).toContain('url: "http://localhost:4100/api/health"');
     expect(config).toContain('NEXT_PUBLIC_API_BASE_URL: "http://localhost:4100"');
+    expect(config).toContain('command: "npm run dev -- --hostname localhost --port 3100"');
+    expect(config).toContain('NODE_ENV: "development"');
+    expect(config).not.toContain("npm run build && npm run start");
     expect(config).toContain("reuseExistingServer: false");
   });
 
