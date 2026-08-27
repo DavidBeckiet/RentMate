@@ -1,0 +1,90 @@
+import assert from "node:assert/strict";
+import test from "node:test";
+import type { QueryResult } from "pg";
+import { createSqlExecutor } from "../../shared/src/runtime/db/sql-executor.js";
+import { createUsersRepository } from "../src/modules/users/repositories/users-repository.js";
+import {
+  mapRoommateTenantProjectionRow,
+  parseRoommateTenantProjectionIds
+} from "../src/modules/users/roommate-tenant-projection.js";
+
+test("Identity roommate projection batch parser bounds, validates, and deduplicates IDs", () => {
+  assert.deepEqual(parseRoommateTenantProjectionIds("7,7,42"), [7, 42]);
+  assert.equal(parseRoommateTenantProjectionIds(undefined), null);
+  assert.equal(parseRoommateTenantProjectionIds(""), null);
+  assert.equal(parseRoommateTenantProjectionIds("0"), null);
+  assert.equal(parseRoommateTenantProjectionIds("7,nope"), null);
+  assert.equal(
+    parseRoommateTenantProjectionIds(Array.from({ length: 101 }, (_, index) => String(index + 1)).join(",")),
+    null
+  );
+});
+
+test("Identity roommate projection preserves active state and supported account roles", () => {
+  for (const [role, isActive] of [
+    ["TENANT", true],
+    ["LANDLORD", true],
+    ["ADMIN", false]
+  ] as const) {
+    assert.deepEqual(
+      mapRoommateTenantProjectionRow({
+        id: role === "TENANT" ? 7 : role === "LANDLORD" ? 8 : 9,
+        role,
+        display_name: null,
+        is_active: isActive,
+        created_at: "2025-11-02T00:00:00.000Z"
+      }),
+      {
+        tenantId: role === "TENANT" ? 7 : role === "LANDLORD" ? 8 : 9,
+        role,
+        displayName: null,
+        isActive,
+        memberSince: "2025-11"
+      }
+    );
+  }
+});
+
+test("Identity repository roommate projection selects only public-safe fields", async () => {
+  let capturedQuery: { readonly text: string; readonly values: readonly unknown[] } | null = null;
+  const pool = {
+    async query<Row>() {
+      return {
+        command: "SELECT",
+        rowCount: 1,
+        oid: 0,
+        fields: [],
+        rows: [
+          {
+            id: 7,
+            role: "TENANT",
+            display_name: "Minh Anh",
+            is_active: true,
+            created_at: new Date("2025-11-02T00:00:00.000Z")
+          }
+        ] as Row[]
+      } as unknown as QueryResult<Row>;
+    }
+  };
+  const executor = {
+    query: async <Row extends object>(query: { readonly text: string; readonly values: readonly unknown[] }) => {
+      capturedQuery = query;
+      return pool.query<Row>();
+    }
+  };
+
+  const repository = createUsersRepository(createSqlExecutor(executor));
+  assert.deepEqual(await repository.findRoommateTenantProjectionsByIds([7]), [
+    {
+      tenantId: 7,
+      role: "TENANT",
+      displayName: "Minh Anh",
+      isActive: true,
+      memberSince: "2025-11"
+    }
+  ]);
+  assert.ok(capturedQuery);
+  assert.deepEqual(capturedQuery.values, [[7]]);
+  assert.match(capturedQuery.text, /display_name/iu);
+  assert.doesNotMatch(capturedQuery.text, /email|phone|password/iu);
+});

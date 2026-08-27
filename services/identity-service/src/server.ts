@@ -25,6 +25,7 @@ import { createAdminUserService } from "./modules/users/services/admin-user-serv
 import { registerUsersRoutes } from "./modules/users/routes.js";
 import { createUsersRepository } from "./modules/users/repositories/users-repository.js";
 import { createUsersService } from "./modules/users/services/users-service.js";
+import { parseRoommateTenantProjectionIds } from "./modules/users/roommate-tenant-projection.js";
 import { createLogger } from "../../shared/src/runtime/shared/logging/logger.js";
 import { createProtectedAuthenticationMiddleware } from "../../shared/src/runtime/shared/middleware/authentication.js";
 import { InMemoryRateLimitStore } from "../../shared/src/runtime/shared/middleware/rate-limit.js";
@@ -244,6 +245,18 @@ async function startIdentityService(): Promise<void> {
               data: profiles.map(({ id, role, email, phone, isActive }) => ({ id, role, email, phone, isActive }))
             })
           )
+          .catch(next);
+      });
+      internalApp.get("/internal/v1/roommate-tenant-projections", internalServiceGuard, (request, response, next) => {
+        const ids = parseRoommateTenantProjectionIds(request.query.ids);
+        if (ids === null) {
+          response.status(400).end();
+          return;
+        }
+
+        void usersRepository
+          .findRoommateTenantProjectionsByIds(ids)
+          .then((projections) => response.status(200).json({ data: projections }))
           .catch(next);
       });
       internalApp.get("/internal/v1/landlords/active-ids", internalServiceGuard, (_request, response, next) => {

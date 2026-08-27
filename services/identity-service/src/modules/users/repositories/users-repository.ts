@@ -7,6 +7,11 @@ import {
   type UserRole
 } from "../../../../../shared/src/runtime/shared/types/authentication.js";
 import { mapUserProfileRow, type UserProfile, type UserProfileRow } from "../user-profile.js";
+import {
+  mapRoommateTenantProjectionRow,
+  type RoommateTenantProjection,
+  type RoommateTenantProjectionRow
+} from "../roommate-tenant-projection.js";
 
 const maximumUserId = 2_147_483_647;
 
@@ -14,6 +19,9 @@ export interface UsersRepository {
   readonly findAuthenticationAccountById: (userId: number) => Promise<AuthenticationAccount | null>;
   readonly findActiveLandlordIds?: () => Promise<readonly number[]>;
   readonly findProfilesByIds?: (userIds: readonly number[]) => Promise<readonly UserProfile[]>;
+  readonly findRoommateTenantProjectionsByIds: (
+    userIds: readonly number[]
+  ) => Promise<readonly RoommateTenantProjection[]>;
   readonly findProfileById: (userId: number) => Promise<UserProfile | null>;
   readonly updateProfile: (userId: number, input: UpdateUserProfileRecord) => Promise<UserProfile | null>;
 }
@@ -84,6 +92,18 @@ const profilesSelect = `
       ORDER BY id ASC
     `;
 
+const roommateTenantProjectionsSelect = `
+      SELECT
+        id,
+        role,
+        display_name,
+        is_active,
+        created_at
+      FROM users
+      WHERE id = ANY($1::integer[])
+      ORDER BY id ASC
+    `;
+
 export function createUsersRepository(executor: SqlExecutor): UsersRepository {
   const findProfileById = async (userId: number): Promise<UserProfile | null> =>
     queryOptional<UserProfileRow, UserProfile>(
@@ -141,6 +161,17 @@ export function createUsersRepository(executor: SqlExecutor): UsersRepository {
           executor,
           { text: profilesSelect, values: [[...userIds]] },
           mapUserProfileRow
+        )
+      );
+    },
+
+    async findRoommateTenantProjectionsByIds(userIds: readonly number[]): Promise<readonly RoommateTenantProjection[]> {
+      if (userIds.length === 0) return Object.freeze([]);
+      return Object.freeze(
+        await queryMany<RoommateTenantProjectionRow, RoommateTenantProjection>(
+          executor,
+          { text: roommateTenantProjectionsSelect, values: [[...userIds]] },
+          mapRoommateTenantProjectionRow
         )
       );
     },

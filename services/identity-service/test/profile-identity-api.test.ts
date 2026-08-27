@@ -8,6 +8,7 @@ import { normalizeDisplayName } from "../../shared/src/runtime/shared/validation
 import { createLoginService } from "../src/modules/auth/services/login-service.js";
 import { validateRegistrationInput } from "../src/modules/auth/validations/registration-validation.js";
 import { createUsersService } from "../src/modules/users/services/users-service.js";
+import { mapRoommateTenantProjectionRow } from "../src/modules/users/roommate-tenant-projection.js";
 import { mapUserProfileRow, mapUserProfileToDto } from "../src/modules/users/user-profile.js";
 import { validateUpdateCurrentUserInput } from "../src/modules/users/validations/user-validation.js";
 
@@ -151,4 +152,33 @@ test("Identity profile service keeps empty PATCH read-only and sends both change
       phone: "+84981112223"
     }
   ]);
+});
+
+test("Identity roommate projection is public-safe and formats memberSince to UTC month", () => {
+  assert.deepEqual(
+    mapRoommateTenantProjectionRow({
+      id: 42,
+      role: "TENANT",
+      display_name: "Minh Anh",
+      is_active: true,
+      created_at: new Date("2025-11-30T23:30:00.000Z")
+    }),
+    {
+      tenantId: 42,
+      role: "TENANT",
+      displayName: "Minh Anh",
+      isActive: true,
+      memberSince: "2025-11"
+    }
+  );
+
+  assert.throws(() =>
+    mapRoommateTenantProjectionRow({
+      id: 42,
+      role: "TENANT",
+      display_name: "Minh Anh",
+      is_active: true,
+      created_at: new Date("invalid")
+    })
+  );
 });

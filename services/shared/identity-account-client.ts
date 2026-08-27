@@ -14,6 +14,9 @@ export interface IdentityAccountClient {
   readonly loadAuthenticationAccount: LoadAuthenticationAccount;
   readonly loadActiveLandlordIds: () => Promise<readonly number[]>;
   readonly loadProfilesByIds: (userIds: readonly number[]) => Promise<readonly IdentityUserProfile[]>;
+  readonly loadRoommateTenantProjectionsByIds: (
+    userIds: readonly number[]
+  ) => Promise<readonly IdentityRoommateTenantProjection[]>;
   readonly loadVerifiedLandlordIds: (userIds: readonly number[]) => Promise<readonly number[]>;
 }
 
@@ -23,6 +26,14 @@ export interface IdentityUserProfile {
   readonly email: string;
   readonly phone: string | null;
   readonly isActive: boolean;
+}
+
+export interface IdentityRoommateTenantProjection {
+  readonly tenantId: number;
+  readonly role: UserRole;
+  readonly displayName: string | null;
+  readonly isActive: boolean;
+  readonly memberSince: string;
 }
 
 function isAccount(value: unknown): value is AuthenticationAccount {
@@ -48,6 +59,22 @@ function isUserProfile(value: unknown): value is IdentityUserProfile {
     typeof profile.email === "string" &&
     (profile.phone === null || typeof profile.phone === "string") &&
     typeof profile.isActive === "boolean"
+  );
+}
+
+function isRoommateTenantProjection(value: unknown): value is IdentityRoommateTenantProjection {
+  if (typeof value !== "object" || value === null) return false;
+  const projection = value as Partial<IdentityRoommateTenantProjection>;
+  return (
+    Number.isSafeInteger(projection.tenantId) &&
+    (projection.tenantId ?? 0) >= 1 &&
+    (projection.tenantId ?? 0) <= 2_147_483_647 &&
+    typeof projection.role === "string" &&
+    (["TENANT", "LANDLORD", "ADMIN"] as readonly UserRole[]).includes(projection.role as UserRole) &&
+    (projection.displayName === null || typeof projection.displayName === "string") &&
+    typeof projection.isActive === "boolean" &&
+    typeof projection.memberSince === "string" &&
+    /^(?:[0-9]{4})-(?:0[1-9]|1[0-2])$/u.test(projection.memberSince)
   );
 }
 
@@ -149,6 +176,49 @@ export function createIdentityAccountClient(options: IdentityAccountClientOption
     return Object.freeze([...profiles]);
   };
 
+  const loadRoommateTenantProjectionsByIds = async (
+    userIds: readonly number[]
+  ): Promise<readonly IdentityRoommateTenantProjection[]> => {
+    if (userIds.length === 0) return Object.freeze([]);
+    let response: Response;
+    try {
+      const query = new URLSearchParams({ ids: [...userIds].join(",") });
+      response = await fetcher(`${baseUrl}/internal/v1/roommate-tenant-projections?${query.toString()}`, {
+        method: "GET",
+        headers: { "x-rentmate-internal-token": options.internalToken }
+      });
+    } catch {
+      throw new Error("Identity service roommate tenant lookup failed.");
+    }
+
+    if (!response.ok) throw new Error("Identity service roommate tenant lookup failed.");
+    let payload: unknown;
+    try {
+      payload = await response.json();
+    } catch {
+      throw new Error("Identity service roommate tenant response is invalid.");
+    }
+
+    if (typeof payload !== "object" || payload === null || !("data" in payload)) {
+      throw new Error("Identity service roommate tenant response is invalid.");
+    }
+    const projections = (payload as { readonly data: unknown }).data;
+    if (!Array.isArray(projections) || projections.some((projection) => !isRoommateTenantProjection(projection))) {
+      throw new Error("Identity service roommate tenant response is invalid.");
+    }
+    return Object.freeze(
+      projections.map((projection) =>
+        Object.freeze({
+          tenantId: projection.tenantId,
+          role: projection.role,
+          displayName: projection.displayName,
+          isActive: projection.isActive,
+          memberSince: projection.memberSince
+        })
+      )
+    );
+  };
+
   const loadVerifiedLandlordIds = async (userIds: readonly number[]): Promise<readonly number[]> => {
     if (userIds.length === 0) return Object.freeze([]);
     let response: Response;
@@ -184,6 +254,7 @@ export function createIdentityAccountClient(options: IdentityAccountClientOption
     loadAuthenticationAccount,
     loadActiveLandlordIds,
     loadProfilesByIds,
+    loadRoommateTenantProjectionsByIds,
     loadVerifiedLandlordIds
   });
 }
