@@ -269,6 +269,42 @@ test("duplicate concurrent interest creates leave one active interest and one me
   assert.equal(Number(counts.messages), 1);
 });
 
+test("creates one interest and one first message for arbitrary free-text messages", async () => {
+  await Promise.all([createProfile(1039), createProfile(1040), createProfile(1043), createProfile(1044)]);
+  const keywordRequestId = await createRequest(1039);
+  const plainRequestId = await createRequest(1043);
+  const keywordMessage = "mình quan tâm, bạn có thể trao đổi thêm không?";
+  const plainMessage = "Bạn dự định chuyển vào khi nào?";
+
+  const keywordInterest = await service.createInterest(principal(1040), keywordRequestId, {
+    message: keywordMessage
+  });
+  const plainInterest = await service.createInterest(principal(1044), plainRequestId, {
+    message: plainMessage
+  });
+
+  assert.equal(keywordInterest.initialMessage?.body, keywordMessage);
+  assert.equal(plainInterest.initialMessage?.body, plainMessage);
+  const counts = await transaction((executor) =>
+    executor.query<{ id: number; message_count: string }>({
+      text: `SELECT i.id, count(m.id)::text AS message_count
+        FROM roommate_interests i
+        LEFT JOIN roommate_messages m ON m.interest_id = i.id
+        WHERE i.id = ANY($1::integer[])
+        GROUP BY i.id
+        ORDER BY i.id`,
+      values: [[keywordInterest.id, plainInterest.id]]
+    })
+  );
+  assert.deepEqual(
+    counts.rows.map((row) => ({ id: row.id, messageCount: Number(row.message_count) })),
+    [
+      { id: keywordInterest.id, messageCount: 1 },
+      { id: plainInterest.id, messageCount: 1 }
+    ]
+  );
+});
+
 test("leave is serialized from both participants and never reopens the request", async () => {
   await Promise.all([createProfile(1041), createProfile(1042)]);
   const requestId = await createRequest(1041);

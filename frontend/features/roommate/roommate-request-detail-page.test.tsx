@@ -1,9 +1,15 @@
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { ApiError } from "../../lib/api/client";
 import type { AuthContextValue } from "../../lib/auth/auth-provider";
-import { roommateInterest, roommateRequest, tenantUser } from "./test-roommate-fixtures";
+import { roommateInterest, roommateProfile, roommateRequest, tenantUser } from "./test-roommate-fixtures";
 
-const apiMocks = vi.hoisted(() => ({ getRequest: vi.fn(), listMine: vi.fn(), createInterest: vi.fn() }));
+const apiMocks = vi.hoisted(() => ({
+  getRequest: vi.fn(),
+  listMine: vi.fn(),
+  getProfile: vi.fn(),
+  createInterest: vi.fn()
+}));
 const useAuthMock = vi.hoisted(() => vi.fn<() => AuthContextValue>());
 const routerMocks = vi.hoisted(() => ({ push: vi.fn() }));
 
@@ -28,10 +34,12 @@ describe("RoommateRequestDetailPage", () => {
   beforeEach(() => {
     apiMocks.getRequest.mockReset();
     apiMocks.listMine.mockReset();
+    apiMocks.getProfile.mockReset();
     apiMocks.createInterest.mockReset();
     routerMocks.push.mockReset();
     useAuthMock.mockReturnValue(auth());
     apiMocks.listMine.mockResolvedValue(emptyPage());
+    apiMocks.getProfile.mockResolvedValue(roommateProfile());
   });
 
   it("renders public-safe request context, the required warning, checklist, and an interest composer", async () => {
@@ -70,5 +78,23 @@ describe("RoommateRequestDetailPage", () => {
     render(<RoommateRequestDetailPage requestId="42" />);
     expect(await screen.findByText("Listing không còn khả dụng")).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Gửi lời quan tâm" })).not.toBeInTheDocument();
+  });
+
+  it("guides a tenant without a roommate profile before posting an interest", async () => {
+    apiMocks.getRequest.mockResolvedValue(roommateRequest());
+    apiMocks.getProfile.mockRejectedValue(
+      new ApiError({ status: 404, code: "RESOURCE_NOT_FOUND", message: "private", category: "backend" })
+    );
+    render(<RoommateRequestDetailPage requestId="42" />);
+
+    expect(
+      await screen.findByRole("heading", { name: "Hoàn thành hồ sơ trước khi gửi lời quan tâm" })
+    ).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Thiết lập hồ sơ ở ghép" })).toHaveAttribute(
+      "href",
+      "/roommates/profile?next=/roommates/requests/42"
+    );
+    expect(screen.queryByRole("button", { name: "Gửi lời quan tâm" })).not.toBeInTheDocument();
+    expect(apiMocks.createInterest).not.toHaveBeenCalled();
   });
 });

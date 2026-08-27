@@ -96,6 +96,7 @@ function RequestDetailContent({ requestId }: Readonly<{ requestId: number }>) {
   const tenantReady = authStatus === "authenticated" && user?.role === "TENANT" && user.isActive;
   const [request, setRequest] = useState<RoommateRequest | null>(null);
   const [isOwner, setIsOwner] = useState(false);
+  const [profileReady, setProfileReady] = useState<boolean | null>(null);
   const [state, setState] = useState<"loading" | "success" | "error">("loading");
   const [error, setError] = useState<ApiError | null>(null);
   const [retryKey, setRetryKey] = useState(0);
@@ -105,14 +106,21 @@ function RequestDetailContent({ requestId }: Readonly<{ requestId: number }>) {
     const controller = new AbortController();
     setState("loading");
     setError(null);
+    setProfileReady(null);
+    const profilePromise = api.roommates.getProfile(controller.signal).catch((caught: unknown) => {
+      if (caught instanceof ApiError && caught.status === 404) return null;
+      throw caught;
+    });
     void Promise.all([
       api.roommates.getRequest(requestId, controller.signal),
-      api.roommates.listMine({ page: 1, pageSize: 50 }, controller.signal)
+      api.roommates.listMine({ page: 1, pageSize: 50 }, controller.signal),
+      profilePromise
     ])
-      .then(([detail, mine]) => {
+      .then(([detail, mine, profile]) => {
         if (!controller.signal.aborted) {
           setRequest(detail);
           setIsOwner(mine.data.some((item) => item.id === detail.id));
+          setProfileReady(profile?.profileCompleted === true);
           setState("success");
         }
       })
@@ -139,7 +147,13 @@ function RequestDetailContent({ requestId }: Readonly<{ requestId: number }>) {
   const canStartInterest =
     !isOwner &&
     request.status === "OPEN" &&
+    profileReady === true &&
     request.signals.profileCompleted &&
+    request.signals.listingCurrentlyAvailable !== false;
+  const needsProfile =
+    !isOwner &&
+    profileReady !== true &&
+    request.status === "OPEN" &&
     request.signals.listingCurrentlyAvailable !== false;
 
   return (
@@ -198,6 +212,19 @@ function RequestDetailContent({ requestId }: Readonly<{ requestId: number }>) {
             </Card>
           ) : canStartInterest ? (
             <InterestComposer requestId={request.id} />
+          ) : needsProfile ? (
+            <EmptyState
+              title="Hoàn thành hồ sơ trước khi gửi lời quan tâm"
+              description="Bạn cần có hồ sơ ở ghép đầy đủ và khả dụng trước khi gửi lời quan tâm."
+              action={
+                <Link
+                  className="font-bold underline decoration-2 underline-offset-4"
+                  href={`/roommates/profile?next=/roommates/requests/${request.id}`}
+                >
+                  Thiết lập hồ sơ ở ghép
+                </Link>
+              }
+            />
           ) : (
             <EmptyState
               title="Không thể gửi lời quan tâm lúc này"
