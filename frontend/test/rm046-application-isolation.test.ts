@@ -26,15 +26,20 @@ describe("RM-046 application isolation", () => {
     expect(layout.startsWith('"use client"')).toBe(false);
   });
 
-  it("keeps the shared map generic, explicit-action based, and free of provider or API behavior", () => {
+  it("keeps map presentation explicit while isolating approved provider behavior", () => {
     const mapSources = ["map-base", "leaflet-map", "map-search-control"]
       .map((name) => read(`components/map/${name}.tsx`))
       .join("\n");
+    const base = read("components/map/map-base.tsx");
+    const implementation = read("components/map/leaflet-map.tsx");
 
     expect(mapSources).toContain("Tìm trong khu vực này");
-    expect(read("components/map/leaflet-map.tsx")).toContain("moveend");
+    expect(implementation).toContain("moveend");
     expect(mapSources).not.toMatch(/\bfetch\s*\(|\/api\/|navigator\.geolocation|Nominatim|Cloudinary/i);
-    expect(mapSources).not.toMatch(/cluster|drawing|routing|autocomplete|reverseGeocod/i);
+    expect(mapSources).not.toMatch(/drawing|routing|autocomplete|reverseGeocod/i);
+    // Clustering is an approved presentation concern, but its adapter must stay behind MapBase.
+    expect(base).not.toContain("MarkerClusterGroup");
+    expect(implementation).toContain("MarkerClusterGroup");
   });
 
   it("pins only the approved Leaflet dependencies and scans shared component sources", () => {

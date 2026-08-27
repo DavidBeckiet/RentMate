@@ -50,7 +50,8 @@ describe("RM-048 application isolation", () => {
     expect(map).toContain("MapBase");
     expect(map).toContain("MapSearchControl");
     expect(map).not.toMatch(/api\.|\bfetch\s*\(|useRouter|useSearchParams/);
-    expect(page).toContain("onViewportChange={setPendingViewport}");
+    // SearchPage may wrap the setter to deduplicate moveend updates; behavior is covered by its component tests.
+    expect(page).toMatch(/onViewportChange=\{[A-Za-z_$][A-Za-z0-9_$]*\}/);
     expect(page).toContain("onSearchBounds");
   });
 
