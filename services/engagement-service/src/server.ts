@@ -49,6 +49,8 @@ import { createSupportService } from "./modules/support/services/support-service
 import { registerSupportRoutes } from "./modules/support/routes.js";
 import { createRoommateRepository } from "./modules/roommate/repositories/roommate-repository.js";
 import { createRoommateService } from "./modules/roommate/services/roommate-service.js";
+import { createRoommateSafetyRepository } from "./modules/roommate/repositories/roommate-safety-repository.js";
+import { createRoommateSafetyService } from "./modules/roommate/services/roommate-safety-service.js";
 import { createRoommateExpirationScheduler } from "./modules/roommate/services/roommate-expiration-scheduler.js";
 import { registerRoommateRoutes } from "./modules/roommate/routes.js";
 import {
@@ -189,6 +191,15 @@ async function startEngagementService(): Promise<void> {
     }
   });
   const roommateRepository = createRoommateRepository();
+  const roommateSafetyRepository = createRoommateSafetyRepository();
+  const roommateSafetyService = createRoommateSafetyService({
+    roommateRepository,
+    safetyRepository: roommateSafetyRepository,
+    identityAccountClient,
+    transactionRunner: {
+      run: (operation) => withTransaction(databasePool, logger, operation)
+    }
+  });
   const roommateService = createRoommateService({
     repository: roommateRepository,
     identityAccountClient,
@@ -218,6 +229,13 @@ async function startEngagementService(): Promise<void> {
           }),
           { loadActiveLandlordIds: identityAccountClient.loadActiveLandlordIds }
         )
+      });
+      registerRoommateRoutes(router, {
+        authenticationMiddleware: requiredAuthentication,
+        tenantRoleMiddleware: tenantRole,
+        adminRoleMiddleware: adminRole,
+        service: roommateService,
+        safetyService: roommateSafetyService
       });
       registerContactRoutes(router, {
         authenticationMiddleware: requiredAuthentication,
@@ -258,11 +276,6 @@ async function startEngagementService(): Promise<void> {
         authenticationMiddleware: requiredAuthentication,
         adminRoleMiddleware: adminRole,
         service: supportService
-      });
-      registerRoommateRoutes(router, {
-        authenticationMiddleware: requiredAuthentication,
-        tenantRoleMiddleware: tenantRole,
-        service: roommateService
       });
     },
     registerInternalRoutes: (internalApp) => {

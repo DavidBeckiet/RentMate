@@ -29,7 +29,26 @@ import {
   rejectRoommateInterestHandler,
   withdrawRoommateInterestHandler
 } from "./controllers/roommate-interest-controller.js";
+import {
+  blockRoommateInterestHandler,
+  blockRoommateRequestHandler,
+  createRoommateInterestReportHandler,
+  createRoommateMessageReportHandler,
+  createRoommateRequestReportHandler,
+  getRoommateAdminReportHandler,
+  listRoommateAdminReportsHandler,
+  listRoommateMessagesHandler,
+  markRoommateMessagesReadHandler,
+  moderateRoommateMessageHandler,
+  moderateRoommateProfileHandler,
+  moderateRoommateRequestHandler,
+  sendRoommateMessageHandler,
+  unblockRoommateInterestHandler,
+  unblockRoommateRequestHandler,
+  updateRoommateAdminReportStatusHandler
+} from "./controllers/roommate-safety-controller.js";
 import type { RoommateService } from "./services/roommate-service.js";
+import type { RoommateSafetyService } from "./services/roommate-safety-service.js";
 
 export const roommateCreateRenewRateLimitPolicy = Object.freeze({
   scope: "roommate-create-renew",
@@ -37,8 +56,32 @@ export const roommateCreateRenewRateLimitPolicy = Object.freeze({
   windowMs: 24 * 60 * 60 * 1_000
 });
 
+export const roommateRequestMutationRateLimitPolicy = Object.freeze({
+  scope: "roommate-request-mutation",
+  limit: 20,
+  windowMs: 60 * 60 * 1_000
+});
+
 export const roommateInterestRateLimitPolicy = Object.freeze({
   scope: "roommate-interest-create",
+  limit: 10,
+  windowMs: 60 * 60 * 1_000
+});
+
+export const roommateMessageRateLimitPolicy = Object.freeze({
+  scope: "roommate-message",
+  limit: 30,
+  windowMs: 60 * 1_000
+});
+
+export const roommateReportRateLimitPolicy = Object.freeze({
+  scope: "roommate-report",
+  limit: 5,
+  windowMs: 60 * 60 * 1_000
+});
+
+export const roommateBlockRateLimitPolicy = Object.freeze({
+  scope: "roommate-block",
   limit: 10,
   windowMs: 60 * 60 * 1_000
 });
@@ -49,8 +92,13 @@ export function registerRoommateRoutes(
     readonly authenticationMiddleware: RequestHandler;
     readonly tenantRoleMiddleware: RequestHandler;
     readonly service: RoommateService;
+    readonly safetyService?: RoommateSafetyService;
+    readonly adminRoleMiddleware?: RequestHandler;
     readonly rateLimitStore?: RateLimitStore;
     readonly interestRateLimitStore?: RateLimitStore;
+    readonly messageRateLimitStore?: RateLimitStore;
+    readonly reportRateLimitStore?: RateLimitStore;
+    readonly blockRateLimitStore?: RateLimitStore;
     readonly rateLimitClock?: Clock;
   }
 ): void {
@@ -62,10 +110,34 @@ export function registerRoommateRoutes(
     store: rateLimitStore,
     clock: dependencies.rateLimitClock
   });
+  const requestMutationRateLimiter = createRateLimitMiddleware({
+    policy: roommateRequestMutationRateLimitPolicy,
+    resolveKey: (request) => `${request.auth?.userId ?? "unknown"}:${request.ip}`,
+    store: rateLimitStore,
+    clock: dependencies.rateLimitClock
+  });
   const interestRateLimiter = createRateLimitMiddleware({
     policy: roommateInterestRateLimitPolicy,
     resolveKey: (request) => `${request.auth?.userId ?? "unknown"}:${request.ip}`,
     store: dependencies.interestRateLimitStore ?? rateLimitStore,
+    clock: dependencies.rateLimitClock
+  });
+  const messageRateLimiter = createRateLimitMiddleware({
+    policy: roommateMessageRateLimitPolicy,
+    resolveKey: (request) => `${request.auth?.userId ?? "unknown"}:${request.params.interestId}:${request.ip}`,
+    store: dependencies.messageRateLimitStore ?? rateLimitStore,
+    clock: dependencies.rateLimitClock
+  });
+  const reportRateLimiter = createRateLimitMiddleware({
+    policy: roommateReportRateLimitPolicy,
+    resolveKey: (request) => `${request.auth?.userId ?? "unknown"}:${request.ip}`,
+    store: dependencies.reportRateLimitStore ?? rateLimitStore,
+    clock: dependencies.rateLimitClock
+  });
+  const blockRateLimiter = createRateLimitMiddleware({
+    policy: roommateBlockRateLimitPolicy,
+    resolveKey: (request) => `${request.auth?.userId ?? "unknown"}:${request.ip}`,
+    store: dependencies.blockRateLimitStore ?? rateLimitStore,
     clock: dependencies.rateLimitClock
   });
   router.get("/roommate-profiles/me", ...guards, getRoommateProfileHandler(dependencies.service));
@@ -80,16 +152,36 @@ export function registerRoommateRoutes(
   router.get("/roommate-requests", ...guards, listRoommateDiscoveryHandler(dependencies.service));
   router.get("/roommate-requests/mine", ...guards, listMineRoommateRequestsHandler(dependencies.service));
   router.get("/roommate-requests/:requestId", ...guards, getRoommateRequestHandler(dependencies.service));
-  router.patch("/roommate-requests/:requestId", ...guards, patchRoommateRequestHandler(dependencies.service));
-  router.post("/roommate-requests/:requestId/cancel", ...guards, cancelRoommateRequestHandler(dependencies.service));
+  router.patch(
+    "/roommate-requests/:requestId",
+    ...guards,
+    requestMutationRateLimiter,
+    patchRoommateRequestHandler(dependencies.service)
+  );
+  router.post(
+    "/roommate-requests/:requestId/cancel",
+    ...guards,
+    requestMutationRateLimiter,
+    cancelRoommateRequestHandler(dependencies.service)
+  );
   router.post(
     "/roommate-requests/:requestId/renew",
     ...guards,
     createRenewRateLimiter,
     renewRoommateRequestHandler(dependencies.service)
   );
-  router.put("/roommate-requests/:requestId/listing", ...guards, linkRoommateListingHandler(dependencies.service));
-  router.delete("/roommate-requests/:requestId/listing", ...guards, unlinkRoommateListingHandler(dependencies.service));
+  router.put(
+    "/roommate-requests/:requestId/listing",
+    ...guards,
+    requestMutationRateLimiter,
+    linkRoommateListingHandler(dependencies.service)
+  );
+  router.delete(
+    "/roommate-requests/:requestId/listing",
+    ...guards,
+    requestMutationRateLimiter,
+    unlinkRoommateListingHandler(dependencies.service)
+  );
 
   router.post(
     "/roommate-requests/:requestId/interests",
@@ -113,4 +205,97 @@ export function registerRoommateRoutes(
   );
   router.post("/roommate-interests/:interestId/leave", ...guards, leaveRoommateInterestHandler(dependencies.service));
   router.get("/roommate-connections/current", ...guards, getCurrentRoommateConnectionHandler(dependencies.service));
+
+  if (dependencies.safetyService) {
+    const safetyService = dependencies.safetyService;
+    router.get("/roommate-interests/:interestId/messages", ...guards, listRoommateMessagesHandler(safetyService));
+    router.post(
+      "/roommate-interests/:interestId/messages",
+      ...guards,
+      messageRateLimiter,
+      sendRoommateMessageHandler(safetyService)
+    );
+    router.post("/roommate-interests/:interestId/read", ...guards, markRoommateMessagesReadHandler(safetyService));
+    router.put(
+      "/roommate-requests/:requestId/block",
+      ...guards,
+      blockRateLimiter,
+      blockRoommateRequestHandler(safetyService)
+    );
+    router.delete(
+      "/roommate-requests/:requestId/block",
+      ...guards,
+      blockRateLimiter,
+      unblockRoommateRequestHandler(safetyService)
+    );
+    router.put(
+      "/roommate-interests/:interestId/block",
+      ...guards,
+      blockRateLimiter,
+      blockRoommateInterestHandler(safetyService)
+    );
+    router.delete(
+      "/roommate-interests/:interestId/block",
+      ...guards,
+      blockRateLimiter,
+      unblockRoommateInterestHandler(safetyService)
+    );
+    router.post(
+      "/roommate-requests/:requestId/reports",
+      ...guards,
+      reportRateLimiter,
+      createRoommateRequestReportHandler(safetyService)
+    );
+    router.post(
+      "/roommate-interests/:interestId/reports",
+      ...guards,
+      reportRateLimiter,
+      createRoommateInterestReportHandler(safetyService)
+    );
+    router.post(
+      "/roommate-messages/:messageId/reports",
+      ...guards,
+      reportRateLimiter,
+      createRoommateMessageReportHandler(safetyService)
+    );
+
+    if (dependencies.adminRoleMiddleware) {
+      router.get(
+        "/admin/contact-reports",
+        dependencies.authenticationMiddleware,
+        dependencies.adminRoleMiddleware,
+        listRoommateAdminReportsHandler(safetyService)
+      );
+      router.get(
+        "/admin/contact-reports/:reportId",
+        dependencies.authenticationMiddleware,
+        dependencies.adminRoleMiddleware,
+        getRoommateAdminReportHandler(safetyService)
+      );
+      router.patch(
+        "/admin/contact-reports/:reportId/status",
+        dependencies.authenticationMiddleware,
+        dependencies.adminRoleMiddleware,
+        updateRoommateAdminReportStatusHandler(safetyService)
+      );
+      router.patch(
+        "/admin/roommate-profiles/:tenantId/moderation",
+        dependencies.authenticationMiddleware,
+        dependencies.adminRoleMiddleware,
+        moderateRoommateProfileHandler(safetyService)
+      );
+      router.patch(
+        "/admin/roommate-requests/:requestId/moderation",
+        dependencies.authenticationMiddleware,
+        dependencies.adminRoleMiddleware,
+        moderateRoommateRequestHandler(safetyService)
+      );
+      router.patch(
+        "/admin/roommate-messages/:messageId/moderation",
+        dependencies.authenticationMiddleware,
+        dependencies.adminRoleMiddleware,
+        moderateRoommateMessageHandler(safetyService)
+      );
+    }
+  }
 }

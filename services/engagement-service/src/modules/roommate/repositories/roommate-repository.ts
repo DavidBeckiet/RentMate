@@ -653,6 +653,34 @@ async function insertExpiryNotification(
   });
 }
 
+async function insertInterestNotification(
+  executor: SqlExecutor,
+  recipientId: number,
+  interestId: number,
+  eventType:
+    | "ROOMMATE_INTEREST_RECEIVED"
+    | "ROOMMATE_INTEREST_ACCEPTED"
+    | "ROOMMATE_INTEREST_REJECTED"
+    | "ROOMMATE_INTEREST_WITHDRAWN"
+    | "ROOMMATE_CONNECTION_LEFT"
+): Promise<void> {
+  await executeCommand(executor, {
+    text: `
+      INSERT INTO notifications (
+        recipient_id, event_type, roommate_interest_id, resource_path, dedupe_key
+      ) VALUES ($1, $2, $3, $4, $5)
+      ON CONFLICT DO NOTHING
+    `,
+    values: [
+      recipientId,
+      eventType,
+      interestId,
+      `/roommate-interests/${interestId}`,
+      notificationDedupe(eventType, interestId, String(recipientId))
+    ]
+  });
+}
+
 export function createRoommateRepository(): RoommateRepository {
   const repository: RoommateRepository = {
     findProfile(executor, tenantId, forUpdate = false) {
@@ -1028,6 +1056,12 @@ export function createRoommateRepository(): RoommateRepository {
       });
       const interest = await repository.findInterestById(executor, inserted.id);
       if (!interest) throw new RepositoryInvariantError("Created roommate interest could not be loaded.");
+      await insertInterestNotification(
+        executor,
+        interest.requestOwnerTenantId,
+        interest.id,
+        "ROOMMATE_INTEREST_RECEIVED"
+      );
       return interest;
     },
 
@@ -1124,6 +1158,12 @@ export function createRoommateRepository(): RoommateRepository {
         positiveId(result.rows[0]!.id, "roommateInterest.id")
       );
       if (!interest) throw new RepositoryInvariantError("Accepted roommate interest could not be loaded.");
+      await insertInterestNotification(
+        executor,
+        interest.interestedTenantId,
+        interest.id,
+        "ROOMMATE_INTEREST_ACCEPTED"
+      );
       return interest;
     },
 
@@ -1162,6 +1202,12 @@ export function createRoommateRepository(): RoommateRepository {
         positiveId(result.rows[0]!.id, "roommateInterest.id")
       );
       if (!interest) throw new RepositoryInvariantError("Rejected roommate interest could not be loaded.");
+      await insertInterestNotification(
+        executor,
+        interest.interestedTenantId,
+        interest.id,
+        "ROOMMATE_INTEREST_REJECTED"
+      );
       return interest;
     },
 
@@ -1182,6 +1228,12 @@ export function createRoommateRepository(): RoommateRepository {
         positiveId(result.rows[0]!.id, "roommateInterest.id")
       );
       if (!interest) throw new RepositoryInvariantError("Withdrawn roommate interest could not be loaded.");
+      await insertInterestNotification(
+        executor,
+        interest.requestOwnerTenantId,
+        interest.id,
+        "ROOMMATE_INTEREST_WITHDRAWN"
+      );
       return interest;
     },
 
@@ -1205,29 +1257,66 @@ export function createRoommateRepository(): RoommateRepository {
         positiveId(result.rows[0]!.id, "roommateInterest.id")
       );
       if (!interest) throw new RepositoryInvariantError("Left roommate interest could not be loaded.");
+      await insertInterestNotification(
+        executor,
+        interest.requestOwnerTenantId === actorTenantId ? interest.interestedTenantId : interest.requestOwnerTenantId,
+        interest.id,
+        "ROOMMATE_CONNECTION_LEFT"
+      );
       return interest;
     },
 
     async cleanupAfterAccept(executor, acceptedInterestId, requestId, participantTenantIds) {
-      await executeCommand(executor, {
-        text: `
+      const rejected = await queryMany<
+        { id: unknown; interested_tenant_id: unknown },
+        { readonly id: number; readonly interestedTenantId: number }
+      >(
+        executor,
+        {
+          text: `
           UPDATE roommate_interests
           SET status = 'REJECTED', ended_at = CURRENT_TIMESTAMP,
               terminal_reason = 'COMPETING_INTEREST_ACCEPTED', updated_at = CURRENT_TIMESTAMP
           WHERE request_id = $1 AND status = 'PENDING' AND id <> $2
+          RETURNING id, interested_tenant_id
         `,
-        values: [requestId, acceptedInterestId]
-      });
-      await executeCommand(executor, {
-        text: `
-          UPDATE roommate_interests
+          values: [requestId, acceptedInterestId]
+        },
+        (row) => ({
+          id: positiveId(row.id, "roommateInterest.id"),
+          interestedTenantId: positiveId(row.interested_tenant_id, "roommateInterest.interestedTenantId")
+        })
+      );
+      for (const row of rejected) {
+        await insertInterestNotification(executor, row.interestedTenantId, row.id, "ROOMMATE_INTEREST_REJECTED");
+      }
+      const withdrawn = await queryMany<
+        { id: unknown; interested_tenant_id: unknown; owner_tenant_id: unknown },
+        { readonly id: number; readonly interestedTenantId: number; readonly ownerTenantId: number }
+      >(
+        executor,
+        {
+          text: `
+          UPDATE roommate_interests i
           SET status = 'WITHDRAWN', ended_at = CURRENT_TIMESTAMP,
               terminal_reason = 'PARTICIPANT_MATCHED_ELSEWHERE', updated_at = CURRENT_TIMESTAMP
-          WHERE interested_tenant_id = ANY($1::integer[])
-            AND status = 'PENDING' AND id <> $2 AND request_id <> $3
+          FROM roommate_requests r
+          WHERE i.request_id = r.id
+            AND i.interested_tenant_id = ANY($1::integer[])
+            AND i.status = 'PENDING' AND i.id <> $2 AND i.request_id <> $3
+          RETURNING i.id, i.interested_tenant_id, r.owner_tenant_id
         `,
-        values: [[...new Set(participantTenantIds)], acceptedInterestId, requestId]
-      });
+          values: [[...new Set(participantTenantIds)], acceptedInterestId, requestId]
+        },
+        (row) => ({
+          id: positiveId(row.id, "roommateInterest.id"),
+          interestedTenantId: positiveId(row.interested_tenant_id, "roommateInterest.interestedTenantId"),
+          ownerTenantId: positiveId(row.owner_tenant_id, "roommateRequest.ownerTenantId")
+        })
+      );
+      for (const row of withdrawn) {
+        await insertInterestNotification(executor, row.ownerTenantId, row.id, "ROOMMATE_INTEREST_WITHDRAWN");
+      }
     },
 
     findCurrentConnection(executor, tenantId) {

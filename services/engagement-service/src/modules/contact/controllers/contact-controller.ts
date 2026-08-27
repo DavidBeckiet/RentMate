@@ -120,6 +120,8 @@ function notificationDto(notification: Notification) {
     eventType: notification.eventType,
     inquiryId: notification.inquiryId,
     listingId: notification.listingId,
+    roommateRequestId: notification.roommateRequestId ?? null,
+    roommateInterestId: notification.roommateInterestId ?? null,
     resourcePath: notification.resourcePath,
     isRead: notification.isRead,
     createdAt: notification.createdAt

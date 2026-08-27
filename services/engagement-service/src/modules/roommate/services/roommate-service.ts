@@ -115,6 +115,8 @@ export interface RoommateTransactionRunner {
   readonly run: <Value>(operation: (executor: SqlExecutor) => Promise<Value>) => Promise<Value>;
 }
 
+export const defaultRoommatePendingInterestLimit = 5;
+
 export interface RoommateService {
   readonly getProfile: (principal: AuthenticatedPrincipal) => Promise<RoommateProfileView>;
   readonly upsertProfile: (
@@ -182,6 +184,7 @@ interface RoommateDependencies {
   >;
   readonly listingCatalogClient: Pick<ListingCatalogClient, "loadPublicSummariesByIds">;
   readonly transactionRunner: RoommateTransactionRunner;
+  readonly maximumPendingOutgoingInterests?: number;
   readonly now?: () => Date;
 }
 
@@ -342,8 +345,16 @@ export function createRoommateService(dependencies: RoommateDependencies): Roomm
     identityAccountClient,
     listingCatalogClient,
     transactionRunner,
+    maximumPendingOutgoingInterests = defaultRoommatePendingInterestLimit,
     now = () => new Date()
   } = dependencies;
+  if (
+    !Number.isSafeInteger(maximumPendingOutgoingInterests) ||
+    maximumPendingOutgoingInterests < 1 ||
+    maximumPendingOutgoingInterests > 100
+  ) {
+    throw new Error("Roommate pending-interest limit must be an integer between 1 and 100.");
+  }
 
   const loadIdentity = async (tenantIds: readonly number[]): Promise<readonly IdentityRoommateTenantProjection[]> => {
     if (tenantIds.length === 0) return Object.freeze([]);
@@ -938,7 +949,7 @@ export function createRoommateService(dependencies: RoommateDependencies): Roomm
                 "An active interest already exists for this request."
               );
             }
-            if ((await repository.countPendingOutgoing(executor, tenantId, now())) >= 5) {
+            if ((await repository.countPendingOutgoing(executor, tenantId, now())) >= maximumPendingOutgoingInterests) {
               throw roommateError(
                 "ROOMMATE_PENDING_INTEREST_LIMIT",
                 "You already have the maximum number of pending roommate interests."

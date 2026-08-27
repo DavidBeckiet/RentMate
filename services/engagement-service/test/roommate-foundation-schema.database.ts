@@ -73,6 +73,18 @@ async function countRoommateTables(schemaName: string): Promise<number> {
   return Number(result.rows[0]?.count ?? "0");
 }
 
+async function hasColumn(schemaName: string, tableName: string, columnName: string): Promise<boolean> {
+  const result = await pool.query(
+    `
+      SELECT 1
+      FROM information_schema.columns
+      WHERE table_schema = $1 AND table_name = $2 AND column_name = $3
+    `,
+    [schemaName, tableName, columnName]
+  );
+  return result.rows.length === 1;
+}
+
 before(async () => {
   await createSchema(schemaNames.clean);
   await createSchema(schemaNames.existing);
@@ -95,7 +107,12 @@ test("clean Engagement migration creates the complete Roommate foundation", asyn
     completed.some(({ version }) => version === 18),
     true
   );
+  assert.equal(
+    completed.some(({ version }) => version === 19),
+    true
+  );
   assert.equal(await countRoommateTables(schemaNames.clean), 4);
+  assert.equal(await hasColumn(schemaNames.clean, "contact_reports", "evidence_snapshot"), true);
 });
 
 test("existing Engagement migration applies only Roommate foundation after version 17", async () => {
@@ -105,10 +122,16 @@ test("existing Engagement migration applies only Roommate foundation after versi
     migrationRunner.createPlan("clean", migrations.slice(0, 17))
   );
 
-  const plan = migrationRunner.createPlan("existing", migrations, { appliedVersion: 17 });
+  const plan = migrationRunner.createPlan("existing", migrations.slice(0, 18), { appliedVersion: 17 });
   assert.equal(plan.migrations.at(0)?.version, 18);
   const completed = await migrationRunner.executePlan(schemaMigrationPool(schemaNames.existing), plan);
 
   assert.equal(completed.at(0)?.version, 18);
   assert.equal(await countRoommateTables(schemaNames.existing), 4);
+
+  const safetyPlan = migrationRunner.createPlan("existing", migrations, { appliedVersion: 18 });
+  assert.equal(safetyPlan.migrations.at(0)?.version, 19);
+  const safetyCompleted = await migrationRunner.executePlan(schemaMigrationPool(schemaNames.existing), safetyPlan);
+  assert.equal(safetyCompleted.at(0)?.version, 19);
+  assert.equal(await hasColumn(schemaNames.existing, "contact_reports", "evidence_snapshot"), true);
 });
