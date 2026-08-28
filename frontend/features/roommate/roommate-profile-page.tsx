@@ -19,6 +19,7 @@ import {
 } from "./roommate-content";
 import { RoommatePageHeader, RoommateSubnav, RoommateTenantBoundary } from "./roommate-shared";
 import { RoommateVerificationPanel } from "./roommate-verification-panel";
+import { RoommateAiPreferencePanel } from "./roommate-ai-preference-panel";
 
 const emptyProfile: RoommateProfileBody = {
   intro: "",
@@ -163,6 +164,10 @@ function ProfileEditor() {
           <p aria-live="polite" className="text-right text-ui-xs font-semibold text-rent-secondary">
             {Array.from(profile.intro).length}/500 ký tự
           </p>
+          <RoommateAiPreferencePanel
+            target="PROFILE"
+            onApply={(values) => setProfile((current) => ({ ...current, ...(values as Partial<RoommateProfileBody>) }))}
+          />
           <div className="grid gap-5 sm:grid-cols-2">
             <SelectField
               id="roommate-sleep-schedule"

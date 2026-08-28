@@ -4,6 +4,8 @@ import { sendObject } from "../../../../../shared/src/runtime/shared/http/respon
 import { authenticationRequiredMessage } from "../../../../../shared/src/runtime/shared/middleware/authentication.js";
 import { validateBodyFields, validateQueryKeys } from "../../../../../shared/src/runtime/shared/validation/request.js";
 import type { RoommateAiCapabilityService } from "../services/roommate-ai-capability-service.js";
+import type { RoommateAiPreferencePreviewService } from "../services/preference-preview-service.js";
+import { validateRoommateAiPreferencePreviewBody } from "../validations/preference-preview-validation.js";
 
 function principal(request: Request): NonNullable<Request["auth"]> {
   if (!request.auth) throw new ApplicationError("AUTHENTICATION_REQUIRED", authenticationRequiredMessage);
@@ -16,6 +18,21 @@ export function getRoommateAiCapabilitiesHandler(service: RoommateAiCapabilitySe
       validateQueryKeys(request.query, []);
       if (request.body !== undefined) validateBodyFields(request.body, []);
       sendObject(response, service.getCapabilities(principal(request)));
+    } catch (error) {
+      next(error);
+    }
+  };
+}
+
+export function createRoommateAiPreferencePreviewHandler(service: RoommateAiPreferencePreviewService): RequestHandler {
+  return (request, response, next) => {
+    try {
+      validateQueryKeys(request.query, []);
+      const input = validateRoommateAiPreferencePreviewBody(request.body);
+      void service
+        .preview(principal(request), input)
+        .then((result) => sendObject(response, result))
+        .catch(next);
     } catch (error) {
       next(error);
     }

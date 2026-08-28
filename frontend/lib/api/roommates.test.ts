@@ -33,6 +33,12 @@ describe("createRoommateApi", () => {
     };
 
     void api.getProfile();
+    void api.getAiCapabilities();
+    void api.createPreferencePreview({
+      target: "PROFILE",
+      text: "Mình thích nhà yên tĩnh và không hút thuốc.",
+      locale: "vi"
+    });
     void api.upsertProfile(profile);
     void api.createRequest({
       listingId: null,
@@ -47,12 +53,18 @@ describe("createRoommateApi", () => {
     void api.createInterest(42, "Mình muốn tìm hiểu thêm về nhu cầu ở ghép của bạn.");
 
     expect(mock.object).toHaveBeenNthCalledWith(1, "/api/v1/roommate-profiles/me", { signal: undefined });
-    expect(mock.object).toHaveBeenNthCalledWith(2, "/api/v1/roommate-profiles/me", {
+    expect(mock.object).toHaveBeenNthCalledWith(2, "/api/v1/roommate-ai/capabilities", { signal: undefined });
+    expect(mock.object).toHaveBeenNthCalledWith(3, "/api/v1/roommate-ai/preference-previews", {
+      method: "POST",
+      json: { target: "PROFILE", text: "Mình thích nhà yên tĩnh và không hút thuốc.", locale: "vi" },
+      signal: undefined
+    });
+    expect(mock.object).toHaveBeenNthCalledWith(4, "/api/v1/roommate-profiles/me", {
       method: "PUT",
       json: profile,
       signal: undefined
     });
-    expect(mock.object).toHaveBeenNthCalledWith(3, "/api/v1/roommate-requests", {
+    expect(mock.object).toHaveBeenNthCalledWith(5, "/api/v1/roommate-requests", {
       method: "POST",
       json: expect.objectContaining({ listingId: null, preferredAreaKeys: ["Quận 3"] }),
       signal: undefined
@@ -61,7 +73,7 @@ describe("createRoommateApi", () => {
       query: { area: "Quận 3", listingMode: "UNLINKED", page: 2, pageSize: 12 },
       signal: undefined
     });
-    expect(mock.object).toHaveBeenNthCalledWith(4, "/api/v1/roommate-requests/42/interests", {
+    expect(mock.object).toHaveBeenNthCalledWith(6, "/api/v1/roommate-requests/42/interests", {
       method: "POST",
       json: { message: "Mình muốn tìm hiểu thêm về nhu cầu ở ghép của bạn." },
       signal: undefined

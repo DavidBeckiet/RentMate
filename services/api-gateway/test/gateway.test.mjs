@@ -140,6 +140,50 @@ test("forwards the Roommate AI capability route to Engagement without inspecting
   }
 });
 
+test("forwards a Roommate AI preference preview body and preserves upstream AI errors", async () => {
+  const upstream = http.createServer((request, response) => {
+    assert.equal(request.url, "/api/v1/roommate-ai/preference-previews");
+    assert.equal(request.method, "POST");
+    assert.equal(request.headers.cookie, "rentmate_session=tenant-cookie");
+    assert.equal(request.headers.origin, "http://localhost:3000");
+    let body = "";
+    request.on("data", (chunk) => (body += chunk));
+    request.on("end", () => {
+      assert.deepEqual(JSON.parse(body), {
+        target: "PROFILE",
+        text: "Mình thích nhà yên tĩnh và không hút thuốc.",
+        locale: "vi"
+      });
+      response.writeHead(503, { "content-type": "application/json" });
+      response.end(JSON.stringify({ error: { code: "AI_FEATURE_UNAVAILABLE", message: "safe" } }));
+    });
+  });
+  const upstreamPort = await listen(upstream);
+  const gateway = createGatewayServer({
+    BACKEND_URL: "http://127.0.0.1:1",
+    ENGAGEMENT_SERVICE_URL: `http://127.0.0.1:${upstreamPort}`,
+    FRONTEND_ORIGIN: "http://localhost:3000"
+  });
+  const gatewayPort = await listen(gateway);
+
+  try {
+    const result = await fetch(`http://127.0.0.1:${gatewayPort}/api/v1/roommate-ai/preference-previews`, {
+      method: "POST",
+      headers: {
+        origin: "http://localhost:3000",
+        cookie: "rentmate_session=tenant-cookie",
+        "content-type": "application/json"
+      },
+      body: JSON.stringify({ target: "PROFILE", text: "Mình thích nhà yên tĩnh và không hút thuốc.", locale: "vi" })
+    });
+    assert.equal(result.status, 503);
+    assert.deepEqual(await result.json(), { error: { code: "AI_FEATURE_UNAVAILABLE", message: "safe" } });
+  } finally {
+    await close(gateway);
+    await close(upstream);
+  }
+});
+
 test("handles allowed preflight and rejects unsafe requests from another origin", async () => {
   const gateway = createGatewayServer({
     BACKEND_URL: "http://127.0.0.1:1",

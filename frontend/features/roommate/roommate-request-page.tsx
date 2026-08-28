@@ -11,6 +11,7 @@ import { Icon } from "../../components/ui/icon";
 import { api, ApiError } from "../../lib/api/client";
 import { useAuth } from "../../lib/auth/auth-provider";
 import type { PublicListingSummary, RoommateRequest } from "../../types/api";
+import { RoommateAiPreferencePanel } from "./roommate-ai-preference-panel";
 import {
   addDays,
   dayInputValue,
@@ -85,6 +86,29 @@ function valuesFromRequest(request: RoommateRequest): RequestFormValues {
     moveInFrom: request.moveInFrom,
     moveInUntil: request.moveInUntil,
     note: request.note ?? ""
+  };
+}
+
+function applyRequestPreferencePreview(
+  current: RequestFormValues,
+  preview: Readonly<Record<string, string | number | readonly string[]>>
+): RequestFormValues {
+  const areas = preview.preferredAreaKeys;
+  const budgetMin = preview.budgetMinPerPerson;
+  const budgetMax = preview.budgetMaxPerPerson;
+  const from = preview.moveInFrom;
+  const until = preview.moveInUntil;
+  return {
+    ...current,
+    ...(Array.isArray(areas) ? { areas: areas.join(", ") } : {}),
+    ...(typeof budgetMin === "string" || typeof budgetMin === "number"
+      ? { budgetMinPerPerson: String(budgetMin) }
+      : {}),
+    ...(typeof budgetMax === "string" || typeof budgetMax === "number"
+      ? { budgetMaxPerPerson: String(budgetMax) }
+      : {}),
+    ...(typeof from === "string" ? { moveInFrom: from } : {}),
+    ...(typeof until === "string" ? { moveInUntil: until } : {})
   };
 }
 
@@ -434,6 +458,10 @@ function CreateRequestForm({
             <ListingPicker selected={selectedListing} onSelect={setSelectedListing} />
           </>
         ) : null}
+        <RoommateAiPreferencePanel
+          target="REQUEST"
+          onApply={(preview) => setValues((current) => applyRequestPreferencePreview(current, preview))}
+        />
         <RequestFields values={values} onChange={setValues} requireArea={mode === "UNLINKED"} />
         {error ? (
           <p role="alert" className="border-l-4 border-rose-700 pl-3 text-ui-sm font-semibold text-rose-800">
@@ -637,6 +665,10 @@ function ManagedRequest({
               Chỉ sửa nội dung khi yêu cầu đang mở. Việc gắn hoặc gỡ listing dùng thao tác riêng bên dưới.
             </p>
           </div>
+          <RoommateAiPreferencePanel
+            target="REQUEST"
+            onApply={(preview) => setValues((current) => applyRequestPreferencePreview(current, preview))}
+          />
           <RequestFields values={values} onChange={setValues} requireArea={request.listingMode === "UNLINKED"} />
           <Button
             className="w-full sm:w-auto"

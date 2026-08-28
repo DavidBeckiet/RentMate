@@ -3,7 +3,12 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { AuthContextValue } from "../../lib/auth/auth-provider";
 import { tenantUser, roommateProfile } from "./test-roommate-fixtures";
 
-const apiMocks = vi.hoisted(() => ({ getProfile: vi.fn(), upsertProfile: vi.fn() }));
+const apiMocks = vi.hoisted(() => ({
+  getProfile: vi.fn(),
+  upsertProfile: vi.fn(),
+  getAiCapabilities: vi.fn(),
+  createPreferencePreview: vi.fn()
+}));
 const usersMocks = vi.hoisted(() => ({ getTenantContactVerificationStatus: vi.fn() }));
 const useAuthMock = vi.hoisted(() => vi.fn<() => AuthContextValue>());
 const routerMocks = vi.hoisted(() => ({ push: vi.fn() }));
@@ -30,6 +35,14 @@ describe("RoommateProfilePage", () => {
   beforeEach(() => {
     apiMocks.getProfile.mockReset();
     apiMocks.upsertProfile.mockReset();
+    apiMocks.getAiCapabilities.mockReset();
+    apiMocks.createPreferencePreview.mockReset();
+    apiMocks.getAiCapabilities.mockResolvedValue({
+      preferenceParsing: false,
+      semanticRecommendations: false,
+      compatibilityExplanations: false,
+      safetyWarnings: false
+    });
     usersMocks.getTenantContactVerificationStatus.mockReset();
     usersMocks.getTenantContactVerificationStatus.mockResolvedValue({
       email: { address: "tenant@example.com", verified: false, verifiedAt: null, available: true },

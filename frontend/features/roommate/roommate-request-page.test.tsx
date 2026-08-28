@@ -11,7 +11,9 @@ const apiMocks = vi.hoisted(() => ({
   renewRequest: vi.fn(),
   linkListing: vi.fn(),
   unlinkListing: vi.fn(),
-  cancelRequest: vi.fn()
+  cancelRequest: vi.fn(),
+  getAiCapabilities: vi.fn(),
+  createPreferencePreview: vi.fn()
 }));
 const listingMocks = vi.hoisted(() => ({ getPublicDetail: vi.fn(), searchPublic: vi.fn() }));
 const useAuthMock = vi.hoisted(() => vi.fn<() => AuthContextValue>());
@@ -44,6 +46,14 @@ describe("RoommateRequestPage", () => {
     apiMocks.linkListing.mockReset();
     apiMocks.unlinkListing.mockReset();
     apiMocks.cancelRequest.mockReset();
+    apiMocks.getAiCapabilities.mockReset();
+    apiMocks.createPreferencePreview.mockReset();
+    apiMocks.getAiCapabilities.mockResolvedValue({
+      preferenceParsing: false,
+      semanticRecommendations: false,
+      compatibilityExplanations: false,
+      safetyWarnings: false
+    });
     listingMocks.getPublicDetail.mockReset();
     listingMocks.searchPublic.mockReset();
     listingMocks.searchPublic.mockResolvedValue({

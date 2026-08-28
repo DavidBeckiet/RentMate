@@ -981,6 +981,52 @@ export interface RoommateProfileBody {
   readonly petEnvironment: RoommatePetEnvironment;
 }
 
+export type RoommateAiConfidence = "HIGH" | "MEDIUM" | "LOW";
+export type RoommateAiPreferenceTarget = "PROFILE" | "REQUEST";
+export type RoommateAiUnresolvedReason =
+  | "AMBIGUOUS"
+  | "UNSUPPORTED_PREFERENCE"
+  | "SENSITIVE_OR_PROTECTED_ATTRIBUTE"
+  | "NO_CANONICAL_VALUE"
+  | "CONFLICTING_STATEMENTS";
+
+export interface RoommateAiCapabilities {
+  readonly preferenceParsing: boolean;
+  readonly semanticRecommendations: boolean;
+  readonly compatibilityExplanations: boolean;
+  readonly safetyWarnings: boolean;
+}
+
+export interface RoommateAiEvidenceRange {
+  readonly start: number;
+  readonly end: number;
+}
+
+export interface RoommateAiPreferenceCandidate {
+  readonly value: string | number | readonly string[];
+  readonly confidence: RoommateAiConfidence;
+  readonly evidenceRanges: readonly RoommateAiEvidenceRange[];
+}
+
+export interface RoommateAiPreferencePreview {
+  readonly target: RoommateAiPreferenceTarget;
+  readonly normalizedText: string;
+  readonly proposal: Readonly<Record<string, RoommateAiPreferenceCandidate>>;
+  readonly unresolved: readonly {
+    readonly reason: RoommateAiUnresolvedReason;
+    readonly evidenceRanges: readonly RoommateAiEvidenceRange[];
+  }[];
+  readonly requiresConfirmation: true;
+  readonly parserVersion: "ROOMMATE_AI_PARSER_V3_1";
+  readonly promptVersion: "ROOMMATE_AI_PARSER_PROMPT_V1";
+}
+
+export interface CreateRoommateAiPreferencePreviewBody {
+  readonly target: RoommateAiPreferenceTarget;
+  readonly text: string;
+  readonly locale: "vi" | "en";
+}
+
 export interface RoommateRequest {
   readonly id: number;
   readonly listingId: number | null;

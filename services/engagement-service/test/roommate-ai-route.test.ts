@@ -7,6 +7,7 @@ import { createRoleMiddleware } from "../../shared/src/runtime/shared/middleware
 import { parseRoommateAiConfiguration } from "../src/modules/roommate-ai/config/roommate-ai-config.js";
 import { registerRoommateAiRoutes } from "../src/modules/roommate-ai/routes.js";
 import { RoommateAiCapabilityService } from "../src/modules/roommate-ai/services/roommate-ai-capability-service.js";
+import { RoommateAiPreferencePreviewService } from "../src/modules/roommate-ai/services/preference-preview-service.js";
 
 function listen(server: ReturnType<typeof createServer>): Promise<number> {
   return new Promise((resolve) => {
@@ -47,7 +48,8 @@ function createTestServer(capabilityService: RoommateAiCapabilityService): Retur
       registerRoommateAiRoutes(router, {
         authenticationMiddleware,
         tenantRoleMiddleware: createRoleMiddleware(["TENANT"]),
-        capabilityService
+        capabilityService,
+        preferencePreviewService: new RoommateAiPreferencePreviewService(parseRoommateAiConfiguration({}), null)
       })
   });
   return createServer(app);
@@ -123,4 +125,47 @@ test("Roommate AI capabilities use server-side rollout and keep safety hidden ou
     compatibilityExplanations: false,
     safetyWarnings: false
   });
+});
+
+test("preference preview keeps tenant authorization and returns feature-off without a provider call", async () => {
+  const server = createTestServer(new RoommateAiCapabilityService(parseRoommateAiConfiguration({})));
+  const port = await listen(server);
+  const request = (token: string | undefined, body: unknown) =>
+    fetch(`http://127.0.0.1:${port}/api/v1/roommate-ai/preference-previews`, {
+      method: "POST",
+      headers: {
+        ...(token ? { cookie: `rentmate_session=${token}` } : {}),
+        origin: "http://localhost:3000",
+        "content-type": "application/json"
+      },
+      body: JSON.stringify(body)
+    });
+  try {
+    const anonymous = await request(undefined, {
+      target: "PROFILE",
+      text: "Mình thích nhà yên tĩnh và không hút thuốc.",
+      locale: "vi"
+    });
+    assert.equal(anonymous.status, 401);
+    const landlord = await request("landlord", {
+      target: "PROFILE",
+      text: "Mình thích nhà yên tĩnh và không hút thuốc.",
+      locale: "vi"
+    });
+    assert.equal(landlord.status, 403);
+    const invalid = await request("tenant", { target: "PROFILE", text: "ngắn", locale: "vi" });
+    assert.equal(invalid.status, 422);
+    const disabled = await request("tenant", {
+      target: "PROFILE",
+      text: "Mình thích nhà yên tĩnh và không hút thuốc.",
+      locale: "vi"
+    });
+    assert.equal(disabled.status, 503);
+    assert.equal(
+      ((await disabled.json()) as { readonly error: { readonly code: string } }).error.code,
+      "AI_FEATURE_UNAVAILABLE"
+    );
+  } finally {
+    await close(server);
+  }
 });
