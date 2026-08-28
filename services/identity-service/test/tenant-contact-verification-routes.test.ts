@@ -15,6 +15,7 @@ const status: ContactVerificationStatusResult = Object.freeze({
 });
 
 const calls: string[] = [];
+const rateLimitCalls: Array<{ readonly key: string; readonly limit: number; readonly windowMs: number }> = [];
 const contactVerificationService = Object.freeze({
   async status() {
     return status;
@@ -79,7 +80,10 @@ const app = createApp({
       service: {} as never,
       contactVerificationService,
       contactVerificationRateLimitStore: {
-        consume: async () => ({ allowed: true })
+        consume: async (input) => {
+          rateLimitCalls.push(input);
+          return { allowed: rateLimitCalls.length <= 5 };
+        }
       }
     });
   }
@@ -135,4 +139,11 @@ test("tenant verification routes accept only the frozen request shapes and keep 
   assert.equal((await request("/tenant/verifications/status?tenantId=8")).status, 422);
   assert.equal((await request("/tenant/verifications/status", "GET", undefined, "landlord")).status, 403);
   assert.equal((await request("/tenant/verifications/status", "GET", undefined, "inactive")).status, 401);
+
+  assert.equal((await request("/tenant/verifications/email/request", "POST", {})).status, 429);
+  assert.equal(new Set(rateLimitCalls.map((value) => value.key)).size, 1);
+  assert.equal(
+    rateLimitCalls.every((value) => value.limit === 5 && value.windowMs === 15 * 60 * 1_000),
+    true
+  );
 });

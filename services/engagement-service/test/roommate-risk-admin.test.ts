@@ -158,6 +158,13 @@ test("admin Roommate reports are globally priority-sorted before pagination and 
     [3, 4]
   );
   assert.equal(secondPage.hasNextPage, false);
+  assert.deepEqual(
+    [...firstPage.data, ...secondPage.data].map((value) => value.id),
+    [2, 1, 3, 4]
+  );
+  assert.equal(new Set([...firstPage.data, ...secondPage.data].map((value) => value.id)).size, reports.length);
+  assert.deepEqual([firstPage.page, firstPage.pageSize, firstPage.hasNextPage], [1, 2, true]);
+  assert.deepEqual([secondPage.page, secondPage.pageSize, secondPage.hasNextPage], [2, 2, false]);
 
   const elevatedOnly = await service.listAdminReports(admin, {
     source: "ROOMMATE",
@@ -173,6 +180,21 @@ test("admin Roommate reports are globally priority-sorted before pagination and 
     [2]
   );
   assert.equal(elevatedOnly.hasNextPage, false);
+
+  const standardOnly = await service.listAdminReports(admin, {
+    source: "ROOMMATE",
+    status: "OPEN",
+    category: null,
+    page: 1,
+    pageSize: 20,
+    offset: 0,
+    reviewPriority: "STANDARD"
+  });
+  assert.deepEqual(
+    standardOnly.data.map((value) => value.id),
+    [1, 3, 4]
+  );
+  assert.deepEqual([standardOnly.page, standardOnly.pageSize, standardOnly.hasNextPage], [1, 20, false]);
   assert.ok(calls.some((value) => value.offset === 0 && value.limit === riskConfig.reportBatchSize));
 });
 

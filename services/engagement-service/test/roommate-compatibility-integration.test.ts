@@ -82,6 +82,7 @@ interface HarnessOptions {
   readonly identities?: readonly IdentityRoommateTenantProjection[];
   readonly listings?: readonly PublicListingSummary[];
   readonly blockedPairs?: readonly (readonly [number, number])[];
+  readonly identityFailure?: boolean;
   readonly listingFailure?: boolean;
 }
 
@@ -167,8 +168,10 @@ function createHarness(options: HarnessOptions) {
   const service = createRoommateService({
     repository,
     identityAccountClient: {
-      loadRoommateTenantProjectionsByIds: async (tenantIds: readonly number[]) =>
-        identities.filter((identity) => tenantIds.includes(identity.tenantId))
+      loadRoommateTenantProjectionsByIds: async (tenantIds: readonly number[]) => {
+        if (options.identityFailure) throw new Error("identity unavailable");
+        return identities.filter((identity) => tenantIds.includes(identity.tenantId));
+      }
     },
     listingCatalogClient: {
       loadPublicSummariesByIds: async (listingIds: readonly number[]) => {
@@ -346,6 +349,19 @@ test("preserves dependency error semantics for an unavailable linked caller list
     profiles: [profile(tenant.userId), profile(other.userId)],
     identities: [identity(tenant.userId), identity(other.userId)],
     listingFailure: true
+  });
+  await assert.rejects(
+    () => subject.service.listDiscovery(tenant, query()),
+    (error: unknown) => error instanceof ApplicationError && error.code === "DEPENDENCY_UNAVAILABLE"
+  );
+});
+
+test("fails closed when Identity public facts are unavailable instead of fabricating badges", async () => {
+  const subject = createHarness({
+    requests: [request(2, other.userId)],
+    profiles: [profile(tenant.userId), profile(other.userId)],
+    identities: [identity(tenant.userId), identity(other.userId)],
+    identityFailure: true
   });
   await assert.rejects(
     () => subject.service.listDiscovery(tenant, query()),
