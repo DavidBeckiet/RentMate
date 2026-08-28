@@ -20,11 +20,13 @@ export const roommateReportCategories = [
 ] as const;
 export const roommateReportStatuses = ["OPEN", "INVESTIGATING", "RESOLVED", "DISMISSED"] as const;
 export const roommateModerationStates = ["VISIBLE", "HIDDEN"] as const;
+export const roommateReviewPriorities = ["ELEVATED", "STANDARD"] as const;
 
 export type RoommateReportTargetType = (typeof roommateReportTargetTypes)[number];
 export type RoommateReportCategory = (typeof roommateReportCategories)[number];
 export type RoommateReportStatus = (typeof roommateReportStatuses)[number];
 export type RoommateModerationState = (typeof roommateModerationStates)[number];
+export type RoommateReviewPriority = (typeof roommateReviewPriorities)[number];
 
 export interface CreateRoommateRequestReportInput {
   readonly targetType: Extract<RoommateReportTargetType, "ROOMMATE_PROFILE" | "ROOMMATE_REQUEST">;
@@ -49,6 +51,7 @@ export interface RoommateReportCollectionQuery {
   readonly page: number;
   readonly pageSize: number;
   readonly offset: number;
+  readonly reviewPriority?: RoommateReviewPriority | null;
 }
 
 export interface RoommateBlockPageQuery {
@@ -127,7 +130,7 @@ export function validateRoommateMessageReportBody(value: unknown): CreateRoommat
 }
 
 export function validateRoommateReportCollectionQuery(value: unknown): RoommateReportCollectionQuery {
-  const query = validateQueryKeys(value, ["source", "status", "category", "page", "pageSize"]);
+  const query = validateQueryKeys(value, ["source", "status", "category", "page", "pageSize", "reviewPriority"]);
   const source = normalizeControlledCode(readScalarQueryValue(query.source, "source") ?? "", "source", ["ROOMMATE"]);
   const status = normalizeControlledCode(
     readScalarQueryValue(query.status, "status") ?? "OPEN",
@@ -139,10 +142,19 @@ export function validateRoommateReportCollectionQuery(value: unknown): RoommateR
     categoryValue === undefined
       ? null
       : (normalizeControlledCode(categoryValue, "category", roommateReportCategories) as RoommateReportCategory);
+  const reviewPriorityValue = readScalarQueryValue(query.reviewPriority, "reviewPriority");
+  const reviewPriority =
+    reviewPriorityValue === undefined
+      ? null
+      : (normalizeControlledCode(
+          reviewPriorityValue,
+          "reviewPriority",
+          roommateReviewPriorities
+        ) as RoommateReviewPriority);
   const { page, pageSize } = parsePagination(query);
   const offset = (page - 1) * pageSize;
   if (!Number.isSafeInteger(offset)) throwValidationIssue("page", "OUT_OF_RANGE", "page is too large.");
-  return Object.freeze({ source: source as "ROOMMATE", status, category, page, pageSize, offset });
+  return Object.freeze({ source: source as "ROOMMATE", status, category, page, pageSize, offset, reviewPriority });
 }
 
 export function validateRoommateBlockPageQuery(value: unknown): RoommateBlockPageQuery {

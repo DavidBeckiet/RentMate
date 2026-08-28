@@ -65,6 +65,7 @@ function reportDto(report: RoommateAdminReportView, includeDetail: boolean) {
     resolvedAt: report.resolvedAt,
     reporter: report.reporter,
     subject: report.subject,
+    riskSummary: report.riskSummary,
     ...(includeDetail ? { evidenceSnapshot: report.evidenceSnapshot, events: report.events } : {})
   };
 }

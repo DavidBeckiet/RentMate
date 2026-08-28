@@ -15,6 +15,13 @@ import type {
   RoommateReportTargetType
 } from "../validations/roommate-safety-validation.js";
 import type { RoommateMessageRecord } from "./roommate-repository.js";
+import type {
+  RoommateRiskActivity,
+  RoommateRiskBlockActivity,
+  RoommateRiskInterestActivity,
+  RoommateRiskMessageActivity,
+  RoommateRiskReportActivity
+} from "../roommate-risk.js";
 
 export type RoommateNotificationEvent =
   | "ROOMMATE_INTEREST_RECEIVED"
@@ -52,6 +59,13 @@ export interface RoommateReportRecord {
   readonly createdAt: string;
   readonly updatedAt: string;
   readonly resolvedAt: string | null;
+}
+
+export interface RoommateRiskActivityQuery {
+  readonly subjectTenantId: number;
+  readonly windowStartedAt: Date;
+  readonly windowEndedAt: Date;
+  readonly limit: number;
 }
 
 export interface RoommateReportEvent {
@@ -157,6 +171,11 @@ export interface RoommateSafetyRepository {
       readonly offset: number;
     }
   ) => Promise<readonly RoommateReportRecord[]>;
+  readonly findRiskSubjectTenantIds: (
+    executor: SqlExecutor,
+    reportIds: readonly number[]
+  ) => Promise<ReadonlyMap<number, number>>;
+  readonly loadRiskActivity: (executor: SqlExecutor, input: RoommateRiskActivityQuery) => Promise<RoommateRiskActivity>;
   readonly findReport: (
     executor: SqlExecutor,
     reportId: number,
@@ -278,6 +297,35 @@ interface EventRow extends QueryResultRow {
   created_at: unknown;
 }
 
+interface RiskMessageRow extends QueryResultRow {
+  id: unknown;
+  interest_id: unknown;
+  counterpart_tenant_id: unknown;
+  body: unknown;
+  created_at: unknown;
+}
+
+interface RiskInterestRow extends QueryResultRow {
+  id: unknown;
+  created_at: unknown;
+}
+
+interface RiskReportRow extends QueryResultRow {
+  id: unknown;
+  reporter_id: unknown;
+  created_at: unknown;
+}
+
+interface RiskBlockRow extends QueryResultRow {
+  blocker_id: unknown;
+  created_at: unknown;
+}
+
+interface RiskSubjectRow extends QueryResultRow {
+  id: unknown;
+  subject_tenant_id: unknown;
+}
+
 interface StateRow extends QueryResultRow {
   state: unknown;
 }
@@ -389,6 +437,39 @@ function mapOwnedBlock(row: Readonly<OwnedBlockRow>): RoommateOwnedBlockRecord {
     requestOwnerTenantId: positiveId(row.request_owner_tenant_id, "roommateBlock.requestOwnerTenantId"),
     unblockInterestId: nullableId(row.unblock_interest_id, "roommateBlock.unblockInterestId"),
     blockedAt: timestamp(row.created_at, "roommateBlock.blockedAt")
+  });
+}
+
+function mapRiskMessage(row: Readonly<RiskMessageRow>): RoommateRiskMessageActivity {
+  if (typeof row.body !== "string") throw new RepositoryInvariantError("roommateRisk.message.body is invalid.");
+  return Object.freeze({
+    id: positiveId(row.id, "roommateRisk.message.id"),
+    interestId: positiveId(row.interest_id, "roommateRisk.message.interestId"),
+    counterpartTenantId: positiveId(row.counterpart_tenant_id, "roommateRisk.message.counterpartTenantId"),
+    body: row.body,
+    createdAt: timestamp(row.created_at, "roommateRisk.message.createdAt")
+  });
+}
+
+function mapRiskInterest(row: Readonly<RiskInterestRow>): RoommateRiskInterestActivity {
+  return Object.freeze({
+    id: positiveId(row.id, "roommateRisk.interest.id"),
+    createdAt: timestamp(row.created_at, "roommateRisk.interest.createdAt")
+  });
+}
+
+function mapRiskReport(row: Readonly<RiskReportRow>): RoommateRiskReportActivity {
+  return Object.freeze({
+    id: positiveId(row.id, "roommateRisk.report.id"),
+    reporterTenantId: positiveId(row.reporter_id, "roommateRisk.report.reporterTenantId"),
+    createdAt: timestamp(row.created_at, "roommateRisk.report.createdAt")
+  });
+}
+
+function mapRiskBlock(row: Readonly<RiskBlockRow>): RoommateRiskBlockActivity {
+  return Object.freeze({
+    blockerTenantId: positiveId(row.blocker_id, "roommateRisk.block.blockerTenantId"),
+    createdAt: timestamp(row.created_at, "roommateRisk.block.createdAt")
   });
 }
 
@@ -765,6 +846,130 @@ export function createRoommateSafetyRepository(): RoommateSafetyRepository {
         },
         mapReport
       );
+    },
+
+    async findRiskSubjectTenantIds(executor, reportIds) {
+      if (reportIds.length === 0) return new Map();
+      const rows = await queryMany<RiskSubjectRow, readonly [number, number | null]>(
+        executor,
+        {
+          text: `
+            SELECT
+              r.id,
+              CASE
+                WHEN r.target_type = 'ROOMMATE_PROFILE' THEN r.subject_tenant_id
+                WHEN r.target_type = 'ROOMMATE_REQUEST' THEN request_context.owner_tenant_id
+                WHEN r.target_type = 'ROOMMATE_MESSAGE' THEN message_context.sender_tenant_id
+                ELSE NULL
+              END AS subject_tenant_id
+            FROM contact_reports r
+            LEFT JOIN roommate_requests request_context
+              ON request_context.id = r.roommate_request_id
+            LEFT JOIN roommate_messages message_context
+              ON message_context.id = r.roommate_message_id
+            WHERE r.source = 'ROOMMATE'
+              AND r.id = ANY($1::integer[])
+          `,
+          values: [[...reportIds]]
+        },
+        (row) => [
+          positiveId(row.id, "roommateRisk.report.id"),
+          nullableId(row.subject_tenant_id, "roommateRisk.subjectTenantId")
+        ]
+      );
+      return new Map(rows.filter(([, subjectId]) => subjectId !== null));
+    },
+
+    async loadRiskActivity(executor, input) {
+      const values = [input.subjectTenantId, input.windowStartedAt, input.windowEndedAt, input.limit] as const;
+      const [messages, interests, reports, blockers] = await Promise.all([
+        queryMany<RiskMessageRow, RoommateRiskMessageActivity>(
+          executor,
+          {
+            text: `
+              SELECT
+                m.id,
+                m.interest_id,
+                CASE
+                  WHEN r.owner_tenant_id = $1 THEN i.interested_tenant_id
+                  ELSE r.owner_tenant_id
+                END AS counterpart_tenant_id,
+                m.body,
+                m.created_at
+              FROM roommate_messages m
+              JOIN roommate_interests i ON i.id = m.interest_id
+              JOIN roommate_requests r ON r.id = i.request_id
+              WHERE m.sender_tenant_id = $1
+                AND m.created_at >= $2
+                AND m.created_at <= $3
+              ORDER BY m.created_at DESC, m.id DESC
+              LIMIT $4
+            `,
+            values
+          },
+          mapRiskMessage
+        ),
+        queryMany<RiskInterestRow, RoommateRiskInterestActivity>(
+          executor,
+          {
+            text: `
+              SELECT id, created_at
+              FROM roommate_interests
+              WHERE interested_tenant_id = $1
+                AND created_at >= $2
+                AND created_at <= $3
+              ORDER BY created_at DESC, id DESC
+              LIMIT $4
+            `,
+            values
+          },
+          mapRiskInterest
+        ),
+        queryMany<RiskReportRow, RoommateRiskReportActivity>(
+          executor,
+          {
+            text: `
+              SELECT report.id, report.reporter_id, report.created_at
+              FROM contact_reports report
+              LEFT JOIN roommate_requests request_context
+                ON request_context.id = report.roommate_request_id
+              LEFT JOIN roommate_messages message_context
+                ON message_context.id = report.roommate_message_id
+              WHERE report.source = 'ROOMMATE'
+                AND report.status IN ('OPEN', 'INVESTIGATING')
+                AND report.created_at >= $2
+                AND report.created_at <= $3
+                AND (
+                  (report.target_type = 'ROOMMATE_PROFILE' AND report.subject_tenant_id = $1)
+                  OR (report.target_type = 'ROOMMATE_REQUEST' AND request_context.owner_tenant_id = $1)
+                  OR (report.target_type = 'ROOMMATE_MESSAGE' AND message_context.sender_tenant_id = $1)
+                )
+              ORDER BY report.created_at DESC, report.id DESC
+              LIMIT $4
+            `,
+            values
+          },
+          mapRiskReport
+        ),
+        queryMany<RiskBlockRow, RoommateRiskBlockActivity>(
+          executor,
+          {
+            text: `
+              SELECT blocker_id, created_at
+              FROM contact_blocks
+              WHERE blocked_id = $1
+                AND roommate_request_id IS NOT NULL
+                AND created_at >= $2
+                AND created_at <= $3
+              ORDER BY created_at DESC, id DESC
+              LIMIT $4
+            `,
+            values
+          },
+          mapRiskBlock
+        )
+      ]);
+      return Object.freeze({ messages, interests, reports, currentBlockers: blockers });
     },
 
     findReport(executor, reportId, forUpdate = false) {

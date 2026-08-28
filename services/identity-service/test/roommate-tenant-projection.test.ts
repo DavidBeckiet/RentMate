@@ -7,6 +7,7 @@ import {
   mapRoommateTenantProjectionRow,
   parseRoommateTenantProjectionIds
 } from "../src/modules/users/roommate-tenant-projection.js";
+import { mapRoommateRiskProjectionRow } from "../src/modules/users/roommate-risk-projection.js";
 
 test("Identity roommate projection batch parser bounds, validates, and deduplicates IDs", () => {
   assert.deepEqual(parseRoommateTenantProjectionIds("7,7,42"), [7, 42]);
@@ -97,4 +98,30 @@ test("Identity repository roommate projection selects only public-safe fields", 
   assert.match(capturedQuery.text, /email_verified_at IS NOT NULL AS email_verified/iu);
   assert.match(capturedQuery.text, /phone_verified_at IS NOT NULL AS phone_verified/iu);
   assert.doesNotMatch(capturedQuery.text, /\bemail\s*,|\bphone_e164\b|password/iu);
+});
+
+test("Identity risk projection exposes only exact account creation time", async () => {
+  assert.deepEqual(mapRoommateRiskProjectionRow({ id: 7, created_at: new Date("2025-11-02T00:00:00.000Z") }), {
+    tenantId: 7,
+    createdAt: "2025-11-02T00:00:00.000Z"
+  });
+
+  let capturedQuery: { readonly text: string; readonly values: readonly unknown[] } | null = null;
+  const executor = {
+    query: async <Row extends object>(query: { readonly text: string; readonly values: readonly unknown[] }) => {
+      capturedQuery = query;
+      return {
+        rows: [{ id: 7, created_at: new Date("2025-11-02T00:00:00.000Z") }] as Row[],
+        rowCount: 1
+      } as never;
+    }
+  };
+  const repository = createUsersRepository(createSqlExecutor(executor));
+  assert.deepEqual(await repository.findRoommateRiskProjectionsByIds([7]), [
+    { tenantId: 7, createdAt: "2025-11-02T00:00:00.000Z" }
+  ]);
+  assert.ok(capturedQuery);
+  assert.deepEqual(capturedQuery.values, [[7]]);
+  assert.match(capturedQuery.text, /created_at/iu);
+  assert.doesNotMatch(capturedQuery.text, /email|phone|password|display_name/iu);
 });

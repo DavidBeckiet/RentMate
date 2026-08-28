@@ -263,6 +263,18 @@ async function startIdentityService(): Promise<void> {
           .then((projections) => response.status(200).json({ data: projections }))
           .catch(next);
       });
+      internalApp.get("/internal/v1/roommate-risk-projections", internalServiceGuard, (request, response, next) => {
+        const ids = parseRoommateTenantProjectionIds(request.query.ids);
+        if (ids === null) {
+          response.status(400).end();
+          return;
+        }
+
+        void usersRepository
+          .findRoommateRiskProjectionsByIds(ids)
+          .then((projections) => response.status(200).json({ data: projections }))
+          .catch(next);
+      });
       internalApp.get("/internal/v1/landlords/active-ids", internalServiceGuard, (_request, response, next) => {
         const findActiveLandlordIds = usersRepository.findActiveLandlordIds;
         if (!findActiveLandlordIds) {

@@ -36,6 +36,10 @@ test("rejects unsafe, oversized, and unknown message fields", () => {
   assert.throws(() => validateCreateRoommateMessageBody({ body: "ok", extra: true }), /invalid data/i);
   assert.throws(() => validateRoommateMessagePageQuery({ pageSize: "101" }), /invalid data/i);
   assert.throws(() => validateRoommateMessagePageQuery({ page: "0" }), /invalid data/i);
+  assert.throws(
+    () => validateRoommateReportCollectionQuery({ source: "ROOMMATE", reviewPriority: "UNKNOWN" }),
+    /invalid data/i
+  );
 });
 
 test("validates roommate report targets, categories, details, and admin filters", () => {
@@ -55,6 +59,18 @@ test("validates roommate report targets, categories, details, and admin filters"
     category: "FRAUD",
     details: null
   });
+  assert.deepEqual(
+    validateRoommateReportCollectionQuery({ source: "ROOMMATE", status: "open", reviewPriority: "elevated" }),
+    {
+      source: "ROOMMATE",
+      status: "OPEN",
+      category: null,
+      page: 1,
+      pageSize: 20,
+      offset: 0,
+      reviewPriority: "ELEVATED"
+    }
+  );
   assert.deepEqual(validateRoommateMessageReportBody({ category: "spam", details: "Có dấu hiệu spam." }), {
     category: "SPAM",
     details: "Có dấu hiệu spam."
@@ -65,7 +81,8 @@ test("validates roommate report targets, categories, details, and admin filters"
     category: null,
     page: 2,
     pageSize: 20,
-    offset: 20
+    offset: 20,
+    reviewPriority: null
   });
   assert.deepEqual(validateRoommateModerationBody({ state: "hidden", note: "  Review evidence.  ", reportId: 9 }), {
     state: "HIDDEN",

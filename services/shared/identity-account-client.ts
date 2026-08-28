@@ -17,6 +17,9 @@ export interface IdentityAccountClient {
   readonly loadRoommateTenantProjectionsByIds: (
     userIds: readonly number[]
   ) => Promise<readonly IdentityRoommateTenantProjection[]>;
+  readonly loadRoommateRiskProjectionsByIds: (
+    userIds: readonly number[]
+  ) => Promise<readonly IdentityRoommateRiskProjection[]>;
   readonly loadVerifiedLandlordIds: (userIds: readonly number[]) => Promise<readonly number[]>;
 }
 
@@ -36,6 +39,11 @@ export interface IdentityRoommateTenantProjection {
   readonly memberSince: string;
   readonly emailVerified: boolean;
   readonly phoneVerified: boolean;
+}
+
+export interface IdentityRoommateRiskProjection {
+  readonly tenantId: number;
+  readonly createdAt: string;
 }
 
 function isAccount(value: unknown): value is AuthenticationAccount {
@@ -80,6 +88,21 @@ function isRoommateTenantProjection(value: unknown): value is IdentityRoommateTe
     typeof projection.emailVerified === "boolean" &&
     typeof projection.phoneVerified === "boolean"
   );
+}
+
+function isRoommateRiskProjection(value: unknown): value is IdentityRoommateRiskProjection {
+  if (typeof value !== "object" || value === null) return false;
+  const projection = value as Partial<IdentityRoommateRiskProjection>;
+  if (
+    !Number.isSafeInteger(projection.tenantId) ||
+    (projection.tenantId ?? 0) < 1 ||
+    (projection.tenantId ?? 0) > 2_147_483_647 ||
+    typeof projection.createdAt !== "string"
+  ) {
+    return false;
+  }
+  const parsed = new Date(projection.createdAt);
+  return !Number.isNaN(parsed.getTime()) && parsed.toISOString() === projection.createdAt;
 }
 
 function normalizeBaseUrl(value: string): string {
@@ -225,6 +248,41 @@ export function createIdentityAccountClient(options: IdentityAccountClientOption
     );
   };
 
+  const loadRoommateRiskProjectionsByIds = async (
+    userIds: readonly number[]
+  ): Promise<readonly IdentityRoommateRiskProjection[]> => {
+    if (userIds.length === 0) return Object.freeze([]);
+    let response: Response;
+    try {
+      const query = new URLSearchParams({ ids: [...userIds].join(",") });
+      response = await fetcher(`${baseUrl}/internal/v1/roommate-risk-projections?${query.toString()}`, {
+        method: "GET",
+        headers: { "x-rentmate-internal-token": options.internalToken }
+      });
+    } catch {
+      throw new Error("Identity service roommate risk lookup failed.");
+    }
+
+    if (!response.ok) throw new Error("Identity service roommate risk lookup failed.");
+    let payload: unknown;
+    try {
+      payload = await response.json();
+    } catch {
+      throw new Error("Identity service roommate risk response is invalid.");
+    }
+
+    if (typeof payload !== "object" || payload === null || !("data" in payload)) {
+      throw new Error("Identity service roommate risk response is invalid.");
+    }
+    const projections = (payload as { readonly data: unknown }).data;
+    if (!Array.isArray(projections) || projections.some((projection) => !isRoommateRiskProjection(projection))) {
+      throw new Error("Identity service roommate risk response is invalid.");
+    }
+    return Object.freeze(
+      projections.map((projection) => Object.freeze({ tenantId: projection.tenantId, createdAt: projection.createdAt }))
+    );
+  };
+
   const loadVerifiedLandlordIds = async (userIds: readonly number[]): Promise<readonly number[]> => {
     if (userIds.length === 0) return Object.freeze([]);
     let response: Response;
@@ -261,6 +319,7 @@ export function createIdentityAccountClient(options: IdentityAccountClientOption
     loadActiveLandlordIds,
     loadProfilesByIds,
     loadRoommateTenantProjectionsByIds,
+    loadRoommateRiskProjectionsByIds,
     loadVerifiedLandlordIds
   });
 }

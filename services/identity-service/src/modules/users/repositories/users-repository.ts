@@ -12,6 +12,11 @@ import {
   type RoommateTenantProjection,
   type RoommateTenantProjectionRow
 } from "../roommate-tenant-projection.js";
+import {
+  mapRoommateRiskProjectionRow,
+  type RoommateRiskProjection,
+  type RoommateRiskProjectionRow
+} from "../roommate-risk-projection.js";
 
 const maximumUserId = 2_147_483_647;
 
@@ -22,6 +27,7 @@ export interface UsersRepository {
   readonly findRoommateTenantProjectionsByIds: (
     userIds: readonly number[]
   ) => Promise<readonly RoommateTenantProjection[]>;
+  readonly findRoommateRiskProjectionsByIds: (userIds: readonly number[]) => Promise<readonly RoommateRiskProjection[]>;
   readonly findProfileById: (userId: number) => Promise<UserProfile | null>;
   readonly updateProfile: (userId: number, input: UpdateUserProfileRecord) => Promise<UserProfile | null>;
 }
@@ -104,6 +110,15 @@ const roommateTenantProjectionsSelect = `
       FROM users
       WHERE id = ANY($1::integer[])
       ORDER BY id ASC
+`;
+
+const roommateRiskProjectionsSelect = `
+      SELECT
+        id,
+        created_at
+      FROM users
+      WHERE id = ANY($1::integer[])
+      ORDER BY id ASC
     `;
 
 export function createUsersRepository(executor: SqlExecutor): UsersRepository {
@@ -174,6 +189,17 @@ export function createUsersRepository(executor: SqlExecutor): UsersRepository {
           executor,
           { text: roommateTenantProjectionsSelect, values: [[...userIds]] },
           mapRoommateTenantProjectionRow
+        )
+      );
+    },
+
+    async findRoommateRiskProjectionsByIds(userIds: readonly number[]): Promise<readonly RoommateRiskProjection[]> {
+      if (userIds.length === 0) return Object.freeze([]);
+      return Object.freeze(
+        await queryMany<RoommateRiskProjectionRow, RoommateRiskProjection>(
+          executor,
+          { text: roommateRiskProjectionsSelect, values: [[...userIds]] },
+          mapRoommateRiskProjectionRow
         )
       );
     },

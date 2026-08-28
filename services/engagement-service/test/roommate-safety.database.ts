@@ -9,8 +9,12 @@ import {
   type MigrationPool
 } from "../../shared/src/runtime/migrations/migration-runner.js";
 import { withTransaction } from "../../shared/src/runtime/db/transaction.js";
+import { defaultRoommateRiskConfig } from "../../shared/src/runtime/config/env.js";
 import type { SqlExecutor } from "../../shared/src/runtime/db/sql-executor.js";
-import type { IdentityRoommateTenantProjection } from "../../shared/identity-account-client.js";
+import type {
+  IdentityRoommateRiskProjection,
+  IdentityRoommateTenantProjection
+} from "../../shared/identity-account-client.js";
 import { createRoommateRepository } from "../src/modules/roommate/repositories/roommate-repository.js";
 import { createRoommateSafetyRepository } from "../src/modules/roommate/repositories/roommate-safety-repository.js";
 import { createRoommateService } from "../src/modules/roommate/services/roommate-service.js";
@@ -66,6 +70,7 @@ function transaction<Value>(operation: (executor: SqlExecutor) => Promise<Value>
 }
 
 const principals = new Map<number, IdentityRoommateTenantProjection>();
+const riskAccountCreatedAt = new Map<number, string>();
 const identityAccountClient = {
   async loadRoommateTenantProjectionsByIds(
     ids: readonly number[]
@@ -73,6 +78,14 @@ const identityAccountClient = {
     return ids
       .map((id) => principals.get(id))
       .filter((projection): projection is IdentityRoommateTenantProjection => projection !== undefined);
+  },
+  async loadRoommateRiskProjectionsByIds(ids: readonly number[]): Promise<readonly IdentityRoommateRiskProjection[]> {
+    return ids
+      .map((tenantId) => {
+        const createdAt = riskAccountCreatedAt.get(tenantId);
+        return createdAt === undefined ? undefined : { tenantId, createdAt };
+      })
+      .filter((projection): projection is IdentityRoommateRiskProjection => projection !== undefined);
   }
 };
 
@@ -112,6 +125,7 @@ function registerTenant(tenantId: number): void {
     emailVerified: false,
     phoneVerified: false
   });
+  riskAccountCreatedAt.set(tenantId, "2025-01-01T00:00:00.000Z");
 }
 
 async function createProfile(tenantId: number): Promise<void> {
@@ -703,6 +717,144 @@ test("serializes block, accept, leave, read, and rollback outcomes without parti
        (SELECT count(*)::text FROM roommate_messages WHERE interest_id = $1) AS message_count,
        (SELECT count(*)::text FROM notifications WHERE roommate_interest_id = $1) AS notification_count`,
     [readRaceInterestId]
+  );
+  assert.deepEqual(after, before);
+});
+
+test("aggregates bounded Roommate risk activity from PostgreSQL without mutating source facts", async () => {
+  const subjectTenantId = 2501;
+  const counterpartTenantIds = [2502, 2503, 2504] as const;
+  await Promise.all([createProfile(subjectTenantId), ...counterpartTenantIds.map((id) => createProfile(id))]);
+
+  const interestIds: number[] = [];
+  for (const counterpartTenantId of counterpartTenantIds) {
+    const requestId = await createRequest(counterpartTenantId);
+    interestIds.push(await createInterest(requestId, subjectTenantId));
+  }
+  await safetyService.sendMessage(principal(subjectTenantId), interestIds[0]!, {
+    body: "Mình muốn trao đổi tại https://example.com"
+  });
+  await safetyService.sendMessage(principal(subjectTenantId), interestIds[1]!, {
+    body: "Mình muốn trao đổi tại https://example.com"
+  });
+
+  const subjectMessages = await queryRows<{ id: number; interest_id: number }>(
+    `SELECT id, interest_id FROM roommate_messages
+     WHERE sender_tenant_id = $1 ORDER BY id ASC`,
+    [subjectTenantId]
+  );
+  assert.equal(subjectMessages.length, 5);
+
+  await Promise.all([
+    safetyService.createMessageReport(principal(counterpartTenantIds[0]), subjectMessages[0]!.id, {
+      category: "INAPPROPRIATE_CONTENT",
+      details: "Repeated solicitation."
+    }),
+    safetyService.createMessageReport(principal(counterpartTenantIds[1]), subjectMessages[1]!.id, {
+      category: "INAPPROPRIATE_CONTENT",
+      details: "Repeated solicitation."
+    }),
+    safetyService.createMessageReport(principal(counterpartTenantIds[2]), subjectMessages[2]!.id, {
+      category: "INAPPROPRIATE_CONTENT",
+      details: "Repeated solicitation."
+    })
+  ]);
+  await Promise.all(
+    interestIds.map((interestId, index) =>
+      safetyService.blockInterest(principal(counterpartTenantIds[index]!), interestId)
+    )
+  );
+
+  const evaluationTime = new Date();
+  riskAccountCreatedAt.set(subjectTenantId, new Date(evaluationTime.getTime() - 60_000).toISOString());
+  const riskConfig = Object.freeze({
+    ...defaultRoommateRiskConfig,
+    repeatedMessageCounterpartThreshold: 3,
+    rapidInterestCountThreshold: 3,
+    highMessageCountThreshold: 4,
+    highMessageThreadThreshold: 2,
+    solicitationCounterpartThreshold: 2,
+    reportCountThreshold: 3,
+    reporterCountThreshold: 2,
+    currentBlockerThreshold: 3,
+    activityRowLimit: 20,
+    reportBatchSize: 2
+  });
+  const riskService = createRoommateSafetyService({
+    roommateRepository,
+    safetyRepository,
+    identityAccountClient,
+    riskConfig,
+    now: () => evaluationTime,
+    transactionRunner: { run: transaction }
+  });
+  const before = await queryOne<{
+    message_count: string;
+    interest_count: string;
+    report_count: string;
+    block_count: string;
+  }>(
+    `SELECT
+       (SELECT count(*)::text FROM roommate_messages WHERE sender_tenant_id = $1) AS message_count,
+       (SELECT count(*)::text FROM roommate_interests WHERE interested_tenant_id = $1) AS interest_count,
+       (SELECT count(*)::text FROM contact_reports WHERE source = 'ROOMMATE' AND status IN ('OPEN', 'INVESTIGATING')
+          AND reporter_id = ANY($2::integer[])) AS report_count,
+       (SELECT count(*)::text FROM contact_blocks WHERE blocked_id = $1 AND roommate_request_id IS NOT NULL) AS block_count`,
+    [subjectTenantId, [...counterpartTenantIds]]
+  );
+  const page = await riskService.listAdminReports(admin, {
+    source: "ROOMMATE",
+    status: "OPEN",
+    category: "INAPPROPRIATE_CONTENT",
+    page: 1,
+    pageSize: 20,
+    offset: 0,
+    reviewPriority: null
+  });
+  assert.equal(page.data.length, 3);
+  const summary = page.data[0]!.riskSummary;
+  assert.deepEqual(
+    summary.flags.map((flag) => flag.code),
+    [
+      "REPEATED_MESSAGE_ACROSS_THREADS",
+      "RAPID_INTEREST_ACTIVITY",
+      "HIGH_MESSAGE_VOLUME",
+      "REPEATED_EXTERNAL_CONTACT_SOLICITATION",
+      "REPEATED_REPORT_PATTERN",
+      "MULTIPLE_CURRENT_BLOCKERS",
+      "NEW_ACCOUNT_WITH_UNUSUAL_ACTIVITY"
+    ]
+  );
+  assert.equal(summary.reviewPriority, "ELEVATED");
+  assert.equal(summary.partialEvaluation, false);
+  assert.equal(
+    summary.flags.every((flag) => JSON.stringify(flag).includes("body") === false),
+    true
+  );
+  assert.equal(
+    (summary.flags.find((flag) => flag.code === "REPEATED_MESSAGE_ACROSS_THREADS")?.evidenceSummary.messageIds ?? [])
+      .length <= 20,
+    true
+  );
+  assert.equal(
+    (summary.flags.find((flag) => flag.code === "RAPID_INTEREST_ACTIVITY")?.evidenceSummary.interestIds ?? []).length <=
+      20,
+    true
+  );
+  assert.equal(
+    (summary.flags.find((flag) => flag.code === "REPEATED_REPORT_PATTERN")?.evidenceSummary.reportIds ?? []).length <=
+      20,
+    true
+  );
+
+  const after = await queryOne<typeof before>(
+    `SELECT
+       (SELECT count(*)::text FROM roommate_messages WHERE sender_tenant_id = $1) AS message_count,
+       (SELECT count(*)::text FROM roommate_interests WHERE interested_tenant_id = $1) AS interest_count,
+       (SELECT count(*)::text FROM contact_reports WHERE source = 'ROOMMATE' AND status IN ('OPEN', 'INVESTIGATING')
+          AND reporter_id = ANY($2::integer[])) AS report_count,
+       (SELECT count(*)::text FROM contact_blocks WHERE blocked_id = $1 AND roommate_request_id IS NOT NULL) AS block_count`,
+    [subjectTenantId, [...counterpartTenantIds]]
   );
   assert.deepEqual(after, before);
 });

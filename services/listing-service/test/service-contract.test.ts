@@ -24,7 +24,13 @@ const roommateTenantProjection = {
   role: "TENANT",
   displayName: "Minh Anh",
   isActive: true,
-  memberSince: "2025-11"
+  memberSince: "2025-11",
+  emailVerified: true,
+  phoneVerified: false
+} as const;
+const roommateRiskProjection = {
+  tenantId: 7,
+  createdAt: "2025-11-02T00:00:00.000Z"
 } as const;
 
 test("Identity and Listing clients enforce internal headers and DTO contracts", async () => {
@@ -43,6 +49,9 @@ test("Identity and Listing clients enforce internal headers and DTO contracts", 
       return Response.json({
         data: [{ ...roommateTenantProjection, email: "private@example.com", phone: "+84900000000" }]
       });
+    }
+    if (url.pathname === "/internal/v1/roommate-risk-projections") {
+      return Response.json({ data: [roommateRiskProjection] });
     }
     if (url.pathname === "/internal/v1/listings/public-summaries") {
       return Response.json({ data: [publicSummary] });
@@ -64,12 +73,14 @@ test("Identity and Listing clients enforce internal headers and DTO contracts", 
   assert.deepEqual(await identity.loadAuthenticationAccount(7), { id: 7, role: "LANDLORD", isActive: true });
   assert.deepEqual(await identity.loadVerifiedLandlordIds([7]), [7]);
   assert.deepEqual(await identity.loadRoommateTenantProjectionsByIds([7]), [roommateTenantProjection]);
+  assert.deepEqual(await identity.loadRoommateRiskProjectionsByIds([7]), [roommateRiskProjection]);
   assert.deepEqual(await listing.loadPublicSummariesByIds([42]), [publicSummary]);
-  assert.equal(requests.length, 4);
+  assert.equal(requests.length, 5);
   assert.ok(requests.every(({ headers }) => headers.get("x-rentmate-internal-token") === "internal-secret"));
   assert.equal(requests[1]?.path, "/internal/v1/landlords/verified-ids?ids=7");
   assert.equal(requests[2]?.path, "/internal/v1/roommate-tenant-projections?ids=7");
-  assert.equal(requests[3]?.path, "/internal/v1/listings/public-summaries?ids=42");
+  assert.equal(requests[3]?.path, "/internal/v1/roommate-risk-projections?ids=7");
+  assert.equal(requests[4]?.path, "/internal/v1/listings/public-summaries?ids=42");
 });
 
 test("service clients reject malformed internal responses instead of exposing them to callers", async () => {
@@ -97,5 +108,15 @@ test("service clients reject malformed internal responses instead of exposing th
   await assert.rejects(
     () => invalidRoommateProjection.loadRoommateTenantProjectionsByIds([7]),
     /roommate tenant response is invalid/i
+  );
+
+  const invalidRoommateRiskProjection = createIdentityAccountClient({
+    baseUrl: "http://identity:4100",
+    internalToken: "internal-secret",
+    fetcher: async () => Response.json({ data: [{ tenantId: 7, createdAt: "not-a-timestamp" }] })
+  });
+  await assert.rejects(
+    () => invalidRoommateRiskProjection.loadRoommateRiskProjectionsByIds([7]),
+    /roommate risk response is invalid/i
   );
 });

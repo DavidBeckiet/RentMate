@@ -10,6 +10,8 @@ export const maximumImagesPerListing = 8;
 export const maximumImageBytes = 5_242_880;
 export const maximumSearchRadiusKm = 50;
 export const defaultBcryptCost = 12;
+export const roommateRiskRulesVersion = "ROOMMATE_RISK_V2_1" as const;
+export const roommateRiskSolicitationPatternVersion = "V1" as const;
 
 export type RuntimeEnvironment = (typeof runtimeEnvironments)[number];
 export type LogLevel = (typeof logLevels)[number];
@@ -72,7 +74,52 @@ export interface RuntimeConfig {
     readonly scanIntervalMs: number;
     readonly batchSize: number;
   };
+  readonly roommateRisk: {
+    readonly rulesVersion: typeof roommateRiskRulesVersion;
+    readonly repeatedMessageWindowMs: number;
+    readonly repeatedMessageCounterpartThreshold: number;
+    readonly rapidInterestWindowMs: number;
+    readonly rapidInterestCountThreshold: number;
+    readonly highMessageWindowMs: number;
+    readonly highMessageCountThreshold: number;
+    readonly highMessageThreadThreshold: number;
+    readonly solicitationWindowMs: number;
+    readonly solicitationCounterpartThreshold: number;
+    readonly solicitationPatternVersion: typeof roommateRiskSolicitationPatternVersion;
+    readonly reportWindowMs: number;
+    readonly reportCountThreshold: number;
+    readonly reporterCountThreshold: number;
+    readonly currentBlockWindowMs: number;
+    readonly currentBlockerThreshold: number;
+    readonly newAccountWindowMs: number;
+    readonly activityRowLimit: number;
+    readonly reportBatchSize: number;
+  };
 }
+
+export type RoommateRiskConfig = RuntimeConfig["roommateRisk"];
+
+export const defaultRoommateRiskConfig: RoommateRiskConfig = Object.freeze({
+  rulesVersion: roommateRiskRulesVersion,
+  repeatedMessageWindowMs: 86_400_000,
+  repeatedMessageCounterpartThreshold: 3,
+  rapidInterestWindowMs: 3_600_000,
+  rapidInterestCountThreshold: 8,
+  highMessageWindowMs: 86_400_000,
+  highMessageCountThreshold: 20,
+  highMessageThreadThreshold: 5,
+  solicitationWindowMs: 86_400_000,
+  solicitationCounterpartThreshold: 2,
+  solicitationPatternVersion: roommateRiskSolicitationPatternVersion,
+  reportWindowMs: 604_800_000,
+  reportCountThreshold: 3,
+  reporterCountThreshold: 2,
+  currentBlockWindowMs: 2_592_000_000,
+  currentBlockerThreshold: 3,
+  newAccountWindowMs: 604_800_000,
+  activityRowLimit: 2_000,
+  reportBatchSize: 100
+});
 
 export class EnvironmentConfigurationError extends Error {
   constructor(readonly issues: readonly string[]) {
@@ -534,6 +581,170 @@ export function parseEnvironment(source: EnvironmentSource): RuntimeConfig {
       graceDays: readInteger(source, "LISTING_STALE_GRACE_DAYS", 7, false, 1, 365, issues),
       scanIntervalMs: readInteger(source, "LISTING_STALE_SCAN_INTERVAL_MS", 30_000, false, 1_000, 3_600_000, issues),
       batchSize: readInteger(source, "LISTING_STALE_BATCH_SIZE", 100, false, 1, 1_000, issues)
+    },
+    roommateRisk: {
+      rulesVersion: roommateRiskRulesVersion,
+      repeatedMessageWindowMs: readInteger(
+        source,
+        "ROOMMATE_RISK_REPEATED_MESSAGE_WINDOW_MS",
+        defaultRoommateRiskConfig.repeatedMessageWindowMs,
+        false,
+        1_000,
+        31_536_000_000,
+        issues
+      ),
+      repeatedMessageCounterpartThreshold: readInteger(
+        source,
+        "ROOMMATE_RISK_REPEATED_MESSAGE_COUNTERPART_THRESHOLD",
+        defaultRoommateRiskConfig.repeatedMessageCounterpartThreshold,
+        false,
+        2,
+        100,
+        issues
+      ),
+      rapidInterestWindowMs: readInteger(
+        source,
+        "ROOMMATE_RISK_RAPID_INTEREST_WINDOW_MS",
+        defaultRoommateRiskConfig.rapidInterestWindowMs,
+        false,
+        1_000,
+        31_536_000_000,
+        issues
+      ),
+      rapidInterestCountThreshold: readInteger(
+        source,
+        "ROOMMATE_RISK_RAPID_INTEREST_COUNT_THRESHOLD",
+        defaultRoommateRiskConfig.rapidInterestCountThreshold,
+        false,
+        2,
+        1_000,
+        issues
+      ),
+      highMessageWindowMs: readInteger(
+        source,
+        "ROOMMATE_RISK_HIGH_MESSAGE_WINDOW_MS",
+        defaultRoommateRiskConfig.highMessageWindowMs,
+        false,
+        1_000,
+        31_536_000_000,
+        issues
+      ),
+      highMessageCountThreshold: readInteger(
+        source,
+        "ROOMMATE_RISK_HIGH_MESSAGE_COUNT_THRESHOLD",
+        defaultRoommateRiskConfig.highMessageCountThreshold,
+        false,
+        2,
+        10_000,
+        issues
+      ),
+      highMessageThreadThreshold: readInteger(
+        source,
+        "ROOMMATE_RISK_HIGH_MESSAGE_THREAD_THRESHOLD",
+        defaultRoommateRiskConfig.highMessageThreadThreshold,
+        false,
+        2,
+        1_000,
+        issues
+      ),
+      solicitationWindowMs: readInteger(
+        source,
+        "ROOMMATE_RISK_SOLICITATION_WINDOW_MS",
+        defaultRoommateRiskConfig.solicitationWindowMs,
+        false,
+        1_000,
+        31_536_000_000,
+        issues
+      ),
+      solicitationCounterpartThreshold: readInteger(
+        source,
+        "ROOMMATE_RISK_SOLICITATION_COUNTERPART_THRESHOLD",
+        defaultRoommateRiskConfig.solicitationCounterpartThreshold,
+        false,
+        2,
+        100,
+        issues
+      ),
+      solicitationPatternVersion: readEnum(
+        source,
+        "ROOMMATE_RISK_SOLICITATION_PATTERN_VERSION",
+        [roommateRiskSolicitationPatternVersion],
+        defaultRoommateRiskConfig.solicitationPatternVersion,
+        false,
+        issues
+      ),
+      reportWindowMs: readInteger(
+        source,
+        "ROOMMATE_RISK_REPORT_WINDOW_MS",
+        defaultRoommateRiskConfig.reportWindowMs,
+        false,
+        1_000,
+        31_536_000_000,
+        issues
+      ),
+      reportCountThreshold: readInteger(
+        source,
+        "ROOMMATE_RISK_REPORT_COUNT_THRESHOLD",
+        defaultRoommateRiskConfig.reportCountThreshold,
+        false,
+        2,
+        1_000,
+        issues
+      ),
+      reporterCountThreshold: readInteger(
+        source,
+        "ROOMMATE_RISK_REPORTER_COUNT_THRESHOLD",
+        defaultRoommateRiskConfig.reporterCountThreshold,
+        false,
+        2,
+        1_000,
+        issues
+      ),
+      currentBlockWindowMs: readInteger(
+        source,
+        "ROOMMATE_RISK_CURRENT_BLOCK_WINDOW_MS",
+        defaultRoommateRiskConfig.currentBlockWindowMs,
+        false,
+        1_000,
+        31_536_000_000,
+        issues
+      ),
+      currentBlockerThreshold: readInteger(
+        source,
+        "ROOMMATE_RISK_CURRENT_BLOCKER_THRESHOLD",
+        defaultRoommateRiskConfig.currentBlockerThreshold,
+        false,
+        2,
+        1_000,
+        issues
+      ),
+      newAccountWindowMs: readInteger(
+        source,
+        "ROOMMATE_RISK_NEW_ACCOUNT_WINDOW_MS",
+        defaultRoommateRiskConfig.newAccountWindowMs,
+        false,
+        1_000,
+        31_536_000_000,
+        issues
+      ),
+      activityRowLimit: readInteger(
+        source,
+        "ROOMMATE_RISK_ACTIVITY_ROW_LIMIT",
+        defaultRoommateRiskConfig.activityRowLimit,
+        false,
+        100,
+        10_000,
+        issues
+      ),
+      reportBatchSize: readInteger(
+        source,
+        "ROOMMATE_RISK_REPORT_BATCH_SIZE",
+        defaultRoommateRiskConfig.reportBatchSize,
+        false,
+        1,
+        100,
+        issues
+      )
     }
   };
 

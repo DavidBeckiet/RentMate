@@ -1,6 +1,10 @@
 import { ApplicationError } from "../../../../../shared/src/runtime/shared/errors/application-error.js";
+import { defaultRoommateRiskConfig } from "../../../../../shared/src/runtime/config/env.js";
 import { forbiddenRoleMessage } from "../../../../../shared/src/runtime/shared/middleware/role.js";
-import type { IdentityRoommateTenantProjection } from "../../../../../shared/identity-account-client.js";
+import type {
+  IdentityRoommateRiskProjection,
+  IdentityRoommateTenantProjection
+} from "../../../../../shared/identity-account-client.js";
 import type { SqlExecutor } from "../../../../../shared/src/runtime/db/sql-executor.js";
 import type { AuthenticatedPrincipal } from "../../../../../shared/src/runtime/shared/types/authentication.js";
 import type {
@@ -15,6 +19,12 @@ import type {
   RoommateReportRecord,
   RoommateSafetyRepository
 } from "../repositories/roommate-safety-repository.js";
+import {
+  evaluateRoommateRisk,
+  type RoommateRiskActivity,
+  type RoommateRiskConfig,
+  type RoommateRiskSummary
+} from "../roommate-risk.js";
 import {
   validateCreateRoommateMessageBody,
   type CreateRoommateMessageInput,
@@ -82,6 +92,7 @@ export interface RoommateAdminReportView extends RoommateReportReceipt {
   readonly resolvedAt: string | null;
   readonly reporter: Readonly<{ displayName: string | null; memberSince: string | null }>;
   readonly subject: Readonly<{ requestId: number; messageId: number | null; profileTenantId?: number }>;
+  readonly riskSummary: RoommateRiskSummary;
   readonly evidenceSnapshot?: Readonly<Record<string, unknown>>;
   readonly events?: readonly RoommateAdminReportEventView[];
 }
@@ -173,8 +184,15 @@ interface RoommateSafetyDependencies {
   readonly identityAccountClient: Pick<
     import("../../../../../shared/identity-account-client.js").IdentityAccountClient,
     "loadRoommateTenantProjectionsByIds"
-  >;
+  > &
+    Partial<
+      Pick<
+        import("../../../../../shared/identity-account-client.js").IdentityAccountClient,
+        "loadRoommateRiskProjectionsByIds"
+      >
+    >;
   readonly transactionRunner: RoommateSafetyTransactionRunner;
+  readonly riskConfig?: RoommateRiskConfig;
   readonly now?: () => Date;
 }
 
@@ -302,6 +320,7 @@ export function createRoommateSafetyService(dependencies: RoommateSafetyDependen
     safetyRepository,
     identityAccountClient,
     transactionRunner,
+    riskConfig = defaultRoommateRiskConfig,
     now = () => new Date()
   } = dependencies;
 
@@ -311,6 +330,91 @@ export function createRoommateSafetyService(dependencies: RoommateSafetyDependen
     } catch (error) {
       throw mapDependencyError(error);
     }
+  };
+
+  const loadRiskIdentity = async (
+    tenantIds: readonly number[]
+  ): Promise<ReadonlyMap<number, IdentityRoommateRiskProjection>> => {
+    const loader = identityAccountClient.loadRoommateRiskProjectionsByIds;
+    if (!loader || tenantIds.length === 0) return new Map();
+    const result = new Map<number, IdentityRoommateRiskProjection>();
+    try {
+      const uniqueIds = [...new Set(tenantIds)];
+      for (let index = 0; index < uniqueIds.length; index += 100) {
+        const projections = await loader(uniqueIds.slice(index, index + 100));
+        for (const projection of projections) result.set(projection.tenantId, projection);
+      }
+    } catch {
+      return new Map();
+    }
+    return result;
+  };
+
+  const maxRiskWindowMs = Math.max(
+    riskConfig.repeatedMessageWindowMs,
+    riskConfig.rapidInterestWindowMs,
+    riskConfig.highMessageWindowMs,
+    riskConfig.solicitationWindowMs,
+    riskConfig.reportWindowMs,
+    riskConfig.currentBlockWindowMs,
+    riskConfig.newAccountWindowMs
+  );
+
+  const evaluateReports = async (
+    reports: readonly RoommateReportRecord[],
+    evaluationTime: Date
+  ): Promise<ReadonlyMap<number, RoommateRiskSummary>> => {
+    if (reports.length === 0) return new Map();
+    const contexts = await transactionRunner.run(async (executor) => {
+      const subjectByReport = await safetyRepository.findRiskSubjectTenantIds(
+        executor,
+        reports.map((report) => report.id)
+      );
+      const values: Array<{
+        readonly report: RoommateReportRecord;
+        readonly subjectTenantId: number | null;
+        readonly activity: RoommateRiskActivity;
+      }> = [];
+      const activityBySubject = new Map<number, RoommateRiskActivity>();
+      for (const report of reports) {
+        const subjectTenantId = subjectByReport.get(report.id) ?? null;
+        let activity: RoommateRiskActivity;
+        if (subjectTenantId === null) {
+          activity = Object.freeze({ messages: [], interests: [], reports: [], currentBlockers: [] });
+        } else {
+          activity =
+            activityBySubject.get(subjectTenantId) ??
+            (await safetyRepository.loadRiskActivity(executor, {
+              subjectTenantId,
+              windowStartedAt: new Date(evaluationTime.getTime() - maxRiskWindowMs),
+              windowEndedAt: evaluationTime,
+              limit: riskConfig.activityRowLimit
+            }));
+          activityBySubject.set(subjectTenantId, activity);
+        }
+        values.push(Object.freeze({ report, subjectTenantId, activity }));
+      }
+      return values;
+    });
+    const riskIdentities = await loadRiskIdentity(
+      contexts.map((context) => context.subjectTenantId).filter((tenantId): tenantId is number => tenantId !== null)
+    );
+    const summaries = new Map<number, RoommateRiskSummary>();
+    for (const context of contexts) {
+      summaries.set(
+        context.report.id,
+        evaluateRoommateRisk({
+          now: evaluationTime,
+          config: riskConfig,
+          activity: context.activity,
+          reportCategory: context.report.category,
+          ...(context.subjectTenantId === null
+            ? {}
+            : { accountCreatedAt: riskIdentities.get(context.subjectTenantId)?.createdAt })
+        })
+      );
+    }
+    return summaries;
   };
 
   const lockTenants = async (executor: SqlExecutor, tenantIds: readonly number[]): Promise<void> => {
@@ -376,6 +480,7 @@ export function createRoommateSafetyService(dependencies: RoommateSafetyDependen
   const adminReportView = async (
     report: RoommateReportRecord,
     includeEvidence: boolean,
+    riskSummary: RoommateRiskSummary,
     events?: readonly RoommateReportEvent[]
   ): Promise<RoommateAdminReportView> => {
     const [identity] = await loadIdentity([report.reporterTenantId]);
@@ -405,6 +510,7 @@ export function createRoommateSafetyService(dependencies: RoommateSafetyDependen
         messageId: report.messageId,
         ...(profileTenantId === null ? {} : { profileTenantId })
       }),
+      riskSummary,
       ...(includeEvidence ? { evidenceSnapshot: report.evidenceSnapshot } : {}),
       ...(safeEvents === undefined ? {} : { events: Object.freeze(safeEvents) })
     });
@@ -703,21 +809,49 @@ export function createRoommateSafetyService(dependencies: RoommateSafetyDependen
 
     async listAdminReports(principal, query) {
       requireAdmin(principal);
-      const reports = await transactionRunner.run((executor) =>
-        safetyRepository.listReports(executor, {
-          status: query.status,
-          category: query.category,
-          limit: query.pageSize + 1,
-          offset: query.offset
+      const reports = await transactionRunner.run(async (executor) => {
+        const allReports: RoommateReportRecord[] = [];
+        let offset = 0;
+        while (true) {
+          const batch = await safetyRepository.listReports(executor, {
+            status: query.status,
+            category: query.category,
+            limit: riskConfig.reportBatchSize,
+            offset
+          });
+          allReports.push(...batch);
+          if (batch.length < riskConfig.reportBatchSize) break;
+          offset += batch.length;
+        }
+        return allReports;
+      });
+      const summaries = await evaluateReports(reports, now());
+      const orderedReports = reports
+        .filter((report) => {
+          const summary = summaries.get(report.id);
+          return query.reviewPriority == null || summary?.reviewPriority === query.reviewPriority;
         })
-      );
+        .sort((left, right) => {
+          const leftPriority = summaries.get(left.id)?.reviewPriority === "ELEVATED" ? 0 : 1;
+          const rightPriority = summaries.get(right.id)?.reviewPriority === "ELEVATED" ? 0 : 1;
+          return (
+            leftPriority - rightPriority ||
+            new Date(left.createdAt).getTime() - new Date(right.createdAt).getTime() ||
+            left.id - right.id
+          );
+        });
+      const pageReports = orderedReports.slice(query.offset, query.offset + query.pageSize);
       const views: RoommateAdminReportView[] = [];
-      for (const report of reports.slice(0, query.pageSize)) views.push(await adminReportView(report, false));
+      for (const report of pageReports) {
+        const summary = summaries.get(report.id);
+        if (!summary) throw new Error("Roommate risk summary is missing.");
+        views.push(await adminReportView(report, false, summary));
+      }
       return Object.freeze({
         data: Object.freeze(views),
         page: query.page,
         pageSize: query.pageSize,
-        hasNextPage: reports.length > query.pageSize
+        hasNextPage: orderedReports.length > query.offset + query.pageSize
       });
     },
 
@@ -729,7 +863,9 @@ export function createRoommateSafetyService(dependencies: RoommateSafetyDependen
         return { report, events: await safetyRepository.listReportEvents(executor, reportId) };
       });
       if (!result) return null;
-      return adminReportView(result.report, true, result.events);
+      const [summary] = [...(await evaluateReports([result.report], now())).values()];
+      if (!summary) throw new Error("Roommate risk summary is missing.");
+      return adminReportView(result.report, true, summary, result.events);
     },
 
     async updateAdminReportStatus(principal, reportId, input) {
@@ -758,7 +894,9 @@ export function createRoommateSafetyService(dependencies: RoommateSafetyDependen
         return { report: updated, events: await safetyRepository.listReportEvents(executor, reportId) };
       });
       if (!result) return null;
-      return adminReportView(result.report, true, result.events);
+      const [summary] = [...(await evaluateReports([result.report], now())).values()];
+      if (!summary) throw new Error("Roommate risk summary is missing.");
+      return adminReportView(result.report, true, summary, result.events);
     },
 
     async moderateProfile(principal, tenantId, input) {

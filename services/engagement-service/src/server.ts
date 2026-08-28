@@ -196,6 +196,7 @@ async function startEngagementService(): Promise<void> {
     roommateRepository,
     safetyRepository: roommateSafetyRepository,
     identityAccountClient,
+    riskConfig: config.roommateRisk,
     transactionRunner: {
       run: (operation) => withTransaction(databasePool, logger, operation)
     }
