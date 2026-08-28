@@ -29,6 +29,8 @@ export function roommateProfile(overrides: Partial<RoommateProfile> = {}): Roomm
     petEnvironment: "OK_WITH_PETS",
     displayName: "Bạn cùng phòng",
     memberSince: "2025-10-01T00:00:00.000Z",
+    emailVerified: false,
+    phoneVerified: false,
     profileCompleted: true,
     ...overrides
   };

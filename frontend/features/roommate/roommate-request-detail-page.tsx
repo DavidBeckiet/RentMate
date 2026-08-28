@@ -23,6 +23,7 @@ import {
   RoommateSubnav,
   RoommateTenantBoundary
 } from "./roommate-shared";
+import { RoommateCompatibilitySummary } from "./roommate-v2";
 
 const maximumId = 2_147_483_647;
 
@@ -183,6 +184,13 @@ function RequestDetailContent({ requestId }: Readonly<{ requestId: number }>) {
               ) : null}
             </div>
             <RoommateProfileSummary profile={request.profile} heading="Hồ sơ người đăng" />
+            {!isOwner && request.compatibility !== undefined ? (
+              <RoommateCompatibilitySummary
+                compatibility={request.compatibility}
+                detail
+                heading="Các khía cạnh cần cân nhắc"
+              />
+            ) : null}
             <RoommateRequestFacts request={request} />
             {request.note ? (
               <p className="whitespace-pre-wrap border-l-4 border-heroDark-950 pl-3 text-ui-sm leading-6 text-rent-secondary">

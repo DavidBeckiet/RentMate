@@ -105,4 +105,88 @@ describe("AdminRoommateReportsPage", () => {
       })
     );
   });
+
+  it("renders bounded risk triage context and applies the review-priority filter without auto-enforcement", async () => {
+    const report: AdminRoommateReport = {
+      id: 18,
+      targetType: "ROOMMATE_MESSAGE",
+      category: "SPAM",
+      details: "Cần xem xét.",
+      status: "OPEN",
+      resolutionNote: null,
+      createdAt: "2026-08-20T00:00:00.000Z",
+      updatedAt: "2026-08-20T00:00:00.000Z",
+      resolvedAt: null,
+      reporter: { displayName: "Người báo cáo", memberSince: "2026-01-01T00:00:00.000Z" },
+      subject: { requestId: 42, messageId: 301 },
+      riskSummary: {
+        rulesVersion: "ROOMMATE_RISK_V2_1",
+        reviewPriority: "ELEVATED",
+        partialEvaluation: true,
+        flags: [
+          {
+            code: "REPEATED_MESSAGE_ACROSS_THREADS",
+            observedCount: 3,
+            windowStartedAt: "2026-08-19T00:00:00.000Z",
+            evidenceSummary: { messageIds: [301, 302], distinctCounterpartCount: 2 }
+          }
+        ],
+        evaluatedAt: "2026-08-20T01:00:00.000Z"
+      }
+    };
+    apiMocks.listAdminReports.mockResolvedValue({
+      data: [report],
+      pagination: { page: 1, pageSize: 20, hasNextPage: false }
+    });
+    apiMocks.getAdminReport.mockResolvedValue(report);
+
+    render(<AdminRoommateReportsPage />);
+    expect(await screen.findByText("Ưu tiên xem sớm")).toBeInTheDocument();
+    fireEvent.change(screen.getByLabelText("Ưu tiên xem xét"), { target: { value: "ELEVATED" } });
+    await waitFor(() =>
+      expect(apiMocks.listAdminReports).toHaveBeenLastCalledWith(
+        { status: "OPEN", reviewPriority: "ELEVATED", page: 1, pageSize: 20 },
+        expect.any(AbortSignal)
+      )
+    );
+
+    fireEvent.click(await screen.findByRole("button", { name: "Xem & xử lý" }));
+    expect(await screen.findByText("Lặp lại nội dung tin nhắn giữa nhiều cuộc trò chuyện")).toBeInTheDocument();
+    expect(
+      screen.getByText("Một số tín hiệu chưa thể đánh giá vì một dịch vụ phụ thuộc tạm thời không khả dụng.")
+    ).toBeInTheDocument();
+    expect(screen.getByText("ID tin nhắn: #301, #302")).toBeInTheDocument();
+    expect(screen.queryByText("raw message body")).not.toBeInTheDocument();
+    expect(apiMocks.moderateMessage).not.toHaveBeenCalled();
+  });
+
+  it("renders standard priority as neutral triage context", async () => {
+    const report: AdminRoommateReport = {
+      id: 19,
+      targetType: "ROOMMATE_REQUEST",
+      category: "OTHER",
+      details: null,
+      status: "OPEN",
+      resolutionNote: null,
+      createdAt: "2026-08-20T00:00:00.000Z",
+      updatedAt: "2026-08-20T00:00:00.000Z",
+      resolvedAt: null,
+      reporter: { displayName: null, memberSince: null },
+      subject: { requestId: 43, messageId: null },
+      riskSummary: {
+        rulesVersion: "ROOMMATE_RISK_V2_1",
+        reviewPriority: "STANDARD",
+        partialEvaluation: false,
+        flags: [],
+        evaluatedAt: "2026-08-20T01:00:00.000Z"
+      }
+    };
+    apiMocks.listAdminReports.mockResolvedValue({
+      data: [report],
+      pagination: { page: 1, pageSize: 20, hasNextPage: false }
+    });
+    render(<AdminRoommateReportsPage />);
+    expect(await screen.findByText("Ưu tiên tiêu chuẩn")).toBeInTheDocument();
+    expect(screen.queryByText(/Một số tín hiệu chưa thể đánh giá/)).not.toBeInTheDocument();
+  });
 });

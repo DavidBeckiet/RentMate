@@ -4,6 +4,7 @@ import type { AuthContextValue } from "../../lib/auth/auth-provider";
 import { tenantUser, roommateProfile } from "./test-roommate-fixtures";
 
 const apiMocks = vi.hoisted(() => ({ getProfile: vi.fn(), upsertProfile: vi.fn() }));
+const usersMocks = vi.hoisted(() => ({ getTenantContactVerificationStatus: vi.fn() }));
 const useAuthMock = vi.hoisted(() => vi.fn<() => AuthContextValue>());
 const routerMocks = vi.hoisted(() => ({ push: vi.fn() }));
 
@@ -14,7 +15,7 @@ vi.mock("next/navigation", () => ({
 }));
 vi.mock("../../lib/api/client", async () => {
   const actual = await vi.importActual<typeof import("../../lib/api/client")>("../../lib/api/client");
-  return { ...actual, api: { roommates: apiMocks } };
+  return { ...actual, api: { roommates: apiMocks, users: usersMocks } };
 });
 vi.mock("../../lib/auth/auth-provider", () => ({ useAuth: useAuthMock }));
 
@@ -29,6 +30,11 @@ describe("RoommateProfilePage", () => {
   beforeEach(() => {
     apiMocks.getProfile.mockReset();
     apiMocks.upsertProfile.mockReset();
+    usersMocks.getTenantContactVerificationStatus.mockReset();
+    usersMocks.getTenantContactVerificationStatus.mockResolvedValue({
+      email: { address: "tenant@example.com", verified: false, verifiedAt: null, available: true },
+      phone: { number: "+84901234567", verified: false, verifiedAt: null, available: true }
+    });
     routerMocks.push.mockReset();
     useAuthMock.mockReturnValue(auth());
   });

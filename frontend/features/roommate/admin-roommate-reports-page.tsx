@@ -12,9 +12,11 @@ import type {
   ApiPage,
   RoommateModerationState,
   RoommateReportCategory,
-  RoommateReportStatus
+  RoommateReportStatus,
+  RoommateRiskPriority
 } from "../../types/api";
 import { formatMemberSince, roommateReportCategoryLabels } from "./roommate-content";
+import { RoommateRiskSummaryPanel } from "./roommate-risk-summary";
 import styles from "../reports/admin-reports-page.module.css";
 
 const statusLabels: Record<RoommateReportStatus, string> = {
@@ -26,6 +28,12 @@ const statusLabels: Record<RoommateReportStatus, string> = {
 
 const statuses: readonly RoommateReportStatus[] = ["OPEN", "INVESTIGATING", "RESOLVED", "DISMISSED"];
 const categories = Object.keys(roommateReportCategoryLabels) as readonly RoommateReportCategory[];
+const riskPriorities: readonly RoommateRiskPriority[] = ["ELEVATED", "STANDARD"];
+
+const riskPriorityLabels: Record<RoommateRiskPriority, string> = {
+  ELEVATED: "Ưu tiên xem sớm",
+  STANDARD: "Ưu tiên tiêu chuẩn"
+};
 
 function targetLabel(report: AdminRoommateReport): string {
   if (report.targetType === "ROOMMATE_PROFILE") return "Hồ sơ ở ghép";
@@ -38,6 +46,7 @@ export function AdminRoommateReportsPage() {
   const adminReady = authStatus === "authenticated" && user?.role === "ADMIN";
   const [statusFilter, setStatusFilter] = useState<RoommateReportStatus>("OPEN");
   const [categoryFilter, setCategoryFilter] = useState<RoommateReportCategory | "">("");
+  const [reviewPriorityFilter, setReviewPriorityFilter] = useState<RoommateRiskPriority | "">("");
   const [page, setPage] = useState(1);
   const [result, setResult] = useState<ApiPage<AdminRoommateReport> | null>(null);
   const [state, setState] = useState<"idle" | "loading" | "success" | "error">("idle");
@@ -57,7 +66,13 @@ export function AdminRoommateReportsPage() {
     setSelected(null);
     void api.roommates
       .listAdminReports(
-        { status: statusFilter, ...(categoryFilter ? { category: categoryFilter } : {}), page, pageSize: 20 },
+        {
+          status: statusFilter,
+          ...(categoryFilter ? { category: categoryFilter } : {}),
+          ...(reviewPriorityFilter ? { reviewPriority: reviewPriorityFilter } : {}),
+          page,
+          pageSize: 20
+        },
         controller.signal
       )
       .then((value) => {
@@ -73,7 +88,7 @@ export function AdminRoommateReportsPage() {
         }
       });
     return () => controller.abort();
-  }, [adminReady, categoryFilter, page, refreshKey, statusFilter]);
+  }, [adminReady, categoryFilter, page, refreshKey, reviewPriorityFilter, statusFilter]);
 
   const openDetail = async (reportId: number) => {
     setDetailPending(true);
@@ -218,6 +233,23 @@ export function AdminRoommateReportsPage() {
               ))}
             </select>
           </label>
+          <label>
+            Ưu tiên xem xét
+            <select
+              value={reviewPriorityFilter}
+              onChange={(event) => {
+                setReviewPriorityFilter(event.target.value as RoommateRiskPriority | "");
+                setPage(1);
+              }}
+            >
+              <option value="">Tất cả</option>
+              {riskPriorities.map((priority) => (
+                <option key={priority} value={priority}>
+                  {riskPriorityLabels[priority]}
+                </option>
+              ))}
+            </select>
+          </label>
         </div>
         {state === "idle" || state === "loading" ? <LoadingState message="Đang tải báo cáo ở ghép…" /> : null}
         {state === "error" ? (
@@ -243,6 +275,11 @@ export function AdminRoommateReportsPage() {
                     <span>{statusLabels[report.status]}</span>
                   </div>
                   <h2>{targetLabel(report)}</h2>
+                  {report.riskSummary ? (
+                    <p className={styles.priority}>
+                      {report.riskSummary.reviewPriority === "ELEVATED" ? "Ưu tiên xem sớm" : "Ưu tiên tiêu chuẩn"}
+                    </p>
+                  ) : null}
                   <p className={styles.category}>{roommateReportCategoryLabels[report.category]}</p>
                   <p>{report.details ?? "Không có mô tả bổ sung."}</p>
                   <div className={styles.cardFooter}>
@@ -293,6 +330,7 @@ export function AdminRoommateReportsPage() {
                       <dd>{selected.details ?? "Không có"}</dd>
                     </div>
                   </dl>
+                  <RoommateRiskSummaryPanel summary={selected.riskSummary} />
                   <section className={styles.timeline}>
                     <h3>Lịch sử xử lý</h3>
                     {selected.events?.map((event) => (

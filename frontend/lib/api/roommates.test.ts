@@ -78,7 +78,7 @@ describe("createRoommateApi", () => {
     void api.blockRequest(8);
     void api.listOwnedBlocks({ page: 2, pageSize: 10 });
     void api.reportRequest(8, { targetType: "ROOMMATE_REQUEST", category: "FRAUD", details: null });
-    void api.listAdminReports({ status: "OPEN", category: "FRAUD" });
+    void api.listAdminReports({ status: "OPEN", category: "FRAUD", reviewPriority: "ELEVATED" });
     void api.moderateProfile(7, { state: "HIDDEN", reportId: 12, note: "Đã xem xét." });
     void api.moderateRequest(8, { state: "HIDDEN", reportId: 12, note: "Đã xem xét." });
 
@@ -103,7 +103,7 @@ describe("createRoommateApi", () => {
       signal: undefined
     });
     expect(mock.page).toHaveBeenCalledWith("/api/v1/admin/contact-reports", {
-      query: { source: "ROOMMATE", status: "OPEN", category: "FRAUD" },
+      query: { source: "ROOMMATE", status: "OPEN", category: "FRAUD", reviewPriority: "ELEVATED" },
       signal: undefined
     });
     expect(mock.object).toHaveBeenCalledWith("/api/v1/admin/roommate-profiles/7/moderation", {

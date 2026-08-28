@@ -2,6 +2,7 @@ import type {
   ContactVerificationStatus,
   CreateVerificationBody,
   LandlordVerification,
+  TenantContactVerificationStatus,
   UpdateCurrentUserBody,
   UserProfile
 } from "../../types/api";
@@ -35,6 +36,29 @@ export function createUsersApi(transport: ApiTransport) {
 
     confirmPhoneVerification: (code: string, signal?: AbortSignal): Promise<ContactVerificationStatus> =>
       transport.object("/api/v1/landlord/verifications/phone/confirm", {
+        method: "POST",
+        json: { code },
+        signal
+      }),
+
+    getTenantContactVerificationStatus: (signal?: AbortSignal): Promise<TenantContactVerificationStatus> =>
+      transport.object("/api/v1/tenant/verifications/status", { signal }),
+
+    requestTenantEmailVerification: (signal?: AbortSignal): Promise<TenantContactVerificationStatus> =>
+      transport.object("/api/v1/tenant/verifications/email/request", { method: "POST", json: {}, signal }),
+
+    confirmTenantEmailVerification: (token: string, signal?: AbortSignal): Promise<TenantContactVerificationStatus> =>
+      transport.object("/api/v1/tenant/verifications/email/confirm", {
+        method: "POST",
+        json: { token },
+        signal
+      }),
+
+    requestTenantPhoneVerification: (signal?: AbortSignal): Promise<TenantContactVerificationStatus> =>
+      transport.object("/api/v1/tenant/verifications/phone/request", { method: "POST", json: {}, signal }),
+
+    confirmTenantPhoneVerification: (code: string, signal?: AbortSignal): Promise<TenantContactVerificationStatus> =>
+      transport.object("/api/v1/tenant/verifications/phone/confirm", {
         method: "POST",
         json: { code },
         signal

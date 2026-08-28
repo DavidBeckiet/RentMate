@@ -18,6 +18,7 @@ import {
   roommateSmokingLabels
 } from "./roommate-content";
 import { RoommatePageHeader, RoommateSubnav, RoommateTenantBoundary } from "./roommate-shared";
+import { RoommateVerificationPanel } from "./roommate-verification-panel";
 
 const emptyProfile: RoommateProfileBody = {
   intro: "",
@@ -274,6 +275,7 @@ function ProfileEditor() {
           </Button>
         </form>
       </Card>
+      <RoommateVerificationPanel />
     </div>
   );
 }

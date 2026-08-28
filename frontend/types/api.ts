@@ -338,13 +338,30 @@ export interface ContactVerificationStatus {
     readonly address: string;
     readonly verified: boolean;
     readonly verifiedAt: string | null;
+    readonly available?: boolean;
   };
   readonly phone: {
     readonly number: string | null;
     readonly verified: boolean;
     readonly verifiedAt: string | null;
+    readonly available?: boolean;
   };
   readonly profile: LandlordVerification | null;
+}
+
+export interface TenantContactVerificationStatus {
+  readonly email: {
+    readonly address: string;
+    readonly verified: boolean;
+    readonly verifiedAt: string | null;
+    readonly available: boolean;
+  };
+  readonly phone: {
+    readonly number: string | null;
+    readonly verified: boolean;
+    readonly verifiedAt: string | null;
+    readonly available: boolean;
+  };
 }
 
 export interface AdminLandlordVerification extends LandlordVerification {
@@ -849,6 +866,98 @@ export type RoommateReportCategory =
 export type RoommateReportStatus = "OPEN" | "INVESTIGATING" | "RESOLVED" | "DISMISSED";
 export type RoommateModerationState = "VISIBLE" | "HIDDEN";
 
+export type RoommateCompatibilityDimension =
+  | "SLEEP"
+  | "CLEANLINESS"
+  | "NOISE"
+  | "SMOKING"
+  | "PETS"
+  | "BUDGET"
+  | "AREA"
+  | "MOVE_IN";
+export type RoommateCompatibilityOutcome = "ALIGNED" | "NEUTRAL" | "DISCUSS" | "IMPORTANT_DIFFERENCE" | "NOT_EVALUATED";
+export type RoommateCompatibilityCategory = "HIGH_ALIGNMENT" | "MIXED" | "IMPORTANT_DIFFERENCE";
+export type RoommateCompatibilityExplanationCode =
+  | "SLEEP_NOT_EVALUATED"
+  | "SLEEP_ALIGNED_SAME"
+  | "SLEEP_NEUTRAL_FLEXIBLE"
+  | "SLEEP_DISCUSS_DIFFERENT"
+  | "CLEANLINESS_NOT_EVALUATED"
+  | "CLEANLINESS_ALIGNED_SAME"
+  | "CLEANLINESS_NEUTRAL_BALANCED"
+  | "CLEANLINESS_DISCUSS_DIFFERENT"
+  | "NOISE_NOT_EVALUATED"
+  | "NOISE_ALIGNED_SAME"
+  | "NOISE_NEUTRAL_BALANCED"
+  | "NOISE_DISCUSS_DIFFERENT"
+  | "SMOKING_NOT_EVALUATED"
+  | "SMOKING_ALIGNED_SAME"
+  | "SMOKING_NEUTRAL_NO_PREFERENCE"
+  | "SMOKING_IMPORTANT_DIFFERENCE_SMOKE_FREE_OUTDOOR"
+  | "PETS_NOT_EVALUATED"
+  | "PETS_ALIGNED_SAME"
+  | "PETS_NEUTRAL_OK_WITH_PETS"
+  | "PETS_IMPORTANT_DIFFERENCE_NO_PETS_HAS_PET"
+  | "BUDGET_NOT_EVALUATED"
+  | "BUDGET_ALIGNED_OVERLAP"
+  | "BUDGET_IMPORTANT_DIFFERENCE_NO_OVERLAP"
+  | "AREA_NOT_EVALUATED"
+  | "AREA_ALIGNED_OVERLAP"
+  | "AREA_IMPORTANT_DIFFERENCE_NO_OVERLAP"
+  | "MOVE_IN_NOT_EVALUATED"
+  | "MOVE_IN_ALIGNED_OVERLAP"
+  | "MOVE_IN_IMPORTANT_DIFFERENCE_NO_OVERLAP";
+
+export interface RoommateCompatibilityDimensionResult {
+  readonly dimension: RoommateCompatibilityDimension;
+  readonly outcome: RoommateCompatibilityOutcome;
+  readonly explanationCode: RoommateCompatibilityExplanationCode;
+}
+
+export interface RoommateCompatibility {
+  readonly rulesVersion: "ROOMMATE_COMPAT_V2_1";
+  readonly category: RoommateCompatibilityCategory | null;
+  readonly evaluatedCount: number;
+  readonly dimensions: readonly RoommateCompatibilityDimensionResult[];
+}
+
+export type RoommateCompatibilityResult = RoommateCompatibility;
+
+export type RoommateRiskFlagCode =
+  | "REPEATED_MESSAGE_ACROSS_THREADS"
+  | "RAPID_INTEREST_ACTIVITY"
+  | "HIGH_MESSAGE_VOLUME"
+  | "REPEATED_EXTERNAL_CONTACT_SOLICITATION"
+  | "REPEATED_REPORT_PATTERN"
+  | "MULTIPLE_CURRENT_BLOCKERS"
+  | "NEW_ACCOUNT_WITH_UNUSUAL_ACTIVITY";
+export type RoommateRiskPriority = "ELEVATED" | "STANDARD";
+
+export interface RoommateRiskEvidenceSummary {
+  readonly messageIds?: readonly number[];
+  readonly interestIds?: readonly number[];
+  readonly reportIds?: readonly number[];
+  readonly distinctCounterpartCount?: number;
+  readonly distinctReporterCount?: number;
+  readonly currentBlockerCount?: number;
+  readonly accountCreatedAt?: string;
+}
+
+export interface RoommateRiskFlag {
+  readonly code: RoommateRiskFlagCode;
+  readonly observedCount: number | null;
+  readonly windowStartedAt: string | null;
+  readonly evidenceSummary: RoommateRiskEvidenceSummary;
+}
+
+export interface RoommateRiskSummary {
+  readonly rulesVersion: "ROOMMATE_RISK_V2_1";
+  readonly reviewPriority: RoommateRiskPriority;
+  readonly partialEvaluation: boolean;
+  readonly flags: readonly RoommateRiskFlag[];
+  readonly evaluatedAt: string;
+}
+
 export interface RoommateProfile {
   readonly intro: string;
   readonly sleepSchedule: RoommateSleepSchedule;
@@ -858,6 +967,8 @@ export interface RoommateProfile {
   readonly petEnvironment: RoommatePetEnvironment;
   readonly displayName: string | null;
   readonly memberSince: string;
+  readonly emailVerified: boolean;
+  readonly phoneVerified: boolean;
   readonly profileCompleted: boolean;
 }
 
@@ -887,6 +998,7 @@ export interface RoommateRequest {
   readonly updatedAt: string;
   readonly profile: RoommateProfile | null;
   readonly listing: PublicListingSummary | null;
+  readonly compatibility?: RoommateCompatibility | null;
   readonly signals: {
     readonly profileCompleted: boolean;
     readonly requestOpen: boolean;
@@ -1022,6 +1134,7 @@ export interface AdminRoommateReport extends RoommateReportReceipt {
     readonly messageId: number | null;
     readonly profileTenantId?: number;
   };
+  readonly riskSummary?: RoommateRiskSummary | null;
   readonly evidenceSnapshot?: Readonly<Record<string, unknown>>;
   readonly events?: readonly AdminRoommateReportEvent[];
 }
@@ -1029,6 +1142,7 @@ export interface AdminRoommateReport extends RoommateReportReceipt {
 export interface AdminRoommateReportQuery extends PaginationQuery {
   readonly status?: RoommateReportStatus;
   readonly category?: RoommateReportCategory;
+  readonly reviewPriority?: RoommateRiskPriority;
 }
 
 export interface UpdateRoommateReportStatusBody {

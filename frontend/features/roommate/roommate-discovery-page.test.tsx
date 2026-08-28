@@ -1,7 +1,7 @@
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { AuthContextValue } from "../../lib/auth/auth-provider";
-import { roommateRequest, tenantUser } from "./test-roommate-fixtures";
+import { roommateProfile, roommateRequest, tenantUser } from "./test-roommate-fixtures";
 
 const apiMocks = vi.hoisted(() => ({ discover: vi.fn() }));
 const useAuthMock = vi.hoisted(() => vi.fn<() => AuthContextValue>());
@@ -66,5 +66,33 @@ describe("RoommateDiscoveryPage", () => {
         expect.any(AbortSignal)
       )
     );
+  });
+
+  it("renders backend compatibility highlights and factual public badges without contact values", async () => {
+    apiMocks.discover.mockResolvedValue({
+      data: [
+        roommateRequest({
+          profile: roommateProfile({ emailVerified: true, phoneVerified: true }),
+          compatibility: {
+            rulesVersion: "ROOMMATE_COMPAT_V2_1",
+            category: "HIGH_ALIGNMENT",
+            evaluatedCount: 3,
+            dimensions: [
+              { dimension: "BUDGET", outcome: "ALIGNED", explanationCode: "BUDGET_ALIGNED_OVERLAP" },
+              { dimension: "AREA", outcome: "NOT_EVALUATED", explanationCode: "AREA_NOT_EVALUATED" },
+              { dimension: "MOVE_IN", outcome: "ALIGNED", explanationCode: "MOVE_IN_ALIGNED_OVERLAP" }
+            ]
+          }
+        })
+      ],
+      pagination: { page: 1, pageSize: 12, hasNextPage: false }
+    });
+    render(<RoommateDiscoveryPage />);
+
+    expect(await screen.findByText("Nhiều điểm phù hợp")).toBeInTheDocument();
+    expect(screen.getByText("Khung ngân sách có giao nhau.")).toBeInTheDocument();
+    expect(screen.getByText("Email đã xác minh")).toBeInTheDocument();
+    expect(screen.getByText("Số điện thoại đã xác minh")).toBeInTheDocument();
+    expect(screen.queryByText("tenant@example.com")).not.toBeInTheDocument();
   });
 });

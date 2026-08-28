@@ -19,6 +19,7 @@ import {
   RoommateSubnav,
   RoommateTenantBoundary
 } from "./roommate-shared";
+import { RoommateCompatibilitySummary } from "./roommate-v2";
 
 interface DiscoveryForm {
   readonly area: string;
@@ -68,6 +69,9 @@ function DiscoveryCard({ request }: Readonly<{ request: RoommateRequest }>) {
         </span>
       </div>
       <RoommateProfileSummary profile={request.profile} heading="Phong cách sống" showDisplayName={false} />
+      {request.compatibility !== undefined ? (
+        <RoommateCompatibilitySummary compatibility={request.compatibility} heading="Gợi ý tương thích" />
+      ) : null}
       <RoommateRequestFacts request={request} />
       {request.note ? (
         <p className="whitespace-pre-wrap border-l-4 border-heroDark-950 pl-3 text-ui-sm leading-6 text-rent-secondary">

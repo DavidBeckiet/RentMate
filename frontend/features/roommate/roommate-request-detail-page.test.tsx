@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { ApiError } from "../../lib/api/client";
 import type { AuthContextValue } from "../../lib/auth/auth-provider";
@@ -81,6 +81,45 @@ describe("RoommateRequestDetailPage", () => {
     render(<RoommateRequestDetailPage requestId="42" />);
     expect(await screen.findByText("Listing không còn khả dụng")).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Gửi lời quan tâm" })).not.toBeInTheDocument();
+  });
+
+  it("renders the full backend compatibility breakdown in frozen dimension order", async () => {
+    apiMocks.getRequest.mockResolvedValue(
+      roommateRequest({
+        compatibility: {
+          rulesVersion: "ROOMMATE_COMPAT_V2_1",
+          category: null,
+          evaluatedCount: 1,
+          dimensions: [
+            { dimension: "MOVE_IN", outcome: "ALIGNED", explanationCode: "MOVE_IN_ALIGNED_OVERLAP" },
+            { dimension: "AREA", outcome: "NOT_EVALUATED", explanationCode: "AREA_NOT_EVALUATED" },
+            { dimension: "PETS", outcome: "NOT_EVALUATED", explanationCode: "PETS_NOT_EVALUATED" },
+            { dimension: "BUDGET", outcome: "ALIGNED", explanationCode: "BUDGET_ALIGNED_OVERLAP" },
+            { dimension: "SMOKING", outcome: "NOT_EVALUATED", explanationCode: "SMOKING_NOT_EVALUATED" },
+            { dimension: "NOISE", outcome: "NOT_EVALUATED", explanationCode: "NOISE_NOT_EVALUATED" },
+            { dimension: "CLEANLINESS", outcome: "NOT_EVALUATED", explanationCode: "CLEANLINESS_NOT_EVALUATED" },
+            { dimension: "SLEEP", outcome: "NOT_EVALUATED", explanationCode: "SLEEP_NOT_EVALUATED" }
+          ]
+        }
+      })
+    );
+    render(<RoommateRequestDetailPage requestId="42" />);
+    const list = await screen.findByRole("list", { name: "Tất cả khía cạnh tương thích" });
+    expect(
+      within(list)
+        .getAllByRole("listitem")
+        .map((item) => item.querySelector("span")?.textContent)
+    ).toEqual([
+      "Nhịp sinh hoạt",
+      "Mức độ gọn gàng",
+      "Ưu tiên không gian",
+      "Môi trường thuốc lá",
+      "Thú cưng",
+      "Ngân sách",
+      "Khu vực",
+      "Thời gian chuyển vào"
+    ]);
+    expect(within(list).getAllByText("Chưa đủ thông tin").length).toBeGreaterThan(0);
   });
 
   it("guides a tenant without a roommate profile before posting an interest", async () => {

@@ -16,7 +16,6 @@ import type {
   RoommateRequest
 } from "../../types/api";
 import {
-  formatMemberSince,
   formatRoommateDate,
   formatRoommateMoney,
   roommateCleanlinessLabels,
@@ -29,6 +28,7 @@ import {
   roommateSleepScheduleLabels,
   roommateSmokingLabels
 } from "./roommate-content";
+import { RoommateVerificationBadges } from "./roommate-v2";
 
 export function RoommateTenantBoundary({ children }: Readonly<{ children: ReactNode }>) {
   const { status, user, error, refresh } = useAuth();
@@ -181,7 +181,6 @@ export function RoommateProfileSummary({
     );
   }
 
-  const memberSince = formatMemberSince(profile.memberSince);
   const preferences = [
     ["Nhịp sinh hoạt", roommateSleepScheduleLabels[profile.sleepSchedule]],
     ["Mức độ gọn gàng", roommateCleanlinessLabels[profile.cleanlinessLevel]],
@@ -197,10 +196,8 @@ export function RoommateProfileSummary({
         {showDisplayName && profile.displayName ? (
           <p className="mt-1 text-ui-base font-semibold">{profile.displayName}</p>
         ) : null}
-        {memberSince ? (
-          <p className="mt-1 text-ui-xs font-semibold text-rent-secondary">Thành viên từ {memberSince}</p>
-        ) : null}
       </div>
+      <RoommateVerificationBadges profile={profile} />
       <p className="whitespace-pre-wrap text-ui-sm leading-6 text-rent-secondary">{profile.intro}</p>
       <dl className="grid gap-3 sm:grid-cols-2">
         {preferences.map(([label, value]) => (

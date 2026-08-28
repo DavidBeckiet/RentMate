@@ -132,6 +132,15 @@
   font-weight: 850;
   text-transform: uppercase;
 }
+.card .priority {
+  display: inline-flex;
+  width: fit-content;
+  border: 2px solid #092b27;
+  background: #ffd34e;
+  padding: 0.25rem 0.5rem;
+  color: #092b27;
+  font-weight: 850;
+}
 .cardFooter {
   margin-top: 0.9rem;
   border-top: 1.5px solid #092b27;
