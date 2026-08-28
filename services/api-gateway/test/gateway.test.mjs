@@ -25,6 +25,7 @@ test("keeps the monolith as the default upstream and switches configured boundar
   assert.equal(resolveUpstream("/api/v1/listings", routes).hostname, "listing");
   assert.equal(resolveUpstream("/api/v1/landlord/listings/42", routes).hostname, "listing");
   assert.equal(resolveUpstream("/api/v1/favorites", routes).hostname, "engagement");
+  assert.equal(resolveUpstream("/api/v1/roommate-ai/capabilities", routes).hostname, "engagement");
   assert.equal(resolveUpstream("/api/v1/roommate-profiles/me", routes).hostname, "engagement");
   assert.equal(resolveUpstream("/api/v1/roommate-blocks/mine?page=1", routes).hostname, "engagement");
   assert.equal(resolveUpstream("/api/v1/roommate-requests?listingMode=LINKED", routes).hostname, "engagement");
@@ -91,6 +92,48 @@ test("proxies API requests and preserves upstream response cookies", async () =>
     assert.equal(result.headers.get("access-control-allow-credentials"), "true");
     assert.deepEqual(result.headers.getSetCookie(), ["rentmate_session=test-cookie; HttpOnly; Path=/"]);
     assert.deepEqual(await result.json(), { data: { ok: true } });
+  } finally {
+    await close(gateway);
+    await close(upstream);
+  }
+});
+
+test("forwards the Roommate AI capability route to Engagement without inspecting its authentication cookie", async () => {
+  const upstream = http.createServer((request, response) => {
+    assert.equal(request.url, "/api/v1/roommate-ai/capabilities");
+    assert.equal(request.headers.cookie, "rentmate_session=tenant-cookie");
+    response.writeHead(200, { "content-type": "application/json" });
+    response.end(
+      JSON.stringify({
+        data: {
+          preferenceParsing: false,
+          semanticRecommendations: false,
+          compatibilityExplanations: false,
+          safetyWarnings: false
+        }
+      })
+    );
+  });
+  const upstreamPort = await listen(upstream);
+  const gateway = createGatewayServer({
+    BACKEND_URL: "http://127.0.0.1:1",
+    ENGAGEMENT_SERVICE_URL: `http://127.0.0.1:${upstreamPort}`
+  });
+  const gatewayPort = await listen(gateway);
+
+  try {
+    const result = await fetch(`http://127.0.0.1:${gatewayPort}/api/v1/roommate-ai/capabilities`, {
+      headers: { cookie: "rentmate_session=tenant-cookie" }
+    });
+    assert.equal(result.status, 200);
+    assert.deepEqual(await result.json(), {
+      data: {
+        preferenceParsing: false,
+        semanticRecommendations: false,
+        compatibilityExplanations: false,
+        safetyWarnings: false
+      }
+    });
   } finally {
     await close(gateway);
     await close(upstream);

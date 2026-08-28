@@ -54,6 +54,12 @@ import { createRoommateSafetyService } from "./modules/roommate/services/roommat
 import { createRoommateExpirationScheduler } from "./modules/roommate/services/roommate-expiration-scheduler.js";
 import { registerRoommateRoutes } from "./modules/roommate/routes.js";
 import {
+  parseRoommateAiConfiguration,
+  RoommateAiConfigurationError
+} from "./modules/roommate-ai/config/roommate-ai-config.js";
+import { registerRoommateAiRoutes } from "./modules/roommate-ai/routes.js";
+import { RoommateAiCapabilityService } from "./modules/roommate-ai/services/roommate-ai-capability-service.js";
+import {
   validateListingModerationNotificationBody,
   validateListingPublishedNotificationBody,
   validateListingAvailabilityNotificationBody
@@ -81,12 +87,17 @@ async function startEngagementService(): Promise<void> {
   process.env.PORT = process.env.ENGAGEMENT_SERVICE_PORT ?? "4300";
 
   let config;
+  let roommateAiConfig;
   try {
     config = loadEnvironment();
+    roommateAiConfig = parseRoommateAiConfiguration(process.env);
   } catch (error) {
     const logger = createLogger("info");
     logger.error("Engagement service configuration validation failed", {
-      reason: error instanceof EnvironmentConfigurationError ? error.message : "Unexpected configuration error"
+      reason:
+        error instanceof EnvironmentConfigurationError || error instanceof RoommateAiConfigurationError
+          ? error.message
+          : "Unexpected configuration error"
     });
     process.exitCode = 1;
     return;
@@ -216,6 +227,7 @@ async function startEngagementService(): Promise<void> {
     },
     logger
   });
+  const roommateAiCapabilityService = new RoommateAiCapabilityService(roommateAiConfig);
   const app = createApp({
     frontendOrigin: config.frontendOrigin,
     logger,
@@ -237,6 +249,11 @@ async function startEngagementService(): Promise<void> {
         adminRoleMiddleware: adminRole,
         service: roommateService,
         safetyService: roommateSafetyService
+      });
+      registerRoommateAiRoutes(router, {
+        authenticationMiddleware: requiredAuthentication,
+        tenantRoleMiddleware: tenantRole,
+        capabilityService: roommateAiCapabilityService
       });
       registerContactRoutes(router, {
         authenticationMiddleware: requiredAuthentication,
