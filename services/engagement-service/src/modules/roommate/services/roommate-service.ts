@@ -33,6 +33,16 @@ import type {
   RoommateRepository,
   RoommateRequestRecord
 } from "../repositories/roommate-repository.js";
+import {
+  createRoommateCompatibilityAreaSet,
+  createRoommateCompatibilityBudgetInterval,
+  createRoommateCompatibilityMoveInWindow,
+  evaluateRoommateCompatibility,
+  type RoommateCompatibilityDimension,
+  type RoommateCompatibilityIntent,
+  type RoommateCompatibilityProfile,
+  type RoommateCompatibilityResult
+} from "../roommate-compatibility.js";
 
 const notFoundMessage = "The requested resource was not found.";
 const requestNotOpenMessage = "This roommate request is no longer open.";
@@ -68,6 +78,7 @@ export interface RoommateRequestView {
   readonly updatedAt: string;
   readonly profile: RoommateProfileView | null;
   readonly listing: PublicListingSummary | null;
+  readonly compatibility?: RoommateCompatibilityResult | null;
   readonly signals: Readonly<{
     readonly profileCompleted: boolean;
     readonly requestOpen: boolean;
@@ -339,6 +350,127 @@ function matchesLocalDiscoveryFilters(candidate: RoommateDiscoveryCandidate, que
   return true;
 }
 
+const compatibilityHighlightDimensionPriority: readonly RoommateCompatibilityDimension[] = [
+  "PETS",
+  "SMOKING",
+  "BUDGET",
+  "MOVE_IN",
+  "AREA",
+  "SLEEP",
+  "CLEANLINESS",
+  "NOISE"
+];
+
+const compatibilityOutcomePriority = Object.freeze({
+  IMPORTANT_DIFFERENCE: 0,
+  ALIGNED: 1,
+  DISCUSS: 2,
+  NEUTRAL: 3
+} as const);
+
+const emptyCompatibilityIntent: RoommateCompatibilityIntent = Object.freeze({
+  budget: null,
+  areas: null,
+  moveIn: null
+});
+
+function compatibilityProfile(profile: RoommateProfileRecord | null): RoommateCompatibilityProfile | null {
+  if (!profile || !profileComplete(profile)) return null;
+  return Object.freeze({
+    sleepSchedule: profile.sleepSchedule,
+    cleanlinessLevel: profile.cleanlinessLevel,
+    noisePreference: profile.noisePreference,
+    smokingEnvironment: profile.smokingEnvironment,
+    petEnvironment: profile.petEnvironment
+  });
+}
+
+function compatibilityIntent(
+  request: RoommateRequestRecord,
+  listing: PublicListingSummary | null
+): RoommateCompatibilityIntent {
+  const areas = createRoommateCompatibilityAreaSet(
+    request.listingId === null ? request.preferredAreaKeys : listing ? [listing.areaName] : null
+  );
+  return Object.freeze({
+    budget: createRoommateCompatibilityBudgetInterval({
+      budgetMinPerPerson: request.budgetMinPerPerson,
+      budgetMaxPerPerson: request.budgetMaxPerPerson
+    }),
+    areas,
+    moveIn: createRoommateCompatibilityMoveInWindow({
+      moveInFrom: request.moveInFrom,
+      moveInUntil: request.moveInUntil
+    })
+  });
+}
+
+function compactCompatibility(result: RoommateCompatibilityResult): RoommateCompatibilityResult {
+  const dimensionPriority = new Map(
+    compatibilityHighlightDimensionPriority.map((dimension, index) => [dimension, index] as const)
+  );
+  const dimensions = [...result.dimensions]
+    .filter((dimension) => dimension.outcome !== "NOT_EVALUATED")
+    .sort((left, right) => {
+      const outcomeOrder =
+        compatibilityOutcomePriority[left.outcome as keyof typeof compatibilityOutcomePriority] -
+        compatibilityOutcomePriority[right.outcome as keyof typeof compatibilityOutcomePriority];
+      if (outcomeOrder !== 0) return outcomeOrder;
+      return dimensionPriority.get(left.dimension)! - dimensionPriority.get(right.dimension)!;
+    })
+    .slice(0, 3);
+  return Object.freeze({ ...result, dimensions: Object.freeze(dimensions) });
+}
+
+function buildCompatibility(
+  callerProfile: RoommateCompatibilityProfile | null,
+  callerIntent: RoommateCompatibilityIntent,
+  candidate: RoommateRequestRecord,
+  candidateProfile: RoommateProfileRecord | null,
+  candidateListing: PublicListingSummary | null,
+  compact: boolean
+): RoommateCompatibilityResult | null {
+  if (!callerProfile) return null;
+  const candidateCompatibilityProfile = compatibilityProfile(candidateProfile);
+  if (!candidateCompatibilityProfile) return null;
+  if (candidate.listingId !== null && candidateListing === null) {
+    throw new ApplicationError("DEPENDENCY_UNAVAILABLE", dependencyUnavailableMessage);
+  }
+  const result = evaluateRoommateCompatibility({
+    callerProfile,
+    candidateProfile: candidateCompatibilityProfile,
+    callerIntent,
+    candidateIntent: compatibilityIntent(candidate, candidateListing)
+  });
+  return compact ? compactCompatibility(result) : result;
+}
+
+function resolveCallerCompatibilityIntent(
+  query: RoommateDiscoveryQuery | null,
+  fallback: RoommateCompatibilityIntent
+): RoommateCompatibilityIntent {
+  const queryBudget =
+    query && (query.budgetMinPerPerson !== null || query.budgetMaxPerPerson !== null)
+      ? createRoommateCompatibilityBudgetInterval({
+          budgetMinPerPerson: query.budgetMinPerPerson,
+          budgetMaxPerPerson: query.budgetMaxPerPerson
+        })
+      : null;
+  const queryAreas = query && query.area !== null ? createRoommateCompatibilityAreaSet([query.area]) : null;
+  const queryMoveIn =
+    query && (query.moveInFrom !== null || query.moveInUntil !== null)
+      ? createRoommateCompatibilityMoveInWindow({
+          moveInFrom: query.moveInFrom,
+          moveInUntil: query.moveInUntil
+        })
+      : null;
+  return Object.freeze({
+    budget: queryBudget ?? fallback.budget,
+    areas: queryAreas ?? fallback.areas,
+    moveIn: queryMoveIn ?? fallback.moveIn
+  });
+}
+
 export function createRoommateService(dependencies: RoommateDependencies): RoommateService {
   const {
     repository,
@@ -394,6 +526,71 @@ export function createRoommateService(dependencies: RoommateDependencies): Roomm
     return listing;
   };
 
+  const loadCallerCompatibilityContext = async (
+    tenantId: number,
+    query: RoommateDiscoveryQuery | null
+  ): Promise<{
+    readonly profile: RoommateCompatibilityProfile | null;
+    readonly intent: RoommateCompatibilityIntent;
+  }> => {
+    const profile = await transactionRunner.run((executor) => repository.findProfile(executor, tenantId));
+    const callerProfile = compatibilityProfile(profile);
+    if (!callerProfile) return { profile: null, intent: emptyCompatibilityIntent };
+
+    const needsBudgetFallback =
+      query === null || (query.budgetMinPerPerson === null && query.budgetMaxPerPerson === null);
+    const needsAreaFallback = query === null || query.area === null;
+    const needsMoveInFallback = query === null || (query.moveInFrom === null && query.moveInUntil === null);
+    if (!needsBudgetFallback && !needsAreaFallback && !needsMoveInFallback) {
+      return { profile: callerProfile, intent: emptyCompatibilityIntent };
+    }
+
+    const currentRequest = await transactionRunner.run((executor) =>
+      repository.findOpenRequestForOwner(executor, tenantId)
+    );
+    const activeRequest = currentRequest && !isExpired(currentRequest, now()) ? currentRequest : null;
+    if (!activeRequest) {
+      return { profile: callerProfile, intent: emptyCompatibilityIntent };
+    }
+    if (activeRequest.listingId === null) {
+      return {
+        profile: callerProfile,
+        intent: Object.freeze({
+          budget: needsBudgetFallback
+            ? createRoommateCompatibilityBudgetInterval({
+                budgetMinPerPerson: activeRequest.budgetMinPerPerson,
+                budgetMaxPerPerson: activeRequest.budgetMaxPerPerson
+              })
+            : null,
+          areas: needsAreaFallback ? createRoommateCompatibilityAreaSet(activeRequest.preferredAreaKeys) : null,
+          moveIn: needsMoveInFallback
+            ? createRoommateCompatibilityMoveInWindow({
+                moveInFrom: activeRequest.moveInFrom,
+                moveInUntil: activeRequest.moveInUntil
+              })
+            : null
+        })
+      };
+    }
+
+    let currentListing: PublicListingSummary | null = null;
+    if (needsAreaFallback) {
+      currentListing = (await loadListingMap([activeRequest.listingId])).get(activeRequest.listingId) ?? null;
+      if (!currentListing) {
+        throw new ApplicationError("DEPENDENCY_UNAVAILABLE", dependencyUnavailableMessage);
+      }
+    }
+    const fallbackIntent = compatibilityIntent(activeRequest, currentListing);
+    return {
+      profile: callerProfile,
+      intent: Object.freeze({
+        budget: needsBudgetFallback ? fallbackIntent.budget : null,
+        areas: needsAreaFallback ? fallbackIntent.areas : null,
+        moveIn: needsMoveInFallback ? fallbackIntent.moveIn : null
+      })
+    };
+  };
+
   const loadProfileView = async (profile: RoommateProfileRecord): Promise<RoommateProfileView> => {
     const projections = await loadIdentity([profile.tenantId]);
     const identity = publicIdentity(projections, profile.tenantId);
@@ -406,7 +603,8 @@ export function createRoommateService(dependencies: RoommateDependencies): Roomm
     records: readonly RoommateRequestRecord[],
     profileByTenant?: ReadonlyMap<number, RoommateProfileRecord>,
     identityProjections?: readonly IdentityRoommateTenantProjection[],
-    listingMap?: ReadonlyMap<number, PublicListingSummary>
+    listingMap?: ReadonlyMap<number, PublicListingSummary>,
+    compatibilityByRequestId?: ReadonlyMap<number, RoommateCompatibilityResult | null>
   ): Promise<readonly RoommateRequestView[]> => {
     if (records.length === 0) return Object.freeze([]);
     const profiles = profileByTenant ?? new Map<number, RoommateProfileRecord>();
@@ -443,6 +641,7 @@ export function createRoommateService(dependencies: RoommateDependencies): Roomm
           updatedAt: record.updatedAt,
           profile: visibleProfile,
           listing,
+          ...(compatibilityByRequestId ? { compatibility: compatibilityByRequestId.get(record.id) ?? null } : {}),
           signals: Object.freeze({
             profileCompleted: visibleProfile?.profileCompleted === true,
             requestOpen: record.status === "OPEN" && new Date(record.expiresAt).getTime() > currentTime.getTime(),
@@ -638,6 +837,8 @@ export function createRoommateService(dependencies: RoommateDependencies): Roomm
 
     async listDiscovery(principal, query) {
       const callerTenantId = requireTenant(principal);
+      const callerCompatibility = await loadCallerCompatibilityContext(callerTenantId, query);
+      const effectiveCallerIntent = resolveCallerCompatibilityIntent(query, callerCompatibility.intent);
       const needed = query.offset + query.pageSize + 1;
       const eligible: RoommateRequestView[] = [];
       let scanOffset = 0;
@@ -698,7 +899,20 @@ export function createRoommateService(dependencies: RoommateDependencies): Roomm
           }
           return true;
         });
-        const views = await decorate(eligibleCandidates, profileById, identities, listings);
+        const compatibilityByRequestId = new Map(
+          eligibleCandidates.map((candidate) => [
+            candidate.id,
+            buildCompatibility(
+              callerCompatibility.profile,
+              effectiveCallerIntent,
+              candidate,
+              candidate.profile,
+              candidate.listingId === null ? null : (listings.get(candidate.listingId) ?? null),
+              true
+            )
+          ])
+        );
+        const views = await decorate(eligibleCandidates, profileById, identities, listings, compatibilityByRequestId);
         eligible.push(...views);
         if (candidates.length < 100) break;
       }
@@ -756,9 +970,40 @@ export function createRoommateService(dependencies: RoommateDependencies): Roomm
       );
       if (!profile) {
         if (!result.owner) throw new ApplicationError("RESOURCE_NOT_FOUND", notFoundMessage);
-        return (await decorate([result.request]))[0]!;
+        const [view] = await decorate(
+          [result.request],
+          undefined,
+          undefined,
+          undefined,
+          new Map([[result.request.id, null]])
+        );
+        return view!;
       }
-      const [view] = await decorate([result.request], new Map([[result.request.ownerTenantId, profile]]));
+      const callerCompatibility = await loadCallerCompatibilityContext(tenantId, null);
+      const candidateListings =
+        result.request.listingId === null
+          ? new Map<number, PublicListingSummary>()
+          : await loadListingMap([result.request.listingId]);
+      const compatibilityByRequestId = new Map([
+        [
+          result.request.id,
+          buildCompatibility(
+            callerCompatibility.profile,
+            callerCompatibility.intent,
+            result.request,
+            profile,
+            result.request.listingId === null ? null : (candidateListings.get(result.request.listingId) ?? null),
+            false
+          )
+        ]
+      ]);
+      const [view] = await decorate(
+        [result.request],
+        new Map([[result.request.ownerTenantId, profile]]),
+        undefined,
+        candidateListings,
+        compatibilityByRequestId
+      );
       if (!view) throw new Error("Roommate request could not be decorated.");
       if (!result.owner && view.profile?.profileCompleted !== true) {
         throw new ApplicationError("RESOURCE_NOT_FOUND", notFoundMessage);
