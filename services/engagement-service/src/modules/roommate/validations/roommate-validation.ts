@@ -144,7 +144,7 @@ function optionalNumber(value: unknown, field: string): number | undefined {
   return requiredNumber(value, field);
 }
 
-function strictDate(value: unknown, field: string): string {
+export function validateRoommateCalendarDate(value: unknown, field: string): string {
   if (typeof value !== "string") throwValidationIssue(field, "INVALID_TYPE", `${field} must be an ISO date.`);
   if (!roommateDatePattern.test(value)) {
     throwValidationIssue(field, "INVALID_VALUE", `${field} must use YYYY-MM-DD.`);
@@ -252,8 +252,8 @@ function requestContentFromBody(body: PlainJsonObject, today: string): RoommateR
   const preferredAreaKeys = normalizeAreaKeys(body.preferredAreaKeys);
   const budgetMinPerPerson = requiredNumber(body.budgetMinPerPerson, "budgetMinPerPerson");
   const budgetMaxPerPerson = requiredNumber(body.budgetMaxPerPerson, "budgetMaxPerPerson");
-  const moveInFrom = strictDate(body.moveInFrom, "moveInFrom");
-  const moveInUntil = strictDate(body.moveInUntil, "moveInUntil");
+  const moveInFrom = validateRoommateCalendarDate(body.moveInFrom, "moveInFrom");
+  const moveInUntil = validateRoommateCalendarDate(body.moveInUntil, "moveInUntil");
   const note = nullableMultilineText(body.note, "note", 500);
   const content = Object.freeze({
     listingId,
@@ -334,10 +334,10 @@ export function validatePatchRoommateRequestBody(value: unknown): PatchRoommateR
       ? { budgetMaxPerPerson: requiredNumber(body.budgetMaxPerPerson, "budgetMaxPerPerson") }
       : {}),
     ...(Object.prototype.hasOwnProperty.call(body, "moveInFrom")
-      ? { moveInFrom: strictDate(body.moveInFrom, "moveInFrom") }
+      ? { moveInFrom: validateRoommateCalendarDate(body.moveInFrom, "moveInFrom") }
       : {}),
     ...(Object.prototype.hasOwnProperty.call(body, "moveInUntil")
-      ? { moveInUntil: strictDate(body.moveInUntil, "moveInUntil") }
+      ? { moveInUntil: validateRoommateCalendarDate(body.moveInUntil, "moveInUntil") }
       : {}),
     ...(Object.prototype.hasOwnProperty.call(body, "note")
       ? { note: nullableMultilineText(body.note, "note", 500) }
@@ -365,7 +365,7 @@ function optionalQueryBudget(value: unknown, field: string): number | null {
 
 function optionalQueryDate(value: unknown, field: string): string | null {
   const scalar = readScalarQueryValue(value, field);
-  return scalar === undefined ? null : strictDate(scalar, field);
+  return scalar === undefined ? null : validateRoommateCalendarDate(scalar, field);
 }
 
 export function validateRoommateDiscoveryQuery(value: unknown): RoommateDiscoveryQuery {
