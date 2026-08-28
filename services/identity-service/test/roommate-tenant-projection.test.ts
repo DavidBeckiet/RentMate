@@ -32,14 +32,18 @@ test("Identity roommate projection preserves active state and supported account 
         role,
         display_name: null,
         is_active: isActive,
-        created_at: "2025-11-02T00:00:00.000Z"
+        created_at: "2025-11-02T00:00:00.000Z",
+        email_verified: role === "TENANT",
+        phone_verified: false
       }),
       {
         tenantId: role === "TENANT" ? 7 : role === "LANDLORD" ? 8 : 9,
         role,
         displayName: null,
         isActive,
-        memberSince: "2025-11"
+        memberSince: "2025-11",
+        emailVerified: role === "TENANT",
+        phoneVerified: false
       }
     );
   }
@@ -60,7 +64,9 @@ test("Identity repository roommate projection selects only public-safe fields", 
             role: "TENANT",
             display_name: "Minh Anh",
             is_active: true,
-            created_at: new Date("2025-11-02T00:00:00.000Z")
+            created_at: new Date("2025-11-02T00:00:00.000Z"),
+            email_verified: true,
+            phone_verified: false
           }
         ] as Row[]
       } as unknown as QueryResult<Row>;
@@ -80,11 +86,15 @@ test("Identity repository roommate projection selects only public-safe fields", 
       role: "TENANT",
       displayName: "Minh Anh",
       isActive: true,
-      memberSince: "2025-11"
+      memberSince: "2025-11",
+      emailVerified: true,
+      phoneVerified: false
     }
   ]);
   assert.ok(capturedQuery);
   assert.deepEqual(capturedQuery.values, [[7]]);
   assert.match(capturedQuery.text, /display_name/iu);
-  assert.doesNotMatch(capturedQuery.text, /email|phone|password/iu);
+  assert.match(capturedQuery.text, /email_verified_at IS NOT NULL AS email_verified/iu);
+  assert.match(capturedQuery.text, /phone_verified_at IS NOT NULL AS phone_verified/iu);
+  assert.doesNotMatch(capturedQuery.text, /\bemail\s*,|\bphone_e164\b|password/iu);
 });

@@ -98,7 +98,9 @@ const roommateTenantProjectionsSelect = `
         role,
         display_name,
         is_active,
-        created_at
+        created_at,
+        email_verified_at IS NOT NULL AS email_verified,
+        phone_verified_at IS NOT NULL AS phone_verified
       FROM users
       WHERE id = ANY($1::integer[])
       ORDER BY id ASC

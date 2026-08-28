@@ -2,9 +2,14 @@ import type { RequestHandler, Router } from "express";
 import {
   createConfirmEmailVerificationHandler,
   createConfirmPhoneVerificationHandler,
+  createConfirmTenantEmailVerificationHandler,
+  createConfirmTenantPhoneVerificationHandler,
   createGetContactVerificationStatusHandler,
+  createGetTenantContactVerificationStatusHandler,
   createRequestEmailVerificationHandler,
-  createRequestPhoneVerificationHandler
+  createRequestPhoneVerificationHandler,
+  createRequestTenantEmailVerificationHandler,
+  createRequestTenantPhoneVerificationHandler
 } from "./controllers/contact-verification-controller.js";
 import {
   createRateLimitMiddleware,
@@ -26,6 +31,7 @@ export function registerVerificationRoutes(
   dependencies: {
     readonly authenticationMiddleware: RequestHandler;
     readonly landlordRoleMiddleware: RequestHandler;
+    readonly tenantRoleMiddleware: RequestHandler;
     readonly adminRoleMiddleware: RequestHandler;
     readonly service: VerificationService;
     readonly submissionRateLimitStore?: RateLimitStore;
@@ -43,6 +49,40 @@ export function registerVerificationRoutes(
     resolveKey: (request) => `${request.auth?.userId ?? "unknown"}:${request.ip}`,
     store: dependencies.contactVerificationRateLimitStore ?? new InMemoryRateLimitStore()
   });
+  router.get(
+    "/tenant/verifications/status",
+    dependencies.authenticationMiddleware,
+    dependencies.tenantRoleMiddleware,
+    createGetTenantContactVerificationStatusHandler(dependencies.contactVerificationService)
+  );
+  router.post(
+    "/tenant/verifications/email/request",
+    dependencies.authenticationMiddleware,
+    dependencies.tenantRoleMiddleware,
+    contactLimiter,
+    createRequestTenantEmailVerificationHandler(dependencies.contactVerificationService)
+  );
+  router.post(
+    "/tenant/verifications/email/confirm",
+    dependencies.authenticationMiddleware,
+    dependencies.tenantRoleMiddleware,
+    contactLimiter,
+    createConfirmTenantEmailVerificationHandler(dependencies.contactVerificationService)
+  );
+  router.post(
+    "/tenant/verifications/phone/request",
+    dependencies.authenticationMiddleware,
+    dependencies.tenantRoleMiddleware,
+    contactLimiter,
+    createRequestTenantPhoneVerificationHandler(dependencies.contactVerificationService)
+  );
+  router.post(
+    "/tenant/verifications/phone/confirm",
+    dependencies.authenticationMiddleware,
+    dependencies.tenantRoleMiddleware,
+    contactLimiter,
+    createConfirmTenantPhoneVerificationHandler(dependencies.contactVerificationService)
+  );
   router.post(
     "/landlord/verifications",
     dependencies.authenticationMiddleware,

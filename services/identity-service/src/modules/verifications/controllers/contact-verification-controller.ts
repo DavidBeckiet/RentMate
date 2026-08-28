@@ -22,12 +22,14 @@ function dto(value: ContactVerificationStatusResult) {
     email: Object.freeze({
       address: value.email.address,
       verified: value.email.verifiedAt !== null,
-      verifiedAt: value.email.verifiedAt
+      verifiedAt: value.email.verifiedAt,
+      available: value.email.available
     }),
     phone: Object.freeze({
       number: value.phone.number,
       verified: value.phone.verifiedAt !== null,
-      verifiedAt: value.phone.verifiedAt
+      verifiedAt: value.phone.verifiedAt,
+      available: value.phone.available
     }),
     profile: value.profile
       ? Object.freeze({
@@ -40,6 +42,23 @@ function dto(value: ContactVerificationStatusResult) {
           reviewedAt: value.profile.reviewedAt
         })
       : null
+  });
+}
+
+function tenantDto(value: ContactVerificationStatusResult) {
+  return Object.freeze({
+    email: Object.freeze({
+      address: value.email.address,
+      verified: value.email.verifiedAt !== null,
+      verifiedAt: value.email.verifiedAt,
+      available: value.email.available
+    }),
+    phone: Object.freeze({
+      number: value.phone.number,
+      verified: value.phone.verifiedAt !== null,
+      verifiedAt: value.phone.verifiedAt,
+      available: value.phone.available
+    })
   });
 }
 
@@ -100,6 +119,64 @@ export function createConfirmPhoneVerificationHandler(service: ContactVerificati
       sendObject(
         response,
         dto(await service.confirmPhone(current, validateConfirmPhoneVerificationBody(request.body)))
+      );
+    })().catch(next);
+  };
+}
+
+export function createGetTenantContactVerificationStatusHandler(service: ContactVerificationService): RequestHandler {
+  return (request, response, next): void => {
+    void (async () => {
+      const current = principal(request);
+      validateQueryKeys(request.query, []);
+      sendObject(response, tenantDto(await service.tenantStatus(current)));
+    })().catch(next);
+  };
+}
+
+export function createRequestTenantEmailVerificationHandler(service: ContactVerificationService): RequestHandler {
+  return (request, response, next): void => {
+    void (async () => {
+      const current = principal(request);
+      validateQueryKeys(request.query, []);
+      validateEmptyBody(request.body);
+      sendObject(response, tenantDto(await service.requestTenantEmail(current)));
+    })().catch(next);
+  };
+}
+
+export function createConfirmTenantEmailVerificationHandler(service: ContactVerificationService): RequestHandler {
+  return (request, response, next): void => {
+    void (async () => {
+      const current = principal(request);
+      validateQueryKeys(request.query, []);
+      sendObject(
+        response,
+        tenantDto(await service.confirmTenantEmail(current, validateConfirmEmailVerificationBody(request.body)))
+      );
+    })().catch(next);
+  };
+}
+
+export function createRequestTenantPhoneVerificationHandler(service: ContactVerificationService): RequestHandler {
+  return (request, response, next): void => {
+    void (async () => {
+      const current = principal(request);
+      validateQueryKeys(request.query, []);
+      validateEmptyBody(request.body);
+      sendObject(response, tenantDto(await service.requestTenantPhone(current)));
+    })().catch(next);
+  };
+}
+
+export function createConfirmTenantPhoneVerificationHandler(service: ContactVerificationService): RequestHandler {
+  return (request, response, next): void => {
+    void (async () => {
+      const current = principal(request);
+      validateQueryKeys(request.query, []);
+      sendObject(
+        response,
+        tenantDto(await service.confirmTenantPhone(current, validateConfirmPhoneVerificationBody(request.body)))
       );
     })().catch(next);
   };

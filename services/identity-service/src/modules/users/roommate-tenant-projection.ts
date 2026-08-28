@@ -11,6 +11,8 @@ export interface RoommateTenantProjectionRow extends QueryResultRow {
   readonly display_name: unknown;
   readonly is_active: unknown;
   readonly created_at: unknown;
+  readonly email_verified: unknown;
+  readonly phone_verified: unknown;
 }
 
 export interface RoommateTenantProjection {
@@ -19,6 +21,8 @@ export interface RoommateTenantProjection {
   readonly displayName: string | null;
   readonly isActive: boolean;
   readonly memberSince: string;
+  readonly emailVerified: boolean;
+  readonly phoneVerified: boolean;
 }
 
 function isValidUserId(value: unknown): value is number {
@@ -51,7 +55,9 @@ export function mapRoommateTenantProjectionRow(row: Readonly<RoommateTenantProje
     !isValidUserId(row.id) ||
     !isUserRole(row.role) ||
     (row.display_name !== null && typeof row.display_name !== "string") ||
-    typeof row.is_active !== "boolean"
+    typeof row.is_active !== "boolean" ||
+    typeof row.email_verified !== "boolean" ||
+    typeof row.phone_verified !== "boolean"
   ) {
     throw new Error("Roommate tenant projection row is invalid.");
   }
@@ -68,6 +74,8 @@ export function mapRoommateTenantProjectionRow(row: Readonly<RoommateTenantProje
     role: row.role,
     displayName: row.display_name,
     isActive: row.is_active,
-    memberSince: formatMemberSince(createdAt)
+    memberSince: formatMemberSince(createdAt),
+    emailVerified: row.email_verified,
+    phoneVerified: row.phone_verified
   });
 }

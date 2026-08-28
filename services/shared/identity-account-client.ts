@@ -34,6 +34,8 @@ export interface IdentityRoommateTenantProjection {
   readonly displayName: string | null;
   readonly isActive: boolean;
   readonly memberSince: string;
+  readonly emailVerified: boolean;
+  readonly phoneVerified: boolean;
 }
 
 function isAccount(value: unknown): value is AuthenticationAccount {
@@ -74,7 +76,9 @@ function isRoommateTenantProjection(value: unknown): value is IdentityRoommateTe
     (projection.displayName === null || typeof projection.displayName === "string") &&
     typeof projection.isActive === "boolean" &&
     typeof projection.memberSince === "string" &&
-    /^(?:[0-9]{4})-(?:0[1-9]|1[0-2])$/u.test(projection.memberSince)
+    /^(?:[0-9]{4})-(?:0[1-9]|1[0-2])$/u.test(projection.memberSince) &&
+    typeof projection.emailVerified === "boolean" &&
+    typeof projection.phoneVerified === "boolean"
   );
 }
 
@@ -213,7 +217,9 @@ export function createIdentityAccountClient(options: IdentityAccountClientOption
           role: projection.role,
           displayName: projection.displayName,
           isActive: projection.isActive,
-          memberSince: projection.memberSince
+          memberSince: projection.memberSince,
+          emailVerified: projection.emailVerified,
+          phoneVerified: projection.phoneVerified
         })
       )
     );

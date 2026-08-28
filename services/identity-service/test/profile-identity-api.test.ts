@@ -161,14 +161,18 @@ test("Identity roommate projection is public-safe and formats memberSince to UTC
       role: "TENANT",
       display_name: "Minh Anh",
       is_active: true,
-      created_at: new Date("2025-11-30T23:30:00.000Z")
+      created_at: new Date("2025-11-30T23:30:00.000Z"),
+      email_verified: true,
+      phone_verified: false
     }),
     {
       tenantId: 42,
       role: "TENANT",
       displayName: "Minh Anh",
       isActive: true,
-      memberSince: "2025-11"
+      memberSince: "2025-11",
+      emailVerified: true,
+      phoneVerified: false
     }
   );
 

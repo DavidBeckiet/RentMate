@@ -51,6 +51,15 @@ test("keeps the monolith as the default upstream and switches configured boundar
   assert.equal(resolveUpstream("/api/v1/admin/users", routes).hostname, "identity");
   assert.equal(resolveUpstream("/api/v1/admin/verifications", routes).hostname, "identity");
   assert.equal(resolveUpstream("/api/v1/landlord/verifications/current", routes).hostname, "identity");
+  for (const path of [
+    "/api/v1/tenant/verifications/status",
+    "/api/v1/tenant/verifications/email/request",
+    "/api/v1/tenant/verifications/email/confirm",
+    "/api/v1/tenant/verifications/phone/request",
+    "/api/v1/tenant/verifications/phone/confirm"
+  ]) {
+    assert.equal(resolveUpstream(path, routes).hostname, "identity");
+  }
   assert.equal(routes.upstreamTimeoutMs, 10000);
 });
 

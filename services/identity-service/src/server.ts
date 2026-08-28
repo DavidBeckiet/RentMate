@@ -127,7 +127,9 @@ async function startIdentityService(): Promise<void> {
   const contactVerificationDelivery = createContactVerificationDelivery({
     nodeEnvironment: config.nodeEnv,
     deliveryUrl: config.verification.deliveryUrl,
-    deliveryToken: config.verification.deliveryToken
+    deliveryToken: config.verification.deliveryToken,
+    emailAvailable: config.verification.emailAvailable,
+    phoneAvailable: config.verification.phoneAvailable
   });
   const passwordResetDelivery = createPasswordResetDelivery({
     nodeEnvironment: config.nodeEnv,
@@ -157,6 +159,7 @@ async function startIdentityService(): Promise<void> {
   });
   const adminRole = createRoleMiddleware(["ADMIN"]);
   const landlordRole = createRoleMiddleware(["LANDLORD"]);
+  const tenantRole = createRoleMiddleware(["TENANT"]);
   const authRateLimitStore = new InMemoryRateLimitStore();
   const contactVerificationRateLimitStore = new InMemoryRateLimitStore();
   const internalServiceGuard = createInternalServiceGuard(process.env.SERVICE_INTERNAL_TOKEN);
@@ -193,6 +196,7 @@ async function startIdentityService(): Promise<void> {
       registerVerificationRoutes(router, {
         authenticationMiddleware: requiredAuthentication,
         landlordRoleMiddleware: landlordRole,
+        tenantRoleMiddleware: tenantRole,
         adminRoleMiddleware: adminRole,
         service: verificationService,
         contactVerificationService,

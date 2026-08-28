@@ -55,3 +55,20 @@ test("maps provider rejection and timeout to safe delivery errors", async () => 
   });
   await assert.rejects(() => timedOut.deliver(input), /provider is unavailable/);
 });
+
+test("reports independent channel availability without sending to an unavailable provider", async () => {
+  const delivery = createContactVerificationDelivery({
+    nodeEnvironment: "test",
+    deliveryUrl: "",
+    deliveryToken: "",
+    emailAvailable: true,
+    phoneAvailable: false
+  });
+
+  assert.equal(delivery.isAvailable("EMAIL"), true);
+  assert.equal(delivery.isAvailable("PHONE"), false);
+  await assert.rejects(
+    () => delivery.deliver({ ...input, channel: "PHONE", destination: "+84901234567" }),
+    /provider is unavailable/
+  );
+});

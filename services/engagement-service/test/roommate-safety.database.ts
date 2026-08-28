@@ -108,7 +108,9 @@ function registerTenant(tenantId: number): void {
     role: "TENANT",
     isActive: true,
     displayName: `Tenant ${tenantId}`,
-    memberSince: "2026-01"
+    memberSince: "2026-01",
+    emailVerified: false,
+    phoneVerified: false
   });
 }
 

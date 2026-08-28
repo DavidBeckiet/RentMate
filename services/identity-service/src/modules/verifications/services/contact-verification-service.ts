@@ -27,10 +27,12 @@ export interface ContactVerificationStatusResult {
   readonly email: {
     readonly address: string;
     readonly verifiedAt: string | null;
+    readonly available: boolean;
   };
   readonly phone: {
     readonly number: string | null;
     readonly verifiedAt: string | null;
+    readonly available: boolean;
   };
   readonly profile: LandlordVerification | null;
 }
@@ -47,6 +49,17 @@ export interface ContactVerificationService {
     principal: AuthenticatedPrincipal,
     input: ConfirmPhoneVerificationInput
   ) => Promise<ContactVerificationStatusResult>;
+  readonly tenantStatus: (principal: AuthenticatedPrincipal) => Promise<ContactVerificationStatusResult>;
+  readonly requestTenantEmail: (principal: AuthenticatedPrincipal) => Promise<ContactVerificationStatusResult>;
+  readonly confirmTenantEmail: (
+    principal: AuthenticatedPrincipal,
+    input: ConfirmEmailVerificationInput
+  ) => Promise<ContactVerificationStatusResult>;
+  readonly requestTenantPhone: (principal: AuthenticatedPrincipal) => Promise<ContactVerificationStatusResult>;
+  readonly confirmTenantPhone: (
+    principal: AuthenticatedPrincipal,
+    input: ConfirmPhoneVerificationInput
+  ) => Promise<ContactVerificationStatusResult>;
 }
 
 function requireLandlord(principal: AuthenticatedPrincipal): number {
@@ -54,13 +67,27 @@ function requireLandlord(principal: AuthenticatedPrincipal): number {
   return principal.userId;
 }
 
+function requireTenant(principal: AuthenticatedPrincipal): number {
+  if (principal.role !== "TENANT") throw new ApplicationError("FORBIDDEN", forbiddenRoleMessage);
+  return principal.userId;
+}
+
 function statusResult(
   contact: ContactVerificationStatus,
-  profile: LandlordVerification | null
+  profile: LandlordVerification | null,
+  delivery: ContactVerificationDelivery
 ): ContactVerificationStatusResult {
   return Object.freeze({
-    email: Object.freeze({ address: contact.email, verifiedAt: contact.emailVerifiedAt }),
-    phone: Object.freeze({ number: contact.phone, verifiedAt: contact.phoneVerifiedAt }),
+    email: Object.freeze({
+      address: contact.email,
+      verifiedAt: contact.emailVerifiedAt,
+      available: delivery.isAvailable("EMAIL")
+    }),
+    phone: Object.freeze({
+      number: contact.phone,
+      verifiedAt: contact.phoneVerifiedAt,
+      available: delivery.isAvailable("PHONE")
+    }),
     profile
   });
 }
@@ -101,20 +128,22 @@ export function createContactVerificationService(dependencies: {
   const createEmailTokenValue = dependencies.createEmailToken ?? createEmailToken;
   const createPhoneCodeValue = dependencies.createPhoneCode ?? createPhoneCode;
 
-  async function loadStatus(userId: number): Promise<ContactVerificationStatusResult> {
+  async function loadStatus(userId: number, includeLandlordProfile: boolean): Promise<ContactVerificationStatusResult> {
     return dependencies.transactionRunner(async (executor) => {
       const contact = await dependencies.contactRepository.findStatus(executor, userId);
       if (contact === null) throw new ApplicationError("AUTHENTICATION_REQUIRED", "Authentication is required.");
-      const profile = await dependencies.verificationRepository.findLatestForLandlord(executor, userId);
-      return statusResult(contact, profile);
+      const profile = includeLandlordProfile
+        ? await dependencies.verificationRepository.findLatestForLandlord(executor, userId)
+        : null;
+      return statusResult(contact, profile, dependencies.delivery);
     });
   }
 
   async function request(
-    principal: AuthenticatedPrincipal,
-    channel: ContactVerificationChannel
+    channel: ContactVerificationChannel,
+    userId: number,
+    includeLandlordProfile: boolean
   ): Promise<ContactVerificationStatusResult> {
-    const userId = requireLandlord(principal);
     const secret = channel === "EMAIL" ? createEmailTokenValue() : createPhoneCodeValue();
     const expiresAt = new Date(
       now().getTime() + (channel === "EMAIL" ? emailChallengeLifetimeMs : phoneChallengeLifetimeMs)
@@ -122,17 +151,23 @@ export function createContactVerificationService(dependencies: {
     let deliveryInput: ContactVerificationDeliveryInput | null = null;
 
     await dependencies.transactionRunner(async (executor) => {
-      const contact = await dependencies.contactRepository.findStatus(executor, userId);
+      const contact = await dependencies.contactRepository.findStatus(executor, userId, { forUpdate: true });
       if (contact === null) throw new ApplicationError("AUTHENTICATION_REQUIRED", "Authentication is required.");
 
       if (channel === "EMAIL") {
         if (contact.emailVerifiedAt !== null) return;
+        if (!dependencies.delivery.isAvailable(channel)) {
+          throw new ApplicationError("PROVIDER_UNAVAILABLE", "Verification delivery is temporarily unavailable.");
+        }
         deliveryInput = { channel, destination: contact.email, secret };
       } else {
         if (contact.phone === null) {
           throw new ApplicationError("VALIDATION_FAILED", "A phone number is required before verification.");
         }
         if (contact.phoneVerifiedAt !== null) return;
+        if (!dependencies.delivery.isAvailable(channel)) {
+          throw new ApplicationError("PROVIDER_UNAVAILABLE", "Verification delivery is temporarily unavailable.");
+        }
         deliveryInput = { channel, destination: contact.phone, secret };
       }
 
@@ -155,17 +190,17 @@ export function createContactVerificationService(dependencies: {
       }
     }
 
-    return loadStatus(userId);
+    return loadStatus(userId, includeLandlordProfile);
   }
 
   async function confirm(
-    principal: AuthenticatedPrincipal,
     channel: ContactVerificationChannel,
-    secret: string
+    secret: string,
+    userId: number,
+    includeLandlordProfile: boolean
   ): Promise<ContactVerificationStatusResult> {
-    const userId = requireLandlord(principal);
     await dependencies.transactionRunner(async (executor) => {
-      const contact = await dependencies.contactRepository.findStatus(executor, userId);
+      const contact = await dependencies.contactRepository.findStatus(executor, userId, { forUpdate: true });
       if (contact === null) throw new ApplicationError("AUTHENTICATION_REQUIRED", "Authentication is required.");
       if (channel === "EMAIL" && contact.emailVerifiedAt !== null) return;
       if (channel === "PHONE" && contact.phoneVerifiedAt !== null) return;
@@ -194,24 +229,39 @@ export function createContactVerificationService(dependencies: {
       await dependencies.contactRepository.markVerified(executor, userId, channel);
     });
 
-    return loadStatus(userId);
+    return loadStatus(userId, includeLandlordProfile);
   }
 
   const service: ContactVerificationService = {
     status(principal) {
-      return loadStatus(requireLandlord(principal));
+      return loadStatus(requireLandlord(principal), true);
     },
     requestEmail(principal) {
-      return request(principal, "EMAIL");
+      return request("EMAIL", requireLandlord(principal), true);
     },
     confirmEmail(principal, input) {
-      return confirm(principal, "EMAIL", input.token);
+      return confirm("EMAIL", input.token, requireLandlord(principal), true);
     },
     requestPhone(principal) {
-      return request(principal, "PHONE");
+      return request("PHONE", requireLandlord(principal), true);
     },
     confirmPhone(principal, input) {
-      return confirm(principal, "PHONE", input.code);
+      return confirm("PHONE", input.code, requireLandlord(principal), true);
+    },
+    tenantStatus(principal) {
+      return loadStatus(requireTenant(principal), false);
+    },
+    requestTenantEmail(principal) {
+      return request("EMAIL", requireTenant(principal), false);
+    },
+    confirmTenantEmail(principal, input) {
+      return confirm("EMAIL", input.token, requireTenant(principal), false);
+    },
+    requestTenantPhone(principal) {
+      return request("PHONE", requireTenant(principal), false);
+    },
+    confirmTenantPhone(principal, input) {
+      return confirm("PHONE", input.code, requireTenant(principal), false);
     }
   };
   return Object.freeze(service);

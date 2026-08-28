@@ -16,7 +16,14 @@ const landlord: AuthenticatedPrincipal = Object.freeze({ userId: 7, role: "LANDL
 const tenant: AuthenticatedPrincipal = Object.freeze({ userId: 8, role: "TENANT" });
 const now = new Date("2026-08-25T00:00:00.000Z");
 
-function harness(options: { readonly phone?: string | null; readonly deliveryFails?: boolean } = {}) {
+function harness(
+  options: {
+    readonly phone?: string | null;
+    readonly deliveryFails?: boolean;
+    readonly emailAvailable?: boolean;
+    readonly phoneAvailable?: boolean;
+  } = {}
+) {
   let contact: ContactVerificationStatus = Object.freeze({
     email: "owner@example.com",
     phone: options.phone === undefined ? "+84901234567" : options.phone,
@@ -82,6 +89,9 @@ function harness(options: { readonly phone?: string | null; readonly deliveryFai
     }
   } as Pick<VerificationRepository, "findLatestForLandlord"> as VerificationRepository;
   const delivery = {
+    isAvailable(channel: "EMAIL" | "PHONE") {
+      return channel === "EMAIL" ? options.emailAvailable !== false : options.phoneAvailable !== false;
+    },
     async deliver(input: ContactVerificationDeliveryInput) {
       if (options.deliveryFails) throw new Error("provider unavailable");
       deliveries.push(input);
@@ -129,10 +139,32 @@ test("counts invalid phone codes and confirms the current phone number", async (
   assert.notEqual(confirmed.phone.verifiedAt, null);
 });
 
-test("rejects non-landlords, missing phones, and delivery failures safely", async () => {
+test("preserves landlord guards and keeps tenant verification owner-private", async () => {
   assert.throws(() => harness().service.status(tenant), /permission/i);
+  const tenantStatus = await harness().service.tenantStatus(tenant);
+  assert.equal(tenantStatus.profile, null);
+  assert.throws(() => harness().service.tenantStatus(landlord), /permission/i);
   await assert.rejects(() => harness({ phone: null }).service.requestPhone(landlord), /phone number is required/i);
   await assert.rejects(() => harness({ deliveryFails: true }).service.requestEmail(landlord), {
     code: "PROVIDER_UNAVAILABLE"
   });
+});
+
+test("tenant email and phone verification are independent and provider availability is factual", async () => {
+  const subject = harness({ phoneAvailable: false });
+  const requested = await subject.service.requestTenantEmail(tenant);
+  assert.equal(requested.email.available, true);
+  assert.equal(requested.phone.available, false);
+  const confirmed = await subject.service.confirmTenantEmail(tenant, { token: "email-token" });
+  assert.notEqual(confirmed.email.verifiedAt, null);
+  await assert.rejects(() => subject.service.requestTenantPhone(tenant), { code: "PROVIDER_UNAVAILABLE" });
+  assert.equal((await subject.service.tenantStatus(tenant)).email.verifiedAt, confirmed.email.verifiedAt);
+});
+
+test("a delivery failure never creates a factual tenant verification badge", async () => {
+  const subject = harness({ deliveryFails: true });
+  await assert.rejects(() => subject.service.requestTenantEmail(tenant), { code: "PROVIDER_UNAVAILABLE" });
+  const current = await subject.service.tenantStatus(tenant);
+  assert.equal(current.email.verifiedAt, null);
+  assert.equal(current.email.available, true);
 });

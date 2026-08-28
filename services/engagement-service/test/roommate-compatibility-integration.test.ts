@@ -192,7 +192,9 @@ const identity = (tenantId: number, displayName = `Tenant ${tenantId}`): Identit
   role: "TENANT",
   isActive: true,
   displayName,
-  memberSince: "2026-01"
+  memberSince: "2026-01",
+  emailVerified: false,
+  phoneVerified: false
 });
 
 test("adds compact compatibility after V1 eligibility and keeps category out of candidate ordering", async () => {

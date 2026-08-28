@@ -117,7 +117,11 @@ function mapChallenge(row: Readonly<ChallengeRow>): ContactVerificationChallenge
 }
 
 export interface ContactVerificationRepository {
-  readonly findStatus: (executor: SqlExecutor, userId: number) => Promise<ContactVerificationStatus | null>;
+  readonly findStatus: (
+    executor: SqlExecutor,
+    userId: number,
+    options?: { readonly forUpdate?: boolean }
+  ) => Promise<ContactVerificationStatus | null>;
   readonly createChallenge: (
     executor: SqlExecutor,
     input: {
@@ -142,7 +146,7 @@ export interface ContactVerificationRepository {
 
 export function createContactVerificationRepository(): ContactVerificationRepository {
   const repository: ContactVerificationRepository = {
-    findStatus(executor, userId) {
+    findStatus(executor, userId, options = {}) {
       return queryOptional<ContactStatusRow, ContactVerificationStatus>(
         executor,
         {
@@ -151,6 +155,7 @@ export function createContactVerificationRepository(): ContactVerificationReposi
             FROM users
             WHERE id = $1 AND is_active = true
             LIMIT 1
+            ${options.forUpdate ? "FOR UPDATE" : ""}
           `,
           values: [userId]
         },

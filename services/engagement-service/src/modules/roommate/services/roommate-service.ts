@@ -58,6 +58,8 @@ export interface RoommateProfileView {
   readonly petEnvironment: PetEnvironment;
   readonly displayName: string | null;
   readonly memberSince: string;
+  readonly emailVerified: boolean;
+  readonly phoneVerified: boolean;
   readonly profileCompleted: boolean;
 }
 
@@ -269,6 +271,8 @@ function publicProfile(
     petEnvironment: profile.petEnvironment,
     displayName: identity.displayName,
     memberSince: identity.memberSince,
+    emailVerified: identity.emailVerified,
+    phoneVerified: identity.phoneVerified,
     profileCompleted: profileComplete(profile) && identity.role === "TENANT" && identity.isActive
   });
 }
@@ -292,6 +296,8 @@ function validateProjection(
     (projection.displayName === null || typeof projection.displayName === "string") &&
     typeof projection.isActive === "boolean" &&
     /^(?:[0-9]{4})-(?:0[1-9]|1[0-2])$/u.test(projection.memberSince) &&
+    typeof projection.emailVerified === "boolean" &&
+    typeof projection.phoneVerified === "boolean" &&
     (!requiredActive || projection.isActive)
   );
 }

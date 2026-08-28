@@ -49,6 +49,8 @@ export interface RuntimeConfig {
   readonly verification: {
     readonly deliveryUrl: string;
     readonly deliveryToken: string;
+    readonly emailAvailable: boolean;
+    readonly phoneAvailable: boolean;
   };
   readonly googleOAuth: {
     readonly enabled: boolean;
@@ -502,7 +504,9 @@ export function parseEnvironment(source: EnvironmentSource): RuntimeConfig {
       deliveryToken: readString(source, "VERIFICATION_DELIVERY_TOKEN", "", production, issues, {
         trim: false,
         rejectPlaceholder: production
-      })
+      }),
+      emailAvailable: readBoolean(source, "VERIFICATION_EMAIL_AVAILABLE", true, false, issues),
+      phoneAvailable: readBoolean(source, "VERIFICATION_PHONE_AVAILABLE", true, false, issues)
     },
     googleOAuth: readGoogleOAuthConfig(source, production, issues),
     images: {

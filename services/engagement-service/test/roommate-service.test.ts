@@ -176,8 +176,24 @@ function harness(initial: readonly RoommateRequestRecord[] = []) {
     }
   } as unknown as RoommateRepository;
   const identities: IdentityRoommateTenantProjection[] = [
-    { tenantId: tenant.userId, role: "TENANT", isActive: true, displayName: "Tenant", memberSince: "2026-01" },
-    { tenantId: otherTenant.userId, role: "TENANT", isActive: true, displayName: "Other", memberSince: "2026-01" }
+    {
+      tenantId: tenant.userId,
+      role: "TENANT",
+      isActive: true,
+      displayName: "Tenant",
+      memberSince: "2026-01",
+      emailVerified: false,
+      phoneVerified: false
+    },
+    {
+      tenantId: otherTenant.userId,
+      role: "TENANT",
+      isActive: true,
+      displayName: "Other",
+      memberSince: "2026-01",
+      emailVerified: false,
+      phoneVerified: false
+    }
   ];
   const service = createRoommateService({
     repository,
@@ -240,6 +256,8 @@ test("discovery excludes the caller and decorates public-safe identity/listing p
   });
   assert.equal(page.data.length, 1);
   assert.equal(page.data[0]?.profile?.displayName, "Other");
+  assert.equal(page.data[0]?.profile?.emailVerified, false);
+  assert.equal(page.data[0]?.profile?.phoneVerified, false);
   assert.equal("ownerTenantId" in (page.data[0] ?? {}), false);
   assert.equal(page.data[0]?.listing?.id, 7);
 });
