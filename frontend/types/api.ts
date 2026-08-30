@@ -997,6 +997,26 @@ export interface RoommateAiCapabilities {
   readonly safetyWarnings: boolean;
 }
 
+export interface CreateRoommateAiExplanationBody {
+  readonly locale: "vi" | "en";
+}
+
+export interface RoommateAiCompatibilityExplanation {
+  readonly summary: string;
+  readonly evidenceRefs: readonly {
+    readonly dimension: RoommateCompatibilityDimension;
+    readonly explanationCode: RoommateCompatibilityExplanationCode;
+  }[];
+  readonly cautions: readonly {
+    readonly dimension: RoommateCompatibilityDimension;
+    readonly text: string;
+  }[];
+  readonly rulesVersion: "ROOMMATE_COMPAT_V2_1";
+  readonly explanationVersion: "ROOMMATE_AI_EXPLANATION_V3_1";
+  readonly promptVersion: "ROOMMATE_AI_EXPLANATION_PROMPT_V1";
+  readonly generatedAt: string;
+}
+
 export interface RoommateAiEvidenceRange {
   readonly start: number;
   readonly end: number;

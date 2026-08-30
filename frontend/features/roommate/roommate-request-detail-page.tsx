@@ -10,7 +10,7 @@ import { TextareaField } from "../../components/ui/form-controls";
 import { Icon } from "../../components/ui/icon";
 import { api, ApiError } from "../../lib/api/client";
 import { useAuth } from "../../lib/auth/auth-provider";
-import type { RoommateRequest } from "../../types/api";
+import type { RoommateAiCompatibilityExplanation, RoommateRequest } from "../../types/api";
 import { roommateErrorMessage, roommateRequestStatusLabels } from "./roommate-content";
 import {
   RoommateBlockControl,
@@ -23,7 +23,11 @@ import {
   RoommateSubnav,
   RoommateTenantBoundary
 } from "./roommate-shared";
-import { RoommateCompatibilitySummary } from "./roommate-v2";
+import {
+  RoommateCompatibilitySummary,
+  roommateCompatibilityDimensionLabels,
+  roommateCompatibilityExplanation
+} from "./roommate-v2";
 
 const maximumId = 2_147_483_647;
 
@@ -95,6 +99,135 @@ function InterestComposer({ requestId }: Readonly<{ requestId: number }>) {
   );
 }
 
+function aiExplanationErrorMessage(error: ApiError | null): string {
+  if (error?.status === 429) return "Bạn đang yêu cầu giải thích quá nhanh. Vui lòng thử lại sau.";
+  if (error?.status === 502)
+    return "Chưa thể tạo phần giải thích lúc này. Các khía cạnh tương thích bên trên vẫn là thông tin chính.";
+  if (error?.status === 504) return "Phần giải thích mất nhiều thời gian hơn dự kiến. Bạn có thể chủ động thử lại.";
+  if (error?.status === 503)
+    return "Tính năng giải thích AI hiện chưa sẵn sàng. Các khía cạnh tương thích bên trên vẫn dùng được.";
+  return roommateErrorMessage(error);
+}
+
+function RoommateAiExplanationPanel({
+  requestId,
+  onNoEvidence
+}: Readonly<{
+  requestId: number;
+  onNoEvidence: () => void;
+}>) {
+  const [state, setState] = useState<"idle" | "loading" | "success" | "error">("idle");
+  const [result, setResult] = useState<RoommateAiCompatibilityExplanation | null>(null);
+  const [error, setError] = useState<ApiError | null>(null);
+
+  useEffect(() => {
+    setState("idle");
+    setResult(null);
+    setError(null);
+  }, [requestId]);
+
+  const generate = () => {
+    if (state === "loading") return;
+    setState("loading");
+    setError(null);
+    setResult(null);
+    void api.roommates
+      .createAiExplanation(requestId, { locale: "vi" })
+      .then((value) => {
+        if (value === null) {
+          setState("idle");
+          onNoEvidence();
+          return;
+        }
+        setResult(value);
+        setState("success");
+      })
+      .catch((caught: unknown) => {
+        setError(caught instanceof ApiError ? caught : null);
+        setState("error");
+      });
+  };
+
+  return (
+    <Card className="space-y-4" aria-labelledby="roommate-ai-explanation-heading">
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <h2 id="roommate-ai-explanation-heading" className="font-display text-ui-base font-bold">
+            Giải thích bằng AI
+          </h2>
+          <p className="mt-1 text-ui-sm leading-6 text-rent-secondary">
+            Giải thích do AI hỗ trợ dựa trên các khía cạnh tương thích xác định ở trên; không thay thế các thông tin đó.
+          </p>
+        </div>
+        <Button
+          type="button"
+          onClick={generate}
+          disabled={state === "loading"}
+          pending={state === "loading"}
+          pendingLabel="Đang tạo…"
+        >
+          Giải thích bằng AI
+        </Button>
+      </div>
+      {state === "loading" ? (
+        <p aria-live="polite" className="text-ui-sm text-rent-secondary">
+          Đang tạo giải thích do AI hỗ trợ…
+        </p>
+      ) : null}
+      {state === "error" ? (
+        <div className="space-y-3 border-l-4 border-rose-700 pl-3" role="alert">
+          <p className="text-ui-sm font-semibold text-rose-800">{aiExplanationErrorMessage(error)}</p>
+          <Button type="button" variant="secondary" onClick={generate}>
+            Thử lại
+          </Button>
+        </div>
+      ) : null}
+      {state === "success" && result ? (
+        <section
+          className="space-y-4 border-2 border-heroDark-950 bg-rent-muted p-4"
+          aria-labelledby="roommate-ai-generated-heading"
+        >
+          <div>
+            <h3 id="roommate-ai-generated-heading" className="font-display text-ui-base font-bold">
+              Giải thích do AI hỗ trợ
+            </h3>
+            <p className="mt-2 text-ui-sm leading-6 text-heroDark-950">{result.summary}</p>
+          </div>
+          {result.cautions.length > 0 ? (
+            <div>
+              <h4 className="text-ui-sm font-bold text-heroDark-950">Điểm nên trao đổi</h4>
+              <ul className="mt-2 space-y-2" aria-label="Điểm nên trao đổi">
+                {result.cautions.map((caution) => (
+                  <li
+                    className="border-l-4 border-brandBlue-700 bg-white px-3 py-2 text-ui-sm text-heroDark-950"
+                    key={caution.dimension}
+                  >
+                    <span className="font-bold">{roommateCompatibilityDimensionLabels[caution.dimension]}: </span>
+                    {caution.text}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ) : null}
+          <div>
+            <h4 className="text-ui-sm font-bold text-heroDark-950">Căn cứ từ các khía cạnh tương thích</h4>
+            <ul className="mt-2 space-y-1 text-ui-sm leading-6 text-rent-secondary" aria-label="Căn cứ tương thích">
+              {result.evidenceRefs.map((reference) => (
+                <li key={`${reference.dimension}:${reference.explanationCode}`}>
+                  <span className="font-bold text-heroDark-950">
+                    {roommateCompatibilityDimensionLabels[reference.dimension]}:{" "}
+                  </span>
+                  {roommateCompatibilityExplanation(reference.explanationCode)}
+                </li>
+              ))}
+            </ul>
+          </div>
+        </section>
+      ) : null}
+    </Card>
+  );
+}
+
 function RequestDetailContent({ requestId }: Readonly<{ requestId: number }>) {
   const { status: authStatus, user } = useAuth();
   const tenantReady = authStatus === "authenticated" && user?.role === "TENANT" && user.isActive;
@@ -104,6 +237,7 @@ function RequestDetailContent({ requestId }: Readonly<{ requestId: number }>) {
   const [state, setState] = useState<"loading" | "success" | "error">("loading");
   const [error, setError] = useState<ApiError | null>(null);
   const [retryKey, setRetryKey] = useState(0);
+  const [explanationCapability, setExplanationCapability] = useState(false);
 
   useEffect(() => {
     if (!tenantReady) return;
@@ -111,6 +245,7 @@ function RequestDetailContent({ requestId }: Readonly<{ requestId: number }>) {
     setState("loading");
     setError(null);
     setProfileReady(null);
+    setExplanationCapability(false);
     const profilePromise = api.roommates.getProfile(controller.signal).catch((caught: unknown) => {
       if (caught instanceof ApiError && caught.status === 404) return null;
       throw caught;
@@ -118,13 +253,15 @@ function RequestDetailContent({ requestId }: Readonly<{ requestId: number }>) {
     void Promise.all([
       api.roommates.getRequest(requestId, controller.signal),
       api.roommates.listMine({ page: 1, pageSize: 50 }, controller.signal),
-      profilePromise
+      profilePromise,
+      api.roommates.getAiCapabilities(controller.signal).catch(() => null)
     ])
-      .then(([detail, mine, profile]) => {
+      .then(([detail, mine, profile, capabilities]) => {
         if (!controller.signal.aborted) {
           setRequest(detail);
           setIsOwner(mine.data.some((item) => item.id === detail.id));
           setProfileReady(profile?.profileCompleted === true);
+          setExplanationCapability(capabilities?.compatibilityExplanations === true);
           setState("success");
         }
       })
@@ -159,6 +296,12 @@ function RequestDetailContent({ requestId }: Readonly<{ requestId: number }>) {
     profileReady !== true &&
     request.status === "OPEN" &&
     request.signals.listingCurrentlyAvailable !== false;
+  const refreshNoCompatibilityEvidence = () => {
+    void api.roommates
+      .getRequest(requestId)
+      .then((detail) => setRequest(detail))
+      .catch(() => undefined);
+  };
 
   return (
     <div className="space-y-6">
@@ -190,6 +333,9 @@ function RequestDetailContent({ requestId }: Readonly<{ requestId: number }>) {
                 detail
                 heading="Các khía cạnh cần cân nhắc"
               />
+            ) : null}
+            {!isOwner && request.compatibility != null && explanationCapability ? (
+              <RoommateAiExplanationPanel requestId={request.id} onNoEvidence={refreshNoCompatibilityEvidence} />
             ) : null}
             <RoommateRequestFacts request={request} />
             {request.note ? (

@@ -8,7 +8,9 @@ const apiMocks = vi.hoisted(() => ({
   getRequest: vi.fn(),
   listMine: vi.fn(),
   getProfile: vi.fn(),
-  createInterest: vi.fn()
+  createInterest: vi.fn(),
+  getAiCapabilities: vi.fn(),
+  createAiExplanation: vi.fn()
 }));
 const useAuthMock = vi.hoisted(() => vi.fn<() => AuthContextValue>());
 const routerMocks = vi.hoisted(() => ({ push: vi.fn() }));
@@ -36,10 +38,18 @@ describe("RoommateRequestDetailPage", () => {
     apiMocks.listMine.mockReset();
     apiMocks.getProfile.mockReset();
     apiMocks.createInterest.mockReset();
+    apiMocks.getAiCapabilities.mockReset();
+    apiMocks.createAiExplanation.mockReset();
     routerMocks.push.mockReset();
     useAuthMock.mockReturnValue(auth());
     apiMocks.listMine.mockResolvedValue(emptyPage());
     apiMocks.getProfile.mockResolvedValue(roommateProfile());
+    apiMocks.getAiCapabilities.mockResolvedValue({
+      preferenceParsing: false,
+      semanticRecommendations: false,
+      compatibilityExplanations: false,
+      safetyWarnings: false
+    });
   });
 
   it("renders public-safe request context, the required warning, checklist, and an interest composer", async () => {
@@ -138,5 +148,133 @@ describe("RoommateRequestDetailPage", () => {
     );
     expect(screen.queryByRole("button", { name: "Gửi lời quan tâm" })).not.toBeInTheDocument();
     expect(apiMocks.createInterest).not.toHaveBeenCalled();
+  });
+
+  it("shows the explicit AI explanation action only for valid V2 evidence and keeps V2 facts visible", async () => {
+    const compatibility = {
+      rulesVersion: "ROOMMATE_COMPAT_V2_1" as const,
+      category: "MIXED" as const,
+      evaluatedCount: 8,
+      dimensions: [
+        {
+          dimension: "SLEEP" as const,
+          outcome: "DISCUSS" as const,
+          explanationCode: "SLEEP_DISCUSS_DIFFERENT" as const
+        },
+        {
+          dimension: "CLEANLINESS" as const,
+          outcome: "ALIGNED" as const,
+          explanationCode: "CLEANLINESS_ALIGNED_SAME" as const
+        },
+        { dimension: "NOISE" as const, outcome: "ALIGNED" as const, explanationCode: "NOISE_ALIGNED_SAME" as const },
+        {
+          dimension: "SMOKING" as const,
+          outcome: "ALIGNED" as const,
+          explanationCode: "SMOKING_ALIGNED_SAME" as const
+        },
+        { dimension: "PETS" as const, outcome: "ALIGNED" as const, explanationCode: "PETS_ALIGNED_SAME" as const },
+        {
+          dimension: "BUDGET" as const,
+          outcome: "ALIGNED" as const,
+          explanationCode: "BUDGET_ALIGNED_OVERLAP" as const
+        },
+        { dimension: "AREA" as const, outcome: "ALIGNED" as const, explanationCode: "AREA_ALIGNED_OVERLAP" as const },
+        {
+          dimension: "MOVE_IN" as const,
+          outcome: "ALIGNED" as const,
+          explanationCode: "MOVE_IN_ALIGNED_OVERLAP" as const
+        }
+      ]
+    };
+    apiMocks.getRequest.mockResolvedValue(roommateRequest({ compatibility }));
+    apiMocks.getAiCapabilities.mockResolvedValue({
+      preferenceParsing: false,
+      semanticRecommendations: false,
+      compatibilityExplanations: true,
+      safetyWarnings: false
+    });
+    apiMocks.createAiExplanation.mockResolvedValue({
+      summary: "Hai bên có nhiều điểm đã được xác định, đồng thời nên trao đổi thêm về nhịp sinh hoạt.",
+      evidenceRefs: [{ dimension: "SLEEP", explanationCode: "SLEEP_DISCUSS_DIFFERENT" }],
+      cautions: [{ dimension: "SLEEP", text: "Nên trao đổi trước về giờ nghỉ ngơi." }],
+      rulesVersion: "ROOMMATE_COMPAT_V2_1",
+      explanationVersion: "ROOMMATE_AI_EXPLANATION_V3_1",
+      promptVersion: "ROOMMATE_AI_EXPLANATION_PROMPT_V1",
+      generatedAt: "2026-08-28T12:00:00.000Z"
+    });
+    render(<RoommateRequestDetailPage requestId="42" />);
+    const action = await screen.findByRole("button", { name: "Giải thích bằng AI" });
+    expect(apiMocks.createAiExplanation).not.toHaveBeenCalled();
+    fireEvent.click(action);
+    await waitFor(() => expect(apiMocks.createAiExplanation).toHaveBeenCalledWith(42, { locale: "vi" }));
+    expect(await screen.findByRole("heading", { name: "Giải thích do AI hỗ trợ" })).toBeInTheDocument();
+    expect(screen.getByText("Điểm nên trao đổi")).toBeInTheDocument();
+    expect(screen.getByRole("list", { name: "Tất cả khía cạnh tương thích" })).toBeInTheDocument();
+  });
+
+  it("reconciles a null AI response without a provider-failure UI or stale explanation", async () => {
+    const compatibility = {
+      rulesVersion: "ROOMMATE_COMPAT_V2_1" as const,
+      category: null,
+      evaluatedCount: 1,
+      dimensions: [
+        {
+          dimension: "SLEEP" as const,
+          outcome: "NOT_EVALUATED" as const,
+          explanationCode: "SLEEP_NOT_EVALUATED" as const
+        },
+        {
+          dimension: "CLEANLINESS" as const,
+          outcome: "NOT_EVALUATED" as const,
+          explanationCode: "CLEANLINESS_NOT_EVALUATED" as const
+        },
+        {
+          dimension: "NOISE" as const,
+          outcome: "NOT_EVALUATED" as const,
+          explanationCode: "NOISE_NOT_EVALUATED" as const
+        },
+        {
+          dimension: "SMOKING" as const,
+          outcome: "NOT_EVALUATED" as const,
+          explanationCode: "SMOKING_NOT_EVALUATED" as const
+        },
+        {
+          dimension: "PETS" as const,
+          outcome: "NOT_EVALUATED" as const,
+          explanationCode: "PETS_NOT_EVALUATED" as const
+        },
+        {
+          dimension: "BUDGET" as const,
+          outcome: "ALIGNED" as const,
+          explanationCode: "BUDGET_ALIGNED_OVERLAP" as const
+        },
+        {
+          dimension: "AREA" as const,
+          outcome: "NOT_EVALUATED" as const,
+          explanationCode: "AREA_NOT_EVALUATED" as const
+        },
+        {
+          dimension: "MOVE_IN" as const,
+          outcome: "NOT_EVALUATED" as const,
+          explanationCode: "MOVE_IN_NOT_EVALUATED" as const
+        }
+      ]
+    };
+    apiMocks.getRequest
+      .mockResolvedValueOnce(roommateRequest({ compatibility }))
+      .mockResolvedValueOnce(roommateRequest({ compatibility: null }));
+    apiMocks.getAiCapabilities.mockResolvedValue({
+      preferenceParsing: false,
+      semanticRecommendations: false,
+      compatibilityExplanations: true,
+      safetyWarnings: false
+    });
+    apiMocks.createAiExplanation.mockResolvedValue(null);
+    render(<RoommateRequestDetailPage requestId="42" />);
+    fireEvent.click(await screen.findByRole("button", { name: "Giải thích bằng AI" }));
+    await waitFor(() => expect(apiMocks.getRequest).toHaveBeenCalledTimes(2));
+    expect(screen.queryByText(/nhà cung cấp|provider|Gemini/i)).not.toBeInTheDocument();
+    expect(screen.queryByRole("heading", { name: "Giải thích do AI hỗ trợ" })).not.toBeInTheDocument();
+    expect(screen.getByText("Chưa đủ dữ liệu để tổng hợp các điểm cần trao đổi.")).toBeInTheDocument();
   });
 });

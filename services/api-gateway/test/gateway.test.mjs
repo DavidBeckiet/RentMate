@@ -233,6 +233,45 @@ test("forwards a Roommate AI recommendation body and preserves its upstream resp
   }
 });
 
+test("forwards a Roommate request AI explanation with requestId, cookie, Origin, and null evidence response", async () => {
+  const upstream = http.createServer((request, response) => {
+    assert.equal(request.url, "/api/v1/roommate-requests/42/ai-explanation");
+    assert.equal(request.method, "POST");
+    assert.equal(request.headers.cookie, "rentmate_session=tenant-cookie");
+    assert.equal(request.headers.origin, "http://localhost:3000");
+    let body = "";
+    request.on("data", (chunk) => (body += chunk));
+    request.on("end", () => {
+      assert.deepEqual(JSON.parse(body), { locale: "vi" });
+      response.writeHead(200, { "content-type": "application/json" });
+      response.end(JSON.stringify({ data: null }));
+    });
+  });
+  const upstreamPort = await listen(upstream);
+  const gateway = createGatewayServer({
+    BACKEND_URL: "http://127.0.0.1:1",
+    ENGAGEMENT_SERVICE_URL: `http://127.0.0.1:${upstreamPort}`,
+    FRONTEND_ORIGIN: "http://localhost:3000"
+  });
+  const gatewayPort = await listen(gateway);
+  try {
+    const result = await fetch(`http://127.0.0.1:${gatewayPort}/api/v1/roommate-requests/42/ai-explanation`, {
+      method: "POST",
+      headers: {
+        origin: "http://localhost:3000",
+        cookie: "rentmate_session=tenant-cookie",
+        "content-type": "application/json"
+      },
+      body: JSON.stringify({ locale: "vi" })
+    });
+    assert.equal(result.status, 200);
+    assert.deepEqual(await result.json(), { data: null });
+  } finally {
+    await close(gateway);
+    await close(upstream);
+  }
+});
+
 test("handles allowed preflight and rejects unsafe requests from another origin", async () => {
   const gateway = createGatewayServer({
     BACKEND_URL: "http://127.0.0.1:1",

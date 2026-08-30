@@ -18,6 +18,8 @@ import {
   unlinkRoommateListingHandler,
   upsertRoommateProfileHandler
 } from "./controllers/roommate-controller.js";
+import { createRoommateAiExplanationHandler } from "../roommate-ai/controllers/roommate-ai-controller.js";
+import type { RoommateAiCompatibilityExplanationService } from "../roommate-ai/services/compatibility-explanation-service.js";
 import {
   acceptRoommateInterestHandler,
   createRoommateInterestHandler,
@@ -86,6 +88,16 @@ export const roommateBlockRateLimitPolicy = Object.freeze({
   limit: 10,
   windowMs: 60 * 60 * 1_000
 });
+export const roommateAiExplanationShortRateLimitPolicy = Object.freeze({
+  scope: "roommate-ai-explanation-short",
+  limit: 5,
+  windowMs: 15 * 60 * 1_000
+});
+export const roommateAiExplanationDailyRateLimitPolicy = Object.freeze({
+  scope: "roommate-ai-explanation-daily",
+  limit: 30,
+  windowMs: 24 * 60 * 60 * 1_000
+});
 
 export function registerRoommateRoutes(
   router: Router,
@@ -94,6 +106,7 @@ export function registerRoommateRoutes(
     readonly tenantRoleMiddleware: RequestHandler;
     readonly service: RoommateService;
     readonly safetyService?: RoommateSafetyService;
+    readonly aiExplanationService?: RoommateAiCompatibilityExplanationService;
     readonly adminRoleMiddleware?: RequestHandler;
     readonly rateLimitStore?: RateLimitStore;
     readonly interestRateLimitStore?: RateLimitStore;
@@ -141,6 +154,18 @@ export function registerRoommateRoutes(
     store: dependencies.blockRateLimitStore ?? rateLimitStore,
     clock: dependencies.rateLimitClock
   });
+  const explanationShortRateLimiter = createRateLimitMiddleware({
+    policy: roommateAiExplanationShortRateLimitPolicy,
+    resolveKey: (request) => `${request.auth?.userId ?? "unknown"}:${request.ip}`,
+    store: rateLimitStore,
+    clock: dependencies.rateLimitClock
+  });
+  const explanationDailyRateLimiter = createRateLimitMiddleware({
+    policy: roommateAiExplanationDailyRateLimitPolicy,
+    resolveKey: (request) => `${request.auth?.userId ?? "unknown"}:${request.ip}`,
+    store: rateLimitStore,
+    clock: dependencies.rateLimitClock
+  });
   router.get("/roommate-profiles/me", ...guards, getRoommateProfileHandler(dependencies.service));
   router.put("/roommate-profiles/me", ...guards, upsertRoommateProfileHandler(dependencies.service));
 
@@ -153,6 +178,15 @@ export function registerRoommateRoutes(
   router.get("/roommate-requests", ...guards, listRoommateDiscoveryHandler(dependencies.service));
   router.get("/roommate-requests/mine", ...guards, listMineRoommateRequestsHandler(dependencies.service));
   router.get("/roommate-requests/:requestId", ...guards, getRoommateRequestHandler(dependencies.service));
+  if (dependencies.aiExplanationService) {
+    router.post(
+      "/roommate-requests/:requestId/ai-explanation",
+      ...guards,
+      explanationShortRateLimiter,
+      explanationDailyRateLimiter,
+      createRoommateAiExplanationHandler(dependencies.aiExplanationService)
+    );
+  }
   router.patch(
     "/roommate-requests/:requestId",
     ...guards,
