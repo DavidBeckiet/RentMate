@@ -49,7 +49,6 @@ export function RoommateAiPreferencePanel({
 }>) {
   const headingId = useId();
   const [available, setAvailable] = useState(false);
-  const [checked, setChecked] = useState(false);
   const [text, setText] = useState("");
   const [state, setState] = useState<"idle" | "editing" | "parsing" | "preview" | "applying" | "error">("idle");
   const [error, setError] = useState<string | null>(null);

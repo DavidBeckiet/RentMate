@@ -8,6 +8,8 @@ import { parseRoommateAiConfiguration } from "../src/modules/roommate-ai/config/
 import { registerRoommateAiRoutes } from "../src/modules/roommate-ai/routes.js";
 import { RoommateAiCapabilityService } from "../src/modules/roommate-ai/services/roommate-ai-capability-service.js";
 import { RoommateAiPreferencePreviewService } from "../src/modules/roommate-ai/services/preference-preview-service.js";
+import { RoommateAiRecommendationService } from "../src/modules/roommate-ai/services/recommendation-service.js";
+import type { RoommateService } from "../src/modules/roommate/services/roommate-service.js";
 
 function listen(server: ReturnType<typeof createServer>): Promise<number> {
   return new Promise((resolve) => {
@@ -49,7 +51,12 @@ function createTestServer(capabilityService: RoommateAiCapabilityService): Retur
         authenticationMiddleware,
         tenantRoleMiddleware: createRoleMiddleware(["TENANT"]),
         capabilityService,
-        preferencePreviewService: new RoommateAiPreferencePreviewService(parseRoommateAiConfiguration({}), null)
+        preferencePreviewService: new RoommateAiPreferencePreviewService(parseRoommateAiConfiguration({}), null),
+        recommendationService: new RoommateAiRecommendationService(
+          parseRoommateAiConfiguration({}),
+          null,
+          {} as RoommateService
+        )
       })
   });
   return createServer(app);
@@ -160,6 +167,33 @@ test("preference preview keeps tenant authorization and returns feature-off with
       text: "Mình thích nhà yên tĩnh và không hút thuốc.",
       locale: "vi"
     });
+    assert.equal(disabled.status, 503);
+    assert.equal(
+      ((await disabled.json()) as { readonly error: { readonly code: string } }).error.code,
+      "AI_FEATURE_UNAVAILABLE"
+    );
+  } finally {
+    await close(server);
+  }
+});
+
+test("recommendation route preserves tenant/origin validation and feature-off semantics", async () => {
+  const server = createTestServer(new RoommateAiCapabilityService(parseRoommateAiConfiguration({})));
+  const port = await listen(server);
+  const request = (body: unknown) =>
+    fetch(`http://127.0.0.1:${port}/api/v1/roommate-ai/recommendations`, {
+      method: "POST",
+      headers: {
+        cookie: "rentmate_session=tenant",
+        origin: "http://localhost:3000",
+        "content-type": "application/json"
+      },
+      body: JSON.stringify(body)
+    });
+  try {
+    const invalid = await request({ filters: { page: 1 } });
+    assert.equal(invalid.status, 422);
+    const disabled = await request({ filters: {}, limit: 10, locale: "vi" });
     assert.equal(disabled.status, 503);
     assert.equal(
       ((await disabled.json()) as { readonly error: { readonly code: string } }).error.code,

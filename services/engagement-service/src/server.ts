@@ -61,6 +61,7 @@ import { registerRoommateAiRoutes } from "./modules/roommate-ai/routes.js";
 import { RoommateAiCapabilityService } from "./modules/roommate-ai/services/roommate-ai-capability-service.js";
 import { GeminiAiProvider } from "./modules/roommate-ai/providers/gemini-ai-provider.js";
 import { RoommateAiPreferencePreviewService } from "./modules/roommate-ai/services/preference-preview-service.js";
+import { RoommateAiRecommendationService } from "./modules/roommate-ai/services/recommendation-service.js";
 import {
   validateListingModerationNotificationBody,
   validateListingPublishedNotificationBody,
@@ -236,6 +237,11 @@ async function startEngagementService(): Promise<void> {
     roommateAiConfig,
     roommateAiProvider
   );
+  const roommateAiRecommendationService = new RoommateAiRecommendationService(
+    roommateAiConfig,
+    roommateAiProvider,
+    roommateService
+  );
   const app = createApp({
     frontendOrigin: config.frontendOrigin,
     logger,
@@ -262,7 +268,8 @@ async function startEngagementService(): Promise<void> {
         authenticationMiddleware: requiredAuthentication,
         tenantRoleMiddleware: tenantRole,
         capabilityService: roommateAiCapabilityService,
-        preferencePreviewService: roommateAiPreferencePreviewService
+        preferencePreviewService: roommateAiPreferencePreviewService,
+        recommendationService: roommateAiRecommendationService
       });
       registerContactRoutes(router, {
         authenticationMiddleware: requiredAuthentication,

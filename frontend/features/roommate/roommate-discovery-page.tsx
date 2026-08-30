@@ -9,7 +9,13 @@ import { InputField, SelectField } from "../../components/ui/form-controls";
 import { Pagination } from "../../components/ui/pagination";
 import { api, ApiError } from "../../lib/api/client";
 import { useAuth } from "../../lib/auth/auth-provider";
-import type { ApiPage, RoommateDiscoveryQuery, RoommateRequest } from "../../types/api";
+import type {
+  ApiPage,
+  RoommateAiRecommendationItem,
+  RoommateAiRecommendations,
+  RoommateDiscoveryQuery,
+  RoommateRequest
+} from "../../types/api";
 import { formatRoommateDate, roommateErrorMessage, roommateRequestStatusLabels } from "./roommate-content";
 import {
   RoommateListingContext,
@@ -49,6 +55,17 @@ function queryFromForm(form: DiscoveryForm, page: number): RoommateDiscoveryQuer
     listingMode: form.listingMode,
     page,
     pageSize: 12
+  };
+}
+
+function recommendationFilters(query: RoommateDiscoveryQuery) {
+  return {
+    ...(query.area ? { area: query.area } : {}),
+    ...(query.budgetMinPerPerson ? { budgetMinPerPerson: query.budgetMinPerPerson } : {}),
+    ...(query.budgetMaxPerPerson ? { budgetMaxPerPerson: query.budgetMaxPerPerson } : {}),
+    ...(query.moveInFrom ? { moveInFrom: query.moveInFrom } : {}),
+    ...(query.moveInUntil ? { moveInUntil: query.moveInUntil } : {}),
+    ...(query.listingMode ? { listingMode: query.listingMode } : {})
   };
 }
 
@@ -94,6 +111,41 @@ function DiscoveryCard({ request }: Readonly<{ request: RoommateRequest }>) {
   );
 }
 
+const recommendationReasonLabels: Readonly<Record<string, string>> = Object.freeze({
+  SEMANTIC_SLEEP_ALIGNED: "Nhịp sinh hoạt có tín hiệu phù hợp.",
+  SEMANTIC_CLEANLINESS_ALIGNED: "Có tín hiệu phù hợp về nếp sinh hoạt chung.",
+  SEMANTIC_NOISE_ALIGNED: "Có tín hiệu phù hợp về không gian sinh hoạt.",
+  SEMANTIC_SMOKING_ALIGNED: "Có tín hiệu phù hợp về môi trường hút thuốc.",
+  SEMANTIC_PETS_ALIGNED: "Có tín hiệu phù hợp về môi trường thú cưng.",
+  V2_BUDGET_ALIGNED: "Khung ngân sách có giao nhau.",
+  V2_AREA_ALIGNED: "Khu vực dự định có giao nhau.",
+  V2_MOVE_IN_ALIGNED: "Thời gian chuyển vào có giao nhau."
+});
+
+function RecommendationCard({
+  item,
+  onDismiss
+}: Readonly<{ item: RoommateAiRecommendationItem; onDismiss: () => void }>) {
+  return (
+    <div className="space-y-3" aria-label="Gợi ý bằng AI">
+      <div className="flex flex-wrap items-center justify-between gap-2 border-2 border-heroDark-950 bg-rent-muted px-4 py-3">
+        <p className="text-ui-sm font-bold text-heroDark-950">Gợi ý bằng AI</p>
+        <Button type="button" variant="secondary" className="min-h-10" onClick={onDismiss}>
+          Ẩn trong phiên này
+        </Button>
+      </div>
+      <ul className="flex flex-wrap gap-2" aria-label="Lý do gợi ý">
+        {item.recommendation.reasonCodes.map((code) => (
+          <li className="border border-heroDark-950 bg-white px-2 py-1 text-ui-xs font-semibold" key={code}>
+            {recommendationReasonLabels[code]}
+          </li>
+        ))}
+      </ul>
+      <DiscoveryCard request={item.request} />
+    </div>
+  );
+}
+
 function DiscoveryContent() {
   const { status: authStatus, user } = useAuth();
   const tenantReady = authStatus === "authenticated" && user?.role === "TENANT" && user.isActive;
@@ -103,6 +155,11 @@ function DiscoveryContent() {
   const [result, setResult] = useState<ApiPage<RoommateRequest> | null>(null);
   const [state, setState] = useState<"idle" | "loading" | "success" | "error">("idle");
   const [error, setError] = useState<ApiError | null>(null);
+  const [recommendationCapability, setRecommendationCapability] = useState(false);
+  const [recommendationOpen, setRecommendationOpen] = useState(false);
+  const [recommendationState, setRecommendationState] = useState<"idle" | "loading" | "success" | "error">("idle");
+  const [recommendationResult, setRecommendationResult] = useState<RoommateAiRecommendations | null>(null);
+  const [dismissedRecommendationIds, setDismissedRecommendationIds] = useState<ReadonlySet<number>>(new Set());
   const query = useMemo(() => queryFromForm(submittedForm, page), [page, submittedForm]);
 
   useEffect(() => {
@@ -126,6 +183,32 @@ function DiscoveryContent() {
       });
     return () => controller.abort();
   }, [query, tenantReady]);
+
+  useEffect(() => {
+    if (!tenantReady || typeof api.roommates.getAiCapabilities !== "function") return;
+    const controller = new AbortController();
+    void api.roommates
+      .getAiCapabilities(controller.signal)
+      .then((capabilities) => {
+        if (!controller.signal.aborted) setRecommendationCapability(capabilities.semanticRecommendations);
+      })
+      .catch(() => {
+        if (!controller.signal.aborted) setRecommendationCapability(false);
+      });
+    return () => controller.abort();
+  }, [tenantReady]);
+
+  const loadRecommendations = () => {
+    setRecommendationState("loading");
+    setRecommendationResult(null);
+    void api.roommates
+      .getAiRecommendations({ filters: recommendationFilters(query), limit: 10, locale: "vi" })
+      .then((value) => {
+        setRecommendationResult(value);
+        setRecommendationState("success");
+      })
+      .catch(() => setRecommendationState("error"));
+  };
 
   const submit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -230,6 +313,80 @@ function DiscoveryContent() {
           </div>
         </form>
       </Card>
+      {recommendationCapability ? (
+        <Card>
+          <div className="space-y-4" role="region" aria-label="Gợi ý bằng AI">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div>
+                <h2 className="font-display text-heading-sm font-bold text-heroDark-950">Gợi ý bằng AI</h2>
+                <p className="mt-1 text-ui-sm leading-6 text-rent-secondary">
+                  Gợi ý bổ sung từ tín hiệu sinh hoạt; danh sách tìm kiếm thông thường vẫn độc lập.
+                </p>
+              </div>
+              <Button
+                type="button"
+                aria-expanded={recommendationOpen}
+                onClick={() => {
+                  const next = !recommendationOpen;
+                  setRecommendationOpen(next);
+                  if (next && recommendationState === "idle") loadRecommendations();
+                }}
+              >
+                {" "}
+                {recommendationOpen ? "Ẩn gợi ý AI" : "Xem gợi ý AI"}{" "}
+              </Button>
+            </div>
+            {recommendationOpen && recommendationState === "loading" ? (
+              <LoadingState message="Đang tạo gợi ý bằng AI…" />
+            ) : null}
+            {recommendationOpen && recommendationState === "error" ? (
+              <ErrorState
+                message="Chưa thể tạo gợi ý AI. Bạn vẫn có thể dùng danh sách tìm roommate thông thường."
+                action={<Button onClick={loadRecommendations}>Thử lại</Button>}
+              />
+            ) : null}
+            {recommendationOpen &&
+            recommendationState === "success" &&
+            recommendationResult?.reason === "INSUFFICIENT_SEMANTIC_EVIDENCE" ? (
+              <EmptyState
+                title="Chưa có đủ tín hiệu để tạo gợi ý AI"
+                description="Bạn vẫn có thể dùng danh sách tìm roommate thông thường."
+                action={
+                  <Link className="font-bold underline decoration-2 underline-offset-4" href="/roommates/my-request">
+                    Chỉnh sửa sở thích
+                  </Link>
+                }
+              />
+            ) : null}
+            {recommendationOpen &&
+            recommendationState === "success" &&
+            recommendationResult &&
+            recommendationResult.items.filter((item) => !dismissedRecommendationIds.has(item.request.id)).length > 0 ? (
+              <div className="grid gap-5 xl:grid-cols-2">
+                {recommendationResult.items
+                  .filter((item) => !dismissedRecommendationIds.has(item.request.id))
+                  .map((item) => (
+                    <RecommendationCard
+                      key={item.request.id}
+                      item={item}
+                      onDismiss={() =>
+                        setDismissedRecommendationIds((current) => new Set([...current, item.request.id]))
+                      }
+                    />
+                  ))}
+              </div>
+            ) : null}
+            {recommendationOpen ? (
+              <Link
+                className="inline-flex min-h-11 items-center font-bold underline decoration-2 underline-offset-4"
+                href="/roommates/my-request"
+              >
+                Chỉnh sửa sở thích roommate
+              </Link>
+            ) : null}
+          </div>
+        </Card>
+      ) : null}
       {state === "idle" || state === "loading" ? <LoadingState message="Đang tìm yêu cầu ở ghép…" /> : null}
       {state === "error" ? (
         <ErrorState

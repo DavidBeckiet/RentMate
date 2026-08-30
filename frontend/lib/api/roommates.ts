@@ -9,6 +9,8 @@ import type {
   RoommateAiCapabilities,
   RoommateAiPreferencePreview,
   CreateRoommateAiPreferencePreviewBody,
+  RoommateAiRecommendations,
+  CreateRoommateAiRecommendationsBody,
   RoommateConnection,
   RoommateDiscoveryQuery,
   RoommateInterest,
@@ -37,6 +39,12 @@ export function createRoommateApi(transport: ApiTransport) {
       signal?: AbortSignal
     ): Promise<RoommateAiPreferencePreview> =>
       transport.object("/api/v1/roommate-ai/preference-previews", { method: "POST", json: body, signal }),
+
+    getAiRecommendations: (
+      body: CreateRoommateAiRecommendationsBody,
+      signal?: AbortSignal
+    ): Promise<RoommateAiRecommendations> =>
+      transport.object("/api/v1/roommate-ai/recommendations", { method: "POST", json: body, signal }),
 
     getProfile: (signal?: AbortSignal): Promise<RoommateProfile> =>
       transport.object("/api/v1/roommate-profiles/me", { signal }),

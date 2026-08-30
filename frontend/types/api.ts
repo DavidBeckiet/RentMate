@@ -1027,6 +1027,22 @@ export interface CreateRoommateAiPreferencePreviewBody {
   readonly locale: "vi" | "en";
 }
 
+export type RoommateAiRecommendationReasonCode =
+  | "SEMANTIC_SLEEP_ALIGNED"
+  | "SEMANTIC_CLEANLINESS_ALIGNED"
+  | "SEMANTIC_NOISE_ALIGNED"
+  | "SEMANTIC_SMOKING_ALIGNED"
+  | "SEMANTIC_PETS_ALIGNED"
+  | "V2_BUDGET_ALIGNED"
+  | "V2_AREA_ALIGNED"
+  | "V2_MOVE_IN_ALIGNED";
+
+export interface CreateRoommateAiRecommendationsBody {
+  readonly filters: Omit<RoommateDiscoveryQuery, "page" | "pageSize">;
+  readonly limit?: number;
+  readonly locale?: "vi" | "en";
+}
+
 export interface RoommateRequest {
   readonly id: number;
   readonly listingId: number | null;
@@ -1050,6 +1066,21 @@ export interface RoommateRequest {
     readonly requestOpen: boolean;
     readonly listingCurrentlyAvailable: boolean | null;
   };
+}
+
+export interface RoommateAiRecommendationItem {
+  readonly request: RoommateRequest;
+  readonly recommendation: {
+    readonly reasonCodes: readonly RoommateAiRecommendationReasonCode[];
+    readonly semanticRulesVersion: "ROOMMATE_AI_SEMANTIC_V3_1";
+  };
+}
+
+export interface RoommateAiRecommendations {
+  readonly items: readonly RoommateAiRecommendationItem[];
+  readonly candidateWindowSize: number;
+  readonly reason: "INSUFFICIENT_SEMANTIC_EVIDENCE" | null;
+  readonly generatedAt: string;
 }
 
 export interface CreateRoommateRequestBody {

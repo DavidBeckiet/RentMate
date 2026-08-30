@@ -3,7 +3,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { AuthContextValue } from "../../lib/auth/auth-provider";
 import { roommateProfile, roommateRequest, tenantUser } from "./test-roommate-fixtures";
 
-const apiMocks = vi.hoisted(() => ({ discover: vi.fn() }));
+const apiMocks = vi.hoisted(() => ({ discover: vi.fn(), getAiCapabilities: vi.fn(), getAiRecommendations: vi.fn() }));
 const useAuthMock = vi.hoisted(() => vi.fn<() => AuthContextValue>());
 
 vi.mock("next/navigation", () => ({ usePathname: () => "/roommates" }));
@@ -22,10 +22,18 @@ function auth(overrides: Partial<AuthContextValue> = {}): AuthContextValue {
 describe("RoommateDiscoveryPage", () => {
   beforeEach(() => {
     apiMocks.discover.mockReset();
+    apiMocks.getAiCapabilities.mockReset();
+    apiMocks.getAiRecommendations.mockReset();
     useAuthMock.mockReturnValue(auth());
     apiMocks.discover.mockResolvedValue({
       data: [roommateRequest()],
       pagination: { page: 1, pageSize: 12, hasNextPage: false }
+    });
+    apiMocks.getAiCapabilities.mockResolvedValue({
+      preferenceParsing: false,
+      semanticRecommendations: false,
+      compatibilityExplanations: false,
+      safetyWarnings: false
     });
   });
 
@@ -94,5 +102,36 @@ describe("RoommateDiscoveryPage", () => {
     expect(screen.getByText("Email đã xác minh")).toBeInTheDocument();
     expect(screen.getByText("Số điện thoại đã xác minh")).toBeInTheDocument();
     expect(screen.queryByText("tenant@example.com")).not.toBeInTheDocument();
+  });
+
+  it("keeps AI suggestions separate, labels curated reasons, and dismisses only local items", async () => {
+    apiMocks.getAiCapabilities.mockResolvedValue({
+      preferenceParsing: false,
+      semanticRecommendations: true,
+      compatibilityExplanations: false,
+      safetyWarnings: false
+    });
+    apiMocks.getAiRecommendations.mockResolvedValue({
+      items: [
+        {
+          request: roommateRequest(),
+          recommendation: {
+            reasonCodes: ["SEMANTIC_NOISE_ALIGNED", "V2_BUDGET_ALIGNED"],
+            semanticRulesVersion: "ROOMMATE_AI_SEMANTIC_V3_1"
+          }
+        }
+      ],
+      candidateWindowSize: 1,
+      reason: null,
+      generatedAt: "2026-08-28T12:00:00.000Z"
+    });
+    render(<RoommateDiscoveryPage />);
+    const open = await screen.findByRole("button", { name: "Xem gợi ý AI" });
+    fireEvent.click(open);
+    expect(await screen.findByText("Có tín hiệu phù hợp về không gian sinh hoạt.")).toBeInTheDocument();
+    expect(screen.queryByText(/%/)).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Ẩn trong phiên này" }));
+    expect(screen.queryByText("Có tín hiệu phù hợp về không gian sinh hoạt.")).not.toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Bạn cùng phòng" })).toBeInTheDocument();
   });
 });

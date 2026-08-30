@@ -7,10 +7,12 @@ import {
 } from "../../../../shared/src/runtime/shared/middleware/rate-limit.js";
 import {
   createRoommateAiPreferencePreviewHandler,
+  createRoommateAiRecommendationsHandler,
   getRoommateAiCapabilitiesHandler
 } from "./controllers/roommate-ai-controller.js";
 import type { RoommateAiCapabilityService } from "./services/roommate-ai-capability-service.js";
 import type { RoommateAiPreferencePreviewService } from "./services/preference-preview-service.js";
+import type { RoommateAiRecommendationService } from "./services/recommendation-service.js";
 
 export const roommateAiParserShortRateLimitPolicy = Object.freeze({
   scope: "roommate-ai-parser-short",
@@ -23,6 +25,16 @@ export const roommateAiParserDailyRateLimitPolicy = Object.freeze({
   limit: 30,
   windowMs: 24 * 60 * 60 * 1_000
 });
+export const roommateAiRecommendationShortRateLimitPolicy = Object.freeze({
+  scope: "roommate-ai-recommendation-short",
+  limit: 3,
+  windowMs: 15 * 60 * 1_000
+});
+export const roommateAiRecommendationDailyRateLimitPolicy = Object.freeze({
+  scope: "roommate-ai-recommendation-daily",
+  limit: 20,
+  windowMs: 24 * 60 * 60 * 1_000
+});
 
 export function registerRoommateAiRoutes(
   router: Router,
@@ -31,6 +43,7 @@ export function registerRoommateAiRoutes(
     readonly tenantRoleMiddleware: RequestHandler;
     readonly capabilityService: RoommateAiCapabilityService;
     readonly preferencePreviewService: RoommateAiPreferencePreviewService;
+    readonly recommendationService: RoommateAiRecommendationService;
     readonly rateLimitStore?: RateLimitStore;
     readonly rateLimitClock?: Clock;
   }
@@ -49,6 +62,18 @@ export function registerRoommateAiRoutes(
     store: rateLimitStore,
     clock: dependencies.rateLimitClock
   });
+  const recommendationShortRateLimiter = createRateLimitMiddleware({
+    policy: roommateAiRecommendationShortRateLimitPolicy,
+    resolveKey: resolveRateLimitKey,
+    store: rateLimitStore,
+    clock: dependencies.rateLimitClock
+  });
+  const recommendationDailyRateLimiter = createRateLimitMiddleware({
+    policy: roommateAiRecommendationDailyRateLimitPolicy,
+    resolveKey: resolveRateLimitKey,
+    store: rateLimitStore,
+    clock: dependencies.rateLimitClock
+  });
   router.get(
     "/roommate-ai/capabilities",
     dependencies.authenticationMiddleware,
@@ -62,5 +87,13 @@ export function registerRoommateAiRoutes(
     parserShortRateLimiter,
     parserDailyRateLimiter,
     createRoommateAiPreferencePreviewHandler(dependencies.preferencePreviewService)
+  );
+  router.post(
+    "/roommate-ai/recommendations",
+    dependencies.authenticationMiddleware,
+    dependencies.tenantRoleMiddleware,
+    recommendationShortRateLimiter,
+    recommendationDailyRateLimiter,
+    createRoommateAiRecommendationsHandler(dependencies.recommendationService)
   );
 }
