@@ -178,10 +178,16 @@ describe("OwnerImageManager", () => {
   });
 
   it.each([
-    [new File([new Uint8Array(5_242_881)], "large.webp", { type: "image/webp" }), "vượt quá giới hạn 5 MiB"],
-    [new File(["text"], "room.gif", { type: "image/gif" }), "phải là JPEG, PNG hoặc WebP"],
-    [new File(["image"], "room.webp", { type: "image/webp" }), "không được vượt quá 255 ký tự"]
-  ])("rejects invalid local upload input: %s", async (file, message) => {
+    ["oversized", "vượt quá giới hạn 5 MiB"],
+    ["unsupported-type", "phải là JPEG, PNG hoặc WebP"],
+    ["long-alt-text", "không được vượt quá 255 ký tự"]
+  ] as const)("rejects invalid local upload input: %s", async (fixture, message) => {
+    const file =
+      fixture === "oversized"
+        ? new File([new Uint8Array(5_242_881)], "large.webp", { type: "image/webp" })
+        : fixture === "unsupported-type"
+          ? new File(["text"], "room.gif", { type: "image/gif" })
+          : new File(["image"], "room.webp", { type: "image/webp" });
     render(<Harness />);
     chooseFile(file);
     if (message.includes("255")) {
