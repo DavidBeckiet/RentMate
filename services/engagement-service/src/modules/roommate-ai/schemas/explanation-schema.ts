@@ -72,8 +72,8 @@ export function validateRoommateAiExplanationOutput(
     if (typeof root.summary !== "string" || !root.summary.trim() || codePointLength(root.summary) > 600) invalid();
     if (!Array.isArray(root.evidenceRefs) || root.evidenceRefs.length < 1 || root.evidenceRefs.length > 8) invalid();
     if (!Array.isArray(root.cautions) || root.cautions.length > 3) invalid();
-    const evidenceByPair = new Map(
-      evidence.map((item) => [`${item.dimension}:${item.explanationCode}`, item] as const)
+    const evidenceByPair = new Map<string, RoommateCompatibilityDimensionResult>(
+      evidence.map((item) => [`${item.dimension}:${item.explanationCode}`, item])
     );
     const refs = root.evidenceRefs.map((entry) => {
       if (!entry || typeof entry !== "object" || Array.isArray(entry)) invalid();

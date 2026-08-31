@@ -216,7 +216,7 @@ export class RoommateAiRecommendationService {
     );
     const inputParticipants = [
       providerParticipant(self, input.locale),
-      ...participants.map((candidate) => providerParticipant(candidate, input.locale, candidate.request.compatibility))
+      ...participants.map((candidate) => providerParticipant(candidate, input.locale, candidate.request!.compatibility))
     ];
     let providerInput: unknown = Object.freeze({
       locale: input.locale,
