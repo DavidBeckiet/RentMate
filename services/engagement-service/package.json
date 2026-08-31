@@ -13,6 +13,7 @@
     "test:roommate:database": "node --import tsx --test test/roommate-lifecycle.database.ts",
     "test:roommate-interest:database": "node --import tsx --test test/roommate-interest.database.ts",
     "test:roommate-safety:database": "node --import tsx --test test/roommate-safety.database.ts",
+    "test:roommate-ai-safety:database": "node --import tsx --test test/roommate-ai-safety.database.ts",
     "migrate": "tsx migrate.ts",
     "backfill": "tsx backfill.ts"
   },

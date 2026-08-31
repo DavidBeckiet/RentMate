@@ -63,6 +63,8 @@ import { GeminiAiProvider } from "./modules/roommate-ai/providers/gemini-ai-prov
 import { RoommateAiPreferencePreviewService } from "./modules/roommate-ai/services/preference-preview-service.js";
 import { RoommateAiRecommendationService } from "./modules/roommate-ai/services/recommendation-service.js";
 import { RoommateAiCompatibilityExplanationService } from "./modules/roommate-ai/services/compatibility-explanation-service.js";
+import { createRoommateAiSafetyRepository } from "./modules/roommate-ai/repositories/roommate-ai-safety-repository.js";
+import { createRoommateAiSafetyWorker } from "./modules/roommate-ai/services/roommate-ai-safety-worker.js";
 import {
   validateListingModerationNotificationBody,
   validateListingPublishedNotificationBody,
@@ -248,6 +250,13 @@ async function startEngagementService(): Promise<void> {
     roommateAiProvider,
     roommateService
   );
+  const roommateAiSafetyWorker = createRoommateAiSafetyWorker({
+    configuration: roommateAiConfig,
+    provider: roommateAiProvider,
+    repository: createRoommateAiSafetyRepository(),
+    transactionRunner: { run: (operation) => withTransaction(databasePool, logger, operation) },
+    logger
+  });
   const app = createApp({
     frontendOrigin: config.frontendOrigin,
     logger,
@@ -386,12 +395,14 @@ async function startEngagementService(): Promise<void> {
 
   leadReminderScheduler.start();
   roommateExpirationScheduler.start();
+  roommateAiSafetyWorker.start();
   logger.info("Engagement service started", { nodeEnvironment: config.nodeEnv, port: config.port });
   const shutdown = createShutdownHandler({
     server,
     closeDatabase: async () => {
       leadReminderScheduler.stop();
       roommateExpirationScheduler.stop();
+      roommateAiSafetyWorker.stop();
       await closeRuntimePool();
     },
     logger
