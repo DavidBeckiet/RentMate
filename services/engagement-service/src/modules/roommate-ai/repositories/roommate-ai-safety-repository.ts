@@ -5,6 +5,7 @@ import type {
   RoommateAiSafetySignalCode,
   RoommateAiSafetySourceMessage
 } from "../safety-analysis.js";
+import { roommateAiSafetySignalCodes } from "../safety-analysis.js";
 
 export type RoommateAiSafetyAnalysisStatus = "PENDING" | "PROCESSING" | "COMPLETED" | "FAILED";
 
@@ -12,6 +13,16 @@ export interface RoommateAiSafetyAnalysisClaim {
   readonly id: number;
   readonly messageId: number;
   readonly attemptCount: number;
+}
+
+export interface RoommateAiSafetyCompletedProjection {
+  readonly messageId: number;
+  readonly outcome: Exclude<RoommateAiSafetyOutcome, "NO_WARNING">;
+  readonly signalCodes: readonly RoommateAiSafetySignalCode[];
+  readonly analysisVersion: string;
+  readonly promptVersion: string;
+  readonly modelIdentifier: string;
+  readonly analyzedAt: string;
 }
 
 interface ClaimRow extends QueryResultRow {
@@ -25,6 +36,15 @@ interface MessageRow extends QueryResultRow {
   sender_tenant_id: unknown;
   body: unknown;
   created_at: unknown;
+}
+interface CompletedProjectionRow extends QueryResultRow {
+  message_id: unknown;
+  outcome: unknown;
+  signal_codes: unknown;
+  analysis_version: unknown;
+  prompt_version: unknown;
+  model_identifier: unknown;
+  analyzed_at: unknown;
 }
 
 function positiveId(value: unknown, field: string): number {
@@ -49,6 +69,40 @@ function sourceMessage(row: MessageRow): RoommateAiSafetySourceMessage {
   });
 }
 
+function completedProjection(row: CompletedProjectionRow): RoommateAiSafetyCompletedProjection {
+  if (row.outcome !== "CAUTION" && row.outcome !== "HIGH_CAUTION") {
+    throw new Error("safety analysis outcome is invalid.");
+  }
+  if (!Array.isArray(row.signal_codes) || row.signal_codes.length < 1 || row.signal_codes.length > 7) {
+    throw new Error("safety analysis signal codes are invalid.");
+  }
+  const signalCodes = row.signal_codes.map((value) => {
+    if (!roommateAiSafetySignalCodes.includes(value as RoommateAiSafetySignalCode)) {
+      throw new Error("safety analysis signal code is invalid.");
+    }
+    return value as RoommateAiSafetySignalCode;
+  });
+  if (new Set(signalCodes).size !== signalCodes.length) throw new Error("safety analysis signal codes are duplicated.");
+  if (
+    typeof row.analysis_version !== "string" ||
+    typeof row.prompt_version !== "string" ||
+    typeof row.model_identifier !== "string"
+  ) {
+    throw new Error("safety analysis version data is invalid.");
+  }
+  const analyzedAt = row.analyzed_at instanceof Date ? row.analyzed_at : new Date(String(row.analyzed_at));
+  if (Number.isNaN(analyzedAt.getTime())) throw new Error("safety analysis timestamp is invalid.");
+  return Object.freeze({
+    messageId: positiveId(row.message_id, "message id"),
+    outcome: row.outcome,
+    signalCodes: Object.freeze(signalCodes),
+    analysisVersion: row.analysis_version,
+    promptVersion: row.prompt_version,
+    modelIdentifier: row.model_identifier,
+    analyzedAt: analyzedAt.toISOString()
+  });
+}
+
 export interface RoommateAiSafetyRepository {
   readonly discover: (executor: SqlExecutor, input: DiscoverInput) => Promise<number>;
   readonly terminalizeStale: (executor: SqlExecutor, now: Date, errorCode: string) => Promise<number>;
@@ -64,6 +118,12 @@ export interface RoommateAiSafetyRepository {
   readonly complete: (executor: SqlExecutor, input: CompleteInput) => Promise<boolean>;
   readonly fail: (executor: SqlExecutor, input: FailInput) => Promise<boolean>;
   readonly cleanup: (executor: SqlExecutor, cutoff: Date, batchSize: number) => Promise<number>;
+  readonly listCompletedProjections: (
+    executor: SqlExecutor,
+    messageIds: readonly number[],
+    analysisVersion: string,
+    requestId?: number
+  ) => Promise<ReadonlyMap<number, RoommateAiSafetyCompletedProjection>>;
 }
 
 export interface DiscoverInput {
@@ -233,6 +293,30 @@ export function createRoommateAiSafetyRepository(): RoommateAiSafetyRepository {
         values: [cutoff, batchSize]
       });
       return result.rowCount ?? 0;
+    },
+    async listCompletedProjections(executor, messageIds, analysisVersion, requestId) {
+      if (messageIds.length === 0) return new Map();
+      const requestFilter = requestId === undefined ? "" : "AND interest.request_id = $3";
+      const result = await executor.query<CompletedProjectionRow>({
+        text: `
+          SELECT analysis.message_id, analysis.outcome, analysis.signal_codes, analysis.analysis_version,
+                 analysis.prompt_version, analysis.model_identifier, analysis.analyzed_at
+          FROM roommate_message_ai_safety_analyses AS analysis
+          JOIN roommate_messages AS message ON message.id = analysis.message_id
+          JOIN roommate_interests AS interest ON interest.id = message.interest_id
+          WHERE analysis.message_id = ANY($1::integer[])
+            AND analysis.analysis_version = $2
+            AND analysis.status = 'COMPLETED'
+            AND analysis.outcome IN ('CAUTION', 'HIGH_CAUTION')
+            ${requestFilter}`,
+        values: requestId === undefined ? [messageIds, analysisVersion] : [messageIds, analysisVersion, requestId]
+      });
+      const projections = new Map<number, RoommateAiSafetyCompletedProjection>();
+      for (const row of result.rows) {
+        const projection = completedProjection(row);
+        projections.set(projection.messageId, projection);
+      }
+      return projections;
     }
   };
   return Object.freeze(repository);

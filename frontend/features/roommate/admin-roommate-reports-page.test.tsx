@@ -132,6 +132,15 @@ describe("AdminRoommateReportsPage", () => {
           }
         ],
         evaluatedAt: "2026-08-20T01:00:00.000Z"
+      },
+      aiSafetySummary: {
+        highestOutcome: "HIGH_CAUTION",
+        signalCodes: ["OTP_REQUEST"],
+        messageIds: [301],
+        analysisVersion: "ROOMMATE_AI_SAFETY_V3_1",
+        promptVersion: "ROOMMATE_AI_SAFETY_PROMPT_V1",
+        modelVersion: "configured-model-id",
+        analyzedAt: "2026-08-20T01:00:00.000Z"
       }
     };
     apiMocks.listAdminReports.mockResolvedValue({
@@ -156,6 +165,9 @@ describe("AdminRoommateReportsPage", () => {
       screen.getByText("Một số tín hiệu chưa thể đánh giá vì một dịch vụ phụ thuộc tạm thời không khả dụng.")
     ).toBeInTheDocument();
     expect(screen.getByText("ID tin nhắn: #301, #302")).toBeInTheDocument();
+    expect(screen.getByText("Phân tích an toàn bằng AI")).toBeInTheDocument();
+    expect(screen.getByText("Tín hiệu cần chú ý cao")).toBeInTheDocument();
+    expect(screen.getByText("Tin nhắn liên quan: #301")).toBeInTheDocument();
     expect(screen.queryByText("raw message body")).not.toBeInTheDocument();
     expect(apiMocks.moderateMessage).not.toHaveBeenCalled();
   });

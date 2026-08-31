@@ -19,14 +19,21 @@ function isInStableRollout(tenantId: number, percentage: number): boolean {
 export class RoommateAiCapabilityService {
   constructor(private readonly config: RoommateAiConfiguration) {}
 
+  isSafetyWarningEnabled(principal: AuthenticatedPrincipal): boolean {
+    return (
+      isInStableRollout(principal.userId, this.config.rolloutPercentage) &&
+      this.config.safetyMode === "TENANT" &&
+      isRoommateAiFeatureEnabled(this.config, "SAFETY")
+    );
+  }
+
   getCapabilities(principal: AuthenticatedPrincipal): RoommateAiCapabilities {
     const inRollout = isInStableRollout(principal.userId, this.config.rolloutPercentage);
     return Object.freeze({
       preferenceParsing: inRollout && isRoommateAiFeatureEnabled(this.config, "PARSER"),
       semanticRecommendations: inRollout && isRoommateAiFeatureEnabled(this.config, "RECOMMENDATION"),
       compatibilityExplanations: inRollout && isRoommateAiFeatureEnabled(this.config, "EXPLANATION"),
-      safetyWarnings:
-        inRollout && this.config.safetyMode === "TENANT" && isRoommateAiFeatureEnabled(this.config, "SAFETY")
+      safetyWarnings: this.isSafetyWarningEnabled(principal)
     });
   }
 }

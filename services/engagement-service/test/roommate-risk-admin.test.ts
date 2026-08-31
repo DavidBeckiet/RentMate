@@ -12,6 +12,7 @@ import type {
   RoommateSafetyRepository
 } from "../src/modules/roommate/repositories/roommate-safety-repository.js";
 import { createRoommateSafetyService } from "../src/modules/roommate/services/roommate-safety-service.js";
+import type { RoommateAiSafetyRepository } from "../src/modules/roommate-ai/repositories/roommate-ai-safety-repository.js";
 
 const admin: AuthenticatedPrincipal = Object.freeze({ userId: 9000, role: "ADMIN" });
 const riskConfig: RoommateRiskConfig = Object.freeze({
@@ -252,4 +253,85 @@ test("Identity risk projection failure produces partial evaluation without dropp
     page.data[0]?.riskSummary.flags.some((flag) => flag.code === "NEW_ACCOUNT_WITH_UNUSUAL_ACTIVITY"),
     false
   );
+});
+
+test("admin AI safety summary is exact-message-only and leaves profile/request reports without an inference", async () => {
+  const messageReport = Object.freeze({
+    ...report(30, "2026-01-01T00:00:00.000Z"),
+    requestId: 130,
+    messageId: 701,
+    targetType: "ROOMMATE_MESSAGE" as const,
+    evidenceSnapshot: Object.freeze({ kind: "ROOMMATE_MESSAGE", messageId: 701 })
+  });
+  const profileReport = Object.freeze({
+    ...report(31, "2026-01-01T00:01:00.000Z"),
+    targetType: "ROOMMATE_PROFILE" as const,
+    subjectTenantId: 101,
+    evidenceSnapshot: Object.freeze({ kind: "ROOMMATE_PROFILE" })
+  });
+  const requestReport = report(32, "2026-01-01T00:02:00.000Z");
+  const reports = [messageReport, profileReport, requestReport];
+  const calls: number[][] = [];
+  const safetyRepository = {
+    async listReports(_executor: unknown, input: { readonly offset: number; readonly limit: number }) {
+      return reports.slice(input.offset, input.offset + input.limit);
+    },
+    async findRiskSubjectTenantIds() {
+      return new Map<number, number>();
+    },
+    async loadRiskActivity() {
+      return { messages: [], interests: [], reports: [], currentBlockers: [] };
+    }
+  } as unknown as RoommateSafetyRepository;
+  const aiSafetyRepository = {
+    async listCompletedProjections(_executor: unknown, messageIds: readonly number[]) {
+      calls.push([...messageIds]);
+      return new Map(
+        messageIds.includes(701)
+          ? [
+              [
+                701,
+                {
+                  messageId: 701,
+                  outcome: "HIGH_CAUTION" as const,
+                  signalCodes: ["OTP_REQUEST"] as const,
+                  analysisVersion: "ROOMMATE_AI_SAFETY_V3_1",
+                  promptVersion: "ROOMMATE_AI_SAFETY_PROMPT_V1",
+                  modelIdentifier: "configured-model-id",
+                  analyzedAt: "2026-01-01T00:03:00.000Z"
+                }
+              ]
+            ]
+          : []
+      );
+    }
+  } as unknown as RoommateAiSafetyRepository;
+  const service = createRoommateSafetyService({
+    roommateRepository: {} as never,
+    safetyRepository,
+    aiSafetyRepository,
+    identityAccountClient: {
+      async loadRoommateTenantProjectionsByIds(ids: readonly number[]) {
+        return ids.map(tenantProjection);
+      }
+    },
+    transactionRunner: {
+      run: (operation) => operation({ query: async () => ({ rows: [], rowCount: 0 }) })
+    }
+  });
+  const page = await service.listAdminReports(admin, {
+    source: "ROOMMATE",
+    status: "OPEN",
+    category: null,
+    page: 1,
+    pageSize: 20,
+    offset: 0,
+    reviewPriority: null
+  });
+  const byId = new Map(page.data.map((value) => [value.id, value]));
+  assert.deepEqual(calls, [[701]]);
+  assert.deepEqual(byId.get(30)?.aiSafetySummary?.messageIds, [701]);
+  assert.equal(byId.get(30)?.aiSafetySummary?.highestOutcome, "HIGH_CAUTION");
+  assert.equal(byId.get(31)?.aiSafetySummary, null);
+  assert.equal(byId.get(32)?.aiSafetySummary, null);
 });

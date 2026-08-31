@@ -41,6 +41,19 @@ function targetLabel(report: AdminRoommateReport): string {
   return `Yêu cầu #${report.subject.requestId}`;
 }
 
+function AiSafetySummaryPanel({ summary }: Readonly<{ summary: AdminRoommateReport["aiSafetySummary"] }>) {
+  if (!summary) return null;
+  return (
+    <section className={styles.timeline} aria-labelledby="roommate-ai-safety-heading">
+      <h3 id="roommate-ai-safety-heading">Phân tích an toàn bằng AI</h3>
+      <p>{summary.highestOutcome === "HIGH_CAUTION" ? "Tín hiệu cần chú ý cao" : "Tín hiệu cần thận trọng"}</p>
+      <p>Tín hiệu: {summary.signalCodes.join(", ")}</p>
+      <p>Tin nhắn liên quan: {summary.messageIds.map((id) => `#${id}`).join(", ")}</p>
+      <p>Đây là thông tin hỗ trợ xem xét, không phải kết luận hoặc quyết định xử lý tự động.</p>
+    </section>
+  );
+}
+
 export function AdminRoommateReportsPage() {
   const { status: authStatus, user, error: authError, refresh } = useAuth();
   const adminReady = authStatus === "authenticated" && user?.role === "ADMIN";
@@ -331,6 +344,7 @@ export function AdminRoommateReportsPage() {
                     </div>
                   </dl>
                   <RoommateRiskSummaryPanel summary={selected.riskSummary} />
+                  <AiSafetySummaryPanel summary={selected.aiSafetySummary} />
                   <section className={styles.timeline}>
                     <h3>Lịch sử xử lý</h3>
                     {selected.events?.map((event) => (

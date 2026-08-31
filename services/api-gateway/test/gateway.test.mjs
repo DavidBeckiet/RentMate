@@ -272,6 +272,81 @@ test("forwards a Roommate request AI explanation with requestId, cookie, Origin,
   }
 });
 
+test("forwards Roommate safetyWarning and admin aiSafetySummary projections without inspection", async () => {
+  const upstream = http.createServer((request, response) => {
+    response.writeHead(200, { "content-type": "application/json" });
+    if (request.url?.startsWith("/api/v1/roommate-interests/7/messages")) {
+      response.end(
+        JSON.stringify({
+          data: [
+            {
+              id: 71,
+              sender: "COUNTERPART",
+              body: "Please send the OTP.",
+              createdAt: "2028-01-01T00:00:00.000Z",
+              isRead: false,
+              safetyWarning: {
+                outcome: "HIGH_CAUTION",
+                signalCodes: ["OTP_REQUEST"],
+                warningCode: "ROOMMATE_AI_HIGH_CAUTION",
+                analysisVersion: "ROOMMATE_AI_SAFETY_V3_1",
+                analyzedAt: "2028-01-01T00:00:01.000Z"
+              }
+            }
+          ],
+          pagination: { page: 1, pageSize: 100, hasNextPage: false }
+        })
+      );
+      return;
+    }
+    assert.equal(request.url, "/api/v1/admin/contact-reports?source=ROOMMATE&page=1&pageSize=20");
+    response.end(
+      JSON.stringify({
+        data: [
+          {
+            id: 501,
+            aiSafetySummary: {
+              highestOutcome: "HIGH_CAUTION",
+              signalCodes: ["OTP_REQUEST"],
+              messageIds: [71],
+              analysisVersion: "ROOMMATE_AI_SAFETY_V3_1",
+              promptVersion: "ROOMMATE_AI_SAFETY_PROMPT_V1",
+              modelVersion: "configured-model-id",
+              analyzedAt: "2028-01-01T00:00:01.000Z"
+            }
+          }
+        ],
+        pagination: { page: 1, pageSize: 20, hasNextPage: false }
+      })
+    );
+  });
+  const upstreamPort = await listen(upstream);
+  const gateway = createGatewayServer({
+    BACKEND_URL: "http://127.0.0.1:1",
+    ENGAGEMENT_SERVICE_URL: `http://127.0.0.1:${upstreamPort}`,
+    FRONTEND_ORIGIN: "http://localhost:3000"
+  });
+  const gatewayPort = await listen(gateway);
+  try {
+    const messageResponse = await fetch(
+      `http://127.0.0.1:${gatewayPort}/api/v1/roommate-interests/7/messages?page=1&pageSize=100`,
+      { headers: { cookie: "rentmate_session=tenant-cookie" } }
+    );
+    assert.equal(messageResponse.status, 200);
+    assert.equal((await messageResponse.json()).data[0].safetyWarning.outcome, "HIGH_CAUTION");
+
+    const reportResponse = await fetch(
+      `http://127.0.0.1:${gatewayPort}/api/v1/admin/contact-reports?source=ROOMMATE&page=1&pageSize=20`,
+      { headers: { cookie: "rentmate_session=admin-cookie" } }
+    );
+    assert.equal(reportResponse.status, 200);
+    assert.equal((await reportResponse.json()).data[0].aiSafetySummary.messageIds[0], 71);
+  } finally {
+    await close(gateway);
+    await close(upstream);
+  }
+});
+
 test("handles allowed preflight and rejects unsafe requests from another origin", async () => {
   const gateway = createGatewayServer({
     BACKEND_URL: "http://127.0.0.1:1",

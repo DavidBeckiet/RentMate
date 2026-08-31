@@ -48,7 +48,8 @@ function messageDto(message: RoommateMessageView) {
     sender: message.sender,
     body: message.body,
     createdAt: message.createdAt,
-    isRead: message.isRead
+    isRead: message.isRead,
+    safetyWarning: message.safetyWarning
   };
 }
 
@@ -66,6 +67,7 @@ function reportDto(report: RoommateAdminReportView, includeDetail: boolean) {
     reporter: report.reporter,
     subject: report.subject,
     riskSummary: report.riskSummary,
+    aiSafetySummary: report.aiSafetySummary,
     ...(includeDetail ? { evidenceSnapshot: report.evidenceSnapshot, events: report.events } : {})
   };
 }

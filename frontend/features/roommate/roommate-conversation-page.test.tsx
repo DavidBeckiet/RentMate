@@ -1,5 +1,5 @@
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { AuthContextValue } from "../../lib/auth/auth-provider";
 import { roommateInterest, roommateMessage, tenantUser } from "./test-roommate-fixtures";
 
@@ -35,6 +35,11 @@ describe("RoommateConversationPage", () => {
     apiMocks.getInterest.mockResolvedValue(roommateInterest());
     apiMocks.listMessages.mockResolvedValue(messagePage());
     apiMocks.markMessagesRead.mockResolvedValue(undefined);
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+    Object.defineProperty(document, "visibilityState", { configurable: true, value: "visible" });
   });
 
   it("keeps the short safety warning visible, renders message text safely, and offers a non-blocking sensitive-content hint", async () => {
@@ -76,6 +81,71 @@ describe("RoommateConversationPage", () => {
     expect(await screen.findByText("Tin nhắn này hiện không còn hiển thị.")).toBeInTheDocument();
   });
 
+  it("shows curated recipient-only AI caution guidance and preserves the OTP safety copy", async () => {
+    apiMocks.listMessages.mockResolvedValue(
+      messagePage(
+        roommateMessage({
+          sender: "COUNTERPART",
+          safetyWarning: {
+            outcome: "CAUTION",
+            signalCodes: ["OTP_REQUEST"],
+            warningCode: "ROOMMATE_AI_CAUTION",
+            analysisVersion: "ROOMMATE_AI_SAFETY_V3_1",
+            analyzedAt: "2026-08-31T00:00:00.000Z"
+          }
+        })
+      )
+    );
+    render(<RoommateConversationPage interestId="91" />);
+    expect(await screen.findByText("Không chia sẻ mã xác thực")).toBeInTheDocument();
+    expect(
+      screen.getByText("RentMate không bao giờ yêu cầu bạn gửi mã xác thực hoặc OTP cho người dùng khác qua chat.")
+    ).toBeInTheDocument();
+    expect(screen.queryByText("Hãy thận trọng trong cuộc trò chuyện này")).not.toBeInTheDocument();
+  });
+
+  it("never renders a server-provided warning on the sender's own message", async () => {
+    apiMocks.listMessages.mockResolvedValue(
+      messagePage(
+        roommateMessage({
+          sender: "SELF",
+          safetyWarning: {
+            outcome: "HIGH_CAUTION",
+            signalCodes: ["OTP_REQUEST"],
+            warningCode: "ROOMMATE_AI_HIGH_CAUTION",
+            analysisVersion: "ROOMMATE_AI_SAFETY_V3_1",
+            analyzedAt: "2026-08-31T00:00:00.000Z"
+          }
+        })
+      )
+    );
+    render(<RoommateConversationPage interestId="91" />);
+    expect(await screen.findByLabelText("Tin nhắn của bạn")).toBeInTheDocument();
+    expect(screen.queryByText("Không chia sẻ mã xác thực")).not.toBeInTheDocument();
+    expect(screen.queryByText("Hãy thận trọng trong cuộc trò chuyện này")).not.toBeInTheDocument();
+  });
+
+  it("shows one conversation banner for one or more HIGH_CAUTION counterpart warnings", async () => {
+    apiMocks.listMessages.mockResolvedValue({
+      data: [1, 2].map((id) =>
+        roommateMessage({
+          id,
+          safetyWarning: {
+            outcome: "HIGH_CAUTION",
+            signalCodes: ["OTP_REQUEST"],
+            warningCode: "ROOMMATE_AI_HIGH_CAUTION",
+            analysisVersion: "ROOMMATE_AI_SAFETY_V3_1",
+            analyzedAt: "2026-08-31T00:00:00.000Z"
+          }
+        })
+      ),
+      pagination: { page: 1, pageSize: 100, hasNextPage: false }
+    });
+    render(<RoommateConversationPage interestId="91" />);
+    expect(await screen.findByText("Hãy thận trọng trong cuộc trò chuyện này")).toBeInTheDocument();
+    expect(screen.getAllByText("Hãy thận trọng trong cuộc trò chuyện này")).toHaveLength(1);
+  });
+
   it("sends plain text only after an explicit submit", async () => {
     apiMocks.sendMessage.mockResolvedValue(
       roommateMessage({ id: 302, sender: "SELF", body: "Mình muốn trao đổi thêm." })
@@ -106,4 +176,164 @@ describe("RoommateConversationPage", () => {
     );
     expect(await screen.findByText(secondPageMessage.body)).toBeInTheDocument();
   });
+
+  it("polls at five seconds and never exceeds the thirty-second window", async () => {
+    vi.useFakeTimers();
+    render(<RoommateConversationPage interestId="91" />);
+    await flushMicrotasks();
+    expect(screen.getByText(roommateMessage().body)).toBeInTheDocument();
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(35_000);
+    });
+
+    expect(apiMocks.listMessages).toHaveBeenCalledTimes(6);
+  });
+
+  it("stops polling as soon as a recipient warning arrives", async () => {
+    vi.useFakeTimers();
+    const warning = roommateMessage({
+      safetyWarning: {
+        outcome: "HIGH_CAUTION",
+        signalCodes: ["OTP_REQUEST"],
+        warningCode: "ROOMMATE_AI_HIGH_CAUTION",
+        analysisVersion: "ROOMMATE_AI_SAFETY_V3_1",
+        analyzedAt: "2026-08-31T00:00:00.000Z"
+      }
+    });
+    apiMocks.listMessages
+      .mockResolvedValueOnce(messagePage())
+      .mockResolvedValueOnce(messagePage())
+      .mockResolvedValueOnce(messagePage(warning));
+    render(<RoommateConversationPage interestId="91" />);
+    await flushMicrotasks();
+    expect(screen.getByText(roommateMessage().body)).toBeInTheDocument();
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(10_000);
+    });
+    expect(screen.getAllByRole("alert")).toHaveLength(2);
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(20_000);
+    });
+    expect(apiMocks.listMessages).toHaveBeenCalledTimes(3);
+  });
+
+  it("does not overlap a pending poll request", async () => {
+    vi.useFakeTimers();
+    let resolvePoll: ((value: ReturnType<typeof messagePage>) => void) | null = null;
+    apiMocks.listMessages.mockResolvedValueOnce(messagePage()).mockImplementationOnce(
+      () =>
+        new Promise((resolve) => {
+          resolvePoll = resolve;
+        })
+    );
+    render(<RoommateConversationPage interestId="91" />);
+    await flushMicrotasks();
+    expect(screen.getByText(roommateMessage().body)).toBeInTheDocument();
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(10_000);
+    });
+    expect(apiMocks.listMessages).toHaveBeenCalledTimes(2);
+
+    await act(async () => {
+      resolvePoll?.(messagePage());
+    });
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(5_000);
+    });
+    expect(apiMocks.listMessages).toHaveBeenCalledTimes(3);
+  });
+
+  it("pauses polling while the document is hidden and resumes only while bounded", async () => {
+    vi.useFakeTimers();
+    render(<RoommateConversationPage interestId="91" />);
+    await flushMicrotasks();
+    expect(screen.getByText(roommateMessage().body)).toBeInTheDocument();
+
+    Object.defineProperty(document, "visibilityState", { configurable: true, value: "hidden" });
+    document.dispatchEvent(new Event("visibilitychange"));
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(10_000);
+    });
+    expect(apiMocks.listMessages).toHaveBeenCalledTimes(1);
+
+    Object.defineProperty(document, "visibilityState", { configurable: true, value: "visible" });
+    document.dispatchEvent(new Event("visibilitychange"));
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(5_000);
+    });
+    expect(apiMocks.listMessages).toHaveBeenCalledTimes(2);
+  });
+
+  it("keeps the conversation usable after a polling failure", async () => {
+    vi.useFakeTimers();
+    apiMocks.listMessages.mockResolvedValueOnce(messagePage()).mockRejectedValueOnce(new Error("temporary network"));
+    render(<RoommateConversationPage interestId="91" />);
+    await flushMicrotasks();
+    expect(screen.getByText(roommateMessage().body)).toBeInTheDocument();
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(5_000);
+    });
+    expect(screen.getByRole("button", { name: /G.*tin/iu })).toBeInTheDocument();
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+  });
+
+  it("cleans up polling on unmount and ignores an old conversation response", async () => {
+    vi.useFakeTimers();
+    let resolvePoll: ((value: ReturnType<typeof messagePage>) => void) | null = null;
+    apiMocks.listMessages
+      .mockResolvedValueOnce(messagePage())
+      .mockImplementationOnce(
+        () =>
+          new Promise((resolve) => {
+            resolvePoll = resolve;
+          })
+      )
+      .mockResolvedValueOnce(messagePage(roommateMessage({ body: "Conversation B." })));
+    const view = render(<RoommateConversationPage interestId="91" />);
+    await flushMicrotasks();
+    expect(screen.getByText(roommateMessage().body)).toBeInTheDocument();
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(5_000);
+    });
+    view.rerender(<RoommateConversationPage interestId="92" />);
+    await flushMicrotasks();
+    expect(screen.getByText("Conversation B.")).toBeInTheDocument();
+
+    await act(async () => {
+      resolvePoll?.(messagePage(warningMessage()));
+    });
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+
+    view.unmount();
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(10_000);
+    });
+    expect(apiMocks.listMessages).toHaveBeenCalledTimes(3);
+  });
 });
+
+function warningMessage() {
+  return roommateMessage({
+    safetyWarning: {
+      outcome: "HIGH_CAUTION",
+      signalCodes: ["OTP_REQUEST"],
+      warningCode: "ROOMMATE_AI_HIGH_CAUTION",
+      analysisVersion: "ROOMMATE_AI_SAFETY_V3_1",
+      analyzedAt: "2026-08-31T00:00:00.000Z"
+    }
+  });
+}
+
+async function flushMicrotasks() {
+  await act(async () => {
+    await Promise.resolve();
+    await Promise.resolve();
+    await Promise.resolve();
+  });
+}

@@ -1175,6 +1175,13 @@ export interface RoommateMessage {
   readonly body: string;
   readonly createdAt: string;
   readonly isRead: boolean;
+  readonly safetyWarning?: {
+    readonly outcome: "CAUTION" | "HIGH_CAUTION";
+    readonly signalCodes: readonly string[];
+    readonly warningCode: "ROOMMATE_AI_CAUTION" | "ROOMMATE_AI_HIGH_CAUTION";
+    readonly analysisVersion: string;
+    readonly analyzedAt: string;
+  } | null;
 }
 
 export interface RoommateBlockState {
@@ -1232,6 +1239,15 @@ export interface AdminRoommateReport extends RoommateReportReceipt {
     readonly profileTenantId?: number;
   };
   readonly riskSummary?: RoommateRiskSummary | null;
+  readonly aiSafetySummary?: {
+    readonly highestOutcome: "CAUTION" | "HIGH_CAUTION";
+    readonly signalCodes: readonly string[];
+    readonly messageIds: readonly number[];
+    readonly analysisVersion: string;
+    readonly promptVersion: string;
+    readonly modelVersion: string;
+    readonly analyzedAt: string;
+  } | null;
   readonly evidenceSnapshot?: Readonly<Record<string, unknown>>;
   readonly events?: readonly AdminRoommateReportEvent[];
 }

@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useMemo, useState, type FormEvent } from "react";
+import { useEffect, useMemo, useRef, useState, type FormEvent } from "react";
 import { Button } from "../../components/ui/button";
 import { Card } from "../../components/ui/card";
 import { ErrorState, LoadingState } from "../../components/ui/feedback-states";
@@ -35,10 +35,47 @@ function parseInterestId(value: string): number | null {
   return Number.isSafeInteger(parsed) && parsed <= 2_147_483_647 ? parsed : null;
 }
 
+const safetyCopy: Record<string, { readonly title: string; readonly body: string }> = {
+  ADVANCE_PAYMENT_REQUEST: {
+    title: "Hãy cẩn thận trước khi gửi tiền",
+    body: "Hãy xác minh chỗ ở và thông tin liên quan trước khi gửi tiền hoặc đặt cọc."
+  },
+  OTP_REQUEST: {
+    title: "Không chia sẻ mã xác thực",
+    body: "RentMate không bao giờ yêu cầu bạn gửi mã xác thực hoặc OTP cho người dùng khác qua chat."
+  },
+  CREDENTIAL_REQUEST: {
+    title: "Không chia sẻ thông tin đăng nhập",
+    body: "Không gửi mật khẩu hoặc thông tin đăng nhập."
+  },
+  OFF_PLATFORM_REDIRECTION: {
+    title: "Cẩn thận khi chuyển cuộc trò chuyện ra ngoài",
+    body: "Hãy xác minh thông tin trước khi tiếp tục trao đổi trên nền tảng khác."
+  },
+  EXTERNAL_PAYMENT_REQUEST: {
+    title: "Xác minh trước khi thanh toán ngoài RentMate",
+    body: "Chỉ dùng phương thức thanh toán sau khi bạn đã tự kiểm tra đầy đủ thông tin."
+  },
+  URGENCY_PRESSURE: {
+    title: "Đừng vội vì áp lực thời gian",
+    body: "Dành thời gian kiểm tra thông tin trước khi quyết định."
+  },
+  SENSITIVE_FINANCIAL_INFO_REQUEST: {
+    title: "Không chia sẻ thông tin tài chính nhạy cảm",
+    body: "Không gửi số tài khoản, thông tin thẻ hoặc dữ liệu tài chính riêng tư qua chat."
+  }
+};
+
+function warningText(message: RoommateMessage): { readonly title: string; readonly body: string } | null {
+  const code = message.safetyWarning?.signalCodes[0];
+  return code ? (safetyCopy[code] ?? null) : null;
+}
+
 function MessageBubble({ message }: Readonly<{ message: RoommateMessage }>) {
   const self = message.sender === "SELF";
   const body =
     message.body === "This message is no longer available." ? "Tin nhắn này hiện không còn hiển thị." : message.body;
+  const warning = self ? null : warningText(message);
   return (
     <article
       aria-label={self ? "Tin nhắn của bạn" : "Tin nhắn của người còn lại"}
@@ -56,6 +93,19 @@ function MessageBubble({ message }: Readonly<{ message: RoommateMessage }>) {
         <div className="mt-3">
           <RoommateReportControl target="ROOMMATE_MESSAGE" messageId={message.id} label="Báo cáo tin nhắn" />
         </div>
+      ) : null}
+      {warning ? (
+        <aside
+          className="mt-3 border-l-4 border-rent-yellow bg-rent-yellow/20 p-3 text-ui-sm leading-6 text-heroDark-950"
+          role={message.safetyWarning?.outcome === "HIGH_CAUTION" ? "alert" : "status"}
+          aria-label={warning.title}
+        >
+          <p className="font-bold">{warning.title}</p>
+          <p>{warning.body}</p>
+          <div className="mt-2">
+            <RoommateReportControl target="ROOMMATE_MESSAGE" messageId={message.id} label="Báo cáo tin nhắn này" />
+          </div>
+        </aside>
       ) : null}
     </article>
   );
@@ -78,6 +128,7 @@ function ConversationContent({ interestId }: Readonly<{ interestId: number }>) {
   const [body, setBody] = useState("");
   const [pending, setPending] = useState(false);
   const [sendError, setSendError] = useState<string | null>(null);
+  const pollInFlight = useRef(false);
 
   useEffect(() => {
     if (!tenantReady) return;
@@ -105,7 +156,97 @@ function ConversationContent({ interestId }: Readonly<{ interestId: number }>) {
     return () => controller.abort();
   }, [interestId, messagePage, retryKey, tenantReady]);
 
+  const pollingEligible =
+    tenantReady &&
+    state === "success" &&
+    messagePage === 1 &&
+    messages.some((message) => message.sender === "COUNTERPART") &&
+    !messages.some((message) => message.safetyWarning);
+
+  useEffect(() => {
+    if (!pollingEligible) return;
+    const startedAt = Date.now();
+    let disposed = false;
+    let timer: number | null = null;
+    let requestController: AbortController | null = null;
+
+    const clearTimer = () => {
+      if (timer === null) return;
+      window.clearTimeout(timer);
+      timer = null;
+    };
+
+    const abortRequest = () => {
+      requestController?.abort();
+      requestController = null;
+    };
+
+    const stop = () => {
+      disposed = true;
+      clearTimer();
+      abortRequest();
+    };
+
+    const refresh = async (): Promise<void> => {
+      if (disposed || document.visibilityState !== "visible" || pollInFlight.current) return;
+      pollInFlight.current = true;
+      const controller = new AbortController();
+      requestController = controller;
+      try {
+        const page = await api.roommates.listMessages(interestId, { page: 1, pageSize: 100 }, controller.signal);
+        if (disposed || controller.signal.aborted || document.visibilityState !== "visible") return;
+        setMessages(page.data);
+        setMessagePagination(page.pagination);
+        if (page.data.some((message) => message.safetyWarning)) stop();
+      } catch {
+        // Polling is advisory: normal chat remains usable when a refresh fails.
+      } finally {
+        if (requestController === controller) requestController = null;
+        pollInFlight.current = false;
+      }
+    };
+
+    const schedule = () => {
+      if (disposed || timer !== null || document.visibilityState !== "visible") return;
+      const remaining = 30_000 - (Date.now() - startedAt);
+      if (remaining <= 0) {
+        stop();
+        return;
+      }
+      timer = window.setTimeout(
+        () => {
+          timer = null;
+          if (Date.now() - startedAt >= 30_000) {
+            stop();
+            return;
+          }
+          void refresh().finally(schedule);
+        },
+        Math.min(5_000, remaining)
+      );
+    };
+
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === "hidden") {
+        clearTimer();
+        abortRequest();
+        return;
+      }
+      schedule();
+    };
+
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+    schedule();
+    return () => {
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+      stop();
+    };
+  }, [interestId, pollingEligible]);
+
   const writable = interest?.status === "PENDING" || interest?.status === "ACCEPTED";
+  const highCaution = messages.some(
+    (message) => message.sender === "COUNTERPART" && message.safetyWarning?.outcome === "HIGH_CAUTION"
+  );
   const submit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     if (!body.trim()) {
@@ -144,6 +285,16 @@ function ConversationContent({ interestId }: Readonly<{ interestId: number }>) {
       />
       <RoommateSubnav />
       <RoommateSafetyNotice kind="short" className="sticky top-20 z-20" />
+      {highCaution ? (
+        <section
+          className="border-l-4 border-rose-700 bg-rose-50 p-4 text-ui-sm leading-6 text-heroDark-950"
+          role="alert"
+          aria-label="Lưu ý an toàn cho cuộc trò chuyện"
+        >
+          <h2 className="font-bold">Hãy thận trọng trong cuộc trò chuyện này</h2>
+          <p>Không chia sẻ OTP, mật khẩu hoặc thông tin tài chính. Hãy tự xác minh trước khi gửi tiền.</p>
+        </section>
+      ) : null}
       <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_minmax(19rem,0.45fr)]">
         <div className="space-y-4">
           <Card className="space-y-4">

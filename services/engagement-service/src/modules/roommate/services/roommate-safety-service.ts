@@ -19,6 +19,12 @@ import type {
   RoommateReportRecord,
   RoommateSafetyRepository
 } from "../repositories/roommate-safety-repository.js";
+import type {
+  RoommateAiSafetyCompletedProjection,
+  RoommateAiSafetyRepository
+} from "../../roommate-ai/repositories/roommate-ai-safety-repository.js";
+import { roommateAiApplicationVersions } from "../../roommate-ai/prompts/versions.js";
+import type { RoommateAiCapabilityService } from "../../roommate-ai/services/roommate-ai-capability-service.js";
 import {
   evaluateRoommateRisk,
   type RoommateRiskActivity,
@@ -54,6 +60,13 @@ export interface RoommateMessageView {
   readonly body: string;
   readonly createdAt: string;
   readonly isRead: boolean;
+  readonly safetyWarning: Readonly<{
+    readonly outcome: "CAUTION" | "HIGH_CAUTION";
+    readonly signalCodes: readonly string[];
+    readonly warningCode: "ROOMMATE_AI_CAUTION" | "ROOMMATE_AI_HIGH_CAUTION";
+    readonly analysisVersion: string;
+    readonly analyzedAt: string;
+  }> | null;
 }
 
 export interface RoommateBlockView {
@@ -93,6 +106,15 @@ export interface RoommateAdminReportView extends RoommateReportReceipt {
   readonly reporter: Readonly<{ displayName: string | null; memberSince: string | null }>;
   readonly subject: Readonly<{ requestId: number; messageId: number | null; profileTenantId?: number }>;
   readonly riskSummary: RoommateRiskSummary;
+  readonly aiSafetySummary: Readonly<{
+    readonly highestOutcome: "CAUTION" | "HIGH_CAUTION";
+    readonly signalCodes: readonly string[];
+    readonly messageIds: readonly number[];
+    readonly analysisVersion: string;
+    readonly promptVersion: string;
+    readonly modelVersion: string;
+    readonly analyzedAt: string;
+  }> | null;
   readonly evidenceSnapshot?: Readonly<Record<string, unknown>>;
   readonly events?: readonly RoommateAdminReportEventView[];
 }
@@ -193,6 +215,8 @@ interface RoommateSafetyDependencies {
     >;
   readonly transactionRunner: RoommateSafetyTransactionRunner;
   readonly riskConfig?: RoommateRiskConfig;
+  readonly aiSafetyRepository?: RoommateAiSafetyRepository;
+  readonly aiCapabilityService?: Pick<RoommateAiCapabilityService, "isSafetyWarningEnabled">;
   readonly now?: () => Date;
 }
 
@@ -240,13 +264,31 @@ function reportReceipt(report: RoommateReportRecord): RoommateReportReceipt {
   });
 }
 
-function messageView(message: RoommateMessageRecord, viewerTenantId: number): RoommateMessageView {
+function messageView(
+  message: RoommateMessageRecord,
+  viewerTenantId: number,
+  analysis: RoommateAiSafetyCompletedProjection | null = null
+): RoommateMessageView {
+  const safetyWarning =
+    message.moderationState === "VISIBLE" && message.senderTenantId !== viewerTenantId && analysis !== null
+      ? Object.freeze({
+          outcome: analysis.outcome,
+          signalCodes: analysis.signalCodes,
+          warningCode:
+            analysis.outcome === "HIGH_CAUTION"
+              ? ("ROOMMATE_AI_HIGH_CAUTION" as const)
+              : ("ROOMMATE_AI_CAUTION" as const),
+          analysisVersion: analysis.analysisVersion,
+          analyzedAt: analysis.analyzedAt
+        })
+      : null;
   return Object.freeze({
     id: message.id,
     sender: message.senderTenantId === viewerTenantId ? "SELF" : "COUNTERPART",
     body: message.moderationState === "VISIBLE" ? message.body : "This message is no longer available.",
     createdAt: message.createdAt,
-    isRead: message.senderTenantId === viewerTenantId || message.readAt !== null
+    isRead: message.senderTenantId === viewerTenantId || message.readAt !== null,
+    safetyWarning
   });
 }
 
@@ -321,8 +363,27 @@ export function createRoommateSafetyService(dependencies: RoommateSafetyDependen
     identityAccountClient,
     transactionRunner,
     riskConfig = defaultRoommateRiskConfig,
+    aiSafetyRepository,
+    aiCapabilityService,
     now = () => new Date()
   } = dependencies;
+
+  const safetyWarningsEnabled = (principal: AuthenticatedPrincipal): boolean =>
+    aiSafetyRepository !== undefined && aiCapabilityService?.isSafetyWarningEnabled(principal) === true;
+
+  const loadSafetyProjections = async (
+    executor: SqlExecutor,
+    messageIds: readonly number[],
+    requestId?: number
+  ): Promise<ReadonlyMap<number, RoommateAiSafetyCompletedProjection>> => {
+    if (!aiSafetyRepository) return new Map();
+    return aiSafetyRepository.listCompletedProjections(
+      executor,
+      messageIds,
+      roommateAiApplicationVersions.safetyAnalysisVersion,
+      requestId
+    );
+  };
 
   const loadIdentity = async (tenantIds: readonly number[]): Promise<readonly IdentityRoommateTenantProjection[]> => {
     try {
@@ -481,6 +542,7 @@ export function createRoommateSafetyService(dependencies: RoommateSafetyDependen
     report: RoommateReportRecord,
     includeEvidence: boolean,
     riskSummary: RoommateRiskSummary,
+    aiSafetySummary: RoommateAdminReportView["aiSafetySummary"],
     events?: readonly RoommateReportEvent[]
   ): Promise<RoommateAdminReportView> => {
     const [identity] = await loadIdentity([report.reporterTenantId]);
@@ -511,15 +573,36 @@ export function createRoommateSafetyService(dependencies: RoommateSafetyDependen
         ...(profileTenantId === null ? {} : { profileTenantId })
       }),
       riskSummary,
+      aiSafetySummary,
       ...(includeEvidence ? { evidenceSnapshot: report.evidenceSnapshot } : {}),
       ...(safeEvents === undefined ? {} : { events: Object.freeze(safeEvents) })
+    });
+  };
+
+  const loadAdminAiSafetySummary = async (
+    report: RoommateReportRecord
+  ): Promise<RoommateAdminReportView["aiSafetySummary"]> => {
+    if (report.targetType !== "ROOMMATE_MESSAGE" || report.messageId === null || !aiSafetyRepository) return null;
+    const projections = await transactionRunner.run((executor) =>
+      loadSafetyProjections(executor, [report.messageId as number], report.requestId)
+    );
+    const projection = projections.get(report.messageId);
+    if (!projection) return null;
+    return Object.freeze({
+      highestOutcome: projection.outcome,
+      signalCodes: projection.signalCodes,
+      messageIds: Object.freeze([projection.messageId]),
+      analysisVersion: projection.analysisVersion,
+      promptVersion: projection.promptVersion,
+      modelVersion: projection.modelIdentifier,
+      analyzedAt: projection.analyzedAt
     });
   };
 
   const service: RoommateSafetyService = {
     async listMessages(principal, interestId, query) {
       const tenantId = requireTenant(principal);
-      const rows = await transactionRunner.run(async (executor) => {
+      const result = await transactionRunner.run(async (executor) => {
         const initial = await requireParticipant(executor, interestId, tenantId);
         await lockTenants(executor, [initial.requestOwnerTenantId, initial.interestedTenantId]);
         let interest = await requireParticipant(executor, interestId, tenantId, true);
@@ -527,17 +610,28 @@ export function createRoommateSafetyService(dependencies: RoommateSafetyDependen
           await roommateRepository.materializeExpired(executor, interest.request.id, now());
           interest = await requireParticipant(executor, interestId, tenantId, true);
         }
+        const counterpartTenantId = participant(interest, tenantId);
         const messages = await safetyRepository.listMessages(executor, interestId, query.pageSize + 1, query.offset);
         for (const message of messages) {
           if (message.interestId !== interest.id) throw new ApplicationError("CONCURRENT_MODIFICATION", blockedMessage);
         }
-        return messages;
+        const analyses = safetyWarningsEnabled(principal)
+          ? await loadSafetyProjections(
+              executor,
+              messages.filter((message) => message.senderTenantId === counterpartTenantId).map((message) => message.id)
+            )
+          : new Map<number, RoommateAiSafetyCompletedProjection>();
+        return Object.freeze({ messages, analyses });
       });
       return Object.freeze({
-        data: Object.freeze(rows.slice(0, query.pageSize).map((message) => messageView(message, tenantId))),
+        data: Object.freeze(
+          result.messages
+            .slice(0, query.pageSize)
+            .map((message) => messageView(message, tenantId, result.analyses.get(message.id) ?? null))
+        ),
         page: query.page,
         pageSize: query.pageSize,
-        hasNextPage: rows.length > query.pageSize
+        hasNextPage: result.messages.length > query.pageSize
       });
     },
 
@@ -845,7 +939,7 @@ export function createRoommateSafetyService(dependencies: RoommateSafetyDependen
       for (const report of pageReports) {
         const summary = summaries.get(report.id);
         if (!summary) throw new Error("Roommate risk summary is missing.");
-        views.push(await adminReportView(report, false, summary));
+        views.push(await adminReportView(report, false, summary, await loadAdminAiSafetySummary(report)));
       }
       return Object.freeze({
         data: Object.freeze(views),
@@ -865,7 +959,13 @@ export function createRoommateSafetyService(dependencies: RoommateSafetyDependen
       if (!result) return null;
       const [summary] = [...(await evaluateReports([result.report], now())).values()];
       if (!summary) throw new Error("Roommate risk summary is missing.");
-      return adminReportView(result.report, true, summary, result.events);
+      return adminReportView(
+        result.report,
+        true,
+        summary,
+        await loadAdminAiSafetySummary(result.report),
+        result.events
+      );
     },
 
     async updateAdminReportStatus(principal, reportId, input) {
@@ -896,7 +996,13 @@ export function createRoommateSafetyService(dependencies: RoommateSafetyDependen
       if (!result) return null;
       const [summary] = [...(await evaluateReports([result.report], now())).values()];
       if (!summary) throw new Error("Roommate risk summary is missing.");
-      return adminReportView(result.report, true, summary, result.events);
+      return adminReportView(
+        result.report,
+        true,
+        summary,
+        await loadAdminAiSafetySummary(result.report),
+        result.events
+      );
     },
 
     async moderateProfile(principal, tenantId, input) {

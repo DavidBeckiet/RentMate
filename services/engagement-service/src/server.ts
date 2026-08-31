@@ -209,11 +209,15 @@ async function startEngagementService(): Promise<void> {
   });
   const roommateRepository = createRoommateRepository();
   const roommateSafetyRepository = createRoommateSafetyRepository();
+  const roommateAiCapabilityService = new RoommateAiCapabilityService(roommateAiConfig);
+  const roommateAiSafetyRepository = createRoommateAiSafetyRepository();
   const roommateSafetyService = createRoommateSafetyService({
     roommateRepository,
     safetyRepository: roommateSafetyRepository,
     identityAccountClient,
     riskConfig: config.roommateRisk,
+    aiSafetyRepository: roommateAiSafetyRepository,
+    aiCapabilityService: roommateAiCapabilityService,
     transactionRunner: {
       run: (operation) => withTransaction(databasePool, logger, operation)
     }
@@ -233,7 +237,6 @@ async function startEngagementService(): Promise<void> {
     },
     logger
   });
-  const roommateAiCapabilityService = new RoommateAiCapabilityService(roommateAiConfig);
   const roommateAiProvider =
     roommateAiConfig.provider === "GEMINI" ? new GeminiAiProvider({ apiKey: roommateAiConfig.geminiApiKey }) : null;
   const roommateAiPreferencePreviewService = new RoommateAiPreferencePreviewService(
@@ -253,7 +256,7 @@ async function startEngagementService(): Promise<void> {
   const roommateAiSafetyWorker = createRoommateAiSafetyWorker({
     configuration: roommateAiConfig,
     provider: roommateAiProvider,
-    repository: createRoommateAiSafetyRepository(),
+    repository: roommateAiSafetyRepository,
     transactionRunner: { run: (operation) => withTransaction(databasePool, logger, operation) },
     logger
   });
