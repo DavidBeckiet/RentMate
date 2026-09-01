@@ -7,7 +7,8 @@
 - Release baseline: `e4a0a3426e3aa0de2c329c3e0b0d9782aafad5d8`
 - Evaluation dataset: `ROOMMATE_V3_EVAL_2026_08_31`
 - Automated provider: `FakeAiProvider`
-- Real-provider status: `REAL_PROVIDER_STAGING_NOT_RUN`
+- Real-provider parser compatibility: `GEMINI_PARSER_REAL_PROVIDER_COMPATIBILITY = PASS`
+- Real-provider semantic evaluation: `REAL_GEMINI_FULL_SEMANTIC_EVALUATION = NOT_RUN`
 - Test data: synthetic fixtures and local release-test accounts only
 - PostgreSQL target: disposable test database `rentmate_test_identity_v2`
 
@@ -23,6 +24,7 @@ Approved V3 checkpoints:
 | Typecheck hygiene | `8c06f7304e5d892efe8910072ef1d26c8782f549` | `sua loi typecheck roommate ai` |
 | V3-06 | `2e6f808a856148cfd5a2e836dda91e41549b865e` | `tich hop canh bao ai vao roommate` |
 | V3-07 | `e4a0a3426e3aa0de2c329c3e0b0d9782aafad5d8` | `kiem thu va kiem soat ai roommate` |
+| Post-V3 Gemini schema compatibility | `0a6d1bfba727d4bb770d30d45db043e009541d05` | `sua schema structured output gemini roommate` |
 
 ## 2. Final decisions
 
@@ -31,7 +33,7 @@ ROOMMATE_V3_ENGINEERING_READY = YES
 ROOMMATE_V3_ENGINEERING_RELEASE = READY
 ```
 
-Engineering closure and production AI rollout are separate decisions. The repository and deterministic release matrix are ready to freeze V3 Core, but no approved real-provider staging, production SHADOW, or governance evidence was supplied.
+Engineering closure and production AI rollout are separate decisions. The repository and deterministic release matrix are ready to freeze V3 Core. Parser transport/schema compatibility has real Gemini evidence, but no approved real-provider semantic staging, production SHADOW, or governance evidence was supplied.
 
 ```text
 SHADOW_TO_TENANT_PRODUCTION_ROLLOUT = NOT YET APPROVED
@@ -103,6 +105,34 @@ The source, example environment, Compose configuration, configuration tests, loc
 The local release runtime was rebuilt from the current working tree without changing its database volume. Its verified state was `DISABLED`, feature gates false, safety `OFF`, and rollout `0`. An authenticated real-Gateway probe returned HTTP 200 with all four capability booleans false. Anonymous access returned `401 AUTHENTICATION_REQUIRED`.
 
 No Gemini key, model configuration, provider endpoint, or private provider detail was found in the production frontend static bundle.
+
+### 7.1. Post-V3 Gemini Structured Output Compatibility Verification
+
+The post-V3 compatibility checkpoint verified the final Roommate preference-parser transport against the intended Engagement runtime without changing the frozen product contract.
+
+| Item | Evidence |
+| --- | --- |
+| Compatibility fix | `0a6d1bfba727d4bb770d30d45db043e009541d05` (`sua schema structured output gemini roommate`) |
+| Runtime | Engagement container healthy; intended server-side Gemini key source confirmed (secret value omitted) |
+| Model | `gemini-2.5-flash` |
+| REST path | `https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent` |
+| Old full parser schema | HTTP 400 `INVALID_ARGUMENT` |
+| Final Gemini-facing parser schema | HTTP 200; candidate present |
+| JSON parse | PASS |
+| Transport normalization | PASS |
+| Strict RentMate application validation | PASS |
+
+The original parser schema contained a Gemini-incompatible nested evidence-range structure at `$.properties.unresolved.items.properties.evidenceRanges.items`. The compatibility audit also found unsupported `minLength`, `maxLength`, and `pattern` keywords in other Roommate AI schemas. The provider adapter now projects schemas into the supported Gemini subset; strict application-side validation remains authoritative for bounds, enums, evidence, protected attributes, and unknown-field rejection.
+
+This is real provider transport/schema evidence only. It is not evidence of real Gemini semantic-quality metrics, production SHADOW performance, governance approval, or tenant rollout approval.
+
+```text
+GEMINI_PARSER_REAL_PROVIDER_COMPATIBILITY = PASS
+REAL_GEMINI_FULL_SEMANTIC_EVALUATION = NOT_RUN
+KEY_ROTATION_RECOMMENDED = YES
+```
+
+No public API, product behavior, migration, database object, or Gemini SDK was introduced by this compatibility checkpoint.
 
 ## 8. Provider payload minimization
 
@@ -262,6 +292,8 @@ The database can derive bounded status/error/outcome aggregates without retainin
 | Frontend lint | PASS |
 | Chromium Roommate/Gateway E2E | 5/5 PASS |
 | Frontend production build | PASS through all Next.js phases and normal exit |
+| Real Gemini parser transport/schema compatibility | PASS; bounded synthetic parser probe after the compatibility fix |
+| Real Gemini full semantic evaluation | NOT_RUN; deterministic metrics remain FakeAiProvider evidence |
 
 The full frontend suite used deterministic threads with one worker and no file parallelism. The production build used a temporary process-local HTTPS public API origin and did not modify persistent environment configuration.
 
@@ -291,11 +323,12 @@ V3-08 reran the unchanged V3-07 deterministic evaluation suite. Results remain t
 
 ## 18. Production rollout and governance
 
-No new approved evidence appeared after V3-07. Unknown or organizational evidence absent from the repository remains `NOT_MET` rather than being inferred from code.
+No new approved production or governance evidence appeared after V3-07. The post-V3 parser compatibility evidence above is limited to transport/schema behavior; unknown or organizational evidence remains `NOT_MET` rather than being inferred from code.
 
 | Gate | Evidence | State |
 | --- | --- | --- |
-| Real Gemini synthetic staging | Not run | `NOT_MET` |
+| Real Gemini parser transport/schema compatibility | Post-V3 bounded synthetic parser probe passed | `PASS` |
+| Real Gemini full semantic staging benchmark | Not run; parser transport probe is not a semantic benchmark | `NOT_MET` |
 | Paid/commercial Gemini project | No approval artifact | `NOT_MET` |
 | Privacy/DPA/retention review | No completed review artifact | `NOT_MET` |
 | Tenant disclosure | No published disclosure evidence | `NOT_MET` |
@@ -313,7 +346,7 @@ Safe production configuration recommendation: keep provider `DISABLED` and safet
 
 ## 19. Known limitations
 
-- Real Gemini semantic quality has not been validated by CI `FakeAiProvider` results.
+- Real Gemini parser transport/schema compatibility is verified, but real Gemini semantic quality has not been validated by CI `FakeAiProvider` results or a full real-provider benchmark.
 - Production SHADOW observation is not complete or evidenced.
 - Private-chat production processing requires a paid/commercial eligible Gemini project, privacy/DPA/retention review, tenant disclosure, and explicit rollout approval.
 - Zero provider retention is not claimed.

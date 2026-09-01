@@ -7,7 +7,8 @@
 - Baseline commit: `2e6f808a856148cfd5a2e836dda91e41549b865e`
 - Dataset version: `ROOMMATE_V3_EVAL_2026_08_31`
 - CI provider: `FakeAiProvider`
-- Real-provider status: `REAL_PROVIDER_STAGING_NOT_RUN`
+- Real-provider parser compatibility: `GEMINI_PARSER_REAL_PROVIDER_COMPATIBILITY = PASS`
+- Real-provider semantic evaluation: `REAL_GEMINI_FULL_SEMANTIC_EVALUATION = NOT_RUN`
 - Data classification: synthetic, hand-authored fixtures only
 
 Application behavior versions:
@@ -23,9 +24,33 @@ Application behavior versions:
 
 The offline results below measure the deterministic application harness, strict schemas, frozen application-owned rules, and hand-authored synthetic provider outputs. They prove that CI is reproducible and that invalid or adversarial provider output cannot override the application contract. They are not evidence that a real Gemini model meets the same semantic-quality metrics.
 
-The real Gemini matrix was not run because no approved staging execution and governance evidence was available for this checkpoint. This does not fail the engineering checkpoint, but it prevents production tenant rollout approval.
+The real Gemini semantic-quality matrix was not run because no approved staging execution and governance evidence was available for this checkpoint. A later bounded post-V3 parser transport/schema probe succeeded, but it does not provide semantic-quality metrics or production rollout evidence. This does not fail the engineering checkpoint, but it prevents production tenant rollout approval.
 
 The benchmark is intentionally reviewable and small. It must not be presented as statistically conclusive.
+
+## Post-V3 parser transport/schema evidence
+
+The following evidence is deliberately separate from the deterministic semantic benchmark below:
+
+| Item | Evidence |
+| --- | --- |
+| Compatibility fix | `0a6d1bfba727d4bb770d30d45db043e009541d05` (`sua schema structured output gemini roommate`) |
+| Runtime/model | Intended Engagement runtime; healthy container; `gemini-2.5-flash` |
+| Old full parser schema | HTTP 400 `INVALID_ARGUMENT` |
+| Final Gemini-facing parser schema | HTTP 200; candidate present |
+| JSON parse | PASS |
+| Transport normalization | PASS |
+| Strict RentMate validation | PASS |
+
+The old parser schema failed on a Gemini-incompatible nested evidence-range structure. The audit also found unsupported `minLength`, `maxLength`, and `pattern` keywords in other Roommate AI schemas. The provider adapter projects transport schemas into the supported Gemini subset; application-side validation still enforces all frozen bounds, enums, evidence, protected-attribute, and unknown-field rules.
+
+```text
+GEMINI_PARSER_REAL_PROVIDER_COMPATIBILITY = PASS
+REAL_GEMINI_FULL_SEMANTIC_EVALUATION = NOT_RUN
+KEY_ROTATION_RECOMMENDED = YES
+```
+
+This parser transport probe used synthetic input only. It did not run the recommendation, explanation, or safety semantic matrix, and it does not constitute approved staging, SHADOW, governance, or tenant rollout evidence.
 
 ## Fixture composition
 
@@ -120,15 +145,15 @@ Every field has precision, recall, and F1 of `1.00` in the deterministic synthet
 | Feature | CI/fake-provider | Real Gemini staging |
 | --- | --- | --- |
 | V3-01 provider/config | PASS | NOT_RUN_REAL_PROVIDER |
-| V3-02 preference parser | PASS | NOT_RUN_REAL_PROVIDER |
+| V3-02 preference parser | PASS | TRANSPORT_SCHEMA_COMPATIBILITY_PASS; SEMANTIC_MATRIX_NOT_RUN |
 | V3-03 recommendation | PASS | NOT_RUN_REAL_PROVIDER |
 | V3-04 explanation | PASS | NOT_RUN_REAL_PROVIDER |
 | V3-05 safety worker | PASS | NOT_RUN_REAL_PROVIDER |
 | V3-06 tenant/admin projection | PASS | Not provider-backed at read time |
 
-`REAL_PROVIDER_STAGING_NOT_RUN`
+`GEMINI_PARSER_REAL_PROVIDER_COMPATIBILITY = PASS`
 
-No real Gemini request was made by V3-07. An approved manual staging run must use only this synthetic/irreversibly redacted class of data and separately report schema rate, timeout/error rate, and latency p50/p95.
+No real Gemini semantic-evaluation request was made by V3-07. The later post-V3 parser compatibility request is transport/schema evidence only. An approved manual semantic staging run must use only this synthetic/irreversibly redacted class of data and separately report schema rate, timeout/error rate, and latency p50/p95.
 
 ## Production rollout gate table
 
@@ -214,7 +239,7 @@ This checkpoint completes only step 1 engineering evidence. It does not authoriz
 
 ## Limitations and required future evidence
 
-- A real Gemini staging benchmark remains mandatory before model-quality or production claims.
+- A real Gemini semantic-quality staging benchmark remains mandatory before model-quality or production claims; parser transport compatibility alone is insufficient.
 - The synthetic benchmark is small and must grow through reviewed, synthetic/irreversibly redacted cases rather than production chat copies.
 - Production SHADOW duration, volume, error rates, end-to-warning latency, privacy incidents, disclosure, commercial eligibility, DPA/retention review, and explicit approval remain unproven.
 - Zero provider retention is not claimed.
