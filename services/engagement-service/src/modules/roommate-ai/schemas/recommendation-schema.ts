@@ -80,6 +80,8 @@ export function validateRoommateAiRecommendationOutput(
         invalid();
       if (
         typeof item.token !== "string" ||
+        Array.from(item.token).length < 1 ||
+        Array.from(item.token).length > 8 ||
         !sources.has(item.token) ||
         !roommateAiSemanticConcepts.includes(item.concept as RoommateAiSemanticConcept) ||
         !roommateAiSemanticSources.includes(item.source as RoommateAiSemanticSource) ||

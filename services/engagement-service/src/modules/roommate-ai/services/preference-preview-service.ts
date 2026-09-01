@@ -5,7 +5,8 @@ import { roommateAiPreferenceParserPrompt } from "../prompts/preference-parser-p
 import { roommateAiApplicationVersions, roommateAiParserPromptVersion } from "../prompts/versions.js";
 import type { AiProvider } from "../providers/ai-provider.js";
 import {
-  roommateAiPreferencePreviewJsonSchema,
+  normalizeRoommateAiPreferencePreviewProviderOutput,
+  roommateAiPreferencePreviewGeminiJsonSchema,
   roommateAiPreferencePreviewSchemaVersion,
   validateRoommateAiPreferencePreviewOutput,
   type RoommateAiPreferenceProposal,
@@ -43,7 +44,7 @@ export class RoommateAiPreferencePreviewService {
       task: "ROOMMATE_AI_PREFERENCE_PREVIEW",
       instructions: roommateAiPreferenceParserPrompt.instructions,
       input: Object.freeze({ target: input.target, locale: input.locale, text: input.text }),
-      responseJsonSchema: roommateAiPreferencePreviewJsonSchema(input.target),
+      responseJsonSchema: roommateAiPreferencePreviewGeminiJsonSchema(input.target),
       model: this.configuration.models.parser,
       maxOutputTokens: 500,
       timeoutMs: this.configuration.timeoutsMs.parser,
@@ -52,7 +53,12 @@ export class RoommateAiPreferencePreviewService {
         promptVersion: roommateAiParserPromptVersion,
         schemaVersion: roommateAiPreferencePreviewSchemaVersion
       }),
-      validateOutput: (value) => validateRoommateAiPreferencePreviewOutput(value, input.target, input.text)
+      validateOutput: (value) =>
+        validateRoommateAiPreferencePreviewOutput(
+          normalizeRoommateAiPreferencePreviewProviderOutput(value),
+          input.target,
+          input.text
+        )
     });
     return Object.freeze({
       target: input.target,

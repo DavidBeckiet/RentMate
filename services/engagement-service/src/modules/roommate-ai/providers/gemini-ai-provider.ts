@@ -1,5 +1,6 @@
 import { AiProviderError } from "./ai-provider-error.js";
 import type { AiGenerationRequest, AiGenerationResult, AiProvider, AiUsageMetadata } from "./ai-provider.js";
+import { assertGeminiJsonSchemaCompatible, toGeminiJsonSchema } from "./gemini-schema-adapter.js";
 
 const geminiGenerateContentBaseUrl = "https://generativelanguage.googleapis.com/v1beta/models";
 
@@ -85,6 +86,8 @@ export class GeminiAiProvider implements AiProvider {
     }, request.timeoutMs);
 
     try {
+      const responseJsonSchema = toGeminiJsonSchema(request.responseJsonSchema);
+      assertGeminiJsonSchemaCompatible(responseJsonSchema);
       const response = await this.fetchImplementation(
         `${geminiGenerateContentBaseUrl}/${encodeURIComponent(request.model)}:generateContent`,
         {
@@ -107,7 +110,7 @@ export class GeminiAiProvider implements AiProvider {
               candidateCount: 1,
               maxOutputTokens: request.maxOutputTokens,
               responseMimeType: "application/json",
-              responseJsonSchema: request.responseJsonSchema
+              responseJsonSchema
             }
           }),
           signal: controller.signal

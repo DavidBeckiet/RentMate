@@ -64,32 +64,97 @@ const rangeSchema = Object.freeze({
   properties: { start: { type: "integer", minimum: 0 }, end: { type: "integer", minimum: 1 } }
 });
 
-const proposalSchema = Object.freeze({
-  type: "object",
-  additionalProperties: false,
-  required: ["value", "confidence", "evidenceRanges"],
-  properties: {
-    value: {},
-    confidence: { type: "string", enum: [...roommateAiConfidenceValues] },
-    evidenceRanges: { type: "array", minItems: 1, maxItems: 8, items: rangeSchema }
-  }
+const evidenceRangesSchema = Object.freeze({
+  type: "array",
+  minItems: 1,
+  maxItems: 8,
+  items: rangeSchema
 });
 
-function proposalJsonSchema(fields: readonly string[]): Readonly<Record<string, unknown>> {
+const geminiEvidenceRangeSchema = Object.freeze({
+  type: "string",
+  description: "Unicode code-point range encoded as start:end."
+});
+
+const geminiEvidenceRangesSchema = Object.freeze({
+  type: "array",
+  minItems: 1,
+  maxItems: 8,
+  items: geminiEvidenceRangeSchema
+});
+
+function proposalSchema(value: Readonly<Record<string, unknown>>): Readonly<Record<string, unknown>> {
   return Object.freeze({
     type: "object",
     additionalProperties: false,
-    properties: Object.freeze(Object.fromEntries(fields.map((field) => [field, proposalSchema])))
+    required: ["value", "confidence", "evidenceRanges"],
+    properties: {
+      value,
+      confidence: { type: "string", enum: [...roommateAiConfidenceValues] },
+      evidenceRanges: evidenceRangesSchema
+    }
   });
 }
 
-function outputJsonSchema(fields: readonly string[]): Readonly<Record<string, unknown>> {
+function geminiProposalSchema(value: Readonly<Record<string, unknown>>): Readonly<Record<string, unknown>> {
+  return Object.freeze({
+    type: "object",
+    additionalProperties: false,
+    required: ["value", "confidence", "evidenceRanges"],
+    properties: {
+      value,
+      confidence: { type: "string", enum: [...roommateAiConfidenceValues] },
+      evidenceRanges: geminiEvidenceRangesSchema
+    }
+  });
+}
+
+function valueSchema(target: RoommateAiPreferenceTarget, field: string): Readonly<Record<string, unknown>> {
+  if (target === "PROFILE") {
+    return Object.freeze({
+      type: "string",
+      enum: [...roommateProfileEnumValues[field as ProfileField]]
+    });
+  }
+  if (field === "preferredAreaKeys") {
+    return Object.freeze({ type: "array", maxItems: 5, items: { type: "string" } });
+  }
+  if (field === "budgetMinPerPerson" || field === "budgetMaxPerPerson") {
+    return Object.freeze({ type: "integer", minimum: 1, maximum: 999999999999 });
+  }
+  return Object.freeze({ type: "string", format: "date" });
+}
+
+function geminiValueSchema(target: RoommateAiPreferenceTarget, field: string): Readonly<Record<string, unknown>> {
+  if (target === "REQUEST" && (field === "moveInFrom" || field === "moveInUntil")) {
+    return Object.freeze({ type: "string" });
+  }
+  return valueSchema(target, field);
+}
+
+function proposalJsonSchema(
+  target: RoommateAiPreferenceTarget,
+  fields: readonly string[]
+): Readonly<Record<string, unknown>> {
+  return Object.freeze({
+    type: "object",
+    additionalProperties: false,
+    properties: Object.freeze(
+      Object.fromEntries(fields.map((field) => [field, proposalSchema(valueSchema(target, field))]))
+    )
+  });
+}
+
+function outputJsonSchema(
+  target: RoommateAiPreferenceTarget,
+  fields: readonly string[]
+): Readonly<Record<string, unknown>> {
   return Object.freeze({
     type: "object",
     additionalProperties: false,
     required: ["proposal", "unresolved"],
     properties: {
-      proposal: proposalJsonSchema(fields),
+      proposal: proposalJsonSchema(target, fields),
       unresolved: {
         type: "array",
         maxItems: 10,
@@ -99,7 +164,40 @@ function outputJsonSchema(fields: readonly string[]): Readonly<Record<string, un
           required: ["reason", "evidenceRanges"],
           properties: {
             reason: { type: "string", enum: [...roommateAiUnresolvedReasons] },
-            evidenceRanges: { type: "array", minItems: 1, maxItems: 8, items: rangeSchema }
+            evidenceRanges: evidenceRangesSchema
+          }
+        }
+      }
+    }
+  });
+}
+
+function geminiOutputJsonSchema(
+  target: RoommateAiPreferenceTarget,
+  fields: readonly string[]
+): Readonly<Record<string, unknown>> {
+  return Object.freeze({
+    type: "object",
+    additionalProperties: false,
+    required: ["proposal", "unresolved"],
+    properties: {
+      proposal: Object.freeze({
+        type: "object",
+        additionalProperties: false,
+        properties: Object.freeze(
+          Object.fromEntries(fields.map((field) => [field, geminiProposalSchema(geminiValueSchema(target, field))]))
+        )
+      }),
+      unresolved: {
+        type: "array",
+        maxItems: 10,
+        items: {
+          type: "object",
+          additionalProperties: false,
+          required: ["reason", "evidenceRanges"],
+          properties: {
+            reason: { type: "string", enum: [...roommateAiUnresolvedReasons] },
+            evidenceRanges: geminiEvidenceRangesSchema
           }
         }
       }
@@ -110,7 +208,19 @@ function outputJsonSchema(fields: readonly string[]): Readonly<Record<string, un
 export function roommateAiPreferencePreviewJsonSchema(
   target: RoommateAiPreferenceTarget
 ): Readonly<Record<string, unknown>> {
-  return target === "PROFILE" ? outputJsonSchema(profileFields) : outputJsonSchema(requestFields);
+  return target === "PROFILE" ? outputJsonSchema(target, profileFields) : outputJsonSchema(target, requestFields);
+}
+
+/**
+ * Gemini cannot reliably accept an array of range objects nested in an unresolved-item array.
+ * Keep that transport-only representation flat and decode it before strict validation.
+ */
+export function roommateAiPreferencePreviewGeminiJsonSchema(
+  target: RoommateAiPreferenceTarget
+): Readonly<Record<string, unknown>> {
+  return target === "PROFILE"
+    ? geminiOutputJsonSchema(target, profileFields)
+    : geminiOutputJsonSchema(target, requestFields);
 }
 
 function record(value: unknown): Readonly<Record<string, unknown>> {
@@ -124,6 +234,43 @@ function invalidOutput(): never {
 
 function exactKeys(value: Readonly<Record<string, unknown>>, allowed: readonly string[]): void {
   if (Object.keys(value).some((key) => !allowed.includes(key))) invalidOutput();
+}
+
+function normalizeTransportRange(value: unknown): unknown {
+  if (typeof value !== "string") return value;
+  const match = /^(\d+):(\d+)$/u.exec(value.trim());
+  if (!match) return value;
+  const start = Number(match[1]);
+  const end = Number(match[2]);
+  if (!Number.isSafeInteger(start) || !Number.isSafeInteger(end)) return value;
+  return { start, end };
+}
+
+function normalizeTransportRanges(value: unknown): unknown {
+  return Array.isArray(value) ? value.map((range) => normalizeTransportRange(range)) : value;
+}
+
+function normalizeTransportRecord(value: unknown): unknown {
+  if (value === null || typeof value !== "object" || Array.isArray(value)) return value;
+  const recordValue = value as Readonly<Record<string, unknown>>;
+  if (!("evidenceRanges" in recordValue)) return value;
+  return { ...recordValue, evidenceRanges: normalizeTransportRanges(recordValue.evidenceRanges) };
+}
+
+/** Converts Gemini's flat evidence-range strings back to the frozen application shape. */
+export function normalizeRoommateAiPreferencePreviewProviderOutput(value: unknown): unknown {
+  if (value === null || typeof value !== "object" || Array.isArray(value)) return value;
+  const output = value as Readonly<Record<string, unknown>>;
+  const proposal = output.proposal;
+  const unresolved = output.unresolved;
+  const normalizedProposal =
+    proposal !== null && typeof proposal === "object" && !Array.isArray(proposal)
+      ? Object.fromEntries(Object.entries(proposal).map(([field, item]) => [field, normalizeTransportRecord(item)]))
+      : proposal;
+  const normalizedUnresolved = Array.isArray(unresolved)
+    ? unresolved.map((item) => normalizeTransportRecord(item))
+    : unresolved;
+  return { ...output, proposal: normalizedProposal, unresolved: normalizedUnresolved };
 }
 
 function validateRanges(value: unknown, textLength: number): readonly RoommateAiEvidenceRange[] {
