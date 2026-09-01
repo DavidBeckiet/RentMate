@@ -55,6 +55,20 @@ const demoUsers = Object.freeze([
     displayName: "Vo Khanh Linh",
     email: "demo.tenant2@rentmate.local",
     phone: "+84980000002"
+  },
+  {
+    key: "tenant3",
+    role: "TENANT",
+    displayName: "Do Quoc Bao",
+    email: "demo.tenant3@rentmate.local",
+    phone: "+84980000003"
+  },
+  {
+    key: "tenant4",
+    role: "TENANT",
+    displayName: "Nguyen Thu Ha",
+    email: "demo.tenant4@rentmate.local",
+    phone: "+84980000004"
   }
 ]);
 
@@ -284,11 +298,16 @@ async function seedIdentity() {
       const placeholders = demoUsers.map((user, index) => {
         const offset = index * 6;
         values.push(user.role, user.displayName, user.email, user.phone, developmentPasswordHash, true);
-        return `($${offset + 1}::user_role, $${offset + 2}, $${offset + 3}, $${offset + 4}, $${offset + 5}, $${offset + 6})`;
+        return `(
+          $${offset + 1}::user_role, $${offset + 2}, $${offset + 3}, $${offset + 4}::varchar(16), $${offset + 5}, $${offset + 6},
+          CURRENT_TIMESTAMP, CASE WHEN $${offset + 4}::varchar(16) IS NULL THEN NULL ELSE CURRENT_TIMESTAMP END
+        )`;
       });
       const users = await executor.query(
         `
-          INSERT INTO users (role, display_name, email, phone_e164, password_hash, is_active)
+          INSERT INTO users (
+            role, display_name, email, phone_e164, password_hash, is_active, email_verified_at, phone_verified_at
+          )
           VALUES ${placeholders.join(", ")}
           ON CONFLICT (email) DO UPDATE SET
             role = EXCLUDED.role,
@@ -296,6 +315,8 @@ async function seedIdentity() {
             phone_e164 = EXCLUDED.phone_e164,
             password_hash = EXCLUDED.password_hash,
             is_active = EXCLUDED.is_active,
+            email_verified_at = CURRENT_TIMESTAMP,
+            phone_verified_at = CASE WHEN EXCLUDED.phone_e164 IS NULL THEN NULL ELSE CURRENT_TIMESTAMP END,
             updated_at = CURRENT_TIMESTAMP
           RETURNING id, email, role
         `,
@@ -308,7 +329,12 @@ async function seedIdentity() {
         idsByEmail.get("demo.landlord2@rentmate.local"),
         idsByEmail.get("demo.landlord3@rentmate.local")
       ];
-      const tenantIds = [idsByEmail.get("demo.tenant@rentmate.local"), idsByEmail.get("demo.tenant2@rentmate.local")];
+      const tenantIds = [
+        idsByEmail.get("demo.tenant@rentmate.local"),
+        idsByEmail.get("demo.tenant2@rentmate.local"),
+        idsByEmail.get("demo.tenant3@rentmate.local"),
+        idsByEmail.get("demo.tenant4@rentmate.local")
+      ];
       if (!adminId || landlordIds.some((id) => !id) || tenantIds.some((id) => !id)) {
         throw new Error("Khong tao duoc tai khoan demo Identity.");
       }
@@ -360,6 +386,104 @@ async function cleanEngagement(demo, listingIds) {
 
       await executor.query(
         `
+          WITH demo_requests AS (
+            SELECT id FROM roommate_requests WHERE owner_tenant_id = ANY($1::integer[])
+          ), demo_interests AS (
+            SELECT i.id FROM roommate_interests i
+            WHERE i.request_id IN (SELECT id FROM demo_requests)
+               OR i.interested_tenant_id = ANY($1::integer[])
+          )
+          DELETE FROM notifications
+          WHERE recipient_id = ANY($1::integer[])
+             OR roommate_request_id IN (SELECT id FROM demo_requests)
+             OR roommate_interest_id IN (SELECT id FROM demo_interests)
+        `,
+        [demo.tenantIds]
+      );
+      await executor.query(
+        `
+          WITH demo_requests AS (
+            SELECT id FROM roommate_requests WHERE owner_tenant_id = ANY($1::integer[])
+          ), demo_interests AS (
+            SELECT i.id FROM roommate_interests i
+            WHERE i.request_id IN (SELECT id FROM demo_requests)
+               OR i.interested_tenant_id = ANY($1::integer[])
+          ), demo_messages AS (
+            SELECT id FROM roommate_messages WHERE interest_id IN (SELECT id FROM demo_interests)
+          ), demo_reports AS (
+            SELECT id FROM contact_reports
+            WHERE source = 'ROOMMATE'
+              AND (
+                reporter_id = ANY($1::integer[])
+                OR roommate_request_id IN (SELECT id FROM demo_requests)
+                OR roommate_message_id IN (SELECT id FROM demo_messages)
+              )
+          )
+          DELETE FROM contact_report_events WHERE report_id IN (SELECT id FROM demo_reports)
+        `,
+        [demo.tenantIds]
+      );
+      await executor.query(
+        `
+          WITH demo_requests AS (
+            SELECT id FROM roommate_requests WHERE owner_tenant_id = ANY($1::integer[])
+          ), demo_interests AS (
+            SELECT i.id FROM roommate_interests i
+            WHERE i.request_id IN (SELECT id FROM demo_requests)
+               OR i.interested_tenant_id = ANY($1::integer[])
+          ), demo_messages AS (
+            SELECT id FROM roommate_messages WHERE interest_id IN (SELECT id FROM demo_interests)
+          )
+          DELETE FROM contact_reports
+          WHERE source = 'ROOMMATE'
+            AND (
+              reporter_id = ANY($1::integer[])
+              OR roommate_request_id IN (SELECT id FROM demo_requests)
+              OR roommate_message_id IN (SELECT id FROM demo_messages)
+            )
+        `,
+        [demo.tenantIds]
+      );
+      await executor.query(
+        `
+          DELETE FROM contact_blocks
+          WHERE roommate_request_id IS NOT NULL
+            AND (
+              blocker_id = ANY($1::integer[])
+              OR blocked_id = ANY($1::integer[])
+              OR roommate_request_id IN (
+                SELECT id FROM roommate_requests WHERE owner_tenant_id = ANY($1::integer[])
+              )
+            )
+        `,
+        [demo.tenantIds]
+      );
+      await executor.query(
+        `
+          DELETE FROM roommate_messages
+          WHERE interest_id IN (
+            SELECT i.id FROM roommate_interests i
+            JOIN roommate_requests r ON r.id = i.request_id
+            WHERE r.owner_tenant_id = ANY($1::integer[]) OR i.interested_tenant_id = ANY($1::integer[])
+          )
+        `,
+        [demo.tenantIds]
+      );
+      await executor.query(
+        `
+          DELETE FROM roommate_interests
+          WHERE request_id IN (SELECT id FROM roommate_requests WHERE owner_tenant_id = ANY($1::integer[]))
+             OR interested_tenant_id = ANY($1::integer[])
+        `,
+        [demo.tenantIds]
+      );
+      await executor.query("DELETE FROM roommate_requests WHERE owner_tenant_id = ANY($1::integer[])", [
+        demo.tenantIds
+      ]);
+      await executor.query("DELETE FROM roommate_profiles WHERE tenant_id = ANY($1::integer[])", [demo.tenantIds]);
+
+      await executor.query(
+        `
           WITH demo_inquiries AS (
             SELECT id FROM listing_inquiries
             WHERE tenant_id = ANY($3::integer[])
@@ -397,6 +521,29 @@ async function cleanEngagement(demo, listingIds) {
         [demo.tenantIds, listingIdsParam]
       );
       await executor.query("DELETE FROM saved_searches WHERE tenant_id = ANY($1::integer[])", [demo.tenantIds]);
+      await executor.query(
+        `
+          WITH demo_inquiries AS (
+            SELECT id FROM listing_inquiries
+            WHERE tenant_id = ANY($1::integer[])
+               OR landlord_id = ANY($2::integer[])
+               OR listing_id = ANY($3::integer[])
+          )
+          DELETE FROM contact_report_events
+          WHERE report_id IN (SELECT id FROM contact_reports WHERE inquiry_id IN (SELECT id FROM demo_inquiries))
+        `,
+        [demo.tenantIds, demo.landlordIds, listingIdsParam]
+      );
+      await executor.query(
+        `
+          DELETE FROM contact_reports
+          WHERE inquiry_id IN (
+            SELECT id FROM listing_inquiries
+            WHERE tenant_id = ANY($1::integer[]) OR landlord_id = ANY($2::integer[]) OR listing_id = ANY($3::integer[])
+          )
+        `,
+        [demo.tenantIds, demo.landlordIds, listingIdsParam]
+      );
       await executor.query(
         `
           WITH demo_inquiries AS (
@@ -608,6 +755,7 @@ async function seedEngagement(demo, listingData) {
       const landlord = (index) => demo.landlordIds[index];
       const tenant = (index) => demo.tenantIds[index];
       const inquiryIds = new Map();
+      const roommateIds = new Map();
 
       const insertInquiry = async (input) => {
         const result = await executor.query(
@@ -845,7 +993,253 @@ async function seedEngagement(demo, listingData) {
         ]
       );
 
-      return { inquiryIds };
+      const profileInputs = [
+        {
+          tenantId: tenant(0),
+          intro: "Minh dang tim ban o ghep tai Quan 3, uu tien khong gian yen tinh va sach se.",
+          sleep: "STANDARD",
+          cleanliness: "TIDY",
+          noise: "QUIET",
+          smoking: "SMOKE_FREE",
+          pets: "NO_PETS"
+        },
+        {
+          tenantId: tenant(1),
+          intro: "Minh muon tim nguoi o ghep co lich sinh hoat on dinh va ton trong khong gian chung.",
+          sleep: "STANDARD",
+          cleanliness: "TIDY",
+          noise: "SOCIAL",
+          smoking: "SMOKE_FREE",
+          pets: "NO_PETS"
+        },
+        {
+          tenantId: tenant(2),
+          intro: "Minh da co ke hoach o ghep va muon trao doi ro rang ve chi phi va lich sinh hoat.",
+          sleep: "EARLY",
+          cleanliness: "BALANCED",
+          noise: "QUIET",
+          smoking: "SMOKE_FREE",
+          pets: "NO_PETS"
+        },
+        {
+          tenantId: tenant(3),
+          intro: "Minh quan tam den mot cuoc song o ghep lich su, minh bach va ton trong rieng tu.",
+          sleep: "EARLY",
+          cleanliness: "BALANCED",
+          noise: "QUIET",
+          smoking: "SMOKE_FREE",
+          pets: "NO_PETS"
+        }
+      ];
+      for (const profile of profileInputs) {
+        await executor.query(
+          `
+            INSERT INTO roommate_profiles (
+              tenant_id, intro, sleep_schedule, cleanliness_level, noise_preference, smoking_environment, pet_environment
+            ) VALUES ($1, $2, $3, $4, $5, $6, $7)
+          `,
+          [
+            profile.tenantId,
+            profile.intro,
+            profile.sleep,
+            profile.cleanliness,
+            profile.noise,
+            profile.smoking,
+            profile.pets
+          ]
+        );
+      }
+
+      const insertRoommateRequest = async (input) => {
+        const result = await executor.query(
+          `
+            INSERT INTO roommate_requests (
+              owner_tenant_id, listing_id, preferred_area_keys, budget_min_per_person, budget_max_per_person,
+              move_in_from, move_in_until, note, status, expires_at, listing_linked_at
+            ) VALUES ($1, $2, $3::text[], $4, $5, CURRENT_DATE + $6::integer, CURRENT_DATE + $7::integer,
+                      $8, $9, CURRENT_TIMESTAMP + INTERVAL '30 days',
+                      CASE WHEN $2::integer IS NULL THEN NULL ELSE CURRENT_TIMESTAMP END)
+            RETURNING id
+          `,
+          [
+            input.ownerTenantId,
+            input.listingId,
+            input.preferredAreaKeys,
+            input.budgetMinPerPerson,
+            input.budgetMaxPerPerson,
+            input.moveInFromDays,
+            input.moveInUntilDays,
+            input.note,
+            input.status
+          ]
+        );
+        return Number(result.rows[0].id);
+      };
+      const linkedOpenRequest = await insertRoommateRequest({
+        ownerTenantId: tenant(0),
+        listingId: listing("demo-approved-room-1"),
+        preferredAreaKeys: ["quan-3", "binh-thanh"],
+        budgetMinPerPerson: 4_000_000,
+        budgetMaxPerPerson: 5_500_000,
+        moveInFromDays: 14,
+        moveInUntilDays: 45,
+        note: "Minh dang tim mot ban o ghep de cung thue phong tai Quan 3.",
+        status: "OPEN"
+      });
+      roommateIds.set("linkedOpenRequest", linkedOpenRequest);
+      const unlinkedOpenRequest = await insertRoommateRequest({
+        ownerTenantId: tenant(1),
+        listingId: null,
+        preferredAreaKeys: ["quan-3"],
+        budgetMinPerPerson: 4_200_000,
+        budgetMaxPerPerson: 5_400_000,
+        moveInFromDays: 18,
+        moveInUntilDays: 48,
+        note: "Minh chua chot phong va muon tim ban o ghep de cung tim cho phu hop.",
+        status: "OPEN"
+      });
+      roommateIds.set("unlinkedOpenRequest", unlinkedOpenRequest);
+      const connectedRequest = await insertRoommateRequest({
+        ownerTenantId: tenant(2),
+        listingId: null,
+        preferredAreaKeys: ["phu-nhuan"],
+        budgetMinPerPerson: 4_500_000,
+        budgetMaxPerPerson: 5_500_000,
+        moveInFromDays: 10,
+        moveInUntilDays: 40,
+        note: "Request demo da duoc chap nhan de xem luong hoi thoai va safety.",
+        status: "MATCHED"
+      });
+      roommateIds.set("connectedRequest", connectedRequest);
+
+      const pendingInterest = await executor.query(
+        `
+          INSERT INTO roommate_interests (request_id, interested_tenant_id)
+          VALUES ($1, $2)
+          RETURNING id
+        `,
+        [linkedOpenRequest, tenant(1)]
+      );
+      const pendingInterestId = Number(pendingInterest.rows[0].id);
+      roommateIds.set("pendingInterest", pendingInterestId);
+      await executor.query("INSERT INTO roommate_messages (interest_id, sender_tenant_id, body) VALUES ($1, $2, $3)", [
+        pendingInterestId,
+        tenant(1),
+        "Chao ban, minh muon trao doi them ve lich chuyen vao va chi phi nhe."
+      ]);
+      await executor.query(
+        `
+          INSERT INTO notifications (recipient_id, event_type, roommate_interest_id, resource_path)
+          VALUES ($1, 'ROOMMATE_INTEREST_RECEIVED', $2, $3)
+        `,
+        [tenant(0), pendingInterestId, `/roommates/interests/incoming`]
+      );
+
+      const acceptedInterest = await executor.query(
+        `
+          INSERT INTO roommate_interests (request_id, interested_tenant_id, status, accepted_at)
+          VALUES ($1, $2, 'ACCEPTED', CURRENT_TIMESTAMP)
+          RETURNING id
+        `,
+        [connectedRequest, tenant(3)]
+      );
+      const acceptedInterestId = Number(acceptedInterest.rows[0].id);
+      roommateIds.set("acceptedInterest", acceptedInterestId);
+      await executor.query(
+        `
+          INSERT INTO notifications (recipient_id, event_type, roommate_interest_id, resource_path)
+          VALUES ($1, 'ROOMMATE_INTEREST_ACCEPTED', $2, $3)
+        `,
+        [tenant(3), acceptedInterestId, `/roommates/connections/current`]
+      );
+
+      const benignMessage = await executor.query(
+        `
+          INSERT INTO roommate_messages (interest_id, sender_tenant_id, body, read_at)
+          VALUES ($1, $2, $3, CURRENT_TIMESTAMP)
+          RETURNING id
+        `,
+        [acceptedInterestId, tenant(3), "Chao ban, minh rat vui vi chung ta co the trao doi ve lich chuyen vao."]
+      );
+      roommateIds.set("benignMessage", Number(benignMessage.rows[0].id));
+      await executor.query(
+        `
+          INSERT INTO roommate_messages (interest_id, sender_tenant_id, body, read_at)
+          VALUES ($1, $2, $3, CURRENT_TIMESTAMP)
+        `,
+        [
+          acceptedInterestId,
+          tenant(2),
+          "Cam on ban, minh se sap xep mot buoi trao doi ngan de thong nhat sinh hoat chung."
+        ]
+      );
+      const safetyMessage = await executor.query(
+        `
+          INSERT INTO roommate_messages (interest_id, sender_tenant_id, body)
+          VALUES ($1, $2, $3)
+          RETURNING id, body, created_at
+        `,
+        [
+          acceptedInterestId,
+          tenant(2),
+          "De xac minh nhanh, ban gui giup minh ma OTP dang nhap va mat khau tai khoan duoc khong?"
+        ]
+      );
+      const safetyMessageId = Number(safetyMessage.rows[0].id);
+      roommateIds.set("safetyMessage", safetyMessageId);
+      await executor.query(
+        `
+          INSERT INTO roommate_message_ai_safety_analyses (
+            message_id, analysis_version, prompt_version, schema_version, provider, model_identifier,
+            status, attempt_count, outcome, signal_codes, evidence_message_ids, analyzed_at
+          ) VALUES (
+            $1, 'ROOMMATE_AI_SAFETY_V3_1', 'ROOMMATE_AI_SAFETY_PROMPT_V1', 'ROOMMATE_AI_SAFETY_SCHEMA_V1',
+            'GEMINI', 'gemini-2.5-flash', 'COMPLETED', 1, 'HIGH_CAUTION',
+            ARRAY['OTP_REQUEST', 'CREDENTIAL_REQUEST']::text[], ARRAY[$1]::integer[], CURRENT_TIMESTAMP
+          )
+        `,
+        [safetyMessageId]
+      );
+      const reportEvidence = JSON.stringify({
+        kind: "ROOMMATE_MESSAGE",
+        messageId: safetyMessageId,
+        body: safetyMessage.rows[0].body,
+        createdAt: safetyMessage.rows[0].created_at
+      });
+      const safetyReport = await executor.query(
+        `
+          INSERT INTO contact_reports (
+            inquiry_id, reporter_id, source, roommate_request_id, roommate_message_id,
+            subject_tenant_id, target_type, category, details, evidence_snapshot
+          ) VALUES (NULL, $1, 'ROOMMATE', $2, $3, NULL, 'ROOMMATE_MESSAGE', 'FRAUD', $4, $5::jsonb)
+          RETURNING id
+        `,
+        [
+          tenant(3),
+          connectedRequest,
+          safetyMessageId,
+          "Tin nhan demo yeu cau OTP va thong tin dang nhap.",
+          reportEvidence
+        ]
+      );
+      const safetyReportId = Number(safetyReport.rows[0].id);
+      roommateIds.set("safetyReport", safetyReportId);
+      await executor.query(
+        `
+          INSERT INTO contact_report_events (report_id, actor_id, actor_role, previous_status, new_status)
+          VALUES ($1, $2, 'TENANT', NULL, 'OPEN')
+        `,
+        [safetyReportId, tenant(3)]
+      );
+      await executor.query(
+        `
+          INSERT INTO notifications (recipient_id, event_type, roommate_interest_id, resource_path)
+          VALUES ($1, 'ROOMMATE_MESSAGE_RECEIVED', $2, $3)
+        `,
+        [tenant(3), acceptedInterestId, `/roommates/interests/${acceptedInterestId}/conversation`]
+      );
+
+      return { inquiryIds, roommateIds };
     });
   } finally {
     await client.end();
@@ -863,6 +1257,9 @@ async function main() {
   console.log(`Accounts: ${demoUsers.length}`);
   console.log(`Listings: ${listingData.listingIds.size}`);
   console.log(`Inquiries: ${engagementData.inquiryIds.size}`);
+  console.log("Roommate requests: 3");
+  console.log("Roommate interests: 2");
+  console.log(`Roommate demo records: ${engagementData.roommateIds.size}`);
   console.log(`Email suffix: @rentmate.local`);
   console.log(`Development password: ${developmentPassword}`);
   console.log("Demo accounts:");

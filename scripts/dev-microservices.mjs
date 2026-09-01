@@ -11,7 +11,12 @@ const frontendProcess = [
 ];
 
 const localServiceProcesses = [
-  ["backend", "npm.cmd", ["--prefix", "backend", "run", "dev"], { ...process.env, FRONTEND_ORIGIN: localFrontendOrigin }],
+  [
+    "backend",
+    "npm.cmd",
+    ["--prefix", "backend", "run", "dev"],
+    { ...process.env, FRONTEND_ORIGIN: localFrontendOrigin }
+  ],
   [
     "identity",
     "npm.cmd",
@@ -61,7 +66,7 @@ const localServiceProcesses = [
       ENGAGEMENT_SERVICE_URL: "http://localhost:4300",
       SERVICE_INTERNAL_TOKEN: internalServiceToken
     }
-  ],
+  ]
 ];
 
 async function isGatewayAlreadyRunning() {
@@ -74,13 +79,20 @@ async function isGatewayAlreadyRunning() {
 }
 
 const gatewayAlreadyRunning = await isGatewayAlreadyRunning();
-const processDefinitions = gatewayAlreadyRunning ? [frontendProcess] : [...localServiceProcesses, frontendProcess];
+const processDefinitions = [...localServiceProcesses, frontendProcess];
 
 if (gatewayAlreadyRunning) {
-  console.log("Using the running gateway on http://localhost:4001; starting frontend only.");
-} else {
-  console.log("No running gateway detected; starting the local microservices stack.");
+  console.error(
+    "A gateway is already listening on http://localhost:4001; refusing to mix it with a newly started frontend."
+  );
+  console.error(
+    "Stop the existing stack before running this command, or use the documented Compose demo flow explicitly."
+  );
+  process.exitCode = 1;
+  process.exit();
 }
+
+console.log("No running gateway detected; starting the local microservices stack.");
 
 const processes = processDefinitions.map(([name, command, args, environment]) => {
   const child = spawn(command, args, {
