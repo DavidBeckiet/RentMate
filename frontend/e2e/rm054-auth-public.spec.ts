@@ -35,9 +35,11 @@ test.describe("RM-054 authentication and public discovery", () => {
     const listingId = await seedApprovedListing(page);
 
     await page.goto("/");
-    await page.getByLabel("Tên phòng hoặc khu vực").fill("RM054");
-    await page.getByRole("button", { name: "Tìm kiếm" }).click();
-    await expect(page.getByText("Phòng RM054 công khai", { exact: true })).toBeVisible();
+    await page.getByLabel("Bạn muốn sống ở đâu?", { exact: true }).fill("RM054");
+    await page.getByRole("button", { name: "Tìm phòng" }).click();
+    await expect(page).toHaveURL(/\/search\?q=RM054/);
+    await expect(page.getByRole("link", { name: /Phòng RM054 công khai/ }).first()).toBeVisible();
+    await page.getByRole("button", { name: "Xem bản đồ" }).click();
     await expect(page.getByRole("region", { name: "Bản đồ vị trí xấp xỉ của các tin đăng" })).toBeVisible();
     await expect(page.getByText("OpenStreetMap", { exact: true })).toBeVisible();
 
@@ -47,7 +49,10 @@ test.describe("RM-054 authentication and public discovery", () => {
     await page.getByRole("button", { name: "Tìm theo bán kính" }).click();
     await expect(page).toHaveURL(/radiusKm=3/);
 
-    await page.getByRole("link", { name: /Phòng RM054 công khai/ }).click();
+    await page
+      .getByRole("link", { name: /Phòng RM054 công khai/ })
+      .first()
+      .click();
     await expect(page.getByRole("heading", { name: "Phòng RM054 công khai" })).toBeVisible();
     await expect(page.getByRole("heading", { name: "Vị trí xấp xỉ" })).toBeVisible();
     await expect(page.getByText("12 Đường RM054, Quận 1")).not.toBeVisible();

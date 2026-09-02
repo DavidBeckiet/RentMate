@@ -12,6 +12,7 @@ import { withTransaction } from "../../shared/src/runtime/db/transaction.js";
 import type { SqlExecutor } from "../../shared/src/runtime/db/sql-executor.js";
 import { createRoommateRepository } from "../src/modules/roommate/repositories/roommate-repository.js";
 import { createRoommateService } from "../src/modules/roommate/services/roommate-service.js";
+import { roommateBusinessDate } from "../src/modules/roommate/validations/roommate-validation.js";
 import type { IdentityRoommateTenantProjection } from "../../shared/identity-account-client.js";
 import type { PublicListingSummary } from "../../shared/public-listing-summary.js";
 
@@ -38,6 +39,17 @@ const quotedSchema = `"${schemaName}"`;
 const migrationsDirectory = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..", "migrations");
 const migrationRunner = createMigrationRunner("Engagement");
 const repository = createRoommateRepository();
+const testNow = new Date(Date.now() + 86_400_000);
+
+function now(): Date {
+  return new Date(testNow.getTime());
+}
+
+function addCalendarDays(value: string, days: number): string {
+  const date = new Date(`${value}T00:00:00.000Z`);
+  date.setUTCDate(date.getUTCDate() + days);
+  return date.toISOString().slice(0, 10);
+}
 
 function migrationPool(): MigrationPool {
   return {
@@ -86,7 +98,8 @@ const service = createRoommateService({
   repository,
   identityAccountClient,
   listingCatalogClient,
-  transactionRunner: { run: transaction }
+  transactionRunner: { run: transaction },
+  now
 });
 
 const profileInput = {
@@ -120,13 +133,14 @@ function principal(tenantId: number) {
 }
 
 function requestInput() {
+  const moveInFrom = roommateBusinessDate(now());
   return {
     listingId: null,
     preferredAreaKeys: ["Quan 1"],
     budgetMinPerPerson: 1_000_000,
     budgetMaxPerPerson: 2_000_000,
-    moveInFrom: "2026-09-01",
-    moveInUntil: "2026-09-30",
+    moveInFrom,
+    moveInUntil: addCalendarDays(moveInFrom, 29),
     note: null
   } as const;
 }

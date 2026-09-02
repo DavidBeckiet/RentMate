@@ -89,8 +89,10 @@ async function revealResponsiveNavigation(page: Page): Promise<void> {
 
 export async function register(page: Page, actor: Rm054Actor): Promise<void> {
   await page.goto(actor.role === "TENANT" ? "/register/tenant" : "/register/landlord");
+  await page.getByLabel("Họ và tên (bắt buộc)", { exact: true }).fill("Nguyen Van An");
   await page.getByLabel("Email").fill(actor.email);
-  await page.getByLabel("Mật khẩu").fill(actor.password);
+  await page.getByLabel("Mật khẩu (bắt buộc)", { exact: true }).fill(actor.password);
+  await page.getByLabel("Nhập lại mật khẩu (bắt buộc)", { exact: true }).fill(actor.password);
   if (actor.phone) await page.getByLabel("Số điện thoại").fill(actor.phone);
   await page.getByRole("button", { name: actor.role === "TENANT" ? "Đăng ký tìm phòng" : "Đăng ký cho thuê" }).click();
   await expect(page).toHaveURL(/localhost:3100\/(?:\?.*)?$/);
@@ -101,7 +103,7 @@ export async function register(page: Page, actor: Rm054Actor): Promise<void> {
 export async function login(page: Page, actor: Rm054Actor | typeof rm054Admin): Promise<void> {
   await page.goto(actor.role === "ADMIN" ? "/admin/login" : "/login");
   await page.getByLabel("Email").fill(actor.email);
-  await page.getByLabel("Mật khẩu").fill(actor.password);
+  await page.getByLabel("Mật khẩu (bắt buộc)", { exact: true }).fill(actor.password);
   await page.getByRole("button", { name: "Đăng nhập" }).click();
   await expect(page).toHaveURL(actor.role === "ADMIN" ? /localhost:3100\/admin$/ : /localhost:3100\/(?:\?.*)?$/);
   await revealResponsiveNavigation(page);

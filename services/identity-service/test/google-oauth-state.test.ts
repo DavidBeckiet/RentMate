@@ -47,7 +47,9 @@ test("rejects tampered state and mismatched query state", () => {
   const created = service.create(cookie.response, { intent: "LOGIN", role: null, phone: null });
   const stored = cookie.values.get(googleOAuthStateCookieName)!;
 
-  const tampered = `${stored.slice(0, -1)}${stored.endsWith("a") ? "b" : "a"}`;
+  // Mutate a leading base64url character so the decoded authenticated bytes
+  // always change; the final character can contain ignored base64 padding bits.
+  const tampered = `${stored.startsWith("A") ? "B" : "A"}${stored.slice(1)}`;
   assert.throws(() =>
     service.consume(
       { cookies: { [googleOAuthStateCookieName]: tampered } } as unknown as Request,

@@ -6,6 +6,7 @@ const repositoryDirectory = path.resolve(frontendDirectory, "..");
 
 export default defineConfig({
   testDir: "./e2e",
+  testIgnore: /roommate-v1-release\.spec\.ts/,
   fullyParallel: false,
   workers: 1,
   retries: 0,

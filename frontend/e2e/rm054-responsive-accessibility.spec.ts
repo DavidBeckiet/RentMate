@@ -27,8 +27,9 @@ async function runTabletAcceptanceSmoke(browser: Browser): Promise<void> {
   const page = await context.newPage();
   await resetRm054(page, "public");
   await page.goto("/");
-  await page.getByLabel("Tên phòng hoặc khu vực").fill("RM054");
-  await page.getByRole("button", { name: "Tìm kiếm" }).click();
+  await page.getByLabel("Bạn muốn sống ở đâu?", { exact: true }).fill("RM054");
+  await page.getByRole("button", { name: "Tìm phòng" }).click();
+  await expect(page).toHaveURL(/\/search\?q=RM054/);
   await expect(page.getByText("Phòng RM054 công khai", { exact: true })).toBeVisible();
   expect(await page.evaluate(() => document.documentElement.scrollWidth > window.innerWidth)).toBe(false);
 
@@ -66,8 +67,8 @@ test.describe("RM-054 responsive and accessible critical UI", () => {
     await expect(skipLink).toBeFocused();
     await page.keyboard.press("Enter");
     await expect(page).toHaveURL(/#main-content$/);
-    await expect(page.getByRole("textbox", { name: "Tên phòng hoặc khu vực" })).toBeVisible();
-    await expect(page.getByLabel("Bán kính (km)")).toBeVisible();
+    await expect(page.getByRole("textbox", { name: "Bạn muốn sống ở đâu?", exact: true })).toBeVisible();
+    await expect(page.getByRole("combobox", { name: "Kiểu không gian" })).toBeVisible();
 
     if (mobile) {
       const menu = page.getByRole("button", { name: /(?:Mở|Đóng) menu điều hướng/ });
@@ -79,9 +80,10 @@ test.describe("RM-054 responsive and accessible critical UI", () => {
       await expect(menu).toHaveAttribute("aria-expanded", "true");
       await page.keyboard.press("Escape");
       await expect(menu).toHaveAttribute("aria-expanded", "false");
-      await page.getByRole("button", { name: "Xem bản đồ" }).click();
     }
 
+    await page.goto("/search");
+    await page.getByRole("button", { name: "Xem bản đồ" }).click();
     await expect(page.getByRole("region", { name: "Bản đồ vị trí xấp xỉ của các tin đăng" })).toBeVisible();
     const hasHorizontalOverflow = await page.evaluate(() => document.documentElement.scrollWidth > window.innerWidth);
     expect(hasHorizontalOverflow).toBe(false);
@@ -98,7 +100,7 @@ test.describe("RM-054 responsive and accessible critical UI", () => {
     await page.goto("/login");
     await page.getByLabel("Email").focus();
     await expect(page.getByLabel("Email")).toBeFocused();
-    await expect(page.getByLabel("Mật khẩu")).toBeVisible();
+    await expect(page.getByLabel("Mật khẩu (bắt buộc)", { exact: true })).toBeVisible();
 
     await register(page, createActor("LANDLORD", "responsive-owner"));
     const listingId = await createDraft(page);
