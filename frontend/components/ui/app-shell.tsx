@@ -169,7 +169,7 @@ function NotificationLink({ pathname }: Readonly<{ pathname: string }>) {
       {unreadCount !== null && unreadCount > 0 ? (
         <span
           aria-hidden="true"
-          className="absolute -right-1 -top-1 grid h-5 min-w-5 place-items-center rounded-full border border-surface bg-coral px-1 text-[0.65rem] font-bold leading-none text-foreground"
+          className="absolute right-0 -top-1 grid h-5 min-w-5 place-items-center rounded-full border border-surface bg-coral px-1 text-[0.65rem] font-bold leading-none text-foreground"
         >
           {unreadCount > 99 ? "99+" : unreadCount}
         </span>

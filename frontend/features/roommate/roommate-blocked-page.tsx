@@ -3,13 +3,14 @@
 import { useEffect, useState } from "react";
 import { Button } from "../../components/ui/button";
 import { Card } from "../../components/ui/card";
+import { Dialog } from "../../components/ui/dialog";
 import { EmptyState, ErrorState, LoadingState } from "../../components/ui/feedback-states";
 import { Pagination } from "../../components/ui/pagination";
 import { api, ApiError } from "../../lib/api/client";
 import { useAuth } from "../../lib/auth/auth-provider";
 import type { ApiPage, RoommateOwnedBlock } from "../../types/api";
 import { formatMemberSince, formatRoommateDateTime, roommateErrorMessage } from "./roommate-content";
-import { RoommatePageHeader, RoommateSubnav, RoommateTenantBoundary } from "./roommate-shared";
+import { RoommateAvatar, RoommatePageHeader, RoommateSubnav, RoommateTenantBoundary } from "./roommate-shared";
 
 function actionKey(action: RoommateOwnedBlock["unblockAction"]): string {
   return `${action.kind}:${action.id}`;
@@ -89,22 +90,19 @@ function BlockedListContent() {
 
   const blocks = result?.data ?? [];
   return (
-    <div className="space-y-6">
+    <div className="rm-roommate-page space-y-6">
       <RoommatePageHeader
         title="Đã chặn"
         description="Quản lý các tương tác ở ghép bạn đã chặn. Bỏ chặn không khôi phục lời quan tâm, kết nối hoặc yêu cầu cũ."
       />
       <RoommateSubnav />
       {success ? (
-        <p
-          role="status"
-          className="border-2 border-heroDark-950 bg-rent-accent p-3 text-ui-sm font-semibold shadow-glass-sm"
-        >
+        <p role="status" className="rm-roommate-callout text-ui-sm font-semibold" data-tone="accent">
           {success}
         </p>
       ) : null}
       {actionError ? (
-        <p role="alert" className="border-l-4 border-rose-700 pl-3 text-ui-sm font-semibold text-rose-800">
+        <p role="alert" className="rm-roommate-callout text-ui-sm font-semibold text-danger" data-tone="danger">
           {actionError}
         </p>
       ) : null}
@@ -121,39 +119,51 @@ function BlockedListContent() {
               const memberSince = formatMemberSince(block.counterpart.memberSince);
               const displayName = block.counterpart.displayName ?? "Tài khoản đã chặn";
               return (
-                <Card key={key} className="space-y-4">
-                  <div>
-                    <h2 className="font-display text-heading-sm font-bold">{displayName}</h2>
-                    {memberSince ? (
-                      <p className="mt-1 text-ui-xs font-semibold text-rent-secondary">Thành viên từ {memberSince}</p>
-                    ) : null}
-                    <p className="mt-3 text-ui-sm text-rent-secondary">
-                      Đã chặn từ {formatRoommateDateTime(block.blockedAt)}
-                    </p>
+                <Card key={key} className="rm-roommate-card-static space-y-4">
+                  <div className="flex items-start gap-3">
+                    <RoommateAvatar displayName={displayName} />
+                    <div className="min-w-0">
+                      <p className="rm-roommate-section-label">Tương tác đã chặn</p>
+                      <h2 className="mt-1 font-display text-heading-sm font-bold">{displayName}</h2>
+                      {memberSince ? (
+                        <p className="mt-1 text-ui-xs font-semibold text-muted-foreground">
+                          Thành viên từ {memberSince}
+                        </p>
+                      ) : null}
+                      <p className="mt-3 text-ui-sm text-muted-foreground">
+                        Đã chặn từ {formatRoommateDateTime(block.blockedAt)}
+                      </p>
+                    </div>
                   </div>
                   {confirming === key ? (
-                    <section
-                      className="space-y-3 border-2 border-heroDark-950 bg-rent-yellow p-4"
-                      aria-label="Xác nhận bỏ chặn"
+                    <Dialog
+                      open={confirming === key}
+                      title="Bỏ chặn thành viên?"
+                      description="Việc bỏ chặn không khôi phục các tương tác hoặc kết nối cũ."
+                      onClose={() => setConfirming(null)}
                     >
-                      <p className="text-ui-sm font-semibold leading-6">
-                        Bỏ chặn chỉ cho phép các tương tác tương lai qua một quy trình Roommate mới hợp lệ. Nội dung và
-                        kết nối cũ không được khôi phục.
-                      </p>
-                      <div className="grid gap-2 sm:flex sm:flex-wrap">
-                        <Button
-                          autoFocus
-                          pending={pending === key}
-                          pendingLabel="Đang bỏ chặn…"
-                          onClick={() => void unblock(block)}
-                        >
-                          Xác nhận bỏ chặn
-                        </Button>
-                        <Button variant="secondary" disabled={pending === key} onClick={() => setConfirming(null)}>
-                          Hủy
-                        </Button>
+                      <div className="space-y-4">
+                        <div className="rm-roommate-callout" data-tone="warning" aria-label="Xác nhận bỏ chặn">
+                          <p className="text-ui-sm font-semibold leading-6">
+                            Bỏ chặn chỉ cho phép các tương tác tương lai qua một quy trình Roommate mới hợp lệ. Nội dung
+                            và kết nối cũ không được khôi phục.
+                          </p>
+                        </div>
+                        <div className="grid gap-2 sm:flex sm:flex-wrap">
+                          <Button
+                            autoFocus
+                            pending={pending === key}
+                            pendingLabel="Đang bỏ chặn…"
+                            onClick={() => void unblock(block)}
+                          >
+                            Xác nhận bỏ chặn
+                          </Button>
+                          <Button variant="secondary" disabled={pending === key} onClick={() => setConfirming(null)}>
+                            Hủy
+                          </Button>
+                        </div>
                       </div>
-                    </section>
+                    </Dialog>
                   ) : (
                     <Button className="w-full sm:w-auto" variant="outline" onClick={() => setConfirming(key)}>
                       Bỏ chặn

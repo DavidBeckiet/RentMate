@@ -19,8 +19,8 @@ export function RoommateListingCta({ listingId, eligible }: Readonly<{ listingId
 
   if (status === "anonymous") {
     return (
-      <div className="border-t-2 border-heroDark-950 pt-4">
-        <p className="text-ui-sm leading-6 text-rent-secondary">
+      <div className="rm-roommate-callout" data-tone="info">
+        <p className="text-ui-sm leading-6 text-muted-foreground">
           <Link className="font-bold underline decoration-2 underline-offset-4" href="/login">
             Đăng nhập bằng tài khoản người thuê
           </Link>{" "}
@@ -55,16 +55,17 @@ export function RoommateListingCta({ listingId, eligible }: Readonly<{ listingId
   };
 
   return (
-    <section className="space-y-3 border-t-2 border-heroDark-950 pt-4" aria-label="Tìm người ở ghép">
+    <section className="rm-roommate-callout space-y-3" aria-label="Tìm người ở ghép" data-tone="accent">
       <div>
-        <h2 className="font-display text-ui-base font-bold">Tìm người ở ghép</h2>
-        <p className="mt-1 text-ui-sm leading-6 text-rent-secondary">{roommateSafetyCopy.linkedMeaning}</p>
+        <p className="rm-roommate-section-label">Liên kết với Roommate</p>
+        <h2 className="mt-1 font-display text-ui-base font-bold">Tìm người ở ghép</h2>
+        <p className="mt-1 text-ui-sm leading-6 text-muted-foreground">{roommateSafetyCopy.linkedMeaning}</p>
       </div>
       <Button className="w-full" pending={pending} pendingLabel="Đang kiểm tra hồ sơ…" onClick={() => void begin()}>
         <Icon name="users" className="h-4 w-4" /> Tìm người ở ghép cho listing này
       </Button>
       {error ? (
-        <p role="alert" className="border-l-4 border-rose-700 pl-3 text-ui-sm font-semibold text-rose-800">
+        <p role="alert" className="rm-roommate-callout text-ui-sm font-semibold text-danger" data-tone="danger">
           {error}
         </p>
       ) : null}

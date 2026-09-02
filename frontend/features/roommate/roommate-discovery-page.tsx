@@ -4,9 +4,11 @@ import Link from "next/link";
 import { useEffect, useMemo, useState, type FormEvent } from "react";
 import { Button } from "../../components/ui/button";
 import { Card } from "../../components/ui/card";
-import { EmptyState, ErrorState, LoadingState } from "../../components/ui/feedback-states";
+import { EmptyState, ErrorState } from "../../components/ui/feedback-states";
 import { InputField, SelectField } from "../../components/ui/form-controls";
+import { Icon } from "../../components/ui/icon";
 import { Pagination } from "../../components/ui/pagination";
+import { Skeleton } from "../../components/ui/skeleton";
 import { api, ApiError } from "../../lib/api/client";
 import { useAuth } from "../../lib/auth/auth-provider";
 import type {
@@ -18,10 +20,12 @@ import type {
 } from "../../types/api";
 import { formatRoommateDate, roommateErrorMessage, roommateRequestStatusLabels } from "./roommate-content";
 import {
+  RoommateAvatar,
   RoommateListingContext,
   RoommatePageHeader,
   RoommateProfileSummary,
   RoommateRequestFacts,
+  RoommateStatusPill,
   RoommateSubnav,
   RoommateTenantBoundary
 } from "./roommate-shared";
@@ -71,41 +75,49 @@ function recommendationFilters(query: RoommateDiscoveryQuery) {
 
 function DiscoveryCard({ request }: Readonly<{ request: RoommateRequest }>) {
   return (
-    <article className="space-y-4 border-2 border-heroDark-950 bg-rent-surface p-5 shadow-glass">
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        <div>
-          <p className="text-ui-xs font-bold uppercase tracking-[0.12em] text-rent-secondary">
-            {request.listingMode === "LINKED" ? "CÙNG CÂN NHẮC LISTING" : "CÙNG TÌM LISTING"}
-          </p>
-          <h2 className="mt-1 font-display text-heading-sm font-bold">
-            {request.profile?.displayName ?? "Người thuê RentMate"}
-          </h2>
+    <article className="rm-roommate-card">
+      <div className="rm-roommate-card-body space-y-5">
+        <div className="flex items-start justify-between gap-4">
+          <div className="flex min-w-0 items-center gap-3">
+            <RoommateAvatar displayName={request.profile?.displayName ?? null} />
+            <div className="min-w-0">
+              <p className="rm-roommate-section-label">
+                {request.listingMode === "LINKED" ? "Cùng cân nhắc listing" : "Cùng tìm listing"}
+              </p>
+              <h2 className="mt-1 truncate font-display text-heading-sm font-bold text-foreground">
+                {request.profile?.displayName ?? "Người thuê RentMate"}
+              </h2>
+            </div>
+          </div>
+          <RoommateStatusPill status={request.status} label={roommateRequestStatusLabels[request.status]} />
         </div>
-        <span className="border-2 border-heroDark-950 bg-rent-accent px-2 py-1 text-ui-xs font-bold">
-          {roommateRequestStatusLabels[request.status]}
-        </span>
-      </div>
-      <RoommateProfileSummary profile={request.profile} heading="Phong cách sống" showDisplayName={false} />
-      {request.compatibility !== undefined ? (
-        <RoommateCompatibilitySummary compatibility={request.compatibility} heading="Gợi ý tương thích" />
-      ) : null}
-      <RoommateRequestFacts request={request} />
-      {request.note ? (
-        <p className="whitespace-pre-wrap border-l-4 border-heroDark-950 pl-3 text-ui-sm leading-6 text-rent-secondary">
-          {request.note}
-        </p>
-      ) : null}
-      <RoommateListingContext request={request} />
-      <div className="grid gap-3 border-t-2 border-heroDark-950 pt-4 sm:flex sm:flex-wrap sm:items-center sm:justify-between">
-        <p className="text-ui-xs font-semibold text-rent-secondary">
-          Mở từ {formatRoommateDate(request.createdAt.slice(0, 10))}
-        </p>
-        <Link
-          className="inline-flex min-h-11 w-full items-center justify-center gap-2 border-2 border-heroDark-950 bg-heroDark-950 px-4 text-ui-sm font-bold text-white shadow-glass-sm sm:w-auto"
-          href={`/roommates/requests/${request.id}`}
-        >
-          Xem yêu cầu
-        </Link>
+        <RoommateProfileSummary
+          profile={request.profile}
+          heading="Phong cách sống"
+          showDisplayName={false}
+          showAvatar={false}
+        />
+        {request.compatibility !== undefined ? (
+          <RoommateCompatibilitySummary compatibility={request.compatibility} heading="Gợi ý tương thích" />
+        ) : null}
+        <RoommateRequestFacts request={request} />
+        {request.note ? (
+          <p className="rm-roommate-callout whitespace-pre-wrap text-ui-sm leading-6 text-muted-foreground">
+            {request.note}
+          </p>
+        ) : null}
+        <RoommateListingContext request={request} />
+        <div className="flex flex-wrap items-center justify-between gap-3 border-t border-border pt-4">
+          <p className="text-ui-xs font-semibold text-muted-foreground">
+            Mở từ {formatRoommateDate(request.createdAt.slice(0, 10))}
+          </p>
+          <Link
+            className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-control bg-primary px-4 text-ui-sm font-bold text-primary-foreground shadow-surface transition-[background-color,transform] duration-fast hover:-translate-y-0.5 hover:bg-primary-hover sm:w-auto"
+            href={`/roommates/requests/${request.id}`}
+          >
+            Xem yêu cầu <span aria-hidden="true">→</span>
+          </Link>
+        </div>
       </div>
     </article>
   );
@@ -127,21 +139,47 @@ function RecommendationCard({
   onDismiss
 }: Readonly<{ item: RoommateAiRecommendationItem; onDismiss: () => void }>) {
   return (
-    <div className="space-y-3" aria-label="Gợi ý bằng AI">
-      <div className="flex flex-wrap items-center justify-between gap-2 border-2 border-heroDark-950 bg-rent-muted px-4 py-3">
-        <p className="text-ui-sm font-bold text-heroDark-950">Gợi ý bằng AI</p>
-        <Button type="button" variant="secondary" className="min-h-10" onClick={onDismiss}>
+    <div className="rm-roommate-card rm-roommate-card-static" aria-label="Gợi ý bằng AI">
+      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border bg-sky/35 px-4 py-3">
+        <p className="rm-roommate-ai-label">
+          <span aria-hidden="true">✦</span> AI hỗ trợ
+        </p>
+        <Button type="button" variant="secondary" size="sm" onClick={onDismiss}>
           Ẩn trong phiên này
         </Button>
       </div>
-      <ul className="flex flex-wrap gap-2" aria-label="Lý do gợi ý">
-        {item.recommendation.reasonCodes.map((code) => (
-          <li className="border border-heroDark-950 bg-white px-2 py-1 text-ui-xs font-semibold" key={code}>
-            {recommendationReasonLabels[code]}
-          </li>
-        ))}
-      </ul>
-      <DiscoveryCard request={item.request} />
+      <div className="space-y-4 p-4">
+        <div>
+          <p className="text-ui-xs font-bold uppercase tracking-[0.1em] text-info-foreground">Vì sao gợi ý?</p>
+          <ul className="mt-2 flex flex-wrap gap-2" aria-label="Lý do gợi ý">
+            {item.recommendation.reasonCodes.map((code) => (
+              <li className="rm-roommate-chip" key={code}>
+                {recommendationReasonLabels[code]}
+              </li>
+            ))}
+          </ul>
+        </div>
+        <DiscoveryCard request={item.request} />
+      </div>
+    </div>
+  );
+}
+
+function DiscoveryCardSkeleton() {
+  return (
+    <div className="rm-roommate-card rm-roommate-card-static space-y-5 p-5" aria-hidden="true">
+      <div className="flex items-center gap-3">
+        <Skeleton rounded="card" className="h-14 w-14" />
+        <div className="space-y-2">
+          <Skeleton className="h-3 w-28" />
+          <Skeleton className="h-5 w-40" />
+        </div>
+      </div>
+      <Skeleton className="h-20 w-full" />
+      <div className="grid grid-cols-2 gap-2">
+        <Skeleton className="h-16" />
+        <Skeleton className="h-16" />
+      </div>
     </div>
   );
 }
@@ -159,6 +197,7 @@ function DiscoveryContent() {
   const [recommendationOpen, setRecommendationOpen] = useState(false);
   const [recommendationState, setRecommendationState] = useState<"idle" | "loading" | "success" | "error">("idle");
   const [recommendationResult, setRecommendationResult] = useState<RoommateAiRecommendations | null>(null);
+  const [recommendationError, setRecommendationError] = useState<ApiError | null>(null);
   const [dismissedRecommendationIds, setDismissedRecommendationIds] = useState<ReadonlySet<number>>(new Set());
   const query = useMemo(() => queryFromForm(submittedForm, page), [page, submittedForm]);
 
@@ -201,13 +240,17 @@ function DiscoveryContent() {
   const loadRecommendations = () => {
     setRecommendationState("loading");
     setRecommendationResult(null);
+    setRecommendationError(null);
     void api.roommates
       .getAiRecommendations({ filters: recommendationFilters(query), limit: 10, locale: "vi" })
       .then((value) => {
         setRecommendationResult(value);
         setRecommendationState("success");
       })
-      .catch(() => setRecommendationState("error"));
+      .catch((caught: unknown) => {
+        setRecommendationError(caught instanceof ApiError ? caught : null);
+        setRecommendationState("error");
+      });
   };
 
   const submit = (event: FormEvent<HTMLFormElement>) => {
@@ -223,13 +266,13 @@ function DiscoveryContent() {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="rm-roommate-page space-y-6">
       <RoommatePageHeader
-        title="Tìm người ở ghép"
-        description="Duyệt các yêu cầu đang mở theo khu vực, ngân sách và thời gian chuyển vào. Chỉ hiển thị thông tin cần thiết cho bối cảnh ở ghép."
+        title="Tìm người ở ghép cùng nhịp sống"
+        description="Không chỉ tìm một chỗ ở — tìm người có nhịp sống phù hợp. Duyệt các yêu cầu đang mở theo khu vực, ngân sách và thời gian chuyển vào; mỗi thông tin đều được trình bày vừa đủ cho một cuộc trò chuyện tốt hơn."
         action={
           <Link
-            className="inline-flex min-h-11 items-center border-2 border-heroDark-950 bg-heroDark-950 px-4 text-ui-sm font-bold text-white shadow-glass-sm"
+            className="inline-flex min-h-11 items-center rounded-control bg-primary px-4 text-ui-sm font-bold text-primary-foreground shadow-surface transition-[background-color,transform] duration-fast hover:-translate-y-0.5 hover:bg-primary-hover"
             href="/roommates/my-request"
           >
             Tạo yêu cầu
@@ -237,13 +280,20 @@ function DiscoveryContent() {
         }
       />
       <RoommateSubnav />
-      <Card>
+      <Card className="rm-roommate-card-static">
         <form className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3" onSubmit={submit}>
           <div className="sm:col-span-2 lg:col-span-3">
-            <h2 className="font-display text-heading-sm font-bold text-heroDark-950">Lọc yêu cầu ở ghép</h2>
-            <p className="mt-1 text-ui-sm leading-6 text-rent-secondary">
-              Chọn các tiêu chí quan trọng; bạn có thể để trống trường chưa cần giới hạn.
-            </p>
+            <div className="flex items-center gap-3">
+              <span className="grid h-10 w-10 place-items-center rounded-full bg-primary-subtle text-primary-hover">
+                <Icon name="sliders" className="h-5 w-5" />
+              </span>
+              <div>
+                <h2 className="font-display text-heading-sm font-bold text-foreground">Lọc yêu cầu ở ghép</h2>
+                <p className="mt-1 text-ui-sm leading-6 text-muted-foreground">
+                  Chọn các tiêu chí quan trọng; bạn có thể để trống trường chưa cần giới hạn.
+                </p>
+              </div>
+            </div>
           </div>
           <InputField
             id="roommate-discovery-area"
@@ -314,12 +364,15 @@ function DiscoveryContent() {
         </form>
       </Card>
       {recommendationCapability ? (
-        <Card>
-          <div className="space-y-4" role="region" aria-label="Gợi ý bằng AI">
+        <Card className="rm-roommate-ai-panel rm-roommate-card-static">
+          <div className="space-y-5" role="region" aria-label="Gợi ý bằng AI">
             <div className="flex flex-wrap items-center justify-between gap-3">
               <div>
-                <h2 className="font-display text-heading-sm font-bold text-heroDark-950">Gợi ý bằng AI</h2>
-                <p className="mt-1 text-ui-sm leading-6 text-rent-secondary">
+                <p className="rm-roommate-ai-label">
+                  <span aria-hidden="true">✦</span> AI hỗ trợ · bề mặt riêng
+                </p>
+                <h2 className="mt-3 font-display text-heading-md font-bold text-foreground">Gợi ý bằng AI</h2>
+                <p className="mt-1 text-ui-sm leading-6 text-muted-foreground">
                   Gợi ý bổ sung từ tín hiệu sinh hoạt; danh sách tìm kiếm thông thường vẫn độc lập.
                 </p>
               </div>
@@ -337,11 +390,19 @@ function DiscoveryContent() {
               </Button>
             </div>
             {recommendationOpen && recommendationState === "loading" ? (
-              <LoadingState message="Đang tạo gợi ý bằng AI…" />
+              <div className="grid gap-4 xl:grid-cols-2" role="status" aria-label="Đang tạo gợi ý bằng AI">
+                <DiscoveryCardSkeleton />
+                <DiscoveryCardSkeleton />
+              </div>
             ) : null}
             {recommendationOpen && recommendationState === "error" ? (
               <ErrorState
-                message="Chưa thể tạo gợi ý AI. Bạn vẫn có thể dùng danh sách tìm roommate thông thường."
+                title={recommendationError?.status === 429 ? "Gợi ý AI đang tạm giới hạn" : "Gợi ý AI chưa sẵn sàng"}
+                message={
+                  recommendationError?.status === 429
+                    ? "Bạn có thể thử lại sau. Khám phá thông thường vẫn dùng được ngay."
+                    : "Chưa thể tạo gợi ý lúc này. Khám phá thông thường vẫn dùng được ngay."
+                }
                 action={<Button onClick={loadRecommendations}>Thử lại</Button>}
               />
             ) : null}
@@ -376,6 +437,25 @@ function DiscoveryContent() {
                   ))}
               </div>
             ) : null}
+            {recommendationOpen &&
+            recommendationState === "success" &&
+            recommendationResult &&
+            recommendationResult.items.length === 0 ? (
+              <EmptyState
+                title="Chưa có gợi ý phù hợp lúc này"
+                description="Thêm tín hiệu sinh hoạt hoặc tiếp tục với khám phá thông thường."
+              />
+            ) : null}
+            {recommendationOpen &&
+            recommendationState === "success" &&
+            recommendationResult &&
+            recommendationResult.items.length > 0 &&
+            recommendationResult.items.every((item) => dismissedRecommendationIds.has(item.request.id)) ? (
+              <EmptyState
+                title="Bạn đã xem hết gợi ý trong phiên này"
+                description="Bạn có thể tiếp tục với khám phá thông thường bên dưới."
+              />
+            ) : null}
             {recommendationOpen ? (
               <Link
                 className="inline-flex min-h-11 items-center font-bold underline decoration-2 underline-offset-4"
@@ -387,41 +467,65 @@ function DiscoveryContent() {
           </div>
         </Card>
       ) : null}
-      {state === "idle" || state === "loading" ? <LoadingState message="Đang tìm yêu cầu ở ghép…" /> : null}
-      {state === "error" ? (
-        <ErrorState
-          message={roommateErrorMessage(error)}
-          requestId={error?.requestId}
-          action={<Button onClick={() => setSubmittedForm({ ...submittedForm })}>Thử lại</Button>}
-        />
-      ) : null}
-      {state === "success" && result?.data.length === 0 ? (
-        <EmptyState
-          title="Chưa tìm thấy yêu cầu phù hợp"
-          description="Thử điều chỉnh khu vực, ngân sách hoặc thời gian chuyển vào."
-          action={
-            <Link className="font-bold underline decoration-2 underline-offset-4" href="/roommates/my-request">
-              Tạo yêu cầu của bạn
-            </Link>
-          }
-        />
-      ) : null}
-      {state === "success" && result && result.data.length > 0 ? (
-        <div className="space-y-5">
-          <div className="grid gap-5 xl:grid-cols-2">
-            {result.data.map((request) => (
-              <DiscoveryCard key={request.id} request={request} />
-            ))}
+      <section className="space-y-4" aria-labelledby="roommate-normal-discovery-heading">
+        <div className="flex flex-wrap items-end justify-between gap-3">
+          <div>
+            <p className="rm-roommate-section-label">Khám phá thông thường</p>
+            <h2
+              id="roommate-normal-discovery-heading"
+              className="mt-1 font-display text-heading-lg font-bold text-foreground"
+            >
+              Các yêu cầu đang mở
+            </h2>
+            <p className="mt-1 text-ui-sm text-muted-foreground">
+              Thứ tự hiển thị theo dữ liệu khám phá hiện tại của RentMate.
+            </p>
           </div>
-          <Pagination
-            ariaLabel="Phân trang yêu cầu ở ghép"
-            page={result.pagination.page}
-            hasNextPage={result.pagination.hasNextPage}
-            onPrevious={() => setPage((current) => Math.max(1, current - 1))}
-            onNext={() => setPage((current) => current + 1)}
-          />
+          <span className="rm-roommate-chip">
+            <Icon name="compass" className="h-4 w-4" /> V1 + V2
+          </span>
         </div>
-      ) : null}
+        {state === "idle" || state === "loading" ? (
+          <div className="grid gap-5 xl:grid-cols-2" role="status" aria-label="Đang tìm yêu cầu ở ghép">
+            <DiscoveryCardSkeleton />
+            <DiscoveryCardSkeleton />
+          </div>
+        ) : null}
+        {state === "error" ? (
+          <ErrorState
+            message={roommateErrorMessage(error)}
+            requestId={error?.requestId}
+            action={<Button onClick={() => setSubmittedForm({ ...submittedForm })}>Thử lại</Button>}
+          />
+        ) : null}
+        {state === "success" && result?.data.length === 0 ? (
+          <EmptyState
+            title="Chưa tìm thấy yêu cầu phù hợp"
+            description="Thử điều chỉnh khu vực, ngân sách hoặc thời gian chuyển vào."
+            action={
+              <Link className="font-bold underline decoration-2 underline-offset-4" href="/roommates/my-request">
+                Tạo yêu cầu của bạn
+              </Link>
+            }
+          />
+        ) : null}
+        {state === "success" && result && result.data.length > 0 ? (
+          <div className="space-y-5">
+            <div className="grid gap-5 xl:grid-cols-2">
+              {result.data.map((request) => (
+                <DiscoveryCard key={request.id} request={request} />
+              ))}
+            </div>
+            <Pagination
+              ariaLabel="Phân trang yêu cầu ở ghép"
+              page={result.pagination.page}
+              hasNextPage={result.pagination.hasNextPage}
+              onPrevious={() => setPage((current) => Math.max(1, current - 1))}
+              onNext={() => setPage((current) => current + 1)}
+            />
+          </div>
+        ) : null}
+      </section>
     </div>
   );
 }

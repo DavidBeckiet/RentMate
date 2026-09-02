@@ -117,7 +117,8 @@ function ProfileEditor() {
     }
   };
 
-  if (loadState === "loading") return <LoadingState message="Đang tải hồ sơ ở ghép…" />;
+  if (loadState === "loading")
+    return <LoadingState message="Đang tải hồ sơ ở ghép…" className="rm-roommate-card-static" />;
   if (loadState === "error") {
     return (
       <ErrorState
@@ -129,155 +130,207 @@ function ProfileEditor() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="rm-roommate-page space-y-6">
       <RoommatePageHeader
         title="Hồ sơ ở ghép"
-        description="Chia sẻ các ưu tiên sinh hoạt cơ bản để người khác hiểu bối cảnh. Không đưa thông tin liên hệ, OTP, thông tin tài chính hoặc địa chỉ chính xác vào hồ sơ."
+        description="Một hồ sơ rõ ràng giúp cuộc trò chuyện bắt đầu tự nhiên hơn. Chia sẻ nhịp sống và môi trường bạn mong muốn; không đưa thông tin liên hệ, OTP, thông tin tài chính hoặc địa chỉ chính xác vào hồ sơ."
       />
       <RoommateSubnav />
-      <Card className="mx-auto max-w-3xl">
+      <Card className="rm-roommate-card-static mx-auto max-w-4xl">
         <form className="space-y-5" onSubmit={(event) => void save(event)} noValidate>
           <p
-            className="border-l-4 border-heroDark-950 bg-rent-canvas pl-3 py-2 text-ui-sm leading-6 text-rent-secondary"
+            className="rm-roommate-callout text-ui-sm leading-6 text-muted-foreground"
+            data-tone={profileCompleted ? "accent" : undefined}
             role="status"
           >
             {profileCompleted
               ? "Hồ sơ ở ghép đã hoàn thành."
               : "Hồ sơ chưa sẵn sàng để dùng cho các tương tác ở ghép. Hãy hoàn thành các trường bắt buộc hoặc kiểm tra lại sau."}
           </p>
-          <TextareaField
-            id="roommate-intro"
-            name="intro"
-            label="Giới thiệu ngắn"
-            hint="Từ 20 đến 500 ký tự. Chỉ chia sẻ thông tin sinh hoạt phù hợp với mục đích ở ghép."
-            required
-            minLength={20}
-            maxLength={500}
-            error={introError ?? undefined}
-            rows={6}
-            value={profile.intro}
-            onChange={(event) => {
-              setProfile((current) => ({ ...current, intro: event.target.value }));
-              if (introError) setIntroError(null);
-            }}
-          />
-          <p aria-live="polite" className="text-right text-ui-xs font-semibold text-rent-secondary">
-            {Array.from(profile.intro).length}/500 ký tự
-          </p>
+          <section className="space-y-3" aria-labelledby="roommate-profile-about-heading">
+            <div>
+              <p className="rm-roommate-section-label">Về bạn</p>
+              <h2
+                id="roommate-profile-about-heading"
+                className="mt-1 font-display text-heading-sm font-bold text-foreground"
+              >
+                Bắt đầu bằng một lời giới thiệu ngắn
+              </h2>
+              <p className="mt-1 text-ui-sm text-muted-foreground">
+                Tập trung vào cách bạn muốn sống cùng một người khác.
+              </p>
+            </div>
+            <TextareaField
+              id="roommate-intro"
+              name="intro"
+              label="Giới thiệu ngắn"
+              hint="Từ 20 đến 500 ký tự. Chỉ chia sẻ thông tin sinh hoạt phù hợp với mục đích ở ghép."
+              required
+              minLength={20}
+              maxLength={500}
+              error={introError ?? undefined}
+              rows={6}
+              value={profile.intro}
+              onChange={(event) => {
+                setProfile((current) => ({ ...current, intro: event.target.value }));
+                if (introError) setIntroError(null);
+              }}
+            />
+            <p aria-live="polite" className="text-right text-ui-xs font-semibold text-muted-foreground">
+              {Array.from(profile.intro).length}/500 ký tự
+            </p>
+          </section>
           <RoommateAiPreferencePanel
             target="PROFILE"
             onApply={(values) => setProfile((current) => ({ ...current, ...(values as Partial<RoommateProfileBody>) }))}
           />
-          <div className="grid gap-5 sm:grid-cols-2">
-            <SelectField
-              id="roommate-sleep-schedule"
-              name="sleepSchedule"
-              label="Nhịp sinh hoạt"
-              hint="Mô tả khung giờ sinh hoạt thường thấy; không dùng để chấm điểm mức độ phù hợp."
-              value={profile.sleepSchedule}
-              onChange={(event) =>
-                setProfile((current) => ({
-                  ...current,
-                  sleepSchedule: event.target.value as RoommateProfileBody["sleepSchedule"]
-                }))
-              }
-            >
-              {Object.entries(roommateSleepScheduleLabels).map(([value, label]) => (
-                <option key={value} value={value}>
-                  {label}
-                </option>
-              ))}
-            </SelectField>
-            <SelectField
-              id="roommate-cleanliness"
-              name="cleanlinessLevel"
-              label="Mức độ gọn gàng"
-              hint="Mô tả mong muốn khi dùng không gian chung, không phải tiêu chí đánh giá con người."
-              value={profile.cleanlinessLevel}
-              onChange={(event) =>
-                setProfile((current) => ({
-                  ...current,
-                  cleanlinessLevel: event.target.value as RoommateProfileBody["cleanlinessLevel"]
-                }))
-              }
-            >
-              {Object.entries(roommateCleanlinessLabels).map(([value, label]) => (
-                <option key={value} value={value}>
-                  {label}
-                </option>
-              ))}
-            </SelectField>
-            <SelectField
-              id="roommate-noise"
-              name="noisePreference"
-              label="Ưu tiên không gian"
-              hint="Mô tả cách bạn muốn sử dụng không gian chung để có thêm ngữ cảnh trao đổi."
-              value={profile.noisePreference}
-              onChange={(event) =>
-                setProfile((current) => ({
-                  ...current,
-                  noisePreference: event.target.value as RoommateProfileBody["noisePreference"]
-                }))
-              }
-            >
-              {Object.entries(roommateNoiseLabels).map(([value, label]) => (
-                <option key={value} value={value}>
-                  {label}
-                </option>
-              ))}
-            </SelectField>
-            <SelectField
-              id="roommate-smoking"
-              name="smokingEnvironment"
-              label="Môi trường thuốc lá"
-              hint="Mô tả môi trường sinh hoạt bạn mong muốn để trao đổi trước."
-              value={profile.smokingEnvironment}
-              onChange={(event) =>
-                setProfile((current) => ({
-                  ...current,
-                  smokingEnvironment: event.target.value as RoommateProfileBody["smokingEnvironment"]
-                }))
-              }
-            >
-              {Object.entries(roommateSmokingLabels).map(([value, label]) => (
-                <option key={value} value={value}>
-                  {label}
-                </option>
-              ))}
-            </SelectField>
-            <SelectField
-              id="roommate-pets"
-              name="petEnvironment"
-              label="Thú cưng"
-              hint="Mô tả bối cảnh thú cưng để hai bên trao đổi trước khi gặp."
-              value={profile.petEnvironment}
-              onChange={(event) =>
-                setProfile((current) => ({
-                  ...current,
-                  petEnvironment: event.target.value as RoommateProfileBody["petEnvironment"]
-                }))
-              }
-            >
-              {Object.entries(roommatePetLabels).map(([value, label]) => (
-                <option key={value} value={value}>
-                  {label}
-                </option>
-              ))}
-            </SelectField>
-          </div>
+          <section className="space-y-3" aria-labelledby="roommate-profile-rhythm-heading">
+            <div>
+              <p className="rm-roommate-section-label">Nhịp sống</p>
+              <h2
+                id="roommate-profile-rhythm-heading"
+                className="mt-1 font-display text-heading-sm font-bold text-foreground"
+              >
+                Những điều bạn muốn giữ ổn định
+              </h2>
+              <p className="mt-1 text-ui-sm text-muted-foreground">
+                Các lựa chọn này là bối cảnh để hai bên trao đổi, không phải điểm số.
+              </p>
+            </div>
+            <div className="grid gap-5 sm:grid-cols-2">
+              <SelectField
+                id="roommate-sleep-schedule"
+                name="sleepSchedule"
+                label="Nhịp sinh hoạt"
+                hint="Mô tả khung giờ sinh hoạt thường thấy; không dùng để chấm điểm mức độ phù hợp."
+                value={profile.sleepSchedule}
+                onChange={(event) =>
+                  setProfile((current) => ({
+                    ...current,
+                    sleepSchedule: event.target.value as RoommateProfileBody["sleepSchedule"]
+                  }))
+                }
+              >
+                {Object.entries(roommateSleepScheduleLabels).map(([value, label]) => (
+                  <option key={value} value={value}>
+                    {label}
+                  </option>
+                ))}
+              </SelectField>
+              <SelectField
+                id="roommate-cleanliness"
+                name="cleanlinessLevel"
+                label="Mức độ gọn gàng"
+                hint="Mô tả mong muốn khi dùng không gian chung, không phải tiêu chí đánh giá con người."
+                value={profile.cleanlinessLevel}
+                onChange={(event) =>
+                  setProfile((current) => ({
+                    ...current,
+                    cleanlinessLevel: event.target.value as RoommateProfileBody["cleanlinessLevel"]
+                  }))
+                }
+              >
+                {Object.entries(roommateCleanlinessLabels).map(([value, label]) => (
+                  <option key={value} value={value}>
+                    {label}
+                  </option>
+                ))}
+              </SelectField>
+            </div>
+          </section>
+          <section className="space-y-3" aria-labelledby="roommate-profile-environment-heading">
+            <div>
+              <p className="rm-roommate-section-label">Môi trường sống</p>
+              <h2
+                id="roommate-profile-environment-heading"
+                className="mt-1 font-display text-heading-sm font-bold text-foreground"
+              >
+                Không gian chung phù hợp với bạn
+              </h2>
+              <p className="mt-1 text-ui-sm text-muted-foreground">
+                Nêu rõ các ưu tiên để tránh hiểu nhầm khi bắt đầu trò chuyện.
+              </p>
+            </div>
+            <div className="grid gap-5 sm:grid-cols-2">
+              <SelectField
+                id="roommate-noise"
+                name="noisePreference"
+                label="Ưu tiên không gian"
+                hint="Mô tả cách bạn muốn sử dụng không gian chung để có thêm ngữ cảnh trao đổi."
+                value={profile.noisePreference}
+                onChange={(event) =>
+                  setProfile((current) => ({
+                    ...current,
+                    noisePreference: event.target.value as RoommateProfileBody["noisePreference"]
+                  }))
+                }
+              >
+                {Object.entries(roommateNoiseLabels).map(([value, label]) => (
+                  <option key={value} value={value}>
+                    {label}
+                  </option>
+                ))}
+              </SelectField>
+              <SelectField
+                id="roommate-smoking"
+                name="smokingEnvironment"
+                label="Môi trường thuốc lá"
+                hint="Mô tả môi trường sinh hoạt bạn mong muốn để trao đổi trước."
+                value={profile.smokingEnvironment}
+                onChange={(event) =>
+                  setProfile((current) => ({
+                    ...current,
+                    smokingEnvironment: event.target.value as RoommateProfileBody["smokingEnvironment"]
+                  }))
+                }
+              >
+                {Object.entries(roommateSmokingLabels).map(([value, label]) => (
+                  <option key={value} value={value}>
+                    {label}
+                  </option>
+                ))}
+              </SelectField>
+              <SelectField
+                id="roommate-pets"
+                name="petEnvironment"
+                label="Thú cưng"
+                hint="Mô tả bối cảnh thú cưng để hai bên trao đổi trước khi gặp."
+                value={profile.petEnvironment}
+                onChange={(event) =>
+                  setProfile((current) => ({
+                    ...current,
+                    petEnvironment: event.target.value as RoommateProfileBody["petEnvironment"]
+                  }))
+                }
+              >
+                {Object.entries(roommatePetLabels).map(([value, label]) => (
+                  <option key={value} value={value}>
+                    {label}
+                  </option>
+                ))}
+              </SelectField>
+            </div>
+          </section>
           {submitError ? (
-            <p role="alert" className="border-l-4 border-rose-700 pl-3 text-ui-sm font-semibold text-rose-800">
+            <p role="alert" className="rm-roommate-callout text-ui-sm font-semibold text-danger" data-tone="danger">
               {submitError}
             </p>
           ) : null}
           {saved ? (
-            <p role="status" className="border-l-4 border-heroDark-950 pl-3 text-ui-sm font-bold">
+            <p
+              role="status"
+              className="rm-roommate-callout text-ui-sm font-bold text-success-foreground"
+              data-tone="accent"
+            >
               Hồ sơ ở ghép đã được lưu.
             </p>
           ) : null}
-          <Button className="w-full sm:w-auto" type="submit" pending={pending} pendingLabel="Đang lưu hồ sơ…">
-            Lưu hồ sơ ở ghép
-          </Button>
+          <div className="flex flex-wrap items-center justify-between gap-3 border-t border-border pt-5">
+            <p className="text-ui-xs text-muted-foreground">Bạn vẫn cần bấm lưu để cập nhật hồ sơ.</p>
+            <Button className="w-full sm:w-auto" type="submit" pending={pending} pendingLabel="Đang lưu hồ sơ…">
+              Lưu hồ sơ ở ghép
+            </Button>
+          </div>
         </form>
       </Card>
       <RoommateVerificationPanel />

@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import { Button } from "../../components/ui/button";
 import { Card } from "../../components/ui/card";
+import { Dialog } from "../../components/ui/dialog";
 import { EmptyState, ErrorState, LoadingState } from "../../components/ui/feedback-states";
 import { Icon } from "../../components/ui/icon";
 import { api, ApiError } from "../../lib/api/client";
@@ -18,6 +19,7 @@ import {
   RoommateReportControl,
   RoommateRequestFacts,
   RoommateSafetyNotice,
+  RoommateStatusPill,
   RoommateSubnav,
   RoommateTenantBoundary
 } from "./roommate-shared";
@@ -87,7 +89,7 @@ function ConnectionContent() {
     );
 
   return (
-    <div className="space-y-6">
+    <div className="rm-roommate-page space-y-6">
       <RoommatePageHeader
         title="Kết nối tìm roommate hiện tại"
         description="Kết nối này chỉ giúp hai người tiếp tục trao đổi. RentMate không giữ chỗ, không thu tiền và không bảo đảm giao dịch."
@@ -106,23 +108,24 @@ function ConnectionContent() {
       ) : (
         <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_minmax(19rem,0.45fr)]">
           <div className="space-y-5">
-            <Card className="space-y-4">
+            <Card className="rm-roommate-card-static space-y-5">
               <div className="flex flex-wrap items-start justify-between gap-3">
                 <div>
-                  <p className="text-ui-xs font-bold uppercase tracking-[0.12em] text-rent-secondary">
-                    KẾT NỐI HIỆN TẠI
-                  </p>
+                  <p className="rm-roommate-section-label">Kết nối hiện tại</p>
                   <h2 className="mt-1 font-display text-heading-sm font-bold">Đã kết nối để tìm roommate</h2>
                   <p className="mt-2 text-ui-sm text-rent-secondary">
                     Kết nối từ {formatRoommateDateTime(connection.connectedAt)}
                   </p>
                 </div>
-                <Link
-                  className="inline-flex min-h-11 w-full items-center justify-center border-2 border-heroDark-950 bg-heroDark-950 px-4 text-ui-sm font-bold text-white shadow-glass-sm sm:w-auto"
-                  href={`/roommates/conversations/${connection.interestId}`}
-                >
-                  <Icon name="message" className="h-4 w-4" /> Mở trò chuyện
-                </Link>
+                <div className="flex items-center gap-2">
+                  <RoommateStatusPill status="ACCEPTED" label="Đang kết nối" />
+                  <Link
+                    className="inline-flex min-h-11 w-full items-center justify-center gap-2 border-2 border-heroDark-950 bg-heroDark-950 px-4 text-ui-sm font-bold text-white shadow-glass-sm sm:w-auto"
+                    href={`/roommates/conversations/${connection.interestId}`}
+                  >
+                    <Icon name="message" className="h-4 w-4" /> Mở trò chuyện
+                  </Link>
+                </div>
               </div>
               <RoommateProfileSummary profile={connection.counterpart} heading="Hồ sơ người còn lại" />
               <RoommateRequestFacts request={connection.request} />
@@ -130,38 +133,56 @@ function ConnectionContent() {
             </Card>
             <RoommateSafetyNotice kind="long" />
             <RoommateSafetyNotice kind="checklist" />
-            <Card className="space-y-3" aria-label="Kết thúc kết nối ở ghép">
+            <Card className="rm-roommate-card-static space-y-3" aria-label="Kết thúc kết nối ở ghép">
               <h2 className="font-display text-ui-base font-bold">Kết thúc kết nối</h2>
-              <p className="text-ui-sm leading-6 text-rent-secondary">
+              <p className="text-ui-sm leading-6 text-muted-foreground">
                 Kết thúc kết nối không mở lại yêu cầu hoặc lời quan tâm cũ. Nếu muốn tìm tiếp, bạn cần bắt đầu một quy
                 trình Roommate mới hợp lệ sau khi kết nối hiện tại đã kết thúc.
               </p>
+              {leaveError && !confirmLeave ? (
+                <p role="alert" className="rm-roommate-callout text-ui-sm font-semibold text-danger" data-tone="danger">
+                  {leaveError}
+                </p>
+              ) : null}
               {confirmLeave ? (
-                <div className="space-y-3 border-2 border-heroDark-950 bg-rent-coral p-4">
-                  <p className="text-ui-sm font-semibold leading-6">
-                    Kết nối này sẽ kết thúc. Yêu cầu và lời quan tâm cũ không được mở lại hoặc khôi phục; hai bên chỉ có
-                    thể tương tác lại qua một quy trình Roommate mới hợp lệ.
-                  </p>
-                  {leaveError ? (
-                    <p role="alert" className="border-l-4 border-rose-700 pl-3 text-ui-sm font-semibold text-rose-800">
-                      {leaveError}
-                    </p>
-                  ) : null}
-                  <div className="grid gap-2 sm:flex sm:flex-wrap">
-                    <Button
-                      autoFocus
-                      variant="danger"
-                      pending={leavePending}
-                      pendingLabel="Đang kết thúc…"
-                      onClick={() => void leave()}
-                    >
-                      Xác nhận kết thúc
-                    </Button>
-                    <Button variant="secondary" disabled={leavePending} onClick={() => setConfirmLeave(false)}>
-                      Quay lại
-                    </Button>
+                <Dialog
+                  open={confirmLeave}
+                  title="Kết thúc kết nối?"
+                  description="Hãy xác nhận khi bạn chắc chắn muốn đóng kết nối hiện tại."
+                  onClose={() => setConfirmLeave(false)}
+                >
+                  <div className="space-y-4">
+                    <div className="rm-roommate-callout" data-tone="warning">
+                      <p className="text-ui-sm font-semibold leading-6">
+                        Kết nối này sẽ kết thúc. Yêu cầu và lời quan tâm cũ không được mở lại hoặc khôi phục; hai bên
+                        chỉ có thể tương tác lại qua một quy trình Roommate mới hợp lệ.
+                      </p>
+                    </div>
+                    {leaveError ? (
+                      <p
+                        role="alert"
+                        className="rm-roommate-callout text-ui-sm font-semibold text-danger"
+                        data-tone="danger"
+                      >
+                        {leaveError}
+                      </p>
+                    ) : null}
+                    <div className="grid gap-2 sm:flex sm:flex-wrap">
+                      <Button
+                        autoFocus
+                        variant="danger"
+                        pending={leavePending}
+                        pendingLabel="Đang kết thúc…"
+                        onClick={() => void leave()}
+                      >
+                        Xác nhận kết thúc
+                      </Button>
+                      <Button variant="secondary" disabled={leavePending} onClick={() => setConfirmLeave(false)}>
+                        Quay lại
+                      </Button>
+                    </div>
                   </div>
-                </div>
+                </Dialog>
               ) : (
                 <Button className="w-full sm:w-auto" variant="outline" onClick={() => setConfirmLeave(true)}>
                   Kết thúc kết nối
@@ -176,9 +197,9 @@ function ConnectionContent() {
               onBlocked={() => setRetryKey((key) => key + 1)}
             />
             <RoommateReportControl target="ROOMMATE_PROFILE" interestId={connection.interestId} label="Báo cáo" />
-            <Card subtle>
+            <Card subtle className="rm-roommate-card-static">
               <h2 className="font-display text-ui-base font-bold">Thông tin riêng tư</h2>
-              <p className="mt-2 text-ui-sm leading-6 text-rent-secondary">
+              <p className="mt-2 text-ui-sm leading-6 text-muted-foreground">
                 Kết nối không tự động chia sẻ email, số điện thoại, địa chỉ chính xác hoặc dữ liệu tài chính.
               </p>
             </Card>

@@ -1,5 +1,5 @@
 import { Card } from "../../components/ui/card";
-import { Icon } from "../../components/ui/icon";
+import { Icon, type IconName } from "../../components/ui/icon";
 import type {
   RoommateCompatibility,
   RoommateCompatibilityDimension,
@@ -56,6 +56,17 @@ const highlightDimensionOrder: readonly RoommateCompatibilityDimension[] = [
   "CLEANLINESS",
   "NOISE"
 ];
+
+const dimensionIcons: Record<RoommateCompatibilityDimension, IconName> = {
+  SLEEP: "eye",
+  CLEANLINESS: "sparkles",
+  NOISE: "wifi",
+  SMOKING: "shield",
+  PETS: "home",
+  BUDGET: "ruler",
+  AREA: "map",
+  MOVE_IN: "target"
+};
 
 const outcomePriority: Record<RoommateCompatibilityOutcome, number> = {
   IMPORTANT_DIFFERENCE: 0,
@@ -120,26 +131,37 @@ export function selectRoommateCompatibilityHighlights(
 }
 
 function outcomeClass(outcome: RoommateCompatibilityOutcome): string {
-  if (outcome === "IMPORTANT_DIFFERENCE") return "border-rose-700 bg-rose-50";
-  if (outcome === "DISCUSS") return "border-brandBlue-700 bg-blue-50";
-  if (outcome === "ALIGNED") return "border-emerald-700 bg-emerald-50";
-  return "border-heroDark-950 bg-rent-canvas";
+  return `rm-roommate-compatibility-item rm-roommate-compatibility-item-${outcome.toLowerCase()}`;
 }
 
 function CompatibilityItem({ item }: Readonly<{ item: RoommateCompatibilityDimensionResult }>) {
   return (
-    <li className={`border-l-4 px-3 py-2 ${outcomeClass(item.outcome)}`}>
-      <div className="flex flex-wrap items-center justify-between gap-2">
-        <span className="text-ui-sm font-bold text-heroDark-950">
-          {roommateCompatibilityDimensionLabels[item.dimension]}
-        </span>
-        <span className="text-ui-xs font-bold text-heroDark-950">
-          {roommateCompatibilityOutcomeLabels[item.outcome]}
-        </span>
+    <li
+      className={outcomeClass(item.outcome)}
+      data-outcome={item.outcome}
+      aria-label={`${roommateCompatibilityDimensionLabels[item.dimension]}: ${roommateCompatibilityOutcomeLabels[item.outcome]}`}
+    >
+      <div className="flex items-start gap-3">
+        <div
+          aria-hidden="true"
+          className="grid h-9 w-9 shrink-0 place-items-center rounded-control bg-surface text-primary-hover"
+        >
+          <Icon name={dimensionIcons[item.dimension]} className="h-4 w-4" />
+        </div>
+        <div className="min-w-0 flex-1">
+          <div className="flex flex-wrap items-start justify-between gap-2">
+            <span className="text-ui-sm font-bold text-foreground">
+              {roommateCompatibilityDimensionLabels[item.dimension]}
+            </span>
+            <span className="rm-roommate-chip" data-outcome={item.outcome}>
+              {roommateCompatibilityOutcomeLabels[item.outcome]}
+            </span>
+          </div>
+          <p className="mt-2 text-ui-sm leading-6 text-muted-foreground">
+            {roommateCompatibilityExplanation(item.explanationCode)}
+          </p>
+        </div>
       </div>
-      <p className="mt-1 text-ui-sm leading-6 text-rent-secondary">
-        {roommateCompatibilityExplanation(item.explanationCode)}
-      </p>
     </li>
   );
 }
@@ -155,9 +177,14 @@ export function RoommateCompatibilitySummary({
 }>) {
   if (compatibility == null) {
     return (
-      <Card subtle aria-label={heading} className="space-y-2">
-        <h2 className="font-display text-ui-base font-bold">{heading}</h2>
-        <p className="text-ui-sm leading-6 text-rent-secondary">Chưa đủ dữ liệu để tổng hợp các điểm cần trao đổi.</p>
+      <Card subtle aria-label={heading} className="rm-roommate-card-static space-y-3">
+        <div className="flex items-center gap-3">
+          <span className="grid h-9 w-9 place-items-center rounded-full bg-surface text-muted-foreground">
+            <Icon name="target" className="h-4 w-4" />
+          </span>
+          <h2 className="font-display text-ui-base font-bold text-foreground">{heading}</h2>
+        </div>
+        <p className="text-ui-sm leading-6 text-muted-foreground">Chưa đủ dữ liệu để tổng hợp các điểm cần trao đổi.</p>
       </Card>
     );
   }
@@ -170,42 +197,63 @@ export function RoommateCompatibilitySummary({
   const categoryLabel = compatibility.category ? roommateCompatibilityCategoryLabels[compatibility.category] : null;
 
   return (
-    <Card aria-label={heading} className="space-y-4">
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        <div>
-          <h2 className="font-display text-ui-base font-bold">{heading}</h2>
-          <p className="mt-1 text-ui-xs font-semibold text-rent-secondary">
-            {detail
-              ? `Đã có dữ liệu cho ${compatibility.evaluatedCount}/8 khía cạnh.`
-              : "Tóm tắt từ các thông tin mà hai bên đã cung cấp."}
-          </p>
-        </div>
-        {categoryLabel ? (
-          <span
-            className={`border-2 border-heroDark-950 px-2 py-1 text-ui-xs font-bold ${
-              compatibility.category === "IMPORTANT_DIFFERENCE"
-                ? "bg-rent-coral"
-                : compatibility.category === "HIGH_ALIGNMENT"
-                  ? "bg-rent-accent"
-                  : "bg-rent-yellow"
-            }`}
-          >
-            {categoryLabel}
+    <Card aria-label={heading} className="rm-roommate-card-static space-y-5">
+      <div className="flex flex-wrap items-start justify-between gap-4">
+        <div className="flex min-w-0 items-start gap-3">
+          <span className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-primary-subtle text-primary-hover">
+            <Icon name="compare" className="h-5 w-5" />
           </span>
-        ) : (
-          <span className="border-2 border-heroDark-950 bg-rent-canvas px-2 py-1 text-ui-xs font-bold">
+          <div>
+            <h2 className="font-display text-heading-sm font-bold text-foreground">{heading}</h2>
+            <p className="mt-1 text-ui-xs font-semibold text-muted-foreground">
+              {detail
+                ? `Đã có dữ liệu cho ${compatibility.evaluatedCount}/8 khía cạnh.`
+                : "Tóm tắt từ các thông tin mà hai bên đã cung cấp."}
+            </p>
+          </div>
+        </div>
+        <span
+          className="rm-roommate-chip"
+          data-outcome={
+            compatibility.category === "IMPORTANT_DIFFERENCE"
+              ? "IMPORTANT_DIFFERENCE"
+              : compatibility.category === "HIGH_ALIGNMENT"
+                ? "ALIGNED"
+                : compatibility.category === "MIXED"
+                  ? "DISCUSS"
+                  : "NOT_EVALUATED"
+          }
+        >
+          {categoryLabel ?? "Chưa đủ thông tin"}
+        </span>
+      </div>
+      {detail ? (
+        <div className="flex flex-wrap gap-2" aria-label="Nhóm kết quả tương thích">
+          <span className="rm-roommate-chip" data-outcome="ALIGNED">
+            Phù hợp
+          </span>
+          <span className="rm-roommate-chip" data-outcome="DISCUSS">
+            Nên trao đổi
+          </span>
+          <span className="rm-roommate-chip" data-outcome="IMPORTANT_DIFFERENCE">
+            Khác biệt đáng chú ý
+          </span>
+          <span className="rm-roommate-chip" data-outcome="NOT_EVALUATED">
             Chưa đủ thông tin
           </span>
-        )}
-      </div>
+        </div>
+      ) : null}
       {dimensions.length > 0 ? (
-        <ul className="space-y-2" aria-label={detail ? "Tất cả khía cạnh tương thích" : "Điểm nổi bật cần trao đổi"}>
+        <ul
+          className="rm-roommate-compatibility-grid"
+          aria-label={detail ? "Tất cả khía cạnh tương thích" : "Điểm nổi bật cần trao đổi"}
+        >
           {dimensions.map((item) => (
             <CompatibilityItem key={item.dimension} item={item} />
           ))}
         </ul>
       ) : (
-        <p className="text-ui-sm leading-6 text-rent-secondary">Chưa đủ dữ liệu để tổng hợp các điểm cần trao đổi.</p>
+        <p className="text-ui-sm leading-6 text-muted-foreground">Chưa đủ dữ liệu để tổng hợp các điểm cần trao đổi.</p>
       )}
     </Card>
   );
@@ -218,25 +266,21 @@ export function RoommateVerificationBadges({
   if (!profile) return null;
   const memberSince = formatMemberSince(profile.memberSince);
   return (
-    <div className={`space-y-2 ${className}`}>
+    <div className={`space-y-2 ${className}`} title="Xác minh liên hệ không bảo đảm độ an toàn.">
       <ul className="flex flex-wrap gap-2" aria-label="Thông tin xác minh và thành viên">
         {profile.emailVerified ? (
-          <li className="inline-flex min-h-8 items-center gap-1 border-2 border-heroDark-950 bg-rent-accent px-2 text-ui-xs font-bold">
+          <li className="rm-roommate-chip" data-outcome="ALIGNED">
             <Icon name="check" className="h-4 w-4" /> Email đã xác minh
           </li>
         ) : null}
         {profile.phoneVerified ? (
-          <li className="inline-flex min-h-8 items-center gap-1 border-2 border-heroDark-950 bg-rent-accent px-2 text-ui-xs font-bold">
+          <li className="rm-roommate-chip" data-outcome="ALIGNED">
             <Icon name="check" className="h-4 w-4" /> Số điện thoại đã xác minh
           </li>
         ) : null}
-        {memberSince ? (
-          <li className="inline-flex min-h-8 items-center border-2 border-heroDark-950 bg-rent-canvas px-2 text-ui-xs font-bold">
-            Thành viên từ {memberSince}
-          </li>
-        ) : null}
+        {memberSince ? <li className="rm-roommate-chip">Thành viên từ {memberSince}</li> : null}
       </ul>
-      <p className="text-ui-xs leading-5 text-rent-secondary">Xác minh liên hệ không bảo đảm độ an toàn.</p>
+      <p className="text-ui-xs leading-5 text-muted-foreground">Xác minh liên hệ không bảo đảm độ an toàn.</p>
     </div>
   );
 }

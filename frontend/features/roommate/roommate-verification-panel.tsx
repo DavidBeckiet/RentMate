@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { Button } from "../../components/ui/button";
 import { Card } from "../../components/ui/card";
+import { Skeleton } from "../../components/ui/skeleton";
 import { Icon } from "../../components/ui/icon";
 import { api, ApiError } from "../../lib/api/client";
 import { useAuth } from "../../lib/auth/auth-provider";
@@ -66,24 +67,22 @@ function ChannelStatusCard({
   const requestLabel = requested ? "Gửi lại mã" : "Gửi mã";
 
   return (
-    <article className="space-y-3 border-2 border-heroDark-950 bg-rent-canvas p-4">
+    <article className="rm-roommate-card-static space-y-4" data-verification-channel={channel}>
       <div className="flex items-start justify-between gap-3">
         <div>
-          <h3 className="font-display text-ui-base font-bold">{isEmail ? "Email" : "Số điện thoại"}</h3>
-          <p className="mt-1 break-all text-ui-sm text-rent-secondary">
+          <p className="rm-roommate-section-label">Kênh liên hệ</p>
+          <h3 className="mt-1 font-display text-ui-base font-bold">{isEmail ? "Email" : "Số điện thoại"}</h3>
+          <p className="mt-1 break-all text-ui-sm text-muted-foreground">
             {destinationMissing ? "Chưa cập nhật số điện thoại" : destination}
           </p>
         </div>
         <Icon name={status.verified ? "check" : isEmail ? "mail" : "phone"} className="h-5 w-5 shrink-0" />
       </div>
-      <p className="text-ui-sm font-bold" role="status">
+      <p className="rm-roommate-chip w-fit" role="status" data-outcome={status.verified ? "ALIGNED" : "NOT_EVALUATED"}>
         {channelStatusLabel(channel, status.verified)}
       </p>
       {!status.verified && !destinationMissing && !status.available ? (
-        <p
-          role="note"
-          className="border-l-4 border-brandBlue-700 bg-blue-50 pl-3 text-ui-sm leading-6 text-rent-secondary"
-        >
+        <p role="note" className="rm-roommate-callout text-ui-sm leading-6" data-tone="info">
           Kênh gửi mã hiện chưa khả dụng. Bạn có thể thử lại sau khi kênh được bật.
         </p>
       ) : null}
@@ -97,11 +96,11 @@ function ChannelStatusCard({
           >
             {requestLabel} {isEmail ? "email" : "OTP"}
           </Button>
-          <p className="text-ui-xs leading-5 text-rent-secondary">
+          <p className="text-ui-xs leading-5 text-muted-foreground">
             {isEmail ? "Mã trong email có hiệu lực trong 30 phút." : "Mã OTP có hiệu lực trong 5 phút."}
           </p>
           {requested ? (
-            <div className="space-y-2 border-t-2 border-heroDark-950 pt-3">
+            <div className="space-y-3 border-t border-border pt-4">
               <label className="block text-ui-sm font-bold" htmlFor={`roommate-${channel}-verification-code`}>
                 {isEmail ? "Mã xác minh trong email" : "Mã OTP 6 số"}
               </label>
@@ -112,10 +111,10 @@ function ChannelStatusCard({
                 inputMode={isEmail ? "text" : "numeric"}
                 autoComplete="one-time-code"
                 onChange={(event) => onValueChange(event.target.value)}
-                className="min-h-11 w-full border-2 border-heroDark-950 bg-white px-3 text-base outline-none focus-visible:ring-4 focus-visible:ring-brandBlue-500/40"
+                className="min-h-11 w-full rounded-control border border-border bg-surface px-3 text-base outline-none transition focus-visible:border-primary focus-visible:ring-4 focus-visible:ring-primary/20"
                 aria-describedby={`roommate-${channel}-verification-hint`}
               />
-              <p id={`roommate-${channel}-verification-hint`} className="text-ui-xs text-rent-secondary">
+              <p id={`roommate-${channel}-verification-hint`} className="text-ui-xs text-muted-foreground">
                 Không chia sẻ mã này với người khác.
               </p>
               <Button pending={pendingAction === confirmAction} pendingLabel="Đang xác nhận…" onClick={onConfirm}>
@@ -126,7 +125,7 @@ function ChannelStatusCard({
         </div>
       ) : null}
       {error ? (
-        <p role="alert" className="border-l-4 border-rose-700 pl-3 text-ui-sm font-semibold text-rose-800">
+        <p role="alert" className="rm-roommate-callout text-ui-sm font-semibold text-danger" data-tone="danger">
           {error}
         </p>
       ) : null}
@@ -216,23 +215,31 @@ export function RoommateVerificationPanel() {
   };
 
   return (
-    <Card aria-labelledby="roommate-verification-heading" className="mx-auto max-w-3xl space-y-5">
+    <Card
+      aria-labelledby="roommate-verification-heading"
+      className="rm-roommate-card-static mx-auto max-w-3xl space-y-5"
+    >
       <header>
-        <p className="inline-flex items-center gap-2 text-ui-xs font-bold uppercase tracking-[0.12em] text-rent-secondary">
-          <Icon name="shield" className="h-4 w-4" /> XÁC MINH LIÊN HỆ
+        <p className="rm-roommate-section-label inline-flex items-center gap-2">
+          <Icon name="shield" className="h-4 w-4" /> Xác minh liên hệ
         </p>
         <h2 id="roommate-verification-heading" className="mt-2 font-display text-heading-sm font-bold">
           Xác minh email và số điện thoại
         </h2>
-        <p className="mt-2 text-ui-sm leading-6 text-rent-secondary">
+        <p className="mt-2 text-ui-sm leading-6 text-muted-foreground">
           Hai kênh được xử lý độc lập. Chỉ trạng thái đã xác minh mới có thể xuất hiện dưới dạng thông tin thực tế trong
           hồ sơ ở ghép.
         </p>
       </header>
-      {loadState === "loading" || loadState === "idle" ? <p role="status">Đang tải trạng thái xác minh…</p> : null}
+      {loadState === "loading" || loadState === "idle" ? (
+        <div className="grid gap-4 sm:grid-cols-2" role="status" aria-label="Đang tải trạng thái xác minh">
+          <Skeleton className="h-44 w-full" rounded="card" />
+          <Skeleton className="h-44 w-full" rounded="card" />
+        </div>
+      ) : null}
       {loadState === "error" ? (
         <div className="space-y-3">
-          <p role="alert" className="border-l-4 border-rose-700 pl-3 text-ui-sm font-semibold text-rose-800">
+          <p role="alert" className="rm-roommate-callout text-ui-sm font-semibold text-danger" data-tone="danger">
             {loadError ?? "Không thể tải trạng thái xác minh."}
           </p>
           <Button variant="outline" onClick={() => setRetryKey((value) => value + 1)}>
@@ -272,7 +279,7 @@ export function RoommateVerificationPanel() {
           />
         </div>
       ) : null}
-      <p className="border-l-4 border-heroDark-950 bg-rent-yellow px-3 py-2 text-ui-xs font-semibold leading-5">
+      <p className="rm-roommate-callout text-ui-xs font-semibold leading-5" data-tone="warning">
         Xác minh liên hệ chỉ là thông tin thực tế về trạng thái kênh; không bảo đảm độ an toàn hay kết quả giao dịch.
       </p>
     </Card>

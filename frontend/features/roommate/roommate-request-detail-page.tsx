@@ -8,6 +8,7 @@ import { Card } from "../../components/ui/card";
 import { EmptyState, ErrorState, LoadingState } from "../../components/ui/feedback-states";
 import { TextareaField } from "../../components/ui/form-controls";
 import { Icon } from "../../components/ui/icon";
+import { Skeleton } from "../../components/ui/skeleton";
 import { api, ApiError } from "../../lib/api/client";
 import { useAuth } from "../../lib/auth/auth-provider";
 import type { RoommateAiCompatibilityExplanation, RoommateRequest } from "../../types/api";
@@ -20,6 +21,7 @@ import {
   RoommateReportControl,
   RoommateRequestFacts,
   RoommateSafetyNotice,
+  RoommateStatusPill,
   RoommateSubnav,
   RoommateTenantBoundary
 } from "./roommate-shared";
@@ -62,12 +64,13 @@ function InterestComposer({ requestId }: Readonly<{ requestId: number }>) {
   };
 
   return (
-    <Card className="space-y-4" aria-labelledby="roommate-interest-heading">
+    <Card className="rm-roommate-card-static space-y-4" aria-labelledby="roommate-interest-heading">
       <div>
-        <h2 id="roommate-interest-heading" className="font-display text-heading-sm font-bold">
+        <p className="rm-roommate-section-label">Kết nối bắt đầu từ đây</p>
+        <h2 id="roommate-interest-heading" className="mt-1 font-display text-heading-md font-bold text-foreground">
           Gửi lời quan tâm
         </h2>
-        <p className="mt-2 text-ui-sm leading-6 text-rent-secondary">
+        <p className="mt-2 text-ui-sm leading-6 text-muted-foreground">
           Lời nhắn mở đầu sẽ tạo một cuộc trò chuyện trong RentMate.
         </p>
       </div>
@@ -83,11 +86,11 @@ function InterestComposer({ requestId }: Readonly<{ requestId: number }>) {
           value={message}
           onChange={(event) => setMessage(event.target.value)}
         />
-        <p aria-live="polite" className="text-right text-ui-xs font-semibold text-rent-secondary">
+        <p aria-live="polite" className="text-right text-ui-xs font-semibold text-muted-foreground">
           {Array.from(message).length}/2000 ký tự
         </p>
         {error ? (
-          <p role="alert" className="border-l-4 border-rose-700 pl-3 text-ui-sm font-semibold text-rose-800">
+          <p role="alert" className="rm-roommate-callout text-ui-sm font-semibold text-danger" data-tone="danger">
             {error}
           </p>
         ) : null}
@@ -149,13 +152,22 @@ function RoommateAiExplanationPanel({
   };
 
   return (
-    <Card className="space-y-4" aria-labelledby="roommate-ai-explanation-heading">
+    <Card
+      className="rm-roommate-ai-panel rm-roommate-card-static space-y-4"
+      aria-labelledby="roommate-ai-explanation-heading"
+    >
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <h2 id="roommate-ai-explanation-heading" className="font-display text-ui-base font-bold">
+          <p className="rm-roommate-ai-label">
+            <span aria-hidden="true">✦</span> AI hỗ trợ · theo yêu cầu
+          </p>
+          <h2
+            id="roommate-ai-explanation-heading"
+            className="mt-3 font-display text-heading-sm font-bold text-foreground"
+          >
             Giải thích bằng AI
           </h2>
-          <p className="mt-1 text-ui-sm leading-6 text-rent-secondary">
+          <p className="mt-1 text-ui-sm leading-6 text-muted-foreground">
             Giải thích do AI hỗ trợ dựa trên các khía cạnh tương thích xác định ở trên; không thay thế các thông tin đó.
           </p>
         </div>
@@ -170,13 +182,15 @@ function RoommateAiExplanationPanel({
         </Button>
       </div>
       {state === "loading" ? (
-        <p aria-live="polite" className="text-ui-sm text-rent-secondary">
-          Đang tạo giải thích do AI hỗ trợ…
-        </p>
+        <div className="rm-roommate-callout space-y-3" role="status" aria-live="polite">
+          <p className="text-ui-sm text-info-foreground">Đang tạo giải thích do AI hỗ trợ…</p>
+          <Skeleton className="h-4 w-11/12" />
+          <Skeleton className="h-4 w-3/5" />
+        </div>
       ) : null}
       {state === "error" ? (
-        <div className="space-y-3 border-l-4 border-rose-700 pl-3" role="alert">
-          <p className="text-ui-sm font-semibold text-rose-800">{aiExplanationErrorMessage(error)}</p>
+        <div className="rm-roommate-callout space-y-3 text-danger" data-tone="danger" role="alert">
+          <p className="text-ui-sm font-semibold">{aiExplanationErrorMessage(error)}</p>
           <Button type="button" variant="secondary" onClick={generate}>
             Thử lại
           </Button>
@@ -184,22 +198,24 @@ function RoommateAiExplanationPanel({
       ) : null}
       {state === "success" && result ? (
         <section
-          className="space-y-4 border-2 border-heroDark-950 bg-rent-muted p-4"
+          className="rm-roommate-callout space-y-4"
+          data-tone="accent"
           aria-labelledby="roommate-ai-generated-heading"
         >
           <div>
             <h3 id="roommate-ai-generated-heading" className="font-display text-ui-base font-bold">
               Giải thích do AI hỗ trợ
             </h3>
-            <p className="mt-2 text-ui-sm leading-6 text-heroDark-950">{result.summary}</p>
+            <p className="mt-2 text-ui-sm leading-6 text-foreground">{result.summary}</p>
           </div>
           {result.cautions.length > 0 ? (
             <div>
-              <h4 className="text-ui-sm font-bold text-heroDark-950">Điểm nên trao đổi</h4>
+              <h4 className="text-ui-sm font-bold text-foreground">Điểm nên trao đổi</h4>
               <ul className="mt-2 space-y-2" aria-label="Điểm nên trao đổi">
                 {result.cautions.map((caution) => (
                   <li
-                    className="border-l-4 border-brandBlue-700 bg-white px-3 py-2 text-ui-sm text-heroDark-950"
+                    className="rm-roommate-callout text-ui-sm text-foreground"
+                    data-tone="warning"
                     key={caution.dimension}
                   >
                     <span className="font-bold">{roommateCompatibilityDimensionLabels[caution.dimension]}: </span>
@@ -210,11 +226,11 @@ function RoommateAiExplanationPanel({
             </div>
           ) : null}
           <div>
-            <h4 className="text-ui-sm font-bold text-heroDark-950">Căn cứ từ các khía cạnh tương thích</h4>
-            <ul className="mt-2 space-y-1 text-ui-sm leading-6 text-rent-secondary" aria-label="Căn cứ tương thích">
+            <h4 className="text-ui-sm font-bold text-foreground">Căn cứ từ các khía cạnh tương thích</h4>
+            <ul className="mt-2 space-y-1 text-ui-sm leading-6 text-muted-foreground" aria-label="Căn cứ tương thích">
               {result.evidenceRefs.map((reference) => (
                 <li key={`${reference.dimension}:${reference.explanationCode}`}>
-                  <span className="font-bold text-heroDark-950">
+                  <span className="font-bold text-foreground">
                     {roommateCompatibilityDimensionLabels[reference.dimension]}:{" "}
                   </span>
                   {roommateCompatibilityExplanation(reference.explanationCode)}
@@ -274,7 +290,8 @@ function RequestDetailContent({ requestId }: Readonly<{ requestId: number }>) {
     return () => controller.abort();
   }, [requestId, retryKey, tenantReady]);
 
-  if (state === "loading") return <LoadingState message="Đang tải yêu cầu ở ghép…" />;
+  if (state === "loading")
+    return <LoadingState message="Đang tải yêu cầu ở ghép…" className="rm-roommate-card-static" />;
   if (state === "error" || !request) {
     return (
       <ErrorState
@@ -304,27 +321,26 @@ function RequestDetailContent({ requestId }: Readonly<{ requestId: number }>) {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="rm-roommate-page space-y-6">
       <RoommatePageHeader
         title="Chi tiết yêu cầu ở ghép"
-        description="Xem các thông tin công khai cần thiết cho bối cảnh ở ghép. Không có thông tin liên hệ hoặc địa chỉ chính xác trong màn hình này."
+        description="Xem các thông tin công khai cần thiết cho bối cảnh ở ghép, rồi quyết định có muốn bắt đầu một cuộc trò chuyện hay không. Không có thông tin liên hệ hoặc địa chỉ chính xác trong màn hình này."
       />
       <RoommateSubnav />
       <div className="grid gap-6 xl:grid-cols-[minmax(0,1.35fr)_minmax(19rem,0.65fr)]">
         <div className="space-y-5">
-          <Card className="space-y-5">
+          <Card className="rm-roommate-card-static space-y-5">
             <div className="flex flex-wrap items-start justify-between gap-3">
               <div>
-                <p className="text-ui-xs font-bold uppercase tracking-[0.12em] text-rent-secondary">YÊU CẦU Ở GHÉP</p>
-                <h2 className="mt-1 font-display text-heading-sm font-bold">
+                <p className="rm-roommate-section-label">Yêu cầu ở ghép</p>
+                <h2 className="mt-1 font-display text-heading-md font-bold text-foreground">
                   {roommateRequestStatusLabels[request.status]}
                 </h2>
+                <p className="mt-2 text-ui-sm text-muted-foreground">
+                  Bối cảnh công khai để hai bên cân nhắc trước khi trao đổi.
+                </p>
               </div>
-              {isOwner ? (
-                <span className="border-2 border-heroDark-950 bg-rent-accent px-2 py-1 text-ui-xs font-bold">
-                  Của bạn
-                </span>
-              ) : null}
+              {isOwner ? <RoommateStatusPill status="MATCHED" label="Của bạn" /> : null}
             </div>
             <RoommateProfileSummary profile={request.profile} heading="Hồ sơ người đăng" />
             {!isOwner && request.compatibility !== undefined ? (
@@ -337,9 +353,12 @@ function RequestDetailContent({ requestId }: Readonly<{ requestId: number }>) {
             {!isOwner && request.compatibility != null && explanationCapability ? (
               <RoommateAiExplanationPanel requestId={request.id} onNoEvidence={refreshNoCompatibilityEvidence} />
             ) : null}
-            <RoommateRequestFacts request={request} />
+            <div className="border-t border-border pt-5">
+              <p className="rm-roommate-section-label">Nhu cầu</p>
+              <RoommateRequestFacts request={request} />
+            </div>
             {request.note ? (
-              <p className="whitespace-pre-wrap border-l-4 border-heroDark-950 pl-3 text-ui-sm leading-6 text-rent-secondary">
+              <p className="rm-roommate-callout whitespace-pre-wrap text-ui-sm leading-6 text-muted-foreground">
                 {request.note}
               </p>
             ) : null}
@@ -352,14 +371,14 @@ function RequestDetailContent({ requestId }: Readonly<{ requestId: number }>) {
               <h2 className="font-display text-heading-sm font-bold">Quản lý yêu cầu</h2>
               <div className="grid gap-2 sm:flex sm:flex-wrap">
                 <Link
-                  className="inline-flex min-h-11 items-center border-2 border-heroDark-950 bg-heroDark-950 px-4 text-ui-sm font-bold text-white shadow-glass-sm"
+                  className="inline-flex min-h-11 items-center rounded-control bg-primary px-4 text-ui-sm font-bold text-primary-foreground shadow-surface hover:bg-primary-hover"
                   href="/roommates/my-request"
                 >
                   Chỉnh sửa yêu cầu
                 </Link>
                 {request.status === "OPEN" ? (
                   <Link
-                    className="inline-flex min-h-11 items-center border-2 border-heroDark-950 bg-rent-surface px-4 text-ui-sm font-bold shadow-glass-sm"
+                    className="inline-flex min-h-11 items-center rounded-control border border-border-strong bg-surface px-4 text-ui-sm font-bold text-foreground shadow-surface hover:bg-surface-subtle"
                     href={`/roommates/interests?requestId=${request.id}`}
                   >
                     Xem lời quan tâm
@@ -401,9 +420,9 @@ function RequestDetailContent({ requestId }: Readonly<{ requestId: number }>) {
               <RoommateReportControl target="ROOMMATE_REQUEST" requestId={request.id} label="Báo cáo yêu cầu" />
             </>
           ) : null}
-          <Card subtle>
-            <h2 className="font-display text-ui-base font-bold">Ghi nhớ</h2>
-            <p className="mt-2 text-ui-sm leading-6 text-rent-secondary">
+          <Card subtle className="rm-roommate-card-static">
+            <h2 className="font-display text-ui-base font-bold text-foreground">Ghi nhớ</h2>
+            <p className="mt-2 text-ui-sm leading-6 text-muted-foreground">
               Chấp nhận lời quan tâm chỉ tạo kết nối tìm roommate trong RentMate. Đây không phải đặt chỗ, không phải phê
               duyệt của chủ nhà và không bảo đảm việc thuê nhà.
             </p>

@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 import { useEffect, useId, useState, type ReactNode } from "react";
 import { Button } from "../../components/ui/button";
 import { Card } from "../../components/ui/card";
+import { Dialog } from "../../components/ui/dialog";
 import { EmptyState, ErrorState, LoadingState } from "../../components/ui/feedback-states";
 import { Icon } from "../../components/ui/icon";
 import { api } from "../../lib/api/client";
@@ -36,7 +37,9 @@ export function RoommateTenantBoundary({ children }: Readonly<{ children: ReactN
 
   useEffect(() => setMounted(true), []);
 
-  if (!mounted || status === "loading") return <LoadingState message="Đang kiểm tra quyền truy cập ở ghép…" />;
+  if (!mounted || status === "loading") {
+    return <LoadingState message="Đang kiểm tra quyền truy cập ở ghép…" className="rm-roommate-card-static" />;
+  }
   if (status === "anonymous") {
     return (
       <EmptyState
@@ -77,14 +80,18 @@ export function RoommatePageHeader({
   action?: ReactNode;
 }>) {
   return (
-    <header className="border-2 border-heroDark-950 bg-rent-accent p-5 shadow-glass sm:p-7">
-      <p className="text-ui-xs font-bold uppercase tracking-[0.14em] text-heroDark-950">{eyebrow}</p>
-      <div className="mt-2 flex flex-wrap items-start justify-between gap-4">
-        <div className="max-w-3xl">
-          <h1 className="font-display text-3xl font-bold tracking-[-0.05em] text-heroDark-950 sm:text-4xl">{title}</h1>
-          <p className="mt-3 text-ui-sm leading-6 text-rent-secondary">{description}</p>
+    <header className="rm-roommate-hero">
+      <div className="rm-roommate-hero-content">
+        <p className="rm-roommate-eyebrow">
+          <Icon name="users" className="h-4 w-4" /> {eyebrow}
+        </p>
+        <div className="mt-2 flex flex-wrap items-end justify-between gap-6">
+          <div className="max-w-3xl">
+            <h1 className="rm-roommate-hero-title">{title}</h1>
+            <p className="rm-roommate-hero-description">{description}</p>
+          </div>
+          {action ? <div className="w-full sm:w-auto sm:shrink-0 [&>*]:w-full sm:[&>*]:w-auto">{action}</div> : null}
         </div>
-        {action ? <div className="w-full sm:w-auto sm:shrink-0 [&>*]:w-full sm:[&>*]:w-auto">{action}</div> : null}
       </div>
     </header>
   );
@@ -96,31 +103,42 @@ export function RoommateSubnav() {
     {
       href: "/roommates",
       label: "Khám phá",
+      icon: "compass",
       current: pathname === "/roommates" || pathname.startsWith("/roommates/requests/")
     },
-    { href: "/roommates/my-request", label: "Yêu cầu của tôi", current: pathname === "/roommates/my-request" },
+    {
+      href: "/roommates/my-request",
+      label: "Yêu cầu của tôi",
+      icon: "note",
+      current: pathname === "/roommates/my-request"
+    },
     {
       href: "/roommates/interests",
       label: "Lời quan tâm",
+      icon: "heart",
       current: pathname === "/roommates/interests" || pathname.startsWith("/roommates/conversations/")
     },
-    { href: "/roommates/connection", label: "Kết nối hiện tại", current: pathname === "/roommates/connection" },
-    { href: "/roommates/blocks", label: "Đã chặn", current: pathname === "/roommates/blocks" },
-    { href: "/roommates/profile", label: "Hồ sơ ở ghép", current: pathname === "/roommates/profile" }
+    {
+      href: "/roommates/connection",
+      label: "Kết nối hiện tại",
+      icon: "users",
+      current: pathname === "/roommates/connection"
+    },
+    { href: "/roommates/blocks", label: "Đã chặn", icon: "lock", current: pathname === "/roommates/blocks" },
+    { href: "/roommates/profile", label: "Hồ sơ ở ghép", icon: "user", current: pathname === "/roommates/profile" }
   ] as const;
 
   return (
-    <nav aria-label="Điều hướng ở ghép" className="flex gap-2 overflow-x-auto border-b-2 border-heroDark-950 pb-3">
+    <nav aria-label="Điều hướng ở ghép" className="rm-roommate-subnav">
       {items.map((item) => (
         <Link
           key={item.href}
           href={item.href}
           aria-current={item.current ? "page" : undefined}
-          className={`whitespace-nowrap border-2 border-heroDark-950 px-3 py-2 text-ui-xs font-bold shadow-glass-sm focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-brandBlue-500/40 ${
-            item.current ? "bg-heroDark-950 text-white" : "bg-rent-surface text-heroDark-950 hover:bg-rent-accent"
-          }`}
+          className="rm-roommate-subnav-link"
         >
-          {item.label}
+          <Icon name={item.icon} className="h-4 w-4" />
+          <span>{item.label}</span>
         </Link>
       ))}
     </nav>
@@ -135,17 +153,20 @@ export function RoommateSafetyNotice({
 
   if (kind === "checklist") {
     return (
-      <section
-        className={`border-2 border-heroDark-950 bg-rent-surface p-4 shadow-glass-sm ${className}`}
-        aria-labelledby={checklistHeadingId}
-      >
-        <h2 id={checklistHeadingId} className="flex items-center gap-2 font-display text-ui-base font-bold">
-          <Icon name="shield" className="h-5 w-5" /> Checklist an toàn
+      <section className={`rm-roommate-callout ${className}`} aria-labelledby={checklistHeadingId}>
+        <h2
+          id={checklistHeadingId}
+          className="flex items-center gap-2 font-display text-ui-base font-bold text-foreground"
+        >
+          <span className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-primary-subtle text-primary-hover">
+            <Icon name="shield" className="h-4 w-4" />
+          </span>
+          Checklist an toàn
         </h2>
-        <ul className="mt-3 space-y-2 text-ui-sm leading-6 text-rent-secondary">
+        <ul className="mt-4 grid gap-2 text-ui-sm leading-6 text-muted-foreground sm:grid-cols-2">
           {roommateSafetyCopy.checklist.map((item) => (
-            <li key={item} className="flex gap-2">
-              <Icon name="check" className="mt-0.5 h-4 w-4 shrink-0 text-heroDark-950" />
+            <li key={item} className="flex gap-2 rounded-control bg-surface/70 px-3 py-2">
+              <Icon name="check" className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
               <span>{item}</span>
             </li>
           ))}
@@ -158,24 +179,61 @@ export function RoommateSafetyNotice({
   return (
     <aside
       aria-label={kind === "long" ? "Lưu ý an toàn về ở ghép" : "Nhắc nhở an toàn về ở ghép"}
-      className={`border-2 border-heroDark-950 bg-rent-yellow p-4 text-ui-sm font-semibold leading-6 text-heroDark-950 shadow-glass-sm ${className}`}
+      className={`rm-roommate-safety ${className}`}
     >
-      <span className="flex gap-2">
-        <Icon name="shield" className="mt-0.5 h-5 w-5 shrink-0" />
+      <span className="flex gap-3 text-ui-sm font-semibold leading-6 text-foreground">
+        <span className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-warning/15 text-warning-foreground">
+          <Icon name="shield" className="h-4 w-4" />
+        </span>
         <span>{copy}</span>
       </span>
     </aside>
   );
 }
 
+function roommateInitials(displayName: string | null): string {
+  const parts = (displayName ?? "RentMate").trim().split(/\s+/u).filter(Boolean);
+  if (parts.length === 0) return "RM";
+  return parts
+    .slice(0, 2)
+    .map((part) => Array.from(part)[0] ?? "")
+    .join("")
+    .toUpperCase();
+}
+
+export function RoommateAvatar({
+  displayName,
+  size = "md"
+}: Readonly<{ displayName: string | null; size?: "sm" | "md" | "lg" }>) {
+  return (
+    <span className="rm-roommate-avatar" data-size={size === "md" ? undefined : size} aria-hidden="true">
+      {roommateInitials(displayName)}
+    </span>
+  );
+}
+
+export function RoommateStatusPill({ status, label }: Readonly<{ status: string; label: string }>) {
+  return (
+    <span className="rm-roommate-status" data-status={status}>
+      {label}
+    </span>
+  );
+}
+
 export function RoommateProfileSummary({
   profile,
   heading = "Hồ sơ ở ghép",
-  showDisplayName = true
-}: Readonly<{ profile: RoommateProfile | null; heading?: string; showDisplayName?: boolean }>) {
+  showDisplayName = true,
+  showAvatar = true
+}: Readonly<{
+  profile: RoommateProfile | null;
+  heading?: string;
+  showDisplayName?: boolean;
+  showAvatar?: boolean;
+}>) {
   if (!profile) {
     return (
-      <Card subtle className="text-ui-sm text-rent-secondary">
+      <Card subtle className="rm-roommate-card-static text-ui-sm text-muted-foreground">
         Chưa có hồ sơ ở ghép công khai trong ngữ cảnh này.
       </Card>
     );
@@ -190,25 +248,30 @@ export function RoommateProfileSummary({
   ] as const;
 
   return (
-    <Card className="space-y-4">
-      <div>
-        <h2 className="font-display text-heading-sm font-bold text-heroDark-950">{heading}</h2>
-        {showDisplayName && profile.displayName ? (
-          <p className="mt-1 text-ui-base font-semibold">{profile.displayName}</p>
-        ) : null}
+    <Card className="rm-roommate-card-static space-y-4">
+      <div className="flex items-start gap-3">
+        {showAvatar ? <RoommateAvatar displayName={profile.displayName} /> : null}
+        <div className="min-w-0">
+          <h2 className="font-display text-heading-sm font-bold text-foreground">{heading}</h2>
+          {showDisplayName ? (
+            <p className="mt-1 truncate text-ui-base font-bold text-foreground">
+              {profile.displayName ?? "Thành viên RentMate"}
+            </p>
+          ) : null}
+        </div>
       </div>
       <RoommateVerificationBadges profile={profile} />
-      <p className="whitespace-pre-wrap text-ui-sm leading-6 text-rent-secondary">{profile.intro}</p>
-      <dl className="grid gap-3 sm:grid-cols-2">
+      <p className="whitespace-pre-wrap text-ui-sm leading-6 text-muted-foreground">{profile.intro}</p>
+      <dl className="rm-roommate-facts">
         {preferences.map(([label, value]) => (
-          <div key={label} className="border-l-4 border-heroDark-950 bg-rent-canvas px-3 py-2">
-            <dt className="text-ui-xs font-bold uppercase tracking-wide text-rent-secondary">{label}</dt>
-            <dd className="mt-1 text-ui-sm font-semibold text-heroDark-950">{value}</dd>
+          <div key={label} className="rm-roommate-fact">
+            <dt>{label}</dt>
+            <dd>{value}</dd>
           </div>
         ))}
       </dl>
       {profile.profileCompleted ? (
-        <p className="inline-flex items-center gap-2 text-ui-xs font-bold text-heroDark-950">
+        <p className="inline-flex items-center gap-2 text-ui-xs font-bold text-success-foreground">
           <Icon name="check" className="h-4 w-4" /> Hồ sơ ở ghép đã hoàn thành
         </p>
       ) : null}
@@ -219,9 +282,9 @@ export function RoommateProfileSummary({
 export function RoommateListingContext({ request }: Readonly<{ request: RoommateRequest }>) {
   if (request.listingMode === "UNLINKED") {
     return (
-      <Card subtle>
-        <h2 className="font-display text-ui-base font-bold">Chưa gắn listing</h2>
-        <p className="mt-2 text-ui-sm leading-6 text-rent-secondary">
+      <Card subtle className="rm-roommate-card-static">
+        <h2 className="font-display text-ui-base font-bold text-foreground">Chưa gắn listing</h2>
+        <p className="mt-2 text-ui-sm leading-6 text-muted-foreground">
           Yêu cầu này tìm người để cùng tiếp tục tìm listing phù hợp trên RentMate.
         </p>
       </Card>
@@ -230,36 +293,38 @@ export function RoommateListingContext({ request }: Readonly<{ request: Roommate
 
   if (!request.listing || request.signals.listingCurrentlyAvailable === false) {
     return (
-      <Card className="border-rose-700 bg-rose-50">
-        <h2 className="font-display text-ui-base font-bold text-heroDark-950">Listing không còn khả dụng</h2>
-        <p className="mt-2 text-ui-sm leading-6 text-rent-secondary">
-          {request.status === "MATCHED"
-            ? "Liên kết này chỉ còn là ngữ cảnh lịch sử; kết nối ở ghép không tự động thay đổi."
-            : "Không thể xác nhận listing này cho tương tác mới. Nếu đây là yêu cầu của bạn, hãy gỡ liên kết hoặc hủy yêu cầu."}
-        </p>
+      <Card className="rm-roommate-card-static" data-tone="danger">
+        <div className="rm-roommate-callout" data-tone="danger">
+          <h2 className="font-display text-ui-base font-bold text-foreground">Listing không còn khả dụng</h2>
+          <p className="mt-2 text-ui-sm leading-6 text-muted-foreground">
+            {request.status === "MATCHED"
+              ? "Liên kết này chỉ còn là ngữ cảnh lịch sử; kết nối ở ghép không tự động thay đổi."
+              : "Không thể xác nhận listing này cho tương tác mới. Nếu đây là yêu cầu của bạn, hãy gỡ liên kết hoặc hủy yêu cầu."}
+          </p>
+        </div>
       </Card>
     );
   }
 
   return (
-    <Card className="space-y-3">
+    <Card className="rm-roommate-card-static space-y-3">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <p className="text-ui-xs font-bold uppercase tracking-[0.12em] text-rent-secondary">BỐI CẢNH LISTING</p>
-          <h2 className="mt-1 font-display text-ui-base font-bold">{request.listing.title}</h2>
-          <p className="mt-1 text-ui-sm text-rent-secondary">{request.listing.areaName}</p>
+          <p className="rm-roommate-section-label">Bối cảnh listing</p>
+          <h2 className="mt-1 font-display text-ui-base font-bold text-foreground">{request.listing.title}</h2>
+          <p className="mt-1 text-ui-sm text-muted-foreground">{request.listing.areaName}</p>
         </div>
         <Link
           href={`/listings/${request.listing.id}`}
-          className="text-ui-sm font-bold underline decoration-2 underline-offset-4"
+          className="min-h-11 inline-flex items-center text-ui-sm font-bold text-primary-hover underline decoration-2 underline-offset-4"
         >
           Xem listing
         </Link>
       </div>
-      <p className="text-ui-sm font-semibold text-heroDark-950">
+      <p className="text-ui-sm font-bold text-foreground">
         {formatRoommateMoney(request.listing.monthlyRent)} / tháng · tối đa {request.listing.maxOccupants ?? "—"} người
       </p>
-      <p className="border-l-4 border-heroDark-950 pl-3 text-ui-sm leading-6 text-rent-secondary">
+      <p className="rm-roommate-callout text-ui-sm leading-6 text-muted-foreground">
         {roommateSafetyCopy.linkedMeaning}
       </p>
     </Card>
@@ -268,28 +333,28 @@ export function RoommateListingContext({ request }: Readonly<{ request: Roommate
 
 export function RoommateRequestFacts({ request }: Readonly<{ request: RoommateRequest }>) {
   return (
-    <dl className="grid gap-3 text-ui-sm sm:grid-cols-2">
-      <div className="border-l-4 border-heroDark-950 bg-rent-canvas px-3 py-2">
-        <dt className="text-ui-xs font-bold uppercase tracking-wide text-rent-secondary">Ngân sách mỗi người</dt>
-        <dd className="mt-1 font-semibold">
+    <dl className="rm-roommate-facts text-ui-sm">
+      <div className="rm-roommate-fact">
+        <dt>Ngân sách mỗi người</dt>
+        <dd>
           {formatRoommateMoney(request.budgetMinPerPerson)} – {formatRoommateMoney(request.budgetMaxPerPerson)}
         </dd>
       </div>
-      <div className="border-l-4 border-heroDark-950 bg-rent-canvas px-3 py-2">
-        <dt className="text-ui-xs font-bold uppercase tracking-wide text-rent-secondary">Thời gian chuyển vào</dt>
-        <dd className="mt-1 font-semibold">
+      <div className="rm-roommate-fact">
+        <dt>Thời gian chuyển vào</dt>
+        <dd>
           {formatRoommateDate(request.moveInFrom)} – {formatRoommateDate(request.moveInUntil)}
         </dd>
       </div>
-      <div className="border-l-4 border-heroDark-950 bg-rent-canvas px-3 py-2">
-        <dt className="text-ui-xs font-bold uppercase tracking-wide text-rent-secondary">Khu vực quan tâm</dt>
-        <dd className="mt-1 font-semibold">
-          {request.preferredAreaKeys.length ? request.preferredAreaKeys.join(" · ") : "Theo listing"}
-        </dd>
+      <div className="rm-roommate-fact">
+        <dt>Khu vực quan tâm</dt>
+        <dd>{request.preferredAreaKeys.length ? request.preferredAreaKeys.join(" · ") : "Theo listing"}</dd>
       </div>
-      <div className="border-l-4 border-heroDark-950 bg-rent-canvas px-3 py-2">
-        <dt className="text-ui-xs font-bold uppercase tracking-wide text-rent-secondary">Trạng thái</dt>
-        <dd className="mt-1 font-semibold">{roommateRequestStatusLabels[request.status]}</dd>
+      <div className="rm-roommate-fact">
+        <dt>Trạng thái</dt>
+        <dd>
+          <RoommateStatusPill status={request.status} label={roommateRequestStatusLabels[request.status]} />
+        </dd>
       </div>
     </dl>
   );
@@ -308,7 +373,6 @@ export function RoommateReportControl({
   messageId?: number;
   label?: string;
 }>) {
-  const headingId = useId();
   const [open, setOpen] = useState(false);
   const [category, setCategory] = useState<RoommateReportCategory>("OTHER");
   const [details, setDetails] = useState("");
@@ -353,65 +417,78 @@ export function RoommateReportControl({
     );
   }
   return (
-    <section
-      className="space-y-3 border-2 border-heroDark-950 bg-[#fff6ef] p-4 shadow-glass-sm"
-      aria-labelledby={headingId}
+    <Dialog
+      open={open}
+      title="Báo cáo nội dung ở ghép"
+      description="Báo cáo được gửi tới đội ngũ an toàn để xem xét. Báo cáo không tự động chặn người này."
+      onClose={() => setOpen(false)}
+      className="max-w-xl"
     >
-      <div>
-        <h2 id={headingId} className="font-display text-ui-base font-bold">
-          Báo cáo nội dung ở ghép
-        </h2>
-        <p className="mt-1 text-ui-xs leading-5 text-rent-secondary">
-          Báo cáo không tự động chặn người này. Bạn có thể chặn riêng nếu cần.
-        </p>
-      </div>
-      <label
-        className="block text-ui-sm font-bold"
-        htmlFor={`roommate-report-category-${target}-${requestId ?? interestId ?? messageId}`}
+      <form
+        className="space-y-4"
+        onSubmit={(event) => {
+          event.preventDefault();
+          void submit();
+        }}
       >
-        Lý do
-      </label>
-      <select
-        id={`roommate-report-category-${target}-${requestId ?? interestId ?? messageId}`}
-        value={category}
-        onChange={(event) => setCategory(event.target.value as RoommateReportCategory)}
-        className="min-h-11 w-full border-2 border-heroDark-950 bg-white px-3 text-ui-sm font-semibold outline-none focus-visible:ring-4 focus-visible:ring-brandBlue-500/40"
-      >
-        {Object.entries(roommateReportCategoryLabels).map(([value, itemLabel]) => (
-          <option key={value} value={value}>
-            {itemLabel}
-          </option>
-        ))}
-      </select>
-      <label
-        className="block text-ui-sm font-bold"
-        htmlFor={`roommate-report-details-${target}-${requestId ?? interestId ?? messageId}`}
-      >
-        Chi tiết <span className="font-semibold text-rent-secondary">(không bắt buộc)</span>
-      </label>
-      <textarea
-        id={`roommate-report-details-${target}-${requestId ?? interestId ?? messageId}`}
-        value={details}
-        maxLength={2000}
-        rows={4}
-        onChange={(event) => setDetails(event.target.value)}
-        className="min-h-24 w-full resize-y border-2 border-heroDark-950 bg-white p-3 text-ui-sm outline-none focus-visible:ring-4 focus-visible:ring-brandBlue-500/40"
-      />
-      <p className="text-right text-ui-xs font-semibold text-rent-secondary">{details.length}/2000</p>
-      {error ? (
-        <p role="alert" className="border-l-4 border-rose-700 pl-2 text-ui-sm font-semibold text-rose-800">
-          {error}
-        </p>
-      ) : null}
-      <div className="grid gap-2 sm:flex sm:flex-wrap">
-        <Button autoFocus pending={pending} pendingLabel="Đang gửi…" onClick={() => void submit()}>
-          Gửi báo cáo
-        </Button>
-        <Button variant="secondary" disabled={pending} onClick={() => setOpen(false)}>
-          Hủy
-        </Button>
-      </div>
-    </section>
+        <div className="rm-roommate-callout" data-tone="warning">
+          <p className="text-ui-sm leading-6 text-foreground">
+            Chọn lý do phù hợp và thêm bối cảnh nếu cần. Bạn có thể sử dụng thao tác Chặn riêng, không gắn với báo cáo.
+          </p>
+        </div>
+        <label
+          className="block text-ui-sm font-semibold text-foreground"
+          htmlFor={`roommate-report-category-${target}-${requestId ?? interestId ?? messageId}`}
+        >
+          Lý do
+        </label>
+        <select
+          id={`roommate-report-category-${target}-${requestId ?? interestId ?? messageId}`}
+          value={category}
+          onChange={(event) => setCategory(event.target.value as RoommateReportCategory)}
+          className="min-h-12 w-full rounded-control border border-border-strong bg-surface px-4 py-2.5 text-ui-sm font-medium text-foreground outline-none transition-[border-color,box-shadow] duration-fast focus:border-primary focus:ring-[3px] focus:ring-primary/20"
+        >
+          {Object.entries(roommateReportCategoryLabels).map(([value, itemLabel]) => (
+            <option key={value} value={value}>
+              {itemLabel}
+            </option>
+          ))}
+        </select>
+        <label
+          className="block text-ui-sm font-semibold text-foreground"
+          htmlFor={`roommate-report-details-${target}-${requestId ?? interestId ?? messageId}`}
+        >
+          Chi tiết <span className="font-medium text-muted-foreground">(không bắt buộc)</span>
+        </label>
+        <textarea
+          id={`roommate-report-details-${target}-${requestId ?? interestId ?? messageId}`}
+          value={details}
+          maxLength={2000}
+          rows={5}
+          onChange={(event) => setDetails(event.target.value)}
+          className="min-h-28 w-full resize-y rounded-control border border-border-strong bg-surface p-4 text-ui-sm text-foreground outline-none transition-[border-color,box-shadow] duration-fast focus:border-primary focus:ring-[3px] focus:ring-primary/20"
+        />
+        <div className="flex items-center justify-between gap-3">
+          <p className="text-ui-xs font-medium text-muted-foreground">
+            Không chia sẻ thông tin riêng tư không cần thiết.
+          </p>
+          <p className="text-ui-xs font-semibold text-muted-foreground">{details.length}/2000</p>
+        </div>
+        {error ? (
+          <p role="alert" className="rm-roommate-callout text-ui-sm font-semibold text-danger" data-tone="danger">
+            {error}
+          </p>
+        ) : null}
+        <div className="flex flex-wrap gap-3 pt-1">
+          <Button type="submit" pending={pending} pendingLabel="Đang gửi…">
+            Gửi báo cáo
+          </Button>
+          <Button type="button" variant="secondary" disabled={pending} onClick={() => setOpen(false)}>
+            Hủy
+          </Button>
+        </div>
+      </form>
+    </Dialog>
   );
 }
 
@@ -420,7 +497,6 @@ export function RoommateBlockControl({
   id,
   onBlocked
 }: Readonly<{ context: "request" | "interest"; id: number; onBlocked?: () => void }>) {
-  const headingId = useId();
   const [confirming, setConfirming] = useState(false);
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -456,29 +532,34 @@ export function RoommateBlockControl({
     );
   }
   return (
-    <section
-      className="space-y-3 border-2 border-heroDark-950 bg-rent-coral p-4 shadow-glass-sm"
-      aria-labelledby={headingId}
+    <Dialog
+      open={confirming}
+      title="Xác nhận chặn tương tác"
+      description="Bạn có thể bỏ chặn sau này, nhưng thao tác đó không khôi phục nội dung hoặc kết nối cũ."
+      onClose={() => setConfirming(false)}
+      className="max-w-lg"
     >
-      <h2 id={headingId} className="font-display text-ui-base font-bold">
-        Xác nhận chặn tương tác
-      </h2>
-      <p className="text-ui-sm font-semibold leading-6">
-        Chặn sẽ ngừng tương tác trong ngữ cảnh này và không khôi phục lại lời quan tâm hoặc kết nối cũ khi bỏ chặn.
-      </p>
-      {error ? (
-        <p role="alert" className="border-l-4 border-rose-800 pl-2 text-ui-sm font-bold text-rose-800">
-          {error}
-        </p>
-      ) : null}
-      <div className="grid gap-2 sm:flex sm:flex-wrap">
-        <Button autoFocus variant="danger" pending={pending} pendingLabel="Đang chặn…" onClick={() => void block()}>
-          Xác nhận chặn
-        </Button>
-        <Button variant="secondary" disabled={pending} onClick={() => setConfirming(false)}>
-          Hủy
-        </Button>
+      <div className="space-y-4">
+        <div className="rm-roommate-callout" data-tone="danger">
+          <p className="text-ui-sm font-semibold leading-6 text-foreground">
+            Sau khi chặn, hai bên sẽ không thể tiếp tục một số tương tác theo quy định hiện tại của RentMate. Lời quan
+            tâm hoặc kết nối cũ không được khôi phục khi bỏ chặn.
+          </p>
+        </div>
+        {error ? (
+          <p role="alert" className="rm-roommate-callout text-ui-sm font-semibold text-danger" data-tone="danger">
+            {error}
+          </p>
+        ) : null}
+        <div className="flex flex-wrap gap-3">
+          <Button autoFocus variant="danger" pending={pending} pendingLabel="Đang chặn…" onClick={() => void block()}>
+            Xác nhận chặn
+          </Button>
+          <Button variant="secondary" disabled={pending} onClick={() => setConfirming(false)}>
+            Hủy
+          </Button>
+        </div>
       </div>
-    </section>
+    </Dialog>
   );
 }
