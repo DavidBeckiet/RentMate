@@ -165,7 +165,7 @@ export function LoginForm({ requiredRole, successDestination = "/" }: LoginFormP
       <div className="text-right">
         <Link
           href="/forgot-password"
-          className="text-ui-sm font-semibold text-teal-800 underline decoration-2 underline-offset-4 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-700 focus-visible:ring-offset-2"
+          className="text-ui-sm font-semibold text-primary-hover underline decoration-2 underline-offset-4 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2"
         >
           Quên mật khẩu?
         </Link>

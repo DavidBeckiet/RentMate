@@ -1,18 +1,96 @@
-.favorites :global(.text-teal-700),
-.favorites :global(.text-teal-800),
-.favorites :global(.text-teal-900) {
-  color: #176b4d !important;
+.favorites {
+  max-width: 80rem;
+  margin: 0 auto;
+  padding: 1rem;
+  color: rgb(var(--color-foreground));
 }
-.favorites :global(.bg-teal-600),
-.favorites :global(.bg-teal-700) {
-  background-color: #176b4d !important;
+
+.pageHeader {
+  max-width: 48rem;
+  border-bottom: 1px solid rgb(var(--color-border));
+  padding-bottom: 1.5rem;
 }
-.favorites :global(.border-teal-200) {
-  border-color: #092b27 !important;
+
+.eyebrow {
+  color: rgb(var(--color-primary));
+  font-size: var(--font-size-xs);
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
 }
-.favorites > header {
-  border: 2px solid #092b27 !important;
-  border-radius: 0 !important;
-  background: #ff7657 !important;
-  box-shadow: 6px 6px 0 #092b27 !important;
+
+.pageHeader h1 {
+  margin-top: 0.65rem;
+  color: rgb(var(--color-foreground));
+  font-family: var(--font-manrope), sans-serif;
+  font-size: clamp(2rem, 5vw, 3.5rem);
+  font-weight: 800;
+  letter-spacing: -0.07em;
+  line-height: 1;
+}
+
+.pageHeader > p:last-child {
+  margin-top: 0.85rem;
+  color: rgb(var(--color-muted-foreground));
+  font-size: var(--font-size-sm);
+  line-height: 1.7;
+}
+
+.textLink {
+  color: rgb(var(--color-primary-hover));
+  font-weight: 800;
+  text-decoration: underline;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 0.2em;
+}
+
+.listingGrid {
+  display: grid;
+  gap: 1.25rem;
+}
+
+.listingItem {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 0.65rem;
+}
+
+.removeRow {
+  display: flex;
+  justify-content: flex-end;
+  border-top: 1px solid rgb(var(--color-border));
+  padding-top: 0.65rem;
+}
+
+.removeRow :global(button) {
+  min-height: 2.75rem;
+  border-color: rgb(var(--color-border)) !important;
+  border-radius: var(--radius-control) !important;
+  background: rgb(var(--color-surface-subtle)) !important;
+  color: rgb(var(--color-foreground)) !important;
+  box-shadow: none !important;
+  font-size: var(--font-size-xs);
+}
+
+.removeRow :global(button:hover) {
+  border-color: rgb(var(--color-danger)) !important;
+  background: rgb(var(--color-danger-subtle)) !important;
+  color: rgb(var(--color-danger)) !important;
+}
+
+@media (min-width: 640px) {
+  .favorites {
+    padding: 1.5rem;
+  }
+
+  .listingGrid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (min-width: 1100px) {
+  .listingGrid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
 }

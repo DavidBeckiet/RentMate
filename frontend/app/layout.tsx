@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { Suspense, type ReactNode } from "react";
-import { Manrope, Space_Grotesk } from "next/font/google";
+import { Be_Vietnam_Pro, Manrope } from "next/font/google";
 import { AppShell } from "../components/ui/app-shell";
 import { AuthProvider } from "../lib/auth/auth-provider";
 import "leaflet/dist/leaflet.css";
@@ -14,9 +14,10 @@ const manrope = Manrope({
   display: "swap"
 });
 
-const spaceGrotesk = Space_Grotesk({
+const beVietnamPro = Be_Vietnam_Pro({
   subsets: ["latin", "vietnamese"],
-  variable: "--font-space-grotesk",
+  weight: ["400", "500", "600", "700", "800"],
+  variable: "--font-be-vietnam-pro",
   display: "swap"
 });
 
@@ -27,7 +28,7 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: Readonly<{ children: ReactNode }>) {
   return (
-    <html lang="vi" className={`${manrope.variable} ${spaceGrotesk.variable}`}>
+    <html lang="vi" className={`${manrope.variable} ${beVietnamPro.variable}`}>
       <body>
         <AuthProvider>
           <Suspense fallback={<div className="min-h-screen bg-slate-50" />}>

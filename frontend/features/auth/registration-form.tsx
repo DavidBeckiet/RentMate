@@ -247,7 +247,7 @@ export function RegistrationForm({ mode }: { readonly mode: RegistrationMode }) 
             feedback.duplicateEmail ? (
               <Link
                 href="/login"
-                className="inline-flex min-h-11 items-center font-semibold text-red-900 underline decoration-2 underline-offset-4 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-700 focus-visible:ring-offset-2"
+                className="inline-flex min-h-11 items-center font-semibold text-danger underline decoration-2 underline-offset-4 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-danger focus-visible:ring-offset-2"
               >
                 Đi đến trang đăng nhập
               </Link>

@@ -4,7 +4,7 @@ import { divIcon, Icon, latLng, type Marker as LeafletMarker } from "leaflet";
 import markerIconUrl from "leaflet/dist/images/marker-icon.png";
 import markerIconRetinaUrl from "leaflet/dist/images/marker-icon-2x.png";
 import markerShadowUrl from "leaflet/dist/images/marker-shadow.png";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { Circle, MapContainer, Marker, Popup, TileLayer, Tooltip, useMap, useMapEvents } from "react-leaflet";
 import MarkerClusterGroup from "react-leaflet-cluster";
 import type { MapBaseProps, MapMarker, MapViewport } from "./map-base";
@@ -192,12 +192,17 @@ export default function LeafletMap({
 }: MapBaseProps) {
   const containerClass =
     className ?? "h-80 w-full min-w-0 overflow-hidden rounded-xl border border-stone-300 sm:h-96 lg:h-[28rem]";
+  const [tileError, setTileError] = useState(false);
   return (
-    <div role="region" aria-label={ariaLabel} className={containerClass}>
+    <div role="region" aria-label={ariaLabel} className={containerClass + " relative"}>
       <MapContainer center={[center.latitude, center.longitude]} zoom={zoom} scrollWheelZoom className="h-full w-full">
         <TileLayer
           url="https://tile.openstreetmap.org/{z}/{x}/{y}.png"
           attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+          eventHandlers={{
+            load: () => setTileError(false),
+            tileerror: () => setTileError(true)
+          }}
         />
         <ViewportBridge
           center={center}
@@ -222,6 +227,14 @@ export default function LeafletMap({
           <MarkerLayer markers={markers} onMarkerSelect={onMarkerSelect} onMarkerMove={onMarkerMove} />
         )}
       </MapContainer>
+      {tileError ? (
+        <div
+          role="status"
+          className="pointer-events-none absolute left-3 right-3 top-3 z-[500] rounded-control border border-warning/30 bg-surface/95 p-3 text-ui-xs font-semibold text-foreground shadow-surface"
+        >
+          Bản đồ tạm thời chưa tải được. Danh sách tin đăng vẫn sử dụng được.
+        </div>
+      ) : null}
     </div>
   );
 }

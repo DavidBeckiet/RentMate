@@ -18,6 +18,7 @@ describe("actor-aware navigation model", () => {
       "/inquiries",
       "/notifications",
       "/roommates",
+      "/help",
       "/landlord",
       "/landlord/inquiries",
       "/landlord/leads",

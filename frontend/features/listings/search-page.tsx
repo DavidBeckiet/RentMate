@@ -4,32 +4,49 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { MapPoint, MapViewport } from "../../components/map/map-base";
 import { Button } from "../../components/ui/button";
-import { ErrorState, LoadingState } from "../../components/ui/feedback-states";
+import { Drawer } from "../../components/ui/drawer";
+import { ErrorState } from "../../components/ui/feedback-states";
 import { Icon } from "../../components/ui/icon";
 import { Pagination } from "../../components/ui/pagination";
 import { api, ApiError } from "../../lib/api/client";
-import type { Amenity, PropertyType, PublicListingSummary, PublicListingSort } from "../../types/api";
-import { ListingCard } from "./listing-card";
+import type { Amenity, PropertyType, PublicListingSort, PublicListingSummary } from "../../types/api";
+import { SaveSearchControl } from "../saved-searches/save-search-control";
+import { ListingCard, ListingCardSkeleton } from "./listing-card";
 import { RadiusControls } from "./radius-controls";
 import { SearchFilters, type LookupResource } from "./search-filters";
 import { SearchMap } from "./search-map";
 import {
-  applySearchFilters,
   activeFilterCount,
+  applySearchFilters,
   parseSearchQuery,
   searchFilterValues,
   serializeSearchState,
   toPublicListingSearchQuery,
+  type SearchFilterValues,
+  type SearchQueryState,
   withBounds,
   withPage,
-  withRadius,
-  type SearchFilterValues,
-  type SearchQueryState
+  withRadius
 } from "./search-query";
 import styles from "./search-page.module.css";
-import { SaveSearchControl } from "../saved-searches/save-search-control";
 
 type SearchStatus = "idle" | "loading" | "success" | "error";
+type ActiveFilterKey =
+  | "q"
+  | "areaName"
+  | "minMonthlyRent"
+  | "maxMonthlyRent"
+  | "minRoomAreaSqm"
+  | "maxRoomAreaSqm"
+  | "minOccupants"
+  | "propertyType"
+  | "amenities"
+  | "mode";
+
+interface ActiveFilterChip {
+  readonly key: ActiveFilterKey;
+  readonly label: string;
+}
 
 function searchErrorMessage(error: ApiError | null): string {
   if (error?.status === 422) return "Bộ lọc hoặc khu vực tìm kiếm chưa hợp lệ. Hãy điều chỉnh và thử lại.";
@@ -54,12 +71,77 @@ function sameViewport(left: MapViewport | null, right: MapViewport): boolean {
   );
 }
 
+function optionLabel<T extends { readonly code: string; readonly label: string }>(
+  resource: LookupResource<T>,
+  code: string,
+  fallback: string
+): string {
+  return resource.data.find((option) => option.code === code)?.label ?? fallback;
+}
+
+function activeFilterChips(
+  state: SearchQueryState,
+  propertyTypes: LookupResource<PropertyType>,
+  amenities: LookupResource<Amenity>
+): readonly ActiveFilterChip[] {
+  const chips: ActiveFilterChip[] = [];
+  if (state.q) chips.push({ key: "q", label: "Từ khóa: " + state.q });
+  if (state.areaName) chips.push({ key: "areaName", label: "Khu vực: " + state.areaName });
+  if (state.minMonthlyRent !== undefined)
+    chips.push({ key: "minMonthlyRent", label: "Từ " + formatCompactMoney(state.minMonthlyRent) });
+  if (state.maxMonthlyRent !== undefined)
+    chips.push({ key: "maxMonthlyRent", label: "Đến " + formatCompactMoney(state.maxMonthlyRent) });
+  if (state.minRoomAreaSqm !== undefined)
+    chips.push({ key: "minRoomAreaSqm", label: "Diện tích từ " + state.minRoomAreaSqm + " m²" });
+  if (state.maxRoomAreaSqm !== undefined)
+    chips.push({ key: "maxRoomAreaSqm", label: "Diện tích đến " + state.maxRoomAreaSqm + " m²" });
+  if (state.minOccupants !== undefined)
+    chips.push({ key: "minOccupants", label: "Tối thiểu " + state.minOccupants + " người" });
+  if (state.propertyType) {
+    chips.push({
+      key: "propertyType",
+      label: "Loại: " + optionLabel(propertyTypes, state.propertyType, "Loại phòng đã chọn")
+    });
+  }
+  if (state.amenities.length > 0) {
+    const labels = state.amenities.map((code) => optionLabel(amenities, code, "Tiện ích đã chọn"));
+    chips.push({ key: "amenities", label: "Tiện ích: " + labels.join(", ") });
+  }
+  if (state.mode === "bounds") chips.push({ key: "mode", label: "Vùng bản đồ đang chọn" });
+  if (state.mode === "radius") chips.push({ key: "mode", label: "Bán kính " + state.radiusKm + " km" });
+  return chips;
+}
+
+function formatCompactMoney(value: number): string {
+  if (value >= 1_000_000) {
+    const millions = value / 1_000_000;
+    return (Number.isInteger(millions) ? String(millions) : millions.toFixed(1).replace(".", ",")) + " triệu/tháng";
+  }
+  return new Intl.NumberFormat("vi-VN").format(value) + " ₫/tháng";
+}
+
+function removeSearchFilter(values: SearchFilterValues, key: Exclude<ActiveFilterKey, "mode">): SearchFilterValues {
+  switch (key) {
+    case "q":
+    case "areaName":
+    case "minMonthlyRent":
+    case "maxMonthlyRent":
+    case "minRoomAreaSqm":
+    case "maxRoomAreaSqm":
+    case "minOccupants":
+    case "propertyType":
+      return Object.fromEntries(Object.entries(values).filter(([name]) => name !== key)) as SearchFilterValues;
+    case "amenities":
+      return { ...values, amenities: [] };
+  }
+}
+
 export function SearchPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const rawQuery = searchParams.toString();
   const parsed = useMemo(() => parseSearchQuery(new URLSearchParams(rawQuery)), [rawQuery]);
-  const committedIdentity = parsed.ok ? serializeSearchState(parsed.state).toString() : `invalid:${rawQuery}`;
+  const committedIdentity = parsed.ok ? serializeSearchState(parsed.state).toString() : "invalid:" + rawQuery;
   const savedViewportBounds = useMemo(() => {
     if (!parsed.ok || parsed.state.mode !== "bounds") return null;
     return {
@@ -185,12 +267,12 @@ export function SearchPage() {
 
   const navigate = (state: SearchQueryState) => {
     const query = serializeSearchState(state).toString();
-    router.push(query ? `/search?${query}` : "/search");
+    router.push(query ? "/search?" + query : "/search");
   };
 
   const handleListingSelect = useCallback((listingId: number) => {
     setActiveListingId(listingId);
-    const card = document.getElementById(`listing-card-${listingId}`);
+    const card = document.getElementById("listing-card-" + listingId);
     if (card && typeof card.scrollIntoView === "function") {
       const prefersReducedMotion = window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
       card.scrollIntoView({ behavior: prefersReducedMotion ? "auto" : "smooth", block: "nearest" });
@@ -214,16 +296,13 @@ export function SearchPage() {
 
   if (!parsed.ok) {
     return (
-      <section aria-labelledby="search-heading" className="min-h-screen">
-        <div className="border-b-2 border-heroDark-950 bg-rent-coral py-10">
+      <section className={styles.invalidPage} aria-labelledby="search-heading">
+        <div className={styles.invalidHeader}>
           <div className="rm-page-container">
-            <span className="inline-flex items-center gap-2 font-display text-xs font-bold uppercase tracking-[0.16em]">
-              <Icon name="sparkles" className="h-4 w-4" />
-              Search mode
+            <span className={styles.introLabel}>
+              <Icon name="sliders" className="h-4 w-4" /> Tìm phòng
             </span>
-            <h1 id="search-heading" className="mt-3 font-display text-5xl font-bold tracking-[-0.06em] sm:text-7xl">
-              Bộ lọc chưa hợp lệ.
-            </h1>
+            <h1 id="search-heading">Bộ lọc chưa hợp lệ.</h1>
           </div>
         </div>
         <div className="rm-page-container py-8">
@@ -238,214 +317,287 @@ export function SearchPage() {
 
   const committed = parsed.state;
   const filterCount = activeFilterCount(committed);
+  const chips = activeFilterChips(committed, propertyTypes, amenities);
   const applyFilters = (values: SearchFilterValues, sort: PublicListingSort) => {
     navigate(applySearchFilters(committed, values, sort));
   };
+  const removeFilter = (key: ActiveFilterKey) => {
+    if (key === "mode") {
+      navigate({
+        ...searchFilterValues(committed),
+        mode: "ordinary",
+        page: 1,
+        pageSize: committed.pageSize,
+        sort: "newest"
+      });
+      return;
+    }
+    applyFilters(
+      removeSearchFilter(searchFilterValues(committed), key),
+      committed.mode === "radius" ? "distance_asc" : committed.sort
+    );
+  };
+  const renderFilterSurface = (idPrefix?: string) => (
+    <SearchFilters
+      committed={committed}
+      propertyTypes={propertyTypes}
+      amenities={amenities}
+      idPrefix={idPrefix}
+      onRetryPropertyTypes={() => setPropertyRetryKey((key) => key + 1)}
+      onRetryAmenities={() => setAmenityRetryKey((key) => key + 1)}
+      onApply={(values, sort) => {
+        setMobileFiltersOpen(false);
+        applyFilters(values, sort);
+      }}
+      onClear={clearSearch}
+    />
+  );
 
   return (
     <div className={styles.page}>
-      <div className={`rm-page-container ${styles.content}`}>
+      <div className={"rm-page-container " + styles.content}>
         <header className={styles.searchIntro}>
           <div className={styles.introCopy}>
             <span className={styles.introLabel}>
-              <Icon name="sparkles" className="h-3.5 w-3.5" />
-              Room finder · TP.HCM
+              <Icon name="search" className="h-4 w-4" /> Khám phá nơi ở
             </span>
             <h1 id="search-heading">
-              Lọc nhanh. <span>Chọn đúng phòng.</span>
+              Tìm nơi phù hợp.
+              <span> Lọc theo cách của bạn.</span>
             </h1>
           </div>
-          <p>
-            Tập trung vào phòng phù hợp, ngân sách vừa tầm và khu vực bạn muốn sống. Bản đồ chỉ mở khi bạn cần kiểm tra
-            vị trí.
-          </p>
+          <p>Chọn khu vực, ngân sách và tiện ích. Bản đồ hiển thị vị trí xấp xỉ; bạn chủ động bấm tìm trong khu vực.</p>
         </header>
 
         <div className={styles.layout}>
-          <aside
-            id="search-filter-sidebar"
-            className={styles.filterSidebar}
-            data-open={mobileFiltersOpen ? "true" : "false"}
-          >
-            <SearchFilters
-              committed={committed}
-              propertyTypes={propertyTypes}
-              amenities={amenities}
-              onRetryPropertyTypes={() => setPropertyRetryKey((key) => key + 1)}
-              onRetryAmenities={() => setAmenityRetryKey((key) => key + 1)}
-              onApply={(values, sort) => {
-                setMobileFiltersOpen(false);
-                applyFilters(values, sort);
-              }}
-              onClear={clearSearch}
-            />
+          <aside id="search-filter-sidebar" className={styles.filterSidebar} aria-label="Bộ lọc tìm phòng">
+            {renderFilterSurface()}
           </aside>
 
-          <main className={styles.results} aria-label="Kết quả tìm phòng">
-            <div className={styles.resultsToolbar}>
-              <div className={styles.resultSummary}>
-                <span className={styles.resultIcon}>
-                  <Icon name="home" className="h-5 w-5" />
-                </span>
-                <div>
-                  <h2>
-                    Tìm thấy <strong>{items.length}</strong> phòng trên trang này
-                  </h2>
-                  <p>Các tin công khai phù hợp với điều kiện của bạn</p>
-                </div>
-              </div>
-
-              <div className={styles.toolbarActions}>
-                <SaveSearchControl search={committed} />
-                <button
-                  type="button"
-                  aria-expanded={mobileFiltersOpen}
-                  aria-controls="search-filter-sidebar"
-                  onClick={() => setMobileFiltersOpen((open) => !open)}
-                  className={styles.mobileFilterButton}
-                >
-                  <Icon name="sliders" className="h-4 w-4" />
-                  Bộ lọc
-                  {filterCount > 0 ? <span>{filterCount}</span> : null}
-                </button>
-                <label className={styles.sortControl}>
-                  <span>Sắp xếp:</span>
-                  <select
-                    aria-label="Sắp xếp kết quả"
-                    value={committed.mode === "radius" ? "distance_asc" : committed.sort}
-                    disabled={committed.mode === "radius"}
-                    onChange={(event) =>
-                      applyFilters(searchFilterValues(committed), event.target.value as PublicListingSort)
-                    }
-                  >
-                    {committed.mode === "radius" ? (
-                      <option value="distance_asc">Gần nhất</option>
-                    ) : (
-                      <>
-                        <option value="newest">Mới nhất</option>
-                        <option value="rent_asc">Giá thấp đến cao</option>
-                        <option value="rent_desc">Giá cao đến thấp</option>
-                      </>
-                    )}
-                  </select>
-                </label>
-                <button
-                  type="button"
-                  aria-expanded={mobileMapOpen}
-                  aria-controls="search-map-panel"
-                  onClick={() => setMobileMapOpen((open) => !open)}
-                  className={styles.mapButton}
-                >
-                  <Icon name="map" className="h-4 w-4" />
-                  <span>{mobileMapOpen ? "Đóng bản đồ" : "Xem bản đồ"}</span>
-                </button>
-              </div>
-            </div>
-
-            {mobileMapOpen ? (
-              <div id="search-map-panel" className={styles.mapPanel}>
-                <RadiusControls
-                  proposedCenter={proposedRadiusCenter}
-                  selectingCenter={selectingRadiusCenter}
-                  initialRadiusKm={committed.mode === "radius" ? committed.radiusKm : undefined}
-                  resetKey={radiusResetKey}
-                  onProposedCenterChange={setProposedRadiusCenter}
-                  onSelectingCenterChange={setSelectingRadiusCenter}
-                  onCommit={(center, radiusKm) => navigate(withRadius(committed, center, radiusKm))}
-                />
-                <div className={styles.mapCanvas}>
-                  <SearchMap
-                    listings={items}
-                    pendingViewport={pendingViewport}
-                    viewportBounds={savedViewportBounds}
-                    proposedRadiusCenter={proposedRadiusCenter}
-                    selectingRadiusCenter={selectingRadiusCenter}
-                    activeListingId={activeListingId}
-                    onViewportChange={handleViewportChange}
-                    onSearchBounds={(viewport) => navigate(withBounds(committed, viewport.bounds))}
-                    onListingSelect={handleListingSelect}
-                    onRadiusCenterSelected={(point) => {
-                      if (!selectingRadiusCenter) return;
-                      setProposedRadiusCenter(point);
-                      setSelectingRadiusCenter(false);
-                    }}
-                  />
-                </div>
-              </div>
-            ) : null}
-
-            {/* Feedback States */}
-            {searchStatus === "loading" && <LoadingState message="Đang tìm tin đăng…" />}
-
-            {searchStatus === "error" && (
-              <ErrorState
-                message={searchErrorMessage(searchError)}
-                requestId={searchError?.requestId}
-                action={
-                  <div className="flex flex-wrap gap-2">
-                    <Button onClick={() => setSearchRetryKey((key) => key + 1)}>Thử lại</Button>
-                    {searchError?.status === 422 ? (
-                      <Button variant="secondary" onClick={clearSearch}>
-                        Xóa bộ lọc
-                      </Button>
-                    ) : null}
+          <div className={styles.marketplaceStage}>
+            <main className={styles.results} aria-label="Kết quả tìm phòng">
+              <div className={styles.resultsToolbar}>
+                <div className={styles.resultSummary}>
+                  <span className={styles.resultIcon}>
+                    <Icon name="home" className="h-5 w-5" />
+                  </span>
+                  <div>
+                    <h2>
+                      {searchStatus === "loading" ? "Đang tìm phòng" : "Tìm thấy "}
+                      <strong>{searchStatus === "loading" ? "" : items.length}</strong>
+                      {searchStatus === "loading" ? "…" : " phòng trên trang này"}
+                    </h2>
+                    <p>Tin đăng công khai phù hợp với điều kiện của bạn</p>
                   </div>
-                }
-              />
-            )}
+                </div>
 
-            {searchStatus === "success" && items.length === 0 && (
-              <div className={styles.emptyState}>
-                <span className={styles.emptyIcon}>
-                  <Icon name="search" className="h-7 w-7" />
-                </span>
-                <h3 className="font-display text-xl font-bold">Chưa tìm thấy tin đăng phù hợp</h3>
-                <p className="text-sm font-semibold text-rent-secondary">
-                  Vui lòng thử thay đổi từ khóa hoặc nới lỏng một vài điều kiện lọc.
-                </p>
-                <button type="button" onClick={clearSearch} className={styles.emptyAction}>
-                  Xóa bộ lọc và xem tất cả
-                </button>
+                <div className={styles.toolbarActions}>
+                  <SaveSearchControl search={committed} />
+                  <div className={styles.mobileViewToggle} role="group" aria-label="Chế độ xem kết quả">
+                    <button
+                      type="button"
+                      aria-pressed={!mobileMapOpen}
+                      onClick={() => setMobileMapOpen(false)}
+                      className={`${styles.mobileViewButton} ${!mobileMapOpen ? styles.mobileViewButtonActive : ""}`}
+                    >
+                      Danh sách
+                    </button>
+                    <button
+                      type="button"
+                      aria-label={mobileMapOpen ? "Đóng bản đồ" : "Xem bản đồ"}
+                      aria-pressed={mobileMapOpen}
+                      onClick={() => setMobileMapOpen(true)}
+                      className={`${styles.mobileViewButton} ${mobileMapOpen ? styles.mobileViewButtonActive : ""}`}
+                    >
+                      <Icon name="map" className="h-4 w-4" />
+                      Bản đồ
+                    </button>
+                  </div>
+                  <button
+                    type="button"
+                    aria-expanded={mobileFiltersOpen}
+                    onClick={() => setMobileFiltersOpen((open) => !open)}
+                    className={styles.mobileFilterButton}
+                  >
+                    <Icon name="sliders" className="h-4 w-4" />
+                    Bộ lọc
+                    {filterCount > 0 ? <span>{filterCount}</span> : null}
+                  </button>
+                  <label className={styles.sortControl}>
+                    <span>Sắp xếp:</span>
+                    <select
+                      aria-label="Sắp xếp kết quả"
+                      value={committed.mode === "radius" ? "distance_asc" : committed.sort}
+                      disabled={committed.mode === "radius"}
+                      onChange={(event) =>
+                        applyFilters(searchFilterValues(committed), event.target.value as PublicListingSort)
+                      }
+                    >
+                      {committed.mode === "radius" ? (
+                        <option value="distance_asc">Gần nhất</option>
+                      ) : (
+                        <>
+                          <option value="newest">Mới nhất</option>
+                          <option value="rent_asc">Giá thấp đến cao</option>
+                          <option value="rent_desc">Giá cao đến thấp</option>
+                        </>
+                      )}
+                    </select>
+                  </label>
+                </div>
               </div>
-            )}
 
-            {items.length > 0 && (
-              <div className="space-y-6">
-                <div className={styles.listingGrid}>
-                  {items.map((listing) => (
-                    <ListingCard
-                      key={listing.id}
-                      listing={listing}
-                      showFavorite
-                      variant="search"
-                      mapSelected={activeListingId === listing.id}
-                      onMapFocus={() => setActiveListingId(listing.id)}
-                      onMapSelect={() => {
-                        setActiveListingId(listing.id);
-                        setMobileMapOpen(true);
-                      }}
-                    />
+              {chips.length > 0 ? (
+                <div className={styles.activeFilters} aria-label="Bộ lọc đang áp dụng">
+                  <span className={styles.activeFiltersLabel}>Đang lọc</span>
+                  {chips.map((chip) => (
+                    <span key={chip.key} className={styles.filterChip}>
+                      {chip.label}
+                      <button
+                        type="button"
+                        className={styles.filterChipRemove}
+                        aria-label={"Bỏ bộ lọc " + chip.label}
+                        onClick={() => removeFilter(chip.key)}
+                      >
+                        <Icon name="close" className="h-3.5 w-3.5" />
+                      </button>
+                    </span>
                   ))}
                 </div>
+              ) : null}
 
-                <Pagination
-                  ariaLabel="Phân trang kết quả tìm kiếm"
-                  page={currentPage}
-                  hasNextPage={hasNextPage}
-                  onPrevious={() => navigate(withPage(committed, currentPage - 1))}
-                  onNext={() => navigate(withPage(committed, currentPage + 1))}
-                />
-                {/* End of Results Indicator */}
-                {!hasNextPage && items.length > 0 && (
-                  <div className={styles.endState}>
-                    <span>Bạn đã xem hết {items.length} phòng trọ phù hợp.</span>
+              {searchStatus === "loading" ? (
+                <div className={styles.loadingResults} role="status" aria-live="polite">
+                  <span className="sr-only">Đang tìm tin đăng…</span>
+                  <div className={styles.listingGrid} aria-hidden="true">
+                    {Array.from({ length: 4 }, (_, index) => (
+                      <ListingCardSkeleton key={index} variant="search" />
+                    ))}
                   </div>
-                )}
+                </div>
+              ) : null}
+
+              {searchStatus === "error" ? (
+                <ErrorState
+                  message={searchErrorMessage(searchError)}
+                  requestId={searchError?.requestId}
+                  action={
+                    <div className="flex flex-wrap gap-2">
+                      <Button onClick={() => setSearchRetryKey((key) => key + 1)}>Thử lại</Button>
+                      {searchError?.status === 422 ? (
+                        <Button variant="secondary" onClick={clearSearch}>
+                          Xóa bộ lọc
+                        </Button>
+                      ) : null}
+                    </div>
+                  }
+                />
+              ) : null}
+
+              {searchStatus === "success" && items.length === 0 ? (
+                <div className={styles.emptyState}>
+                  <span className={styles.emptyIcon}>
+                    <Icon name="search" className="h-7 w-7" />
+                  </span>
+                  <h3>Chưa tìm thấy tin đăng phù hợp</h3>
+                  <p>Vui lòng thử thay đổi từ khóa hoặc nới lỏng một vài điều kiện lọc.</p>
+                  <button type="button" onClick={clearSearch} className={styles.emptyAction}>
+                    Xóa bộ lọc và xem tất cả
+                  </button>
+                </div>
+              ) : null}
+
+              {items.length > 0 ? (
+                <div className={styles.resultsList}>
+                  <div className={styles.listingGrid}>
+                    {items.map((listing) => (
+                      <ListingCard
+                        key={listing.id}
+                        listing={listing}
+                        showFavorite
+                        variant="search"
+                        mapSelected={activeListingId === listing.id}
+                        onMapFocus={() => setActiveListingId(listing.id)}
+                        onMapSelect={() => {
+                          setActiveListingId(listing.id);
+                          setMobileMapOpen(true);
+                        }}
+                      />
+                    ))}
+                  </div>
+
+                  <Pagination
+                    ariaLabel="Phân trang kết quả tìm kiếm"
+                    page={currentPage}
+                    hasNextPage={hasNextPage}
+                    onPrevious={() => navigate(withPage(committed, currentPage - 1))}
+                    onNext={() => navigate(withPage(committed, currentPage + 1))}
+                  />
+                  {!hasNextPage ? (
+                    <div className={styles.endState}>
+                      <span>Bạn đã xem hết {items.length} phòng trọ phù hợp.</span>
+                    </div>
+                  ) : null}
+                </div>
+              ) : null}
+            </main>
+
+            <section
+              id="search-map-panel"
+              className={styles.mapPanel}
+              data-open={mobileMapOpen ? "true" : "false"}
+              aria-labelledby="search-map-panel-heading"
+            >
+              <div className={styles.mapPanelHeader}>
+                <div>
+                  <span className={styles.mapKicker}>
+                    <Icon name="map" className="h-4 w-4" /> Bản đồ khám phá
+                  </span>
+                  <h2 id="search-map-panel-heading">Khu vực xấp xỉ</h2>
+                </div>
+                <span className={styles.mapHint}>Di chuyển bản đồ không tự tìm kiếm</span>
               </div>
-            )}
-          </main>
+              <RadiusControls
+                proposedCenter={proposedRadiusCenter}
+                selectingCenter={selectingRadiusCenter}
+                initialRadiusKm={committed.mode === "radius" ? committed.radiusKm : undefined}
+                resetKey={radiusResetKey}
+                onProposedCenterChange={setProposedRadiusCenter}
+                onSelectingCenterChange={setSelectingRadiusCenter}
+                onCommit={(center, radiusKm) => navigate(withRadius(committed, center, radiusKm))}
+              />
+              <div className={styles.mapCanvas}>
+                <SearchMap
+                  listings={items}
+                  pendingViewport={pendingViewport}
+                  viewportBounds={savedViewportBounds}
+                  proposedRadiusCenter={proposedRadiusCenter}
+                  selectingRadiusCenter={selectingRadiusCenter}
+                  activeListingId={activeListingId}
+                  onViewportChange={handleViewportChange}
+                  onSearchBounds={(viewport) => navigate(withBounds(committed, viewport.bounds))}
+                  onListingSelect={handleListingSelect}
+                  onRadiusCenterSelected={(point) => {
+                    if (!selectingRadiusCenter) return;
+                    setProposedRadiusCenter(point);
+                    setSelectingRadiusCenter(false);
+                  }}
+                />
+              </div>
+            </section>
+          </div>
         </div>
       </div>
+
+      <Drawer
+        open={mobileFiltersOpen}
+        title="Bộ lọc tìm phòng"
+        description="Điều chỉnh điều kiện rồi bấm Tìm kiếm để áp dụng."
+        onClose={() => setMobileFiltersOpen(false)}
+        closeLabel="Đóng bộ lọc"
+      >
+        {renderFilterSurface("mobile")}
+      </Drawer>
     </div>
   );
 }

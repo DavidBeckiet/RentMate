@@ -17,9 +17,11 @@ const suggestions = ["Thảo Điền", "Bình Thạnh", "Phú Nhuận"];
 export function HeroSearch({ propertyTypes, loading = false, onSearch }: HeroSearchProps) {
   const [keyword, setKeyword] = useState("");
   const [propertyType, setPropertyType] = useState("");
+  const [submitting, setSubmitting] = useState(false);
 
   const submit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
+    setSubmitting(true);
     onSearch({
       ...(keyword.trim() ? { q: keyword.trim() } : {}),
       ...(propertyType ? { propertyType } : {}),
@@ -29,12 +31,13 @@ export function HeroSearch({ propertyTypes, loading = false, onSearch }: HeroSea
 
   const chooseSuggestion = (suggestion: string) => {
     setKeyword(suggestion);
+    setSubmitting(true);
     onSearch({ q: suggestion, amenities: [] });
   };
 
   return (
     <div className={styles.shell}>
-      <form onSubmit={submit} noValidate>
+      <form onSubmit={submit} noValidate aria-label="Tìm kiếm phòng">
         <div className={styles.searchGrid}>
           <label className={styles.field}>
             <span className={styles.fieldIcon} aria-hidden="true">
@@ -77,8 +80,13 @@ export function HeroSearch({ propertyTypes, loading = false, onSearch }: HeroSea
             </span>
           </label>
 
-          <button type="submit" className={`${styles.submitButton} group`}>
-            <span>Tìm phòng</span>
+          <button
+            type="submit"
+            className={`${styles.submitButton} group`}
+            disabled={submitting}
+            aria-busy={submitting || undefined}
+          >
+            <span>{submitting ? "Đang mở tìm kiếm…" : "Tìm phòng"}</span>
             <Icon name="arrow" className="h-5 w-5 transition-transform group-hover:translate-x-1.5" />
           </button>
         </div>

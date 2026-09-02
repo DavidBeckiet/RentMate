@@ -106,7 +106,7 @@ export function GoogleAuthSeam({ mode, role, enabled = true, onRedirect }: Reado
       </Button>
       {feedback ? <ErrorState message={feedback.message} requestId={feedback.requestId} /> : null}
       {oauthMessage ? (
-        <p className="text-center text-ui-xs font-medium text-red-800" role="alert">
+        <p className="text-center text-ui-xs font-medium text-danger" role="alert">
           {oauthMessage}
         </p>
       ) : null}

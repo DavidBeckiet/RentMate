@@ -1,12 +1,12 @@
 "use client";
 
-import Image from "next/image";
 import Link from "next/link";
 import { useEffect, useMemo, useRef, useState, type KeyboardEvent, type ReactNode } from "react";
 import { MapBase } from "../../components/map/map-base";
 import { Button } from "../../components/ui/button";
 import { ErrorState } from "../../components/ui/feedback-states";
 import { Icon } from "../../components/ui/icon";
+import { MediaImage } from "../../components/ui/media-image";
 import { BusinessStatusBadge } from "../../components/ui/status-badge";
 import { api, ApiError } from "../../lib/api/client";
 import { useAuth } from "../../lib/auth/auth-provider";
@@ -117,14 +117,24 @@ function ListingGallery({
         aria-label={`Ảnh ${selectedIndex + 1} trên ${orderedImages.length}. Dùng phím mũi tên để xem ảnh khác.`}
         onKeyDown={handleGalleryKeyDown}
       >
-        <Image
+        <MediaImage
           key={currentImage.url}
           src={currentImage.url}
           alt={currentImage.altText ?? `Ảnh chính của ${title}`}
           fill
-          priority
+          priority={selectedIndex === 0}
           sizes="(min-width: 1024px) 58vw, 100vw"
           className={styles.galleryImage}
+          fallback={
+            <div
+              role="img"
+              aria-label={currentImage.altText ?? "Ảnh chính của " + title}
+              className={styles.galleryImageFallback}
+            >
+              <Icon name="home" className="h-10 w-10" />
+              <span>Không thể tải hình ảnh</span>
+            </div>
+          }
         />
         {orderedImages.length > 1 ? (
           <>
@@ -162,12 +172,21 @@ function ListingGallery({
               aria-pressed={image.displayOrder === currentImage.displayOrder}
               onClick={() => onSelect(image.displayOrder)}
             >
-              <Image
+              <MediaImage
                 src={image.url}
                 alt={image.altText ?? `Ảnh ${index + 1} của ${title}`}
                 fill
                 sizes="(min-width: 1024px) 11vw, 25vw"
                 className={styles.thumbnailImage}
+                fallback={
+                  <div
+                    role="img"
+                    aria-label={image.altText ?? "Ảnh " + (index + 1) + " của " + title}
+                    className={styles.thumbnailImageFallback}
+                  >
+                    <Icon name="home" className="h-5 w-5" />
+                  </div>
+                }
               />
             </button>
           ))}
@@ -246,7 +265,7 @@ export function ListingDetail({ listingId, actions }: ListingDetailProps) {
         message="Tin đăng không tồn tại hoặc hiện không khả dụng."
         action={
           <Link
-            className="inline-flex items-center gap-2 rounded-xl bg-teal-600 px-5 py-2.5 text-sm font-bold text-white shadow-glow-teal"
+            className="inline-flex min-h-11 items-center gap-2 rounded-control border border-primary bg-primary px-5 py-2.5 text-ui-sm font-semibold text-primary-foreground shadow-surface transition-colors hover:bg-primary-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2"
             href="/"
           >
             Quay lại trang chủ
@@ -306,7 +325,7 @@ export function ListingDetail({ listingId, actions }: ListingDetailProps) {
               <Icon name="pin" className="h-5 w-5 shrink-0" />
               <span>{detail.areaName}</span>
             </p>
-            <p className="text-sm font-semibold text-rent-secondary">
+            <p className="text-ui-sm font-semibold text-muted-foreground">
               <ListingFreshnessLabel updatedAt={detail.updatedAt} />
             </p>
             <div className={styles.factCard} aria-label="Thông tin chính">
@@ -343,6 +362,7 @@ export function ListingDetail({ listingId, actions }: ListingDetailProps) {
                 </div>
               ) : null}
             </div>
+            {actions ? <div className={styles.summaryActions}>{actions}</div> : null}
           </section>
 
           <div className={styles.mobileContactBar}>
@@ -406,9 +426,8 @@ export function ListingDetail({ listingId, actions }: ListingDetailProps) {
             <div className={styles.cardKicker}>MỨC GIÁ THUÊ</div>
             <ListingPrice monthlyRent={detail.monthlyRent} emphasis="prominent" />
             <p className={styles.priceNote}>Giá tham khảo theo tháng · chưa bao gồm chi phí phát sinh</p>
-            {actions || roommateListingEligible ? (
+            {roommateListingEligible ? (
               <div className={styles.primaryAction}>
-                {actions}
                 <RoommateListingCta listingId={detail.id} eligible={roommateListingEligible} />
               </div>
             ) : null}

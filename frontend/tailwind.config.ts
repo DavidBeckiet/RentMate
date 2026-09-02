@@ -12,7 +12,7 @@ const config: Config = {
     extend: {
       fontFamily: {
         sans: ["var(--font-manrope)", "Inter", "ui-sans-serif", "system-ui", "sans-serif"],
-        display: ["var(--font-space-grotesk)", "Arial Black", "sans-serif"]
+        display: ["var(--font-be-vietnam-pro)", "var(--font-space-grotesk)", "sans-serif"]
       },
       fontSize: {
         "ui-xs": ["var(--font-size-xs)", { lineHeight: "var(--line-height-xs)" }],
@@ -31,7 +31,8 @@ const config: Config = {
         "token-6": "var(--space-6)",
         "token-8": "var(--space-8)",
         "token-12": "var(--space-12)",
-        "token-16": "var(--space-16)"
+        "token-16": "var(--space-16)",
+        "token-24": "var(--space-24)"
       },
       colors: {
         background: color("background"),
@@ -54,6 +55,7 @@ const config: Config = {
           foreground: color("primary-foreground"),
           subtle: color("primary-subtle")
         },
+        "brand-dark": color("brand-dark"),
         success: {
           DEFAULT: color("success"),
           foreground: color("success-foreground"),
@@ -75,7 +77,15 @@ const config: Config = {
           foreground: color("info-foreground"),
           subtle: color("info-subtle")
         },
+        accent: {
+          DEFAULT: color("accent"),
+          hover: color("accent-hover"),
+          subtle: color("accent-subtle")
+        },
+        coral: color("decorative-coral"),
+        sky: color("decorative-blue"),
         focus: color("focus-ring"),
+        "focus-accent": color("focus-accent"),
         disabled: color("control-disabled"),
         /* Compatibility aliases are retained until old routes are rebuilt. New code uses semantic names above. */
         brandBlue: {
@@ -119,25 +129,41 @@ const config: Config = {
         "3xl": "1.5rem",
         "4xl": "2rem"
       },
+      zIndex: {
+        content: "0",
+        sticky: "20",
+        header: "30",
+        dropdown: "40",
+        backdrop: "50",
+        drawer: "60",
+        dialog: "70",
+        toast: "80",
+        skip: "90"
+      },
       boxShadow: {
         surface: "var(--shadow-surface)",
         raised: "var(--shadow-raised)",
         "overlay-soft": "var(--shadow-overlay)",
-        glass: "5px 5px 0 rgb(var(--color-foreground))",
-        "glass-sm": "3px 3px 0 rgb(var(--color-foreground))",
-        "card-hover": "8px 8px 0 rgb(var(--color-foreground))",
-        "card-elevated": "10px 10px 0 rgb(var(--color-foreground))",
-        "glow-teal": "6px 6px 0 rgb(var(--color-foreground))",
-        "glow-blue": "6px 6px 0 rgb(var(--color-foreground))",
-        "glow-indigo": "6px 6px 0 rgb(var(--color-foreground))",
-        overlay: "12px 12px 0 rgb(var(--color-foreground) / 0.96)"
+        /* Compatibility aliases: old routes keep their class names while adopting the new soft elevation. */
+        glass: "var(--shadow-surface)",
+        "glass-sm": "0 1px 2px rgb(var(--color-foreground) / 0.04)",
+        "card-hover": "var(--shadow-raised)",
+        "card-elevated": "var(--shadow-overlay)",
+        "glow-teal": "var(--shadow-raised)",
+        "glow-blue": "var(--shadow-raised)",
+        "glow-indigo": "var(--shadow-raised)",
+        overlay: "var(--shadow-overlay)"
       },
       transitionDuration: {
         fast: "var(--motion-fast)",
-        standard: "var(--motion-standard)"
+        standard: "var(--motion-standard)",
+        slow: "var(--motion-slow)"
       },
       transitionTimingFunction: {
-        standard: "var(--rm-ease-out)"
+        standard: "var(--rm-ease-standard)",
+        enter: "var(--rm-ease-out)",
+        exit: "var(--rm-ease-in)",
+        emphasized: "cubic-bezier(0.2, 0.8, 0.2, 1)"
       },
       maxWidth: {
         product: "80rem"

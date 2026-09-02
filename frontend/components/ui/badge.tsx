@@ -1,7 +1,7 @@
 import type { HTMLAttributes, ReactNode } from "react";
 import { cx } from "./class-names";
 
-export type BadgeVariant = "neutral" | "primary" | "success" | "warning" | "danger" | "info";
+export type BadgeVariant = "neutral" | "primary" | "success" | "warning" | "danger" | "info" | "verified" | "ai-assist";
 
 export interface BadgeProps extends Omit<HTMLAttributes<HTMLSpanElement>, "children"> {
   readonly variant?: BadgeVariant;
@@ -11,12 +11,14 @@ export interface BadgeProps extends Omit<HTMLAttributes<HTMLSpanElement>, "child
 }
 
 const variantClasses: Record<BadgeVariant, string> = {
-  neutral: "border-heroDark-950 bg-rent-surface text-heroDark-950",
-  primary: "border-heroDark-950 bg-rent-accent-subtle text-heroDark-950",
-  success: "border-heroDark-950 bg-rent-accent-subtle text-heroDark-950",
-  warning: "border-heroDark-950 bg-rent-yellow text-heroDark-950",
-  danger: "border-heroDark-950 bg-rent-coral text-heroDark-950",
-  info: "border-heroDark-950 bg-rent-surface text-heroDark-950"
+  neutral: "border-border bg-surface-subtle text-foreground",
+  primary: "border-primary/20 bg-primary-subtle text-primary-hover",
+  success: "border-success/20 bg-success-subtle text-success-foreground",
+  warning: "border-warning/25 bg-warning-subtle text-warning-foreground",
+  danger: "border-danger/20 bg-danger-subtle text-danger",
+  info: "border-info/20 bg-info-subtle text-info-foreground",
+  verified: "border-primary/25 bg-primary-subtle text-primary-hover",
+  "ai-assist": "border-info/20 bg-sky text-info-foreground"
 };
 
 const indicatorClasses: Record<BadgeVariant, string> = {
@@ -25,7 +27,9 @@ const indicatorClasses: Record<BadgeVariant, string> = {
   success: "bg-success",
   warning: "bg-warning",
   danger: "bg-danger",
-  info: "bg-info"
+  info: "bg-info",
+  verified: "bg-primary",
+  "ai-assist": "bg-info"
 };
 
 export function Badge({
@@ -40,7 +44,7 @@ export function Badge({
     <span
       {...badgeProps}
       className={cx(
-        "inline-flex min-h-7 max-w-full items-center gap-1.5 border-2 px-2.5 py-1 font-display text-[11px] font-bold uppercase tracking-[0.08em]",
+        "inline-flex min-h-7 max-w-full items-center gap-1.5 rounded-full border px-2.5 py-1 font-sans text-ui-xs font-semibold",
         variantClasses[variant],
         className
       )}

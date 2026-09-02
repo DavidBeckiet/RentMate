@@ -283,7 +283,7 @@ export function SavedSearchesPage() {
     <section aria-labelledby="saved-searches-heading" className={styles.page}>
       <header className={styles.header}>
         <span>
-          <Icon name="sliders" className="h-4 w-4" /> Search library
+          <Icon name="sliders" className="h-4 w-4" /> Bộ lọc của bạn
         </span>
         <h1 id="saved-searches-heading">
           Bộ lọc <em>đã lưu</em>

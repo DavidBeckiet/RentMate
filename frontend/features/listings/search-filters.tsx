@@ -19,6 +19,7 @@ export interface SearchFiltersProps {
   readonly onRetryAmenities: () => void;
   readonly onApply: (values: SearchFilterValues, sort: PublicListingSort) => void;
   readonly onClear: () => void;
+  readonly idPrefix?: string;
 }
 
 interface FilterDraft {
@@ -176,8 +177,11 @@ export function SearchFilters({
   onRetryPropertyTypes,
   onRetryAmenities,
   onApply,
-  onClear
+  onClear,
+  idPrefix = ""
 }: SearchFiltersProps) {
+  const fieldIdPrefix = idPrefix ? `${idPrefix}-` : "";
+  const fieldNamePrefix = idPrefix ? `${idPrefix}-` : "";
   const [draft, setDraft] = useState<FilterDraft>(() => draftFromState(committed));
   const [errors, setErrors] = useState<FieldErrors>({});
   const [amenitiesOpen, setAmenitiesOpen] = useState(() => committed.amenities.length > 0);
@@ -253,13 +257,13 @@ export function SearchFilters({
 
       <div className={styles.scrollArea}>
         <section className={styles.section}>
-          <label className={styles.sectionLabel} htmlFor="listing-search-q">
+          <label className={styles.sectionLabel} htmlFor={`${fieldIdPrefix}listing-search-q`}>
             Từ khóa
           </label>
           <div className={styles.inputWithIcon}>
             <Icon name="search" className="h-4 w-4" />
             <input
-              id="listing-search-q"
+              id={`${fieldIdPrefix}listing-search-q`}
               name="q"
               type="search"
               placeholder="Địa chỉ, tên phòng…"
@@ -270,13 +274,13 @@ export function SearchFilters({
         </section>
 
         <section className={styles.section}>
-          <label className={styles.sectionLabel} htmlFor="listing-area-name">
+          <label className={styles.sectionLabel} htmlFor={`${fieldIdPrefix}listing-area-name`}>
             Khu vực
           </label>
           <div className={styles.inputWithIcon}>
             <Icon name="pin" className="h-4 w-4" />
             <input
-              id="listing-area-name"
+              id={`${fieldIdPrefix}listing-area-name`}
               name="areaName"
               placeholder="Ví dụ: Quận 1"
               value={draft.areaName}
@@ -303,7 +307,7 @@ export function SearchFilters({
               <label className={styles.choice}>
                 <input
                   type="radio"
-                  name="propertyType"
+                  name={`${fieldNamePrefix}propertyType`}
                   value=""
                   checked={draft.propertyType === ""}
                   onChange={() => setDraft((current) => ({ ...current, propertyType: "" }))}
@@ -314,7 +318,7 @@ export function SearchFilters({
                 <label key={option.code} className={styles.choice}>
                   <input
                     type="radio"
-                    name="propertyType"
+                    name={`${fieldNamePrefix}propertyType`}
                     value={option.code}
                     checked={draft.propertyType === option.code}
                     onChange={() => setDraft((current) => ({ ...current, propertyType: option.code }))}
@@ -327,13 +331,13 @@ export function SearchFilters({
         </fieldset>
 
         <section className={styles.section}>
-          <label className={styles.sectionLabel} htmlFor="listing-min-occupants">
+          <label className={styles.sectionLabel} htmlFor={`${fieldIdPrefix}listing-min-occupants`}>
             Số người sẽ ở
           </label>
           <div className={styles.inputWithIcon}>
             <Icon name="users" className="h-4 w-4" />
             <input
-              id="listing-min-occupants"
+              id={`${fieldIdPrefix}listing-min-occupants`}
               name="minOccupants"
               type="number"
               inputMode="numeric"
@@ -353,11 +357,11 @@ export function SearchFilters({
           <div className={styles.budgetHeader}>
             <span className={styles.sectionLabel}>Khoảng giá</span>
             <div className={styles.budgetValues}>
-              <output htmlFor="listing-min-budget" className={styles.budgetValue}>
+              <output htmlFor={`${fieldIdPrefix}listing-min-budget`} className={styles.budgetValue}>
                 {formatBudget(selectedMinBudget)}
               </output>
               <span aria-hidden="true">→</span>
-              <output htmlFor="listing-max-budget" className={styles.budgetValue}>
+              <output htmlFor={`${fieldIdPrefix}listing-max-budget`} className={styles.budgetValue}>
                 {formatBudget(selectedMaxBudget)}
               </output>
             </div>
@@ -373,7 +377,7 @@ export function SearchFilters({
                 }}
               />
               <input
-                id="listing-min-budget"
+                id={`${fieldIdPrefix}listing-min-budget`}
                 aria-label="Giá tối thiểu"
                 aria-valuetext={
                   selectedMinBudget <= BUDGET_MIN ? "Không đặt giá tối thiểu" : formatBudget(selectedMinBudget)
@@ -396,7 +400,7 @@ export function SearchFilters({
                 }}
               />
               <input
-                id="listing-max-budget"
+                id={`${fieldIdPrefix}listing-max-budget`}
                 aria-label="Giá tối đa"
                 aria-valuetext={
                   selectedMaxBudget >= BUDGET_MAX ? "15 triệu trở lên, không giới hạn" : formatBudget(selectedMaxBudget)
@@ -442,7 +446,7 @@ export function SearchFilters({
               <label key={value} className={styles.choice}>
                 <input
                   type="radio"
-                  name="areaPreset"
+                  name={`${fieldNamePrefix}areaPreset`}
                   value={value}
                   checked={selectedAreaPreset === value}
                   onChange={() => {
@@ -499,7 +503,7 @@ export function SearchFilters({
             type="button"
             className={styles.amenityToggle}
             aria-expanded={amenitiesOpen}
-            aria-controls="listing-amenities"
+            aria-controls={`${fieldIdPrefix}listing-amenities`}
             onClick={() => setAmenitiesOpen((open) => !open)}
           >
             <span>
@@ -509,7 +513,7 @@ export function SearchFilters({
             <Icon name="chevronDown" className={amenitiesOpen ? styles.chevronOpen : styles.chevron} />
           </button>
           {amenitiesOpen ? (
-            <div id="listing-amenities" className={styles.amenityPanel}>
+            <div id={`${fieldIdPrefix}listing-amenities`} className={styles.amenityPanel}>
               <p className={styles.helpText}>Phòng phải có tất cả tiện ích đã chọn.</p>
               {amenities.status === "loading" ? (
                 <p role="status" className={styles.helpText}>
@@ -530,7 +534,7 @@ export function SearchFilters({
                     <label key={amenity.code} className={styles.choice}>
                       <input
                         type="checkbox"
-                        name="amenities"
+                        name={`${fieldNamePrefix}amenities`}
                         value={amenity.code}
                         checked={draft.amenities.includes(amenity.code)}
                         onChange={(event) =>

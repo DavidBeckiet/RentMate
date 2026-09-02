@@ -111,6 +111,43 @@ describe("AppShell", () => {
     expect(screen.getByText("tenant@example.com")).toBeInTheDocument();
   });
 
+  it("provides a five-item tenant mobile navigation using existing routes", async () => {
+    navigationMocks.pathname.mockReturnValue("/favorites");
+    authenticate("TENANT");
+    render(<AppShell>Ná»™i dung trang</AppShell>);
+
+    const mobileNavigation = await waitFor(() =>
+      screen.getByRole("navigation", { name: "Điều hướng nhanh trên di động" })
+    );
+    expect(within(mobileNavigation).getByRole("link", { name: "Trang chủ trên di động" })).toHaveAttribute("href", "/");
+    expect(within(mobileNavigation).getByRole("link", { name: "Tìm phòng trên di động" })).toHaveAttribute(
+      "href",
+      "/search"
+    );
+    expect(within(mobileNavigation).getByRole("link", { name: "Ở ghép trên di động" })).toHaveAttribute(
+      "href",
+      "/roommates"
+    );
+    expect(within(mobileNavigation).getByRole("link", { name: "Đã lưu trên di động" })).toHaveAttribute(
+      "aria-current",
+      "page"
+    );
+    expect(within(mobileNavigation).getByRole("link", { name: "Tài khoản trên di động" })).toHaveAttribute(
+      "href",
+      "/profile"
+    );
+  });
+
+  it("does not cover a tenant conversation detail with the fixed mobile navigation", async () => {
+    navigationMocks.pathname.mockReturnValue("/inquiries/42");
+    authenticate("TENANT");
+    render(<AppShell>Ná»™i dung há»™i thoáº¡i</AppShell>);
+
+    await waitFor(() =>
+      expect(screen.queryByRole("navigation", { name: "Điều hướng nhanh trên di động" })).not.toBeInTheDocument()
+    );
+  });
+
   it("prefers the display name and provides a keyboard-accessible role-aware account menu", async () => {
     authenticate("TENANT", "Nguyễn Văn An");
     render(<AppShell>Nội dung trang</AppShell>);

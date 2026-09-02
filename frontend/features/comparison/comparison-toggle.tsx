@@ -32,14 +32,14 @@ export function ComparisonToggle({ listingId, compact = false }: Readonly<{ list
         aria-pressed={selected}
         aria-describedby={message ? messageId : undefined}
         aria-label={compact ? (selected ? "Bỏ khỏi so sánh" : "Thêm vào so sánh") : undefined}
-        className={compact ? "!min-h-10 !min-w-10 !p-0" : ""}
+        className={compact ? "!min-h-10 !min-w-10 !rounded-full !p-0" : ""}
       >
         <Icon name="compare" className="h-5 w-5" />
         {compact ? null : selected ? "Đã chọn so sánh" : "Thêm vào so sánh"}
       </Button>
       <span
         id={messageId}
-        className={compact ? "sr-only" : "mt-2 block text-xs font-bold text-slate-600"}
+        className={compact ? "sr-only" : "mt-2 block text-ui-xs font-semibold text-muted-foreground"}
         aria-live="polite"
       >
         {message}

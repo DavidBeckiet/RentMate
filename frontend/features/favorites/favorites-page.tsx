@@ -63,14 +63,10 @@ function favoritesErrorMessage(error: ApiError | null): string {
 
 function PageHeader() {
   return (
-    <header className="max-w-3xl border-b border-rent-line pb-6">
-      <p className="text-sm font-semibold uppercase tracking-[0.16em] text-teal-700">Bộ sưu tập của bạn</p>
-      <h1 id="favorites-heading" className="mt-2 text-3xl font-bold tracking-tight text-slate-950 sm:text-4xl">
-        Tin đã lưu
-      </h1>
-      <p className="mt-3 leading-7 text-slate-600">
-        Chỉ các tin đã lưu hiện đang công khai được hiển thị. Tin tạm ngừng công khai có thể không xuất hiện ở đây.
-      </p>
+    <header className={styles.pageHeader}>
+      <p className={styles.eyebrow}>Bộ sưu tập của bạn</p>
+      <h1 id="favorites-heading">Tin đã lưu</h1>
+      <p>Chỉ các tin đã lưu hiện đang công khai được hiển thị. Tin tạm ngừng công khai có thể không xuất hiện ở đây.</p>
     </header>
   );
 }
@@ -171,7 +167,7 @@ export function FavoritesPage() {
         title="Đăng nhập để xem tin đã lưu"
         description="Danh sách này chỉ dành cho tài khoản người thuê đã đăng nhập."
         action={
-          <Link className="font-semibold text-teal-800 underline decoration-2 underline-offset-4" href="/login">
+          <Link className={styles.textLink} href="/login">
             Đăng nhập
           </Link>
         }
@@ -191,7 +187,7 @@ export function FavoritesPage() {
         title="Trang này dành cho tài khoản người thuê"
         description="Hãy dùng tài khoản người thuê để xem và quản lý các tin đã lưu."
         action={
-          <Link className="font-semibold text-teal-800 underline decoration-2 underline-offset-4" href="/">
+          <Link className={styles.textLink} href="/">
             Khám phá tin đăng
           </Link>
         }
@@ -215,20 +211,17 @@ export function FavoritesPage() {
             title="Hiện chưa có tin đã lưu nào đang công khai."
             description="Tin đã lưu có thể tạm thời không xuất hiện nếu không còn công khai."
             action={
-              <Link className="font-semibold text-teal-800 underline decoration-2 underline-offset-4" href="/">
+              <Link className={styles.textLink} href="/">
                 Khám phá tin đăng
               </Link>
             }
           />
         ) : (
-          <div className="grid gap-6 sm:grid-cols-2 xl:grid-cols-3" aria-label="Tin đã lưu hiện đang công khai">
+          <div className={styles.listingGrid} aria-label="Tin đã lưu hiện đang công khai">
             {result.data.map((listing) => (
-              <div key={listing.id} className="flex flex-col justify-between gap-3">
+              <div key={listing.id} className={styles.listingItem}>
                 <ListingCard listing={listing} />
-                <div
-                  className="flex justify-end border-t border-rent-line pt-3"
-                  aria-label={`Thao tác cho ${listing.title}`}
-                >
+                <div className={styles.removeRow} aria-label={`Thao tác cho ${listing.title}`}>
                   <FavoriteRemoveControl listingId={listing.id} onRemoved={reconcileRemoval} />
                 </div>
               </div>

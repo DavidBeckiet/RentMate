@@ -14,7 +14,7 @@ import { normalizeVietnamesePhone } from "./validation";
 
 const phonePattern = /^\+[1-9][0-9]{7,14}$/;
 const secondaryLinkClasses =
-  "font-semibold text-teal-800 underline decoration-2 underline-offset-4 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-700 focus-visible:ring-offset-2";
+  "font-semibold text-primary-hover underline decoration-2 underline-offset-4 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2";
 
 type CompletionAction = "restart" | "login" | null;
 
@@ -124,9 +124,9 @@ export function GoogleLandlordCompletionForm() {
 
   return (
     <form noValidate aria-busy={pending} className="space-y-4" onSubmit={(event) => void handleSubmit(event)}>
-      <div className="border-2 border-heroDark-950 bg-rent-accent p-4 text-ui-sm text-heroDark-950 shadow-glass-sm">
+      <div className="rounded-control border border-info/25 bg-info-subtle p-4 text-ui-sm text-info-foreground shadow-surface">
         <p className="font-semibold">Google đã xác minh tài khoản của bạn.</p>
-        <p className="mt-1 text-rent-secondary">
+        <p className="mt-1 text-muted-foreground">
           Số điện thoại giúp người thuê liên hệ với bạn về phòng đăng trên RentMate.
         </p>
       </div>

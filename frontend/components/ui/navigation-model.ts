@@ -46,6 +46,25 @@ const marketplaceItems: readonly NavigationItem[] = [
   }
 ];
 
+export const publicNavigationItems: readonly NavigationItem[] = [
+  ...marketplaceItems,
+  {
+    key: "roommates",
+    label: "Ở ghép",
+    href: "/roommates",
+    icon: "users",
+    exactPaths: ["/roommates"],
+    pathPrefixes: ["/roommates/"]
+  },
+  {
+    key: "help",
+    label: "Trợ giúp",
+    href: "/help",
+    icon: "note",
+    exactPaths: ["/help"]
+  }
+];
+
 const tenantPrimaryItems: readonly NavigationItem[] = [
   ...marketplaceItems,
   {
@@ -233,7 +252,7 @@ export function consumerNavigationItems(actor: NavigationActor): readonly Naviga
   if (actor === "landlord") return landlordMarketplaceItems;
   if (actor === "admin") return adminMarketplaceItems;
   if (actor === "loading" || actor === "error") return marketplaceItems.slice(0, 1);
-  return marketplaceItems;
+  return actor === "anonymous" ? publicNavigationItems : marketplaceItems;
 }
 
 export function isNavigationItemActive(item: NavigationItem, pathname: string): boolean {

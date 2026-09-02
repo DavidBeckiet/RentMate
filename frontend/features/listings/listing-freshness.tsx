@@ -43,7 +43,7 @@ export function ListingFreshnessLabel({
   const freshness = getListingFreshness(updatedAt);
   return (
     <span
-      className={`${freshness.isStale ? "font-semibold text-amber-800" : "text-rent-subtle"} ${className}`}
+      className={`${freshness.isStale ? "font-semibold text-warning-foreground" : "text-muted-foreground"} ${className}`}
       title={`Cập nhật lúc ${new Date(updatedAt).toLocaleString("vi-VN")}`}
     >
       {freshness.label}

@@ -8,7 +8,7 @@ import { accountInitials, accountPrimaryIdentity, accountRoleLabels } from "./ac
 import { Icon } from "./icon";
 
 const menuItemClass =
-  "flex min-h-11 w-full items-center gap-3 rounded-control px-3 py-2 text-left text-ui-sm font-semibold text-foreground transition-colors duration-fast hover:bg-surface-subtle focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus";
+  "flex min-h-11 w-full items-center gap-3 rounded-control px-3 py-2 text-left text-ui-sm font-semibold text-foreground transition-colors duration-fast hover:bg-surface-subtle focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-focus";
 
 function linksFor(user: UserProfile) {
   if (user.role === "TENANT")
@@ -96,7 +96,7 @@ export function AccountMenu({
         aria-controls={panelId}
         onClick={() => setOpen((value) => !value)}
         onKeyDown={onTriggerKeyDown}
-        className="flex min-h-11 max-w-56 cursor-pointer items-center gap-2 rounded-control border border-transparent px-2 text-left transition-colors duration-fast hover:border-border hover:bg-surface-subtle focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus"
+        className="flex min-h-11 max-w-56 cursor-pointer items-center gap-2 rounded-control border border-transparent px-2 text-left transition-colors duration-fast hover:border-border hover:bg-surface-subtle focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-focus"
       >
         <span
           aria-hidden="true"
@@ -121,7 +121,7 @@ export function AccountMenu({
           role="menu"
           aria-label="Tài khoản"
           onKeyDown={onMenuKeyDown}
-          className="absolute right-0 z-50 mt-2 w-[min(20rem,calc(100vw-2rem))] rounded-card border border-border bg-surface p-2 shadow-raised"
+          className="absolute right-0 z-dropdown mt-2 w-[min(20rem,calc(100vw-2rem))] rounded-card border border-border bg-surface p-2 shadow-raised"
         >
           <div className="border-b border-border px-3 py-3">
             <p className="break-words font-semibold text-foreground">{accountPrimaryIdentity(user)}</p>

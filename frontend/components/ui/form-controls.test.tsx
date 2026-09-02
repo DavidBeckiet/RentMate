@@ -1,6 +1,16 @@
 import { fireEvent, render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
-import { CheckboxField, CheckboxGroup, Field, Input, InputField, SelectField, TextareaField } from "./form-controls";
+import {
+  CheckboxField,
+  CheckboxGroup,
+  Field,
+  Input,
+  InputField,
+  RadioField,
+  RadioGroup,
+  SelectField,
+  TextareaField
+} from "./form-controls";
 
 describe("shared form controls", () => {
   it("connects native inputs to visible labels, names, required text, and hints", () => {
@@ -107,5 +117,20 @@ describe("shared form controls", () => {
     fireEvent.click(checkbox);
     expect(onChange).toHaveBeenCalledTimes(1);
     expect(checkbox).toBeChecked();
+  });
+
+  it("provides native radio semantics with a visible group label", () => {
+    render(
+      <RadioGroup id="housing" legend="Loại phòng" required hint="Chọn một lựa chọn.">
+        <RadioField id="private" name="housing" label="Phòng riêng" value="private" />
+        <RadioField id="shared" name="housing" label="Ở ghép" value="shared" />
+      </RadioGroup>
+    );
+
+    expect(screen.getByRole("group", { name: "Loại phòng (bắt buộc)" })).toHaveAttribute(
+      "aria-describedby",
+      "housing-hint"
+    );
+    expect(screen.getByRole("radio", { name: "Phòng riêng" })).toHaveAttribute("name", "housing");
   });
 });

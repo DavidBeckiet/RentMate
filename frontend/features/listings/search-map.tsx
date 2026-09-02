@@ -79,25 +79,25 @@ export function SearchMap({
   return (
     <section
       aria-labelledby="search-map-heading"
-      className="min-w-0 border-2 border-heroDark-950 bg-rent-surface p-4 shadow-glass-sm"
+      className="min-w-0 rounded-card border border-border bg-surface p-4 shadow-surface"
     >
       <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h2 id="search-map-heading" className="font-display text-xl font-bold text-rent-ink">
+          <h2 id="search-map-heading" className="font-display text-heading-sm font-bold text-foreground">
             Bản đồ kết quả
           </h2>
-          <p className="mt-1 text-sm text-rent-secondary">Vị trí xấp xỉ, dựa trên tọa độ công khai đã làm tròn.</p>
+          <p className="mt-1 text-ui-sm text-muted-foreground">Vị trí xấp xỉ, dựa trên tọa độ công khai đã làm tròn.</p>
         </div>
         {pendingViewport ? (
           <MapSearchControl viewport={pendingViewport} onSearchRequested={onSearchBounds} />
         ) : (
-          <span className="text-xs text-rent-subtle">Di chuyển bản đồ để tìm trong vùng mới.</span>
+          <span className="text-ui-xs text-muted-foreground">Di chuyển bản đồ để tìm trong vùng mới.</span>
         )}
       </div>
       {selectingRadiusCenter ? (
         <p
           role="status"
-          className="mb-3 border-2 border-heroDark-950 bg-rent-yellow px-3 py-2 text-sm font-bold text-rent-ink"
+          className="mb-3 rounded-control border border-warning/30 bg-warning-subtle px-3 py-2 text-ui-sm font-semibold text-warning-foreground"
         >
           Chọn một điểm trên bản đồ làm tâm tìm kiếm.
         </p>
@@ -112,7 +112,7 @@ export function SearchMap({
         onViewportChange={onViewportChange}
         onMapClick={selectingRadiusCenter ? onRadiusCenterSelected : undefined}
         onMarkerSelect={handleMarkerSelect}
-        className="h-80 w-full min-w-0 overflow-hidden rounded-xl border border-stone-300 sm:h-96 lg:h-[36rem]"
+        className="h-80 w-full min-w-0 overflow-hidden rounded-control border border-border sm:h-96 lg:h-[36rem]"
       />
     </section>
   );

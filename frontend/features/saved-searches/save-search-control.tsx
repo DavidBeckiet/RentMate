@@ -22,7 +22,7 @@ export function SaveSearchControl({ search }: { readonly search: SearchQueryStat
   if (status === "anonymous") {
     return (
       <Link
-        className="inline-flex min-h-10 items-center gap-2 border-2 border-heroDark-950 bg-white px-3 text-xs font-extrabold shadow-glass-sm hover:bg-rent-accent focus-visible:outline-none"
+        className="inline-flex min-h-10 items-center gap-2 rounded-control border border-border-strong bg-surface px-3 text-ui-sm font-semibold text-foreground shadow-surface transition-[background-color,border-color,transform] duration-fast hover:-translate-y-0.5 hover:border-primary hover:bg-primary-subtle focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30"
         href="/login"
       >
         <Icon name="plus" className="h-4 w-4" /> {saveLabel}
@@ -40,12 +40,15 @@ export function SaveSearchControl({ search }: { readonly search: SearchQueryStat
             setOpen(true);
             setSaved(false);
           }}
-          className="inline-flex min-h-10 items-center gap-2 border-2 border-heroDark-950 bg-rent-accent px-3 text-xs font-extrabold shadow-glass-sm transition-transform hover:-translate-y-0.5 focus-visible:outline-none"
+          className="inline-flex min-h-10 items-center gap-2 rounded-control border border-primary bg-primary px-3 text-ui-sm font-semibold text-primary-foreground shadow-surface transition-[background-color,box-shadow,transform] duration-fast hover:-translate-y-0.5 hover:bg-primary-hover hover:shadow-raised focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30"
         >
           <Icon name="plus" className="h-4 w-4" /> {saveLabel}
         </button>
         {saved ? (
-          <Link className="text-xs font-extrabold underline decoration-2 underline-offset-4" href="/saved-searches">
+          <Link
+            className="text-ui-xs font-semibold text-primary-hover underline decoration-2 underline-offset-4"
+            href="/saved-searches"
+          >
             Đã lưu · Xem danh sách
           </Link>
         ) : null}
@@ -84,12 +87,12 @@ export function SaveSearchControl({ search }: { readonly search: SearchQueryStat
         maxLength={120}
         onChange={(event) => setName(event.target.value)}
         placeholder="Tên gợi nhớ (không bắt buộc)"
-        className="min-h-10 min-w-0 flex-1 border-2 border-heroDark-950 bg-white px-3 text-xs font-semibold outline-none focus:ring-2 focus:ring-brandBlue-500 sm:w-56"
+        className="min-h-10 min-w-0 flex-1 rounded-control border border-border-strong bg-surface px-3 text-ui-sm font-medium text-foreground outline-none placeholder:text-subtle-foreground focus:border-primary focus:ring-2 focus:ring-primary/20 sm:w-56"
       />
       <Button
         pending={pending}
         pendingLabel="Đang lưu…"
-        className="min-h-10 px-3 py-1.5 text-xs"
+        className="min-h-10 px-3 py-1.5 text-ui-sm"
         onClick={() => void submit()}
       >
         Lưu
@@ -101,13 +104,16 @@ export function SaveSearchControl({ search }: { readonly search: SearchQueryStat
           setOpen(false);
           setError(null);
         }}
-        className="grid h-10 w-10 place-items-center border-2 border-heroDark-950 bg-white hover:bg-rent-coral focus-visible:outline-none"
+        className="grid h-10 w-10 place-items-center rounded-control border border-border-strong bg-surface text-foreground transition-colors duration-fast hover:border-danger/40 hover:bg-danger-subtle hover:text-danger focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30"
         aria-label="Hủy lưu bộ lọc"
       >
         <Icon name="close" className="h-4 w-4" />
       </button>
       {error ? (
-        <span role="alert" className="w-full text-xs font-bold text-red-800">
+        <span
+          role="alert"
+          className="w-full rounded-control border border-danger/25 bg-danger-subtle p-2 text-ui-xs font-semibold text-danger"
+        >
           {error}
         </span>
       ) : null}

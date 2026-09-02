@@ -1,7 +1,9 @@
-import Image from "next/image";
 import Link from "next/link";
+import { Badge } from "../../components/ui/badge";
 import { Icon } from "../../components/ui/icon";
 import { ListingSaveControl } from "../../components/ui/listing-save-control";
+import { MediaImage } from "../../components/ui/media-image";
+import { Skeleton } from "../../components/ui/skeleton";
 import { ComparisonToggle } from "../comparison/comparison-toggle";
 import { BusinessStatusBadge } from "../../components/ui/status-badge";
 import type { PublicListingSummary } from "../../types/api";
@@ -19,6 +21,30 @@ export interface ListingCardProps {
   readonly onMapSelect?: () => void;
 }
 
+export function ListingCardSkeleton({ variant = "default" }: { readonly variant?: "default" | "search" }) {
+  return (
+    <article
+      aria-hidden="true"
+      className={styles.card + " " + (variant === "search" ? styles.searchCard : "") + " " + styles.skeletonCard}
+    >
+      <div className={styles.media}>
+        <Skeleton rounded="card" className={styles.skeletonMedia} />
+      </div>
+      <div className={styles.content}>
+        <div className={styles.skeletonContent}>
+          <Skeleton className="h-5 w-28" />
+          <Skeleton className="mt-3 h-4 w-4/5" />
+          <Skeleton className="mt-2 h-3 w-2/5" />
+        </div>
+        <div className={styles.meta}>
+          <Skeleton className="h-3 w-24" />
+          <Skeleton className="h-3 w-20" />
+        </div>
+      </div>
+    </article>
+  );
+}
+
 export function ListingCard({
   listing,
   showFavorite = true,
@@ -33,92 +59,87 @@ export function ListingCard({
 
   return (
     <article
-      id={onMapFocus || onMapSelect ? `listing-card-${listing.id}` : undefined}
+      id={onMapFocus || onMapSelect ? "listing-card-" + listing.id : undefined}
       aria-current={mapSelected ? "true" : undefined}
       onMouseEnter={onMapFocus}
       onFocus={onMapFocus}
-      className={`${styles.card} ${searchVariant ? styles.searchCard : ""} ${
-        mapSelected ? styles.mapSelected : ""
-      } group relative flex h-full flex-col overflow-hidden`}
+      className={
+        styles.card + " " + (searchVariant ? styles.searchCard : "") + " " + (mapSelected ? styles.mapSelected : "")
+      }
     >
-      <Link href={href ?? `/listings/${listing.id}`} className="flex h-full flex-1 flex-col focus-visible:outline-none">
-        <div
-          className={`${styles.media} relative aspect-[4/3] overflow-hidden border-b-2 border-heroDark-950 bg-[#e5eefc]`}
-        >
+      <Link href={href ?? "/listings/" + listing.id} className={styles.link}>
+        <div className={styles.media}>
           {coverImage ? (
-            <Image
+            <MediaImage
               src={coverImage.url}
-              alt={coverImage.altText ?? `Ảnh của ${listing.title}`}
+              alt={coverImage.altText ?? "Ảnh của " + listing.title}
               fill
               sizes="(min-width: 1280px) 25vw, (min-width: 768px) 50vw, 100vw"
-              className="object-cover transition-transform duration-500 motion-reduce:transition-none group-hover:scale-105"
+              className={styles.mediaImage}
+              fallback={
+                <div
+                  role="img"
+                  aria-label={coverImage.altText ?? "Ảnh của " + listing.title}
+                  className={styles.imageFallback}
+                >
+                  <Icon name="home" className="h-9 w-9" />
+                  <span>Không thể tải hình ảnh</span>
+                </div>
+              }
             />
           ) : (
-            <div
-              role="img"
-              aria-label={`Chưa có ảnh cho ${listing.title}`}
-              className="flex h-full flex-col items-center justify-center gap-3 p-5 text-center font-display text-sm font-bold"
-            >
+            <div role="img" aria-label={"Chưa có ảnh cho " + listing.title} className={styles.imageFallback}>
               <Icon name="home" className="h-9 w-9" />
-              Chưa có ảnh
+              <span>Chưa có ảnh</span>
             </div>
           )}
 
-          <span
-            className={`${styles.badge} absolute left-3 top-3 border-2 border-heroDark-950 bg-rent-yellow px-2.5 py-1 font-display text-[10px] font-bold uppercase tracking-[0.1em] shadow-glass-sm`}
-          >
+          <Badge variant="primary" className={styles.badge}>
             {listing.propertyType.label}
-          </span>
+          </Badge>
           {listing.distanceKm !== undefined ? (
-            <span className="absolute bottom-3 left-3 inline-flex items-center gap-1.5 border-2 border-heroDark-950 bg-rent-accent px-2.5 py-1 font-display text-[10px] font-bold shadow-glass-sm">
+            <Badge variant="info" className={styles.distance}>
               <Icon name="target" className="h-3.5 w-3.5" />
               {formatDistanceKm(listing.distanceKm)}
-            </span>
+            </Badge>
           ) : null}
-          <span className="absolute bottom-3 right-3">
+          <span className={styles.businessStatus}>
             <BusinessStatusBadge status={listing.businessStatus} />
           </span>
         </div>
 
-        <div className={`${styles.content} flex flex-1 flex-col justify-between gap-5 p-4 sm:p-5`}>
+        <div className={styles.content}>
           <div>
-            <div className="flex items-start justify-between gap-3">
-              <p className={`${styles.price} font-display text-xl font-bold tracking-[-0.04em] text-brandBlue-600`}>
-                {formatVnd(listing.monthlyRent)}
-              </p>
-              <Icon name="arrowUpRight" className="h-5 w-5 shrink-0 transition-transform group-hover:rotate-45" />
+            <div className={styles.titleRow}>
+              <p className={styles.price}>{formatVnd(listing.monthlyRent)}</p>
+              <Icon name="arrowUpRight" className="h-5 w-5 shrink-0" />
             </div>
-            <h2 className="rm-listing-title mt-2 font-display text-base font-bold leading-5">{listing.title}</h2>
-            <p className={`${styles.location} mt-3 flex items-center gap-2 text-xs font-semibold text-rent-secondary`}>
+            <h2 className={styles.title}>{listing.title}</h2>
+            <p className={styles.location}>
               <Icon name="pin" className="h-4 w-4 shrink-0" />
               <span className="truncate">{listing.areaName}</span>
             </p>
             {listing.landlordVerified ? (
-              <span className="mt-3 inline-flex items-center gap-1.5 border-2 border-heroDark-950 bg-rent-accent px-2 py-1 font-display text-[10px] font-bold uppercase tracking-[0.08em] shadow-glass-sm">
+              <Badge variant="verified" showIndicator context="Chủ nhà" className={styles.verified}>
                 <Icon name="shield" className="h-3.5 w-3.5" />
-                {"\u0110\u00e3 x\u00e1c minh"}
-              </span>
+                Đã xác minh
+              </Badge>
             ) : null}
           </div>
 
-          <div
-            className={`${styles.meta} flex flex-wrap items-center justify-between gap-2 border-t-2 border-heroDark-950 pt-3 text-xs font-bold`}
-          >
-            <span className="inline-flex items-center gap-1.5">
+          <div className={styles.meta}>
+            <span className={styles.fact}>
               <Icon name="ruler" className="h-4 w-4" />
               {formatAreaSqm(listing.roomAreaSqm)} · {listing.propertyType.label}
             </span>
             {listing.maxOccupants !== null ? (
-              <span className="inline-flex items-center gap-1.5">
+              <span className={styles.fact}>
                 <Icon name="users" className="h-4 w-4" />
                 {listing.maxOccupants} người tối đa
               </span>
             ) : null}
             {listing.amenities.slice(0, 1).map((amenity) => (
-              <span
-                key={amenity.code}
-                className={`${styles.amenity} border border-heroDark-950 bg-[#e5eefc] px-2 py-1`}
-              >
+              <span key={amenity.code} className={styles.amenity}>
                 {amenity.label}
               </span>
             ))}
@@ -127,14 +148,14 @@ export function ListingCard({
         </div>
       </Link>
 
-      <div className="absolute right-3 top-3 z-20 flex flex-col gap-2">
+      <div className={styles.actions}>
         {onMapSelect ? (
           <button
             type="button"
-            aria-label={`Xem ${listing.title} trên bản đồ`}
+            aria-label={"Xem " + listing.title + " trên bản đồ"}
             aria-pressed={mapSelected}
             onClick={onMapSelect}
-            className="grid h-10 w-10 place-items-center border-2 border-heroDark-950 bg-rent-accent shadow-glass-sm transition-transform hover:-translate-y-0.5 focus-visible:outline-none"
+            className={styles.mapButton}
           >
             <Icon name="map" className="h-4 w-4" />
           </button>

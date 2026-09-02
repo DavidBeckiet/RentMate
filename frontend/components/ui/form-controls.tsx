@@ -63,8 +63,22 @@ export interface CheckboxGroupProps {
   readonly children: ReactNode;
 }
 
+export interface RadioFieldProps
+  extends FieldPresentationProps,
+    Omit<InputHTMLAttributes<HTMLInputElement>, "id" | "name" | "type"> {}
+
+export interface RadioGroupProps {
+  readonly id: string;
+  readonly legend: string;
+  readonly hint?: ReactNode;
+  readonly error?: string;
+  readonly required?: boolean;
+  readonly disabled?: boolean;
+  readonly children: ReactNode;
+}
+
 const controlClasses =
-  "min-h-12 w-full max-w-full border-2 border-heroDark-950 bg-rent-surface px-4 py-2.5 text-base font-semibold text-rent-ink shadow-glass-sm outline-none placeholder:font-normal placeholder:text-rent-subtle transition-[background-color,box-shadow,transform] duration-200 focus:-translate-x-0.5 focus:-translate-y-0.5 focus:bg-white focus:shadow-glass disabled:cursor-not-allowed disabled:bg-[#dfddd5] disabled:text-rent-subtle aria-[invalid=true]:border-rose-700 aria-[invalid=true]:bg-rose-50";
+  "min-h-12 w-full max-w-full rounded-control border border-border-strong bg-surface px-4 py-2.5 text-base font-sans font-medium text-foreground shadow-surface outline-none placeholder:font-normal placeholder:text-muted-foreground transition-[background-color,border-color,box-shadow] duration-standard focus:border-primary focus:ring-[3px] focus:ring-primary/20 disabled:cursor-not-allowed disabled:border-border disabled:bg-disabled disabled:text-muted-foreground read-only:bg-surface-subtle aria-[invalid=true]:border-danger aria-[invalid=true]:bg-danger-subtle";
 
 function labelText(label: string, required?: boolean, requiredIndicator: "text" | "sr-only" = "text") {
   return (
@@ -87,18 +101,14 @@ function descriptionId(id: string, hint: ReactNode, error: string | undefined, e
 function FieldMessage({ id, hint, error }: { id: string; hint?: ReactNode; error?: string }) {
   if (error) {
     return (
-      <p
-        id={`${id}-error`}
-        role="alert"
-        className="border-l-4 border-rose-700 pl-2 text-sm font-semibold text-rose-800"
-      >
+      <p id={`${id}-error`} role="alert" className="border-l-2 border-danger pl-2 text-ui-sm font-semibold text-danger">
         {error}
       </p>
     );
   }
 
   return hint ? (
-    <p id={`${id}-hint`} className="text-sm text-rent-secondary">
+    <p id={`${id}-hint`} className="text-ui-sm text-muted-foreground">
       {hint}
     </p>
   ) : null;
@@ -119,6 +129,8 @@ export function Field({ id, label, hint, error, required, requiredIndicator, des
     </div>
   );
 }
+
+export const FormField = Field;
 
 export const Input = forwardRef<HTMLInputElement, InputHTMLAttributes<HTMLInputElement>>(function Input(
   { className, ...inputProps },
@@ -142,6 +154,40 @@ export const Select = forwardRef<HTMLSelectElement, SelectHTMLAttributes<HTMLSel
     <select ref={ref} {...selectProps} className={cx(controlClasses, className)}>
       {children}
     </select>
+  );
+});
+
+export const Checkbox = forwardRef<HTMLInputElement, InputHTMLAttributes<HTMLInputElement>>(function Checkbox(
+  { className, type = "checkbox", ...checkboxProps },
+  ref
+) {
+  return (
+    <input
+      {...checkboxProps}
+      ref={ref}
+      type={type}
+      className={cx(
+        "h-5 w-5 rounded-control border border-border-strong accent-primary focus-visible:ring-[3px] focus-visible:ring-focus focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60",
+        className
+      )}
+    />
+  );
+});
+
+export const Radio = forwardRef<HTMLInputElement, InputHTMLAttributes<HTMLInputElement>>(function Radio(
+  { className, type = "radio", ...radioProps },
+  ref
+) {
+  return (
+    <input
+      {...radioProps}
+      ref={ref}
+      type={type}
+      className={cx(
+        "h-5 w-5 border border-border-strong accent-primary focus-visible:ring-[3px] focus-visible:ring-focus focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60",
+        className
+      )}
+    />
   );
 });
 
@@ -288,7 +334,7 @@ export function CheckboxField({
           aria-invalid={error ? true : checkboxProps["aria-invalid"]}
           aria-describedby={descriptionId(id, hint, error, checkboxProps["aria-describedby"])}
           className={cx(
-            "mt-1 h-5 w-5 shrink-0 rounded border border-border-strong accent-primary focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60",
+            "mt-1 h-5 w-5 shrink-0 rounded-control border border-border-strong accent-primary focus-visible:ring-[3px] focus-visible:ring-focus focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60",
             className
           )}
         />
@@ -300,6 +346,47 @@ export function CheckboxField({
 }
 
 export function CheckboxGroup({ id, legend, hint, error, required, disabled, children }: CheckboxGroupProps) {
+  const messageId = error ? `${id}-error` : hint ? `${id}-hint` : undefined;
+
+  return (
+    <fieldset
+      id={id}
+      disabled={disabled}
+      aria-invalid={error ? true : undefined}
+      aria-describedby={messageId}
+      className="space-y-2"
+    >
+      <legend className="text-ui-sm font-semibold text-foreground">{labelText(legend, required)}</legend>
+      <div className="space-y-1">{children}</div>
+      <FieldMessage id={id} hint={hint} error={error} />
+    </fieldset>
+  );
+}
+
+export function RadioField({ id, name, label, hint, error, required, className = "", ...radioProps }: RadioFieldProps) {
+  return (
+    <div className="space-y-2">
+      <label htmlFor={id} className="flex min-h-11 cursor-pointer items-start gap-3 text-ui-sm text-foreground">
+        <input
+          {...radioProps}
+          id={id}
+          name={name}
+          type="radio"
+          required={required}
+          aria-describedby={descriptionId(id, hint, error, radioProps["aria-describedby"])}
+          className={cx(
+            "mt-1 h-5 w-5 shrink-0 border border-border-strong accent-primary focus-visible:ring-[3px] focus-visible:ring-focus focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60",
+            className
+          )}
+        />
+        <span className="pt-0.5">{labelText(label, required)}</span>
+      </label>
+      <FieldMessage id={id} hint={hint} error={error} />
+    </div>
+  );
+}
+
+export function RadioGroup({ id, legend, hint, error, required, disabled, children }: RadioGroupProps) {
   const messageId = error ? `${id}-error` : hint ? `${id}-hint` : undefined;
 
   return (

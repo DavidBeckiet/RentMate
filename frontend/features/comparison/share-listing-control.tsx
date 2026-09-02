@@ -37,13 +37,16 @@ export function ShareListingControl({
       <Button
         variant="secondary"
         onClick={() => void share()}
-        className={compact ? "!min-h-10 !min-w-10 !p-0" : ""}
+        className={compact ? "!min-h-10 !min-w-10 !rounded-full !p-0" : ""}
         aria-label={compact ? "Chia sẻ tin đăng" : undefined}
       >
         <Icon name="share" className="h-5 w-5" />
         {compact ? null : "Chia sẻ"}
       </Button>
-      <span className={compact ? "sr-only" : "mt-2 block text-xs font-bold text-slate-600"} aria-live="polite">
+      <span
+        className={compact ? "sr-only" : "mt-2 block text-ui-xs font-semibold text-muted-foreground"}
+        aria-live="polite"
+      >
         {message}
       </span>
     </div>

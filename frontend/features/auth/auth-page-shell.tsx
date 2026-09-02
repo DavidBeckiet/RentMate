@@ -3,6 +3,8 @@
 import { useRouter } from "next/navigation";
 import { useEffect, useId, useState, type ReactNode } from "react";
 import { EmptyState, LoadingState } from "../../components/ui/feedback-states";
+import { Icon } from "../../components/ui/icon";
+import { MediaImage } from "../../components/ui/media-image";
 import { RentMateMark } from "../../components/ui/rentmate-mark";
 import { useAuth } from "../../lib/auth/auth-provider";
 import type { UserRole } from "../../types/api";
@@ -81,6 +83,45 @@ export function AuthPageShell({
           <div className={styles.formBody}>{children}</div>
           {footer ? <footer className={styles.formFooter}>{footer}</footer> : null}
         </div>
+        <aside className={styles.visualPanel} aria-label="Thông tin về RentMate">
+          <div className={styles.visualMedia}>
+            <MediaImage
+              src="/images/rentmate-home-hero.png"
+              alt="Minh hoạ khu nhà đô thị cho hành trình tìm nơi ở RentMate"
+              fill
+              priority
+              sizes="(min-width: 900px) 42vw, 100vw"
+              className={styles.visualImage}
+              fallback={
+                <div className={styles.visualFallback}>
+                  <Icon name="home" className="h-12 w-12" />
+                  <span>Chọn nơi ở vừa với nhịp sống của bạn.</span>
+                </div>
+              }
+            />
+            <div className={styles.visualShade} aria-hidden="true" />
+            <div className={styles.visualCopy}>
+              <span className={styles.visualKicker}>
+                <Icon name={variant === "landlord" ? "building" : "compass"} className="h-4 w-4" />
+                {variant === "landlord" ? "RentMate cho chủ nhà" : "RentMate cho hành trình của bạn"}
+              </span>
+              <p className={styles.visualTitle}>
+                {variant === "landlord" ? "Đưa chỗ trống đến đúng người." : "Chọn nơi ở rõ ràng hơn."}
+              </p>
+              <ul className={styles.visualFacts}>
+                <li>
+                  <Icon name="map" className="h-4 w-4" /> Vị trí công khai là vị trí xấp xỉ
+                </li>
+                <li>
+                  <Icon name="shield" className="h-4 w-4" /> Trạng thái tin đăng minh bạch
+                </li>
+                <li>
+                  <Icon name="message" className="h-4 w-4" /> Kết nối theo quyền truy cập
+                </li>
+              </ul>
+            </div>
+          </div>
+        </aside>
       </section>
     </div>
   );

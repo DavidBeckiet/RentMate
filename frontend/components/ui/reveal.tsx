@@ -10,6 +10,7 @@ export interface RevealProps {
 
 export function Reveal({ children, className = "", delay = 0 }: RevealProps) {
   const elementRef = useRef<HTMLDivElement>(null);
+  const [ready, setReady] = useState(false);
   const [visible, setVisible] = useState(false);
 
   useEffect(() => {
@@ -21,6 +22,7 @@ export function Reveal({ children, className = "", delay = 0 }: RevealProps) {
       typeof IntersectionObserver === "undefined"
     ) {
       setVisible(true);
+      setReady(true);
       return;
     }
 
@@ -28,6 +30,7 @@ export function Reveal({ children, className = "", delay = 0 }: RevealProps) {
       ([entry]) => {
         if (!entry?.isIntersecting) return;
         setVisible(true);
+        setReady(true);
         observer.disconnect();
       },
       { rootMargin: "0px 0px -8%", threshold: 0.12 }
@@ -38,7 +41,13 @@ export function Reveal({ children, className = "", delay = 0 }: RevealProps) {
   }, []);
 
   return (
-    <div ref={elementRef} className={`rm-reveal ${className}`} data-visible={visible} data-delay={delay}>
+    <div
+      ref={elementRef}
+      className={`rm-reveal ${className}`}
+      data-ready={ready}
+      data-visible={visible}
+      data-delay={delay}
+    >
       {children}
     </div>
   );

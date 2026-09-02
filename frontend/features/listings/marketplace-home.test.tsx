@@ -15,7 +15,7 @@ beforeEach(() => {
 });
 
 describe("MarketplaceHome", () => {
-  it("keeps the homepage concise and ends with clear tenant and landlord actions", () => {
+  it("uses a Vietnamese-first marketplace hierarchy with real-data empty states", () => {
     render(
       <MarketplaceHome
         propertyTypes={[{ code: "ROOM", label: "Phòng trọ" }]}
@@ -28,13 +28,17 @@ describe("MarketplaceHome", () => {
       />
     );
 
-    expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent("Tìm phòng đúng khu.Sống đúng nhịp.");
-    expect(screen.getByRole("heading", { name: "Phòng mới, xem nhanh." })).toBeInTheDocument();
-    expect(screen.getAllByText("Preview")).toHaveLength(3);
-    expect(screen.queryByLabelText("Thông tin nổi bật")).not.toBeInTheDocument();
-    expect(screen.getByRole("link", { name: /Tìm phòng ngay/ })).toHaveAttribute("href", "/search");
-    expect(screen.getByRole("link", { name: /Đăng chỗ trống/ })).toHaveAttribute("href", "/register/landlord");
-    expect(screen.queryByText("Người thật nói gì?")).not.toBeInTheDocument();
-    expect(screen.queryByText("Trước khi bạn bắt đầu.")).not.toBeInTheDocument();
+    expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent("Tìm phòng.Tìm người ở ghép.Sống đúng nhịp.");
+    expect(screen.getByRole("heading", { name: "Tin đăng mới nhất" })).toBeInTheDocument();
+    expect(screen.getByText("Chưa có tin đăng công khai mới")).toBeInTheDocument();
+    expect(screen.queryByText("Preview")).not.toBeInTheDocument();
+    expect(screen.getByRole("link", { name: /Khám phá tin đăng/ })).toHaveAttribute("href", "/search");
+    expect(
+      screen
+        .getAllByRole("link", { name: /Tìm người ở ghép/ })
+        .some((link) => link.getAttribute("href") === "/roommates")
+    ).toBe(true);
+    expect(screen.getByRole("link", { name: /Đăng tin trên RentMate/ })).toHaveAttribute("href", "/register/landlord");
+    expect(screen.queryByText("Urban living OS")).not.toBeInTheDocument();
   });
 });

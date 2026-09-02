@@ -13,13 +13,13 @@ export function LoadingState({ message = "Đang tải…", className }: LoadingS
       role="status"
       aria-live="polite"
       className={cx(
-        "flex min-h-40 flex-col items-center justify-center gap-4 border-2 border-heroDark-950 bg-rent-surface p-6 text-center shadow-glass",
+        "flex min-h-40 flex-col items-center justify-center gap-4 rounded-card border border-border bg-surface p-6 text-center shadow-surface",
         className
       )}
     >
       <span
         aria-hidden="true"
-        className="h-9 w-9 animate-spin border-2 border-heroDark-950/20 border-r-heroDark-950 motion-reduce:animate-none"
+        className="h-9 w-9 animate-spin rounded-full border-2 border-primary/20 border-t-primary motion-reduce:animate-none"
       />
       <span className="text-ui-sm font-semibold text-muted-foreground">{message}</span>
     </div>
@@ -38,13 +38,13 @@ export function EmptyState({ title, description, visual, action, className }: Em
   return (
     <section
       className={cx(
-        "flex flex-col items-center border-2 border-dashed border-heroDark-950 bg-rent-surface p-6 text-center shadow-glass sm:p-8",
+        "flex flex-col items-center rounded-card border border-dashed border-border-strong bg-surface p-6 text-center shadow-surface sm:p-8",
         className
       )}
     >
       {visual ? <div className="mb-4 text-muted-foreground">{visual}</div> : null}
-      <h2 className="font-display text-heading-sm font-bold text-heroDark-950">{title}</h2>
-      {description ? <p className="mt-2 max-w-prose text-ui-sm text-rent-secondary">{description}</p> : null}
+      <h2 className="font-display text-heading-sm font-bold text-foreground">{title}</h2>
+      {description ? <p className="mt-2 max-w-prose text-ui-sm text-muted-foreground">{description}</p> : null}
       {action ? <div className="mt-4 flex justify-center">{action}</div> : null}
     </section>
   );
@@ -72,11 +72,14 @@ export function ErrorState({
   return (
     <section
       role="alert"
-      className={cx("border-2 border-rose-700 bg-rose-50 p-5 text-left text-heroDark-950 shadow-glass", className)}
+      className={cx(
+        "rounded-card border border-danger/30 bg-danger-subtle p-5 text-left text-foreground shadow-surface",
+        className
+      )}
     >
       <span
         aria-hidden="true"
-        className="mb-3 grid h-9 w-9 place-items-center border-2 border-heroDark-950 bg-rent-coral font-display text-heading-sm font-bold text-heroDark-950"
+        className="mb-3 grid h-9 w-9 place-items-center rounded-full border border-danger/30 bg-coral font-display text-heading-sm font-bold text-foreground"
       >
         !
       </span>

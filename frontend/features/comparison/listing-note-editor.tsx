@@ -66,12 +66,12 @@ export function ListingNoteEditor({
   }, [authStatus, initialNote, listingId, user?.role]);
 
   if (authStatus === "loading") {
-    return <p className="text-sm font-bold text-slate-600">Đang kiểm tra quyền ghi chú…</p>;
+    return <p className="text-ui-sm font-semibold text-muted-foreground">Đang kiểm tra quyền ghi chú…</p>;
   }
   if (authStatus === "anonymous") {
     return (
-      <p className="text-sm leading-6 text-slate-600">
-        <Link className="font-extrabold text-teal-800 underline decoration-2 underline-offset-4" href="/login">
+      <p className="text-ui-sm leading-6 text-muted-foreground">
+        <Link className="font-extrabold text-primary-hover underline decoration-2 underline-offset-4" href="/login">
           Đăng nhập bằng tài khoản người thuê
         </Link>{" "}
         để lưu ghi chú riêng cho tin này.
@@ -79,7 +79,7 @@ export function ListingNoteEditor({
     );
   }
   if (!user || user.role !== "TENANT") {
-    return <p className="text-sm text-slate-600">Ghi chú riêng chỉ dành cho tài khoản người thuê.</p>;
+    return <p className="text-ui-sm text-muted-foreground">Ghi chú riêng chỉ dành cho tài khoản người thuê.</p>;
   }
 
   const normalized = value.trim();
@@ -138,7 +138,7 @@ export function ListingNoteEditor({
           if (status === "success" || status === "error") setStatus("idle");
         }}
         placeholder="Ví dụ: gần chỗ làm, hỏi thêm chi phí điện nước…"
-        className="w-full resize-y border-2 border-heroDark-950 bg-white p-3 text-sm font-medium outline-none focus-visible:shadow-glass-sm disabled:cursor-not-allowed disabled:bg-slate-100"
+        className="w-full resize-y rounded-control border border-border-strong bg-surface p-3 text-ui-sm font-medium outline-none focus-visible:border-primary focus-visible:ring-2 focus-visible:ring-primary/20 disabled:cursor-not-allowed disabled:bg-disabled"
       />
       <div className="flex flex-wrap items-center gap-3">
         <Button type="submit" pending={status === "saving"} pendingLabel="Đang lưu…" disabled={!dirty || !normalized}>
@@ -149,9 +149,9 @@ export function ListingNoteEditor({
             Xóa ghi chú
           </Button>
         ) : null}
-        <span className="text-xs font-bold text-slate-500">Chỉ bạn nhìn thấy · {value.length}/2000</span>
+        <span className="text-ui-xs font-semibold text-muted-foreground">Chỉ bạn nhìn thấy · {value.length}/2000</span>
       </div>
-      <p aria-live="polite" className="text-xs font-bold text-slate-600">
+      <p aria-live="polite" className="text-ui-xs font-semibold text-muted-foreground">
         {status === "loading"
           ? "Đang tải ghi chú…"
           : status === "success"
@@ -161,7 +161,10 @@ export function ListingNoteEditor({
             : ""}
       </p>
       {status === "error" ? (
-        <p role="alert" className="border-2 border-heroDark-950 bg-rent-coral p-3 text-xs font-bold">
+        <p
+          role="alert"
+          className="rounded-control border border-danger/25 bg-danger-subtle p-3 text-ui-xs font-semibold text-danger"
+        >
           {errorMessage(error)}
         </p>
       ) : null}

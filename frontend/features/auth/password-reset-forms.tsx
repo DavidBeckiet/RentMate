@@ -13,7 +13,7 @@ import { mapApiErrorToFields } from "../../lib/validation/api-field-errors";
 import { validatePasswordResetRequestInput } from "./validation";
 
 const secondaryLinkClasses =
-  "font-semibold text-teal-800 underline decoration-2 underline-offset-4 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-700 focus-visible:ring-offset-2";
+  "font-semibold text-primary-hover underline decoration-2 underline-offset-4 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2";
 
 function emailError(error: unknown): string | null {
   if (!(error instanceof ApiError)) return "Không thể gửi yêu cầu lúc này. Vui lòng thử lại sau.";
@@ -55,7 +55,7 @@ export function PasswordResetRequestForm() {
   if (accepted) {
     return (
       <div className="space-y-4" role="status" aria-live="polite">
-        <p className="border-2 border-heroDark-950 bg-rent-accent p-4 text-ui-sm font-semibold text-heroDark-950 shadow-glass-sm">
+        <p className="rounded-control border border-success/25 bg-success-subtle p-4 text-ui-sm font-semibold text-success-foreground shadow-surface">
           Nếu email tồn tại, RentMate đã gửi hướng dẫn đặt lại mật khẩu. Hãy kiểm tra cả thư mục spam.
         </p>
         <Link href="/login" className={secondaryLinkClasses}>
@@ -155,7 +155,7 @@ export function PasswordResetConfirmationForm() {
   if (completed) {
     return (
       <div className="space-y-4" role="status" aria-live="polite">
-        <p className="border-2 border-heroDark-950 bg-rent-accent p-4 text-ui-sm font-semibold text-heroDark-950 shadow-glass-sm">
+        <p className="rounded-control border border-success/25 bg-success-subtle p-4 text-ui-sm font-semibold text-success-foreground shadow-surface">
           Mật khẩu đã được cập nhật. Bạn có thể đăng nhập bằng mật khẩu mới.
         </p>
         <Button type="button" className="w-full" onClick={() => router.replace("/login")}>
@@ -167,7 +167,7 @@ export function PasswordResetConfirmationForm() {
 
   return (
     <form noValidate aria-busy={pending} className="space-y-4" onSubmit={(event) => void handleSubmit(event)}>
-      <p className="text-ui-sm text-rent-secondary">Liên kết chỉ dùng một lần và có hiệu lực trong thời gian ngắn.</p>
+      <p className="text-ui-sm text-muted-foreground">Liên kết chỉ dùng một lần và có hiệu lực trong thời gian ngắn.</p>
       <PasswordField
         id="password-reset-password"
         name="password"
@@ -200,7 +200,7 @@ export function PasswordResetConfirmationForm() {
           clearField("confirmPassword");
         }}
       />
-      {fieldErrors.token ? <p className="text-sm font-semibold text-rose-800">{fieldErrors.token}</p> : null}
+      {fieldErrors.token ? <p className="text-ui-sm font-semibold text-danger">{fieldErrors.token}</p> : null}
       {formError ? <ErrorState message={formError} /> : null}
       <Button type="submit" pending={pending} pendingLabel="Đang cập nhật…" className="rm-auth-primary w-full">
         Cập nhật mật khẩu

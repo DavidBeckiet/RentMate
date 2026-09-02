@@ -1,0 +1,155 @@
+.comparisonGrid {
+  display: grid;
+  align-items: start;
+  gap: 1rem;
+}
+
+.comparisonCard {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  overflow: hidden;
+  border: 1px solid rgb(var(--color-border));
+  border-radius: var(--radius-card);
+  background: rgb(var(--color-surface));
+  box-shadow: var(--shadow-surface);
+  transition:
+    border-color var(--motion-fast) ease,
+    box-shadow var(--motion-standard) ease,
+    transform var(--motion-standard) var(--rm-ease-out);
+}
+
+.comparisonCard:hover {
+  border-color: rgb(var(--color-border-strong));
+  box-shadow: var(--shadow-raised);
+  transform: translateY(-2px);
+}
+
+.comparisonMedia {
+  position: relative;
+  aspect-ratio: 4 / 3;
+  overflow: hidden;
+  background: rgb(var(--color-decorative-blue));
+}
+
+.comparisonMediaFallback {
+  display: grid;
+  height: 100%;
+  place-items: center;
+  color: rgb(var(--color-muted-foreground));
+}
+
+.comparisonBody {
+  display: flex;
+  flex: 1;
+  min-width: 0;
+  flex-direction: column;
+  gap: 1.25rem;
+  padding: 1.25rem;
+}
+
+.comparisonIdentity {
+  min-width: 0;
+}
+
+.comparisonPrice {
+  color: rgb(var(--color-primary-hover));
+  font-family: var(--font-manrope), sans-serif;
+  font-size: var(--font-size-xl);
+  font-weight: 800;
+  letter-spacing: -0.045em;
+}
+
+.comparisonTitle {
+  display: -webkit-box;
+  overflow: hidden;
+  margin-top: 0.4rem;
+  color: rgb(var(--color-foreground));
+  font-family: var(--font-manrope), sans-serif;
+  font-size: var(--font-size-lg);
+  font-weight: 800;
+  letter-spacing: -0.035em;
+  line-height: 1.25;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+
+.comparisonFacts {
+  display: grid;
+  margin: 0;
+  border-block: 1px solid rgb(var(--color-border));
+}
+
+.comparisonFact {
+  display: grid;
+  gap: 0.25rem;
+  padding-block: 0.8rem;
+}
+
+.comparisonFact + .comparisonFact {
+  border-top: 1px solid rgb(var(--color-border));
+}
+
+.comparisonFact dt {
+  color: rgb(var(--color-muted-foreground));
+  font-size: var(--font-size-xs);
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.comparisonFact dd {
+  margin: 0;
+  overflow-wrap: anywhere;
+  color: rgb(var(--color-foreground));
+  font-size: var(--font-size-sm);
+  font-weight: 700;
+  line-height: 1.5;
+}
+
+.comparisonActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.comparisonActions a,
+.comparisonActions :global(button) {
+  transition:
+    background-color var(--motion-fast) ease,
+    border-color var(--motion-fast) ease,
+    box-shadow var(--motion-standard) ease,
+    transform var(--motion-fast) var(--rm-ease-out);
+}
+
+.comparisonActions a:focus-visible,
+.comparisonActions :global(button:focus-visible) {
+  outline: 3px solid rgb(var(--color-focus-ring) / 0.55);
+  outline-offset: 2px;
+}
+
+.noteArea {
+  border-top: 1px solid rgb(var(--color-border));
+  padding-top: 1.25rem;
+}
+
+@media (min-width: 700px) {
+  .comparisonGrid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (min-width: 1200px) {
+  .comparisonGrid {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 1.25rem;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .comparisonCard,
+  .comparisonActions a,
+  .comparisonActions :global(button) {
+    transition: none;
+  }
+}

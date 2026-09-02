@@ -94,7 +94,7 @@ export function FavoriteSaveControl({ listingId, compact = false }: FavoriteSave
 
   if (authStatus === "loading") {
     return (
-      <p role="status" aria-live="polite" className="text-sm font-medium text-slate-600">
+      <p role="status" aria-live="polite" className="text-ui-sm font-semibold text-muted-foreground">
         Đang kiểm tra quyền lưu tin…
       </p>
     );
@@ -104,7 +104,7 @@ export function FavoriteSaveControl({ listingId, compact = false }: FavoriteSave
     if (compact) {
       return (
         <Link
-          className="grid h-10 w-10 place-items-center border-2 border-heroDark-950 bg-rent-surface text-heroDark-950 shadow-glass-sm transition-transform hover:-translate-y-0.5"
+          className="grid h-11 w-11 place-items-center rounded-full border border-border bg-surface text-foreground shadow-surface transition-[background-color,transform] duration-fast hover:-translate-y-0.5 hover:bg-primary-subtle"
           href="/login"
           aria-label="Đăng nhập để lưu tin"
         >
@@ -113,8 +113,8 @@ export function FavoriteSaveControl({ listingId, compact = false }: FavoriteSave
       );
     }
     return (
-      <p className="text-sm leading-6 text-slate-600">
-        <Link className="font-semibold text-teal-800 underline decoration-2 underline-offset-4" href="/login">
+      <p className="text-ui-sm leading-6 text-muted-foreground">
+        <Link className="font-semibold text-primary-hover underline decoration-2 underline-offset-4" href="/login">
           Đăng nhập bằng tài khoản người thuê
         </Link>{" "}
         để lưu tin này.
@@ -127,17 +127,17 @@ export function FavoriteSaveControl({ listingId, compact = false }: FavoriteSave
       return (
         <button
           type="button"
-          className="grid h-10 w-10 place-items-center border-2 border-heroDark-950 bg-rent-coral font-display text-lg font-bold shadow-glass-sm"
+          className="grid h-11 w-11 place-items-center rounded-full border border-danger/30 bg-danger-subtle text-danger shadow-surface"
           onClick={() => void refresh()}
           aria-label="Thử lại quyền lưu tin"
         >
-          !
+          <Icon name="refresh" className="h-5 w-5" />
         </button>
       );
     }
     return (
       <div className="flex flex-wrap items-center gap-3" role="alert">
-        <p className="text-sm text-red-700">Không thể kiểm tra quyền lưu tin lúc này.</p>
+        <p className="text-ui-sm text-danger">Không thể kiểm tra quyền lưu tin lúc này.</p>
         <Button variant="secondary" onClick={() => void refresh()}>
           Thử lại
         </Button>
@@ -147,7 +147,7 @@ export function FavoriteSaveControl({ listingId, compact = false }: FavoriteSave
 
   if (!user || user.role !== "TENANT") {
     if (compact) return null;
-    return <p className="text-sm text-slate-600">Chức năng lưu tin dành cho tài khoản người thuê.</p>;
+    return <p className="text-ui-sm text-muted-foreground">Chức năng lưu tin dành cho tài khoản người thuê.</p>;
   }
 
   if (compact) {
@@ -176,12 +176,12 @@ export function FavoriteSaveControl({ listingId, compact = false }: FavoriteSave
         {outcome.status === "success" ? "Đã lưu" : "Lưu tin"}
       </Button>
       {outcome.status === "error" ? (
-        <p className="max-w-xl text-sm text-red-700" role="alert">
+        <p className="max-w-xl text-ui-sm text-danger" role="alert">
           {outcome.message}
         </p>
       ) : null}
       {outcome.status === "success" ? (
-        <p className="text-sm text-slate-600" aria-live="polite">
+        <p className="text-ui-sm text-muted-foreground" aria-live="polite">
           Tin đã được bảo đảm có trong danh sách đã lưu.
         </p>
       ) : null}

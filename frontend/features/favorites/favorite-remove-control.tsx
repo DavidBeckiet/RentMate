@@ -84,7 +84,7 @@ export function FavoriteRemoveControl({ listingId, onRemoved }: FavoriteRemoveCo
         Bỏ lưu
       </Button>
       {errorMessage ? (
-        <p className="max-w-xl text-sm text-red-700" role="alert">
+        <p className="max-w-xl text-ui-sm text-danger" role="alert">
           {errorMessage}
         </p>
       ) : null}

@@ -26,6 +26,7 @@ vi.mock("../../lib/api/client", async () => {
 });
 
 vi.mock("./listing-card", () => ({
+  ListingCardSkeleton: () => <div data-testid="listing-card-skeleton" />,
   ListingCard: ({
     listing,
     mapSelected,
