@@ -109,12 +109,9 @@ export function ModerationActions({ detail, onReloadDetail, onRefreshHistory }: 
   };
 
   return (
-    <section
-      aria-labelledby="moderation-actions-heading"
-      className="space-y-4 rounded-card border border-rent-line bg-white p-5 sm:p-6"
-    >
+    <section aria-labelledby="moderation-actions-heading" className="rm-admin-decision-panel space-y-4">
       <div>
-        <h2 id="moderation-actions-heading" className="text-xl font-semibold text-rent-ink">
+        <h2 id="moderation-actions-heading" className="rm-admin-decision-title">
           Hành động kiểm duyệt
         </h2>
         <p className="mt-1 text-sm text-rent-secondary">Mỗi hành động sẽ được ghi vào lịch sử bất biến.</p>
@@ -141,7 +138,7 @@ export function ModerationActions({ detail, onReloadDetail, onRefreshHistory }: 
         </div>
       )}
       {selectedAction ? (
-        <div className="rounded-control border border-amber-300 bg-amber-50 p-4">
+        <div className="rm-admin-evidence rm-admin-evidence--attention mt-0">
           <h3 className="font-semibold text-amber-950">Xác nhận: {actionLabels[selectedAction]}</h3>
           <div className="mt-4">
             <TextareaField

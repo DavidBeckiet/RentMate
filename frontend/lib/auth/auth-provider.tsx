@@ -33,6 +33,7 @@ function normalizeUnexpectedError(error: unknown): ApiError {
 
 export function AuthProvider({ children }: Readonly<{ children: ReactNode }>) {
   const [state, setState] = useState<AuthState>({ status: "loading" });
+  const [hydrated, setHydrated] = useState(false);
   const [actionError, setActionError] = useState<ApiError | null>(null);
 
   const refresh = useCallback(async () => {
@@ -64,20 +65,21 @@ export function AuthProvider({ children }: Readonly<{ children: ReactNode }>) {
   }, []);
 
   useEffect(() => {
+    setHydrated(true);
     void refresh();
   }, [refresh]);
 
-  const value = useMemo<AuthContextValue>(
-    () => ({
-      status: state.status,
-      user: state.status === "authenticated" ? state.user : null,
-      error: actionError ?? (state.status === "error" ? state.error : null),
+  const value = useMemo<AuthContextValue>(() => {
+    const visibleState: AuthState = hydrated ? state : { status: "loading" };
+    return {
+      status: visibleState.status,
+      user: visibleState.status === "authenticated" ? visibleState.user : null,
+      error: actionError ?? (visibleState.status === "error" ? visibleState.error : null),
       refresh,
       updateUser,
       logout
-    }),
-    [actionError, logout, refresh, state, updateUser]
-  );
+    };
+  }, [actionError, hydrated, logout, refresh, state, updateUser]);
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }

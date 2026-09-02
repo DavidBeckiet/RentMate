@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
+import { AdminPage, AdminSummaryCard, AdminSummaryGrid } from "../../components/ui/admin-workspace";
 import { Button } from "../../components/ui/button";
 import { EmptyState, ErrorState, LoadingState } from "../../components/ui/feedback-states";
 import { Icon } from "../../components/ui/icon";
@@ -9,7 +10,6 @@ import { Pagination } from "../../components/ui/pagination";
 import { api, ApiError } from "../../lib/api/client";
 import { useAuth } from "../../lib/auth/auth-provider";
 import type { AdminLandlordVerification, ApiPage, VerificationStatus } from "../../types/api";
-import styles from "./admin-verifications-page.module.css";
 
 const statuses: readonly VerificationStatus[] = ["PENDING", "APPROVED", "REJECTED"];
 const statusLabels: Record<VerificationStatus, string> = {
@@ -21,6 +21,7 @@ const statusLabels: Record<VerificationStatus, string> = {
 export function AdminVerificationsPage() {
   const { status: authStatus, user, error: authError, refresh } = useAuth();
   const adminReady = authStatus === "authenticated" && user?.role === "ADMIN";
+  const [mounted, setMounted] = useState(false);
   const [statusFilter, setStatusFilter] = useState<VerificationStatus>("PENDING");
   const [page, setPage] = useState(1);
   const [result, setResult] = useState<ApiPage<AdminLandlordVerification> | null>(null);
@@ -31,6 +32,8 @@ export function AdminVerificationsPage() {
   const [actionPending, setActionPending] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const [retryKey, setRetryKey] = useState(0);
+
+  useEffect(() => setMounted(true), []);
 
   useEffect(() => {
     if (!adminReady) return;
@@ -107,36 +110,75 @@ export function AdminVerificationsPage() {
       />
     );
   }
+  const visibleVerifications = loadState === "success" && result ? result.data : [];
+  const pendingVerifications = visibleVerifications.filter((verification) => verification.status === "PENDING").length;
+  const activeLandlords = visibleVerifications.filter((verification) => verification.landlord.isActive).length;
+
   if (!adminReady) return <ErrorState message="Trang này dành cho quản trị viên." />;
+  if (!mounted) return <LoadingState message="Đang kiểm tra tài khoản…" />;
 
   return (
-    <section className={styles.page} aria-labelledby="verifications-heading">
-      <header className={styles.header}>
-        <span>
+    <AdminPage labelledBy="verifications-heading">
+      <header className="rm-admin-hero rm-admin-hero--info">
+        <span className="rm-admin-eyebrow">
           <Icon name="shield" className="h-4 w-4" /> Identity review
         </span>
-        <h1 id="verifications-heading">
-          Xác minh <em>chủ trọ</em>
+        <h1 id="verifications-heading" className="rm-admin-title">
+          Xác minh chủ trọ
         </h1>
         <p>Duyệt thủ công hồ sơ và thông tin liên hệ hiện có. Không thu giấy tờ và không coi đây là eKYC.</p>
       </header>
-      <div className={styles.workspace}>
-        <label className={styles.filter}>
-          Trạng thái
-          <select
-            value={statusFilter}
-            onChange={(event) => {
-              setStatusFilter(event.target.value as VerificationStatus);
-              setPage(1);
-            }}
-          >
-            {statuses.map((status) => (
-              <option key={status} value={status}>
-                {statusLabels[status]}
-              </option>
-            ))}
-          </select>
-        </label>
+      <div className="space-y-5">
+        <div className="rm-admin-toolbar">
+          <label className="rm-admin-filter">
+            Trạng thái
+            <select
+              value={statusFilter}
+              onChange={(event) => {
+                setStatusFilter(event.target.value as VerificationStatus);
+                setPage(1);
+              }}
+            >
+              {statuses.map((status) => (
+                <option key={status} value={status}>
+                  {statusLabels[status]}
+                </option>
+              ))}
+            </select>
+          </label>
+        </div>
+
+        {loadState === "success" ? (
+          <AdminSummaryGrid>
+            <AdminSummaryCard
+              label="Yêu cầu trong trang"
+              value={visibleVerifications.length}
+              note={`Trang ${result?.pagination.page ?? page} · không phải tổng hệ thống`}
+              icon="shield"
+            />
+            <AdminSummaryCard
+              label="Đang chờ quyết định"
+              value={pendingVerifications}
+              note="Cần đọc bằng chứng trước khi chọn"
+              tone={pendingVerifications > 0 ? "attention" : "success"}
+              icon="target"
+            />
+            <AdminSummaryCard
+              label="Tài khoản đang hoạt động"
+              value={activeLandlords}
+              note="Theo dữ liệu yêu cầu hiện tại"
+              tone="info"
+              icon="user"
+            />
+            <AdminSummaryCard
+              label="Trạng thái đang xem"
+              value={statusLabels[statusFilter]}
+              note="Bộ lọc hiện tại"
+              tone="muted"
+              icon="sliders"
+            />
+          </AdminSummaryGrid>
+        ) : null}
 
         {loadState === "loading" || loadState === "idle" ? <LoadingState message="Đang tải yêu cầu xác minh…" /> : null}
         {loadState === "error" ? (
@@ -153,18 +195,26 @@ export function AdminVerificationsPage() {
         ) : null}
 
         {loadState === "success" && result && result.data.length > 0 ? (
-          <div className={styles.layout}>
-            <div className={styles.queue} aria-label="Danh sách yêu cầu xác minh">
+          <div className="rm-admin-queue-layout">
+            <div className="rm-admin-queue" aria-label="Danh sách yêu cầu xác minh">
               {result.data.map((verification) => (
-                <article className={styles.card} data-selected={selected?.id === verification.id} key={verification.id}>
-                  <div>
+                <article
+                  className="rm-admin-queue-card"
+                  data-selected={selected?.id === verification.id}
+                  key={verification.id}
+                >
+                  <div className="rm-admin-queue-card__meta">
                     <span>#{verification.id}</span>
                     <span>{statusLabels[verification.status]}</span>
                   </div>
-                  <h2>{verification.displayName}</h2>
-                  <p>{verification.landlord.email}</p>
-                  <p>{verification.requestNote ?? "Không có ghi chú bổ sung."}</p>
-                  <button type="button" onClick={() => void openDetail(verification.id)}>
+                  <h2 className="rm-admin-queue-card__title">{verification.displayName}</h2>
+                  <p className="rm-admin-queue-card__body">{verification.landlord.email}</p>
+                  <p className="rm-admin-queue-card__body">{verification.requestNote ?? "Không có ghi chú bổ sung."}</p>
+                  <button
+                    type="button"
+                    className="mt-4 inline-flex min-h-11 items-center rounded-control border border-primary bg-primary px-4 py-2 text-ui-sm font-semibold text-primary-foreground"
+                    onClick={() => void openDetail(verification.id)}
+                  >
                     Xem & duyệt
                   </button>
                 </article>
@@ -177,13 +227,13 @@ export function AdminVerificationsPage() {
                 onNext={() => setPage((value) => value + 1)}
               />
             </div>
-            <aside className={styles.detail} aria-label="Chi tiết xác minh">
+            <aside className="rm-admin-detail p-5 sm:p-6" aria-label="Chi tiết xác minh">
               {detailLoading ? (
                 <LoadingState message="Đang tải chi tiết…" />
               ) : selected ? (
                 <>
-                  <span className={styles.status}>{statusLabels[selected.status]}</span>
-                  <h2>Yêu cầu #{selected.id}</h2>
+                  <span className="rm-admin-pill rm-admin-pill--info">{statusLabels[selected.status]}</span>
+                  <h2 className="mt-3 font-display text-2xl font-bold text-foreground">Yêu cầu #{selected.id}</h2>
                   <dl>
                     <div>
                       <dt>Tên hiển thị</dt>
@@ -213,7 +263,7 @@ export function AdminVerificationsPage() {
                     ) : null}
                   </dl>
                   {selected.status === "PENDING" ? (
-                    <div className={styles.actions}>
+                    <div className="rm-admin-decision-panel">
                       <label htmlFor="verification-decision-note">Ghi chú quyết định</label>
                       <textarea
                         id="verification-decision-note"
@@ -233,13 +283,13 @@ export function AdminVerificationsPage() {
                     </div>
                   ) : null}
                   {message ? (
-                    <p className={styles.error} role="alert">
+                    <p className="mt-4 border-l-2 border-danger pl-3 text-ui-sm font-semibold text-danger" role="alert">
                       {message}
                     </p>
                   ) : null}
                 </>
               ) : message ? (
-                <p className={styles.error} role="alert">
+                <p className="mt-4 border-l-2 border-danger pl-3 text-ui-sm font-semibold text-danger" role="alert">
                   {message}
                 </p>
               ) : (
@@ -249,6 +299,6 @@ export function AdminVerificationsPage() {
           </div>
         ) : null}
       </div>
-    </section>
+    </AdminPage>
   );
 }

@@ -31,6 +31,7 @@ const categories: readonly ContactReportCategory[] = ["SPAM", "FRAUD", "HARASSME
 export function AdminContactReportsPage() {
   const { status: authStatus, user, error: authError, refresh } = useAuth();
   const adminReady = authStatus === "authenticated" && user?.role === "ADMIN";
+  const [mounted, setMounted] = useState(false);
   const [statusFilter, setStatusFilter] = useState<ContactReportStatus>("OPEN");
   const [categoryFilter, setCategoryFilter] = useState<ContactReportCategory | "">("");
   const [page, setPage] = useState(1);
@@ -43,6 +44,8 @@ export function AdminContactReportsPage() {
   const [note, setNote] = useState("");
   const [actionPending, setActionPending] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
+
+  useEffect(() => setMounted(true), []);
 
   useEffect(() => {
     if (!adminReady) return;
@@ -125,6 +128,7 @@ export function AdminContactReportsPage() {
     );
   }
   if (!adminReady) return <ErrorState message="Trang này dành cho quản trị viên." />;
+  if (!mounted) return <LoadingState message="Đang kiểm tra tài khoản…" />;
 
   return (
     <section className={styles.page} aria-labelledby="contact-reports-heading">

@@ -4,6 +4,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { MapBase } from "../../components/map/map-base";
+import { AdminPage } from "../../components/ui/admin-workspace";
 import { Button } from "../../components/ui/button";
 import { ErrorState, LoadingState } from "../../components/ui/feedback-states";
 import { AccountStatusBadge, BusinessStatusBadge, ListingStatusBadge } from "../../components/ui/status-badge";
@@ -14,7 +15,6 @@ import { formatAreaSqm, formatVnd } from "./format";
 import { ListingAmenityChips, ListingPrice } from "./listing-presentation";
 import { ModerationActions } from "./moderation-actions";
 import { ModerationHistory, type HistoryRefreshInstruction } from "./moderation-history";
-import styles from "./admin-listing-detail.module.css";
 
 type DetailState =
   | { readonly status: "idle" | "loading" }
@@ -32,8 +32,13 @@ export function AdminListingDetail({ listingId: rawListingId }: { readonly listi
   const listingId = parseListingId(rawListingId);
   const [state, setState] = useState<DetailState>({ status: "idle" });
   const [historyRefresh, setHistoryRefresh] = useState<HistoryRefreshInstruction>();
+  const [mounted, setMounted] = useState(false);
   const detailRequest = useRef(0);
   const adminReady = authStatus === "authenticated" && user?.role === "ADMIN";
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   const loadDetail = useCallback(async () => {
     if (!adminReady || listingId === null) return;
@@ -74,6 +79,7 @@ export function AdminListingDetail({ listingId: rawListingId }: { readonly listi
         action={<Button onClick={() => void refresh()}>Thử lại</Button>}
       />
     );
+  if (adminReady && listingId !== null && !mounted) return <LoadingState message="Đang kiểm tra tài khoản…" />;
   if (!user || user.role !== "ADMIN") return <ErrorState message="Trang này dành cho quản trị viên." />;
   if (listingId === null) return <ErrorState message="Mã tin không hợp lệ." />;
 
@@ -81,13 +87,15 @@ export function AdminListingDetail({ listingId: rawListingId }: { readonly listi
     setHistoryRefresh((current) => ({ token: (current?.token ?? 0) + 1, ...(resetToFirstPage ? { page: 1 } : {}) }));
 
   return (
-    <article className={`${styles.adminDetail} rm-workspace space-y-10`}>
-      <header className="border-b border-rent-line pb-7">
+    <AdminPage labelledBy="admin-listing-detail-heading" className="space-y-8">
+      <header className="rm-admin-hero">
         <Link href="/admin" className="text-sm font-semibold text-teal-800 underline decoration-2 underline-offset-4">
           ← Quay lại hàng đợi
         </Link>
         <p className="mt-6 text-sm font-semibold text-teal-700">CHI TIẾT QUẢN TRỊ</p>
-        <h1 className="mt-2 text-3xl font-bold text-rent-ink sm:text-4xl">Tin #{listingId}</h1>
+        <h1 id="admin-listing-detail-heading" className="rm-admin-title mt-2 text-3xl sm:text-4xl">
+          Tin #{listingId}
+        </h1>
       </header>
 
       {state.status === "idle" || state.status === "loading" ? <LoadingState message="Đang tải chi tiết tin…" /> : null}
@@ -109,7 +117,7 @@ export function AdminListingDetail({ listingId: rawListingId }: { readonly listi
       ) : null}
 
       <ModerationHistory listingId={listingId} refreshInstruction={historyRefresh} />
-    </article>
+    </AdminPage>
   );
 }
 

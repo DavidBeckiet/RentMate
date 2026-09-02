@@ -6,6 +6,18 @@ import { Button } from "../../components/ui/button";
 import { EmptyState, ErrorState, LoadingState } from "../../components/ui/feedback-states";
 import { Icon } from "../../components/ui/icon";
 import { Pagination } from "../../components/ui/pagination";
+import {
+  AdminDecisionPanel,
+  AdminEvidence,
+  AdminFilter,
+  AdminPage,
+  AdminPageHeader,
+  AdminPill,
+  AdminQueueCard,
+  AdminSummaryCard,
+  AdminSummaryGrid,
+  AdminToolbar
+} from "../../components/ui/admin-workspace";
 import { api, ApiError } from "../../lib/api/client";
 import { useAuth } from "../../lib/auth/auth-provider";
 import type { AdminListingReview, ApiPage, ReviewStatus } from "../../types/api";
@@ -20,6 +32,7 @@ const statusLabels: Record<ReviewStatus, string> = {
 export function AdminReviewsPage() {
   const { status: authStatus, user, error: authError, refresh } = useAuth();
   const adminReady = authStatus === "authenticated" && user?.role === "ADMIN";
+  const [mounted, setMounted] = useState(false);
   const [filter, setFilter] = useState<ReviewStatus>("PENDING");
   const [page, setPage] = useState(1);
   const [result, setResult] = useState<ApiPage<AdminListingReview> | null>(null);
@@ -29,6 +42,8 @@ export function AdminReviewsPage() {
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [retryKey, setRetryKey] = useState(0);
+
+  useEffect(() => setMounted(true), []);
 
   useEffect(() => {
     if (!adminReady) return;
@@ -81,6 +96,12 @@ export function AdminReviewsPage() {
     }
   };
 
+  const reviewsOnPage = result?.data ?? [];
+  const pendingOnPage = reviewsOnPage.filter((review) => review.status === "PENDING").length;
+  const averageRating = reviewsOnPage.length
+    ? (reviewsOnPage.reduce((sum, review) => sum + review.overallRating, 0) / reviewsOnPage.length).toFixed(1)
+    : "—";
+
   if (authStatus === "loading") return <LoadingState message="Đang kiểm tra tài khoản…" />;
   if (authStatus === "anonymous")
     return (
@@ -102,23 +123,20 @@ export function AdminReviewsPage() {
       />
     );
   if (!adminReady) return <ErrorState message="Trang này dành cho quản trị viên." />;
+  if (!mounted) return <LoadingState message="Đang kiểm tra tài khoản…" />;
 
   return (
-    <section className="rm-workspace my-8 space-y-6" aria-labelledby="admin-reviews-heading">
-      <header className="border-2 border-heroDark-950 bg-rent-coral p-6 shadow-glass sm:p-8">
-        <span className="rm-eyebrow inline-flex items-center gap-2">
-          <Icon name="shield" className="h-4 w-4" /> TRUST & SAFETY
-        </span>
-        <h1 id="admin-reviews-heading" className="mt-3 font-display text-4xl font-bold tracking-tight sm:text-6xl">
-          Kiểm duyệt đánh giá
-        </h1>
-        <p className="mt-3 max-w-2xl text-sm font-bold leading-6 text-slate-700">
-          Đối chiếu nội dung từ tương tác đã xác minh và ghi rõ lý do cho mọi quyết định.
-        </p>
-      </header>
-      <div className="border-2 border-heroDark-950 bg-white p-4 shadow-glass-sm">
-        <label htmlFor="review-status-filter" className="grid max-w-xs gap-2 text-xs font-extrabold uppercase">
-          Trạng thái
+    <AdminPage labelledBy="admin-reviews-heading" className="my-8">
+      <AdminPageHeader
+        eyebrow="Trust & Safety · Reviews"
+        title="Kiểm duyệt đánh giá"
+        titleId="admin-reviews-heading"
+        icon="star"
+        tone="attention"
+        description="Đối chiếu nội dung từ tương tác đã xác minh và ghi rõ lý do cho mọi quyết định. Số liệu bên dưới chỉ phản ánh trang hiện tại."
+      />
+      <AdminToolbar summary={`${reviewsOnPage.length} đánh giá trong trang`}>
+        <AdminFilter id="review-status-filter" label="Trạng thái">
           <select
             id="review-status-filter"
             value={filter}
@@ -126,7 +144,6 @@ export function AdminReviewsPage() {
               setFilter(event.target.value as ReviewStatus);
               setPage(1);
             }}
-            className="min-h-12 border-2 border-heroDark-950 bg-rent-accent px-3 text-sm font-bold normal-case outline-none focus-visible:ring-4 focus-visible:ring-blue-300"
           >
             {statuses.map((value) => (
               <option key={value} value={value}>
@@ -134,8 +151,32 @@ export function AdminReviewsPage() {
               </option>
             ))}
           </select>
-        </label>
-      </div>
+        </AdminFilter>
+      </AdminToolbar>
+      {status === "success" && result ? (
+        <AdminSummaryGrid>
+          <AdminSummaryCard
+            label="Đánh giá trong trang"
+            value={reviewsOnPage.length}
+            note="Dữ liệu trang hiện tại"
+            icon="star"
+          />
+          <AdminSummaryCard
+            label="Đang chờ duyệt"
+            value={pendingOnPage}
+            tone="attention"
+            note="Theo bộ lọc hiện tại"
+            icon="bell"
+          />
+          <AdminSummaryCard
+            label="Điểm trung bình"
+            value={averageRating}
+            tone="info"
+            note="Điểm tổng quan / 5"
+            icon="chart"
+          />
+        </AdminSummaryGrid>
+      ) : null}
       {status === "loading" || status === "idle" ? <LoadingState message="Đang tải hàng đợi đánh giá…" /> : null}
       {status === "error" ? (
         <ErrorState
@@ -155,29 +196,31 @@ export function AdminReviewsPage() {
         />
       ) : null}
       {status === "success" && result && result.data.length > 0 ? (
-        <div className="grid gap-5 lg:grid-cols-[minmax(18rem,0.8fr)_minmax(24rem,1.2fr)]">
-          <div className="space-y-3" aria-label="Danh sách đánh giá">
+        <div className="rm-admin-queue-layout">
+          <div className="rm-admin-queue" aria-label="Danh sách đánh giá">
             {result.data.map((review) => (
-              <article
-                key={review.id}
-                data-selected={selected?.id === review.id}
-                className="border-2 border-heroDark-950 bg-white p-4 shadow-glass-sm data-[selected=true]:bg-[#e5eefc]"
-              >
-                <div className="flex justify-between gap-3 text-xs font-extrabold uppercase">
+              <AdminQueueCard key={review.id} selected={selected?.id === review.id}>
+                <div className="rm-admin-queue-card__meta">
                   <span>
                     #{review.id} · Tin #{review.listingId}
                   </span>
-                  <span>{review.overallRating}/5</span>
+                  <AdminPill
+                    tone={review.overallRating >= 4 ? "success" : review.overallRating <= 2 ? "attention" : "info"}
+                  >
+                    {review.overallRating}/5
+                  </AdminPill>
                 </div>
-                <p className="mt-3 line-clamp-3 text-sm font-medium leading-6 text-slate-700">{review.comment}</p>
-                <button
+                <p className="rm-admin-queue-card__body line-clamp-3">{review.comment}</p>
+                <Button
                   type="button"
+                  variant="secondary"
+                  size="sm"
                   onClick={() => void open(review.id)}
-                  className="mt-4 min-h-10 border-2 border-heroDark-950 bg-[#c9f269] px-4 text-sm font-extrabold focus-visible:ring-4 focus-visible:ring-blue-300"
+                  className="mt-4"
                 >
                   Xem và xử lý
-                </button>
-              </article>
+                </Button>
+              </AdminQueueCard>
             ))}
             <Pagination
               ariaLabel="Phân trang đánh giá quản trị"
@@ -187,41 +230,47 @@ export function AdminReviewsPage() {
               onNext={() => setPage((value) => value + 1)}
             />
           </div>
-          <aside
-            className="h-fit border-2 border-heroDark-950 bg-white p-5 shadow-glass lg:sticky lg:top-24"
-            aria-label="Chi tiết kiểm duyệt đánh giá"
-          >
+          <aside className="rm-admin-detail" aria-label="Chi tiết kiểm duyệt đánh giá">
             {selected ? (
               <div className="space-y-5">
-                <div>
-                  <span className="rm-eyebrow">{statusLabels[selected.status]}</span>
-                  <h2 className="mt-3 font-display text-3xl font-bold">Đánh giá #{selected.id}</h2>
+                <div className="rm-admin-detail__header">
+                  <AdminPill
+                    tone={
+                      selected.status === "PENDING" ? "attention" : selected.status === "APPROVED" ? "success" : "muted"
+                    }
+                  >
+                    {statusLabels[selected.status]}
+                  </AdminPill>
+                  <h2 className="rm-admin-detail__title">Đánh giá #{selected.id}</h2>
                   <Link
-                    className="mt-2 inline-flex items-center gap-2 text-sm font-extrabold underline"
+                    className="rm-text-link mt-3 inline-flex items-center gap-2"
                     href={`/admin/listings/${selected.listingId}`}
                   >
                     Mở tin đăng <Icon name="arrowUpRight" className="h-4 w-4" />
                   </Link>
                 </div>
-                <dl className="grid gap-2 text-sm font-bold sm:grid-cols-3">
-                  <div className="border-2 border-heroDark-950 p-3">
+                <dl className="rm-admin-detail__stats grid gap-3 sm:grid-cols-3">
+                  <div>
                     <dt>Chung</dt>
                     <dd className="text-2xl">{selected.overallRating}/5</dd>
                   </div>
-                  <div className="border-2 border-heroDark-950 p-3">
+                  <div>
                     <dt>Chính xác</dt>
                     <dd className="text-2xl">{selected.accuracyRating}/5</dd>
                   </div>
-                  <div className="border-2 border-heroDark-950 p-3">
+                  <div>
                     <dt>Phản hồi</dt>
                     <dd className="text-2xl">{selected.responsivenessRating}/5</dd>
                   </div>
                 </dl>
-                <p className="whitespace-pre-wrap border-l-4 border-heroDark-950 pl-4 text-sm font-medium leading-6">
-                  {selected.comment}
-                </p>
+                <AdminEvidence title="Nội dung đánh giá" icon="message" tone="muted">
+                  <p className="whitespace-pre-wrap">{selected.comment}</p>
+                </AdminEvidence>
                 {selected.status === "PENDING" ? (
-                  <div className="grid gap-3 border-t-2 border-heroDark-950 pt-5">
+                  <AdminDecisionPanel
+                    title="Quyết định kiểm duyệt"
+                    description="Ghi chú là bắt buộc để lưu quyết định."
+                  >
                     <label htmlFor="review-moderation-note" className="grid gap-2 text-sm font-extrabold">
                       Ghi chú quyết định
                       <textarea
@@ -231,7 +280,7 @@ export function AdminReviewsPage() {
                         rows={4}
                         value={note}
                         onChange={(event) => setNote(event.target.value)}
-                        className="border-2 border-heroDark-950 p-3 font-medium outline-none focus-visible:ring-4 focus-visible:ring-blue-300"
+                        className="rm-admin-textarea"
                       />
                     </label>
                     <div className="flex flex-wrap gap-3">
@@ -242,9 +291,9 @@ export function AdminReviewsPage() {
                         Từ chối
                       </Button>
                     </div>
-                  </div>
+                  </AdminDecisionPanel>
                 ) : (
-                  <p className="border-2 border-heroDark-950 bg-rent-accent p-4 text-sm font-bold">
+                  <p className="rm-admin-evidence rm-admin-evidence--info text-sm font-semibold">
                     Ghi chú: {selected.moderationNote}
                   </p>
                 )}
@@ -260,6 +309,6 @@ export function AdminReviewsPage() {
           </aside>
         </div>
       ) : null}
-    </section>
+    </AdminPage>
   );
 }

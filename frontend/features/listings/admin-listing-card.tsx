@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { AdminPill } from "../../components/ui/admin-workspace";
 import { AccountStatusBadge, BusinessStatusBadge, ListingStatusBadge } from "../../components/ui/status-badge";
 import type { AdminListingSummary } from "../../types/api";
 import { ListingMetadata } from "./listing-presentation";
@@ -11,49 +12,47 @@ export function AdminListingCard({ listing }: { readonly listing: AdminListingSu
   const hasTrustSignals = freshness.isStale || listing.openReportCount > 0 || listing.possibleDuplicate;
 
   return (
-    <article className="rm-admin-row">
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-        <div className="min-w-0 space-y-3">
-          <div className="flex flex-wrap items-center gap-3">
-            <h2 className="font-display text-xl font-bold tracking-tight text-rent-ink">
+    <article className="rm-admin-mobile-record">
+      <div className="flex min-w-0 flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+        <div className="min-w-0 flex-1 space-y-3">
+          <div className="flex min-w-0 flex-wrap items-center gap-2">
+            <h2 className="min-w-0 flex-1 basis-full truncate font-display text-lg font-bold tracking-tight text-foreground sm:basis-auto sm:text-xl">
               {listing.title ?? "Chưa có tiêu đề"}
             </h2>
             <ListingStatusBadge status={listing.status} />
             <BusinessStatusBadge status={listing.businessStatus} />
           </div>
           <ListingMetadata>{listing.areaName ?? "Chưa có khu vực"}</ListingMetadata>
-          <dl className="grid gap-x-6 gap-y-2 text-sm text-rent-secondary sm:grid-cols-2">
-            <div>
-              <dt className="font-semibold text-rent-ink">Người cho thuê</dt>
-              <dd className="break-all">{listing.landlord.email}</dd>
+          <dl className="grid min-w-0 gap-3 border-t border-border pt-3 text-ui-sm text-muted-foreground sm:grid-cols-2">
+            <div className="min-w-0">
+              <dt className="font-semibold text-foreground">Người cho thuê</dt>
+              <dd className="truncate">{listing.landlord.email}</dd>
             </div>
-            <div>
-              <dt className="font-semibold text-rent-ink">Điện thoại</dt>
-              <dd>{listing.landlord.phone || "Chưa có số điện thoại"}</dd>
+            <div className="min-w-0">
+              <dt className="font-semibold text-foreground">Điện thoại</dt>
+              <dd className="truncate">{listing.landlord.phone || "Chưa có số điện thoại"}</dd>
             </div>
           </dl>
-          <div className="flex flex-wrap items-center gap-3">
+          <div className="flex min-w-0 flex-wrap items-center gap-2">
             <AccountStatusBadge isActive={listing.landlord.isActive} />
-            <span className="text-xs text-rent-subtle">
-              <ListingFreshnessLabel updatedAt={listing.updatedAt} /> · {dateFormatter.format(new Date(listing.updatedAt))}
+            <span className="text-ui-xs text-subtle-foreground">
+              <ListingFreshnessLabel updatedAt={listing.updatedAt} /> ·{" "}
+              {dateFormatter.format(new Date(listing.updatedAt))}
             </span>
           </div>
           {hasTrustSignals ? (
-            <div className="border-2 border-amber-900 bg-amber-50 p-3 text-sm text-amber-950" role="note">
-              <p className="font-bold">Cần kiểm tra bổ sung</p>
-              <ul className="mt-1 list-disc pl-5">
-                {freshness.isStale ? <li>Tin đã lâu chưa cập nhật.</li> : null}
-                {listing.openReportCount > 0 ? (
-                  <li>{listing.openReportCount} báo cáo đang chờ xử lý.</li>
-                ) : null}
-                {listing.possibleDuplicate ? <li>Có tin khác cùng tiêu đề, cần kiểm tra khả năng trùng lặp.</li> : null}
-              </ul>
+            <div className="flex min-w-0 flex-wrap items-center gap-2" role="note" aria-label="Tín hiệu cần kiểm tra">
+              {freshness.isStale ? <AdminPill tone="attention">Lâu chưa cập nhật</AdminPill> : null}
+              {listing.openReportCount > 0 ? (
+                <AdminPill tone="attention">{listing.openReportCount} báo cáo đang chờ xử lý</AdminPill>
+              ) : null}
+              {listing.possibleDuplicate ? <AdminPill tone="attention">Có khả năng trùng lặp</AdminPill> : null}
             </div>
           ) : null}
         </div>
         <Link
           href={`/admin/listings/${listing.id}`}
-          className="inline-flex min-h-11 shrink-0 items-center justify-center border-2 border-heroDark-950 bg-rent-accent px-4 py-2 font-display text-xs font-bold uppercase tracking-wider text-rent-ink shadow-glass-sm transition-transform hover:-translate-x-0.5 hover:-translate-y-0.5 focus-visible:outline-none"
+          className="inline-flex min-h-11 shrink-0 items-center justify-center rounded-control border border-primary bg-primary px-4 py-2 text-ui-sm font-semibold text-primary-foreground shadow-surface transition-[background-color,border-color,box-shadow,transform] duration-fast ease-standard hover:-translate-y-0.5 hover:bg-primary-hover hover:shadow-raised focus-visible:outline-none lg:mt-1"
         >
           Xem chi tiết
         </Link>

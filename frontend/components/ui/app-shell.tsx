@@ -448,6 +448,7 @@ function WorkspaceShell({
   const title = actor === "landlord" ? "Không gian cho thuê" : "Khu vực quản trị";
   const navLabel = actor === "landlord" ? "Điều hướng không gian cho thuê" : "Điều hướng khu vực quản trị";
   const landlordShell = actor === "landlord";
+  const adminShell = actor === "admin";
 
   useEffect(() => closeMenu(), [closeMenu, pathname]);
 
@@ -455,7 +456,11 @@ function WorkspaceShell({
     <NavigationLinks
       items={items}
       pathname={pathname}
-      className={landlordShell ? "rm-workspace-nav" : undefined}
+      className={cx(
+        "rm-workspace-nav",
+        landlordShell && "rm-landlord-sidebar-nav",
+        adminShell && "rm-admin-sidebar-nav"
+      )}
       linkClassName={workspaceNavLink}
       onNavigate={closeMenu}
     />
@@ -471,14 +476,16 @@ function WorkspaceShell({
     <div
       className={cx(
         "min-h-screen bg-background text-foreground lg:grid lg:grid-cols-[16.5rem_minmax(0,1fr)]",
-        landlordShell && "rm-landlord-shell"
+        landlordShell && "rm-landlord-shell",
+        adminShell && "rm-admin-shell"
       )}
     >
       <SkipLink />
       <aside
         className={cx(
           "sticky top-0 hidden h-[100dvh] flex-col border-r border-primary/30 bg-brand-dark p-4 lg:flex",
-          landlordShell && "rm-landlord-sidebar"
+          landlordShell && "rm-landlord-sidebar",
+          adminShell && "rm-admin-sidebar"
         )}
       >
         <Brand inverse />
@@ -518,7 +525,8 @@ function WorkspaceShell({
         <header
           className={cx(
             "sticky top-0 z-header border-b border-border bg-surface",
-            landlordShell && "rm-workspace-topbar"
+            landlordShell && "rm-workspace-topbar",
+            adminShell && "rm-admin-topbar"
           )}
         >
           <div className="flex min-h-16 items-center gap-3 px-4 sm:px-6 lg:min-h-[4.5rem] lg:px-8">
@@ -561,7 +569,8 @@ function WorkspaceShell({
           id="main-content"
           className={cx(
             "mx-auto min-w-0 max-w-[90rem] px-4 py-6 sm:px-6 sm:py-8 lg:px-8 lg:py-10",
-            landlordShell && "rm-workspace-main"
+            landlordShell && "rm-workspace-main",
+            adminShell && "rm-admin-main"
           )}
         >
           <PageTransition>{children}</PageTransition>
@@ -573,7 +582,7 @@ function WorkspaceShell({
         title={title}
         triggerRef={triggerRef}
         onClose={closeMenu}
-        className={landlordShell ? "rm-landlord-drawer" : undefined}
+        className={cx(landlordShell && "rm-landlord-drawer", adminShell && "rm-admin-drawer")}
       >
         <nav id="workspace-mobile-navigation" aria-label={`${navLabel} trên di động`} className="mt-4">
           {navigation}

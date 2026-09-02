@@ -5,6 +5,18 @@ import Link from "next/link";
 import { Button } from "../../components/ui/button";
 import { EmptyState, ErrorState, LoadingState } from "../../components/ui/feedback-states";
 import { Pagination } from "../../components/ui/pagination";
+import {
+  AdminDecisionPanel,
+  AdminEvidence,
+  AdminFilter,
+  AdminPage,
+  AdminPageHeader,
+  AdminPill,
+  AdminQueueCard,
+  AdminSummaryCard,
+  AdminSummaryGrid,
+  AdminToolbar
+} from "../../components/ui/admin-workspace";
 import { api, ApiError } from "../../lib/api/client";
 import { useAuth } from "../../lib/auth/auth-provider";
 import type { AdminSupportRequest, ApiPage, SupportRequestCategory, SupportRequestStatus } from "../../types/api";
@@ -38,6 +50,11 @@ export function AdminSupportRequestsPage() {
   const [note, setNote] = useState("");
   const [actionPending, setActionPending] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   useEffect(() => {
     if (!adminReady) return;
@@ -91,6 +108,10 @@ export function AdminSupportRequestsPage() {
     }
   };
 
+  const requestsOnPage = result?.data ?? [];
+  const unresolvedOnPage = requestsOnPage.filter((request) => request.status !== "RESOLVED").length;
+  const safetyOnPage = requestsOnPage.filter((request) => request.category === "SAFETY").length;
+
   if (authStatus === "loading") return <LoadingState message="Đang kiểm tra tài khoản…" />;
   if (authStatus === "anonymous") {
     return (
@@ -114,23 +135,21 @@ export function AdminSupportRequestsPage() {
     );
   }
   if (!adminReady) return <ErrorState message="Trang này dành cho quản trị viên." />;
+  if (!mounted) return <LoadingState message="Đang kiểm tra tài khoản…" />;
 
   return (
-    <section className="rm-workspace my-4 space-y-8" aria-labelledby="admin-support-heading">
-      <header className="border-2 border-heroDark-950 bg-rent-yellow p-6 shadow-glass sm:p-8">
-        <span className="rm-eyebrow">QUẢN TRỊ · HỖ TRỢ</span>
-        <h1 id="admin-support-heading" className="mt-4 font-display text-4xl font-bold tracking-[-0.055em] sm:text-6xl">
-          Yêu cầu hỗ trợ
-        </h1>
-        <p className="mt-3 max-w-2xl text-sm font-medium leading-6 text-slate-700">
-          Tiếp nhận các vấn đề do người thuê và chủ trọ gửi từ Trung tâm trợ giúp. Chỉ hiển thị thông tin cần thiết cho
-          việc xử lý.
-        </p>
-      </header>
+    <AdminPage labelledBy="admin-support-heading" className="my-4 space-y-6">
+      <AdminPageHeader
+        eyebrow="Quản trị · Hỗ trợ"
+        title="Yêu cầu hỗ trợ"
+        titleId="admin-support-heading"
+        icon="message"
+        tone="info"
+        description="Tiếp nhận vấn đề do người thuê và chủ trọ gửi từ Trung tâm trợ giúp. Chỉ hiển thị thông tin cần thiết cho việc xử lý."
+      />
 
-      <div className="flex flex-wrap items-center gap-3 border-2 border-heroDark-950 bg-rent-surface p-4 shadow-glass-sm">
-        <label className="flex min-h-11 items-center gap-3 text-sm font-bold" htmlFor="admin-support-status">
-          Trạng thái
+      <AdminToolbar summary={`${requestsOnPage.length} yêu cầu trong trang`}>
+        <AdminFilter id="admin-support-status" label="Trạng thái">
           <select
             id="admin-support-status"
             value={statusFilter}
@@ -138,7 +157,6 @@ export function AdminSupportRequestsPage() {
               setStatusFilter(event.target.value as SupportRequestStatus);
               setPage(1);
             }}
-            className="min-h-11 border-2 border-heroDark-950 bg-white px-3 text-sm font-semibold outline-none focus-visible:ring-4 focus-visible:ring-rent-coral"
           >
             {statuses.map((status) => (
               <option key={status} value={status}>
@@ -146,8 +164,33 @@ export function AdminSupportRequestsPage() {
               </option>
             ))}
           </select>
-        </label>
-      </div>
+        </AdminFilter>
+      </AdminToolbar>
+
+      {loadStatus === "success" && result ? (
+        <AdminSummaryGrid>
+          <AdminSummaryCard
+            label="Yêu cầu trong trang"
+            value={requestsOnPage.length}
+            note="Dữ liệu trang hiện tại"
+            icon="message"
+          />
+          <AdminSummaryCard
+            label="Chưa hoàn tất"
+            value={unresolvedOnPage}
+            tone="attention"
+            note="Theo bộ lọc hiện tại"
+            icon="bell"
+          />
+          <AdminSummaryCard
+            label="Liên quan an toàn"
+            value={safetyOnPage}
+            tone="info"
+            note="Cần đọc kỹ ngữ cảnh"
+            icon="shield"
+          />
+        </AdminSummaryGrid>
+      ) : null}
 
       {loadStatus === "loading" || loadStatus === "idle" ? <LoadingState message="Đang tải yêu cầu hỗ trợ…" /> : null}
       {loadStatus === "error" ? (
@@ -164,40 +207,42 @@ export function AdminSupportRequestsPage() {
         />
       ) : null}
       {loadStatus === "success" && result && result.data.length > 0 ? (
-        <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(20rem,0.82fr)]">
-          <div className="space-y-3" aria-label="Danh sách yêu cầu hỗ trợ">
+        <div className="rm-admin-queue-layout">
+          <div className="rm-admin-queue" aria-label="Danh sách yêu cầu hỗ trợ">
             {result.data.map((request) => (
-              <article
-                key={request.id}
-                className={`border-2 border-heroDark-950 p-5 shadow-glass-sm ${selected?.id === request.id ? "bg-rent-accent" : "bg-rent-surface"}`}
-              >
-                <div className="flex flex-wrap items-center justify-between gap-3 text-xs font-bold uppercase tracking-[0.1em]">
+              <AdminQueueCard key={request.id} selected={selected?.id === request.id}>
+                <div className="rm-admin-queue-card__meta">
                   <span>
                     #{request.id} · {categoryLabels[request.category]}
                   </span>
-                  <span className="border-2 border-heroDark-950 bg-rent-yellow px-2 py-1">
+                  <AdminPill
+                    tone={
+                      request.status === "OPEN" ? "attention" : request.status === "IN_PROGRESS" ? "info" : "success"
+                    }
+                  >
                     {statusLabels[request.status]}
-                  </span>
+                  </AdminPill>
                 </div>
-                <h2 className="mt-4 font-display text-xl font-bold">{request.subject}</h2>
-                <p className="mt-2 line-clamp-3 text-sm leading-6 text-rent-secondary">{request.message}</p>
-                <div className="mt-4 flex flex-wrap items-center justify-between gap-3 border-t-2 border-heroDark-950 pt-3 text-xs font-semibold text-rent-secondary">
+                <h2 className="rm-admin-queue-card__title">{request.subject}</h2>
+                <p className="rm-admin-queue-card__body line-clamp-3">{request.message}</p>
+                <div className="rm-admin-queue-card__footer">
                   <span>
                     {request.requester.email} · {request.requester.role === "TENANT" ? "Người thuê" : "Chủ trọ"}
                   </span>
-                  <button
+                  <Button
                     type="button"
+                    variant="secondary"
+                    size="sm"
                     onClick={() => {
                       setSelected(request);
                       setNote("");
                       setActionError(null);
                     }}
-                    className="min-h-10 border-2 border-heroDark-950 bg-white px-3 font-bold text-heroDark-950 transition-transform hover:-translate-y-0.5 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-rent-coral"
                   >
                     Xem &amp; xử lý
-                  </button>
+                  </Button>
                 </div>
-              </article>
+              </AdminQueueCard>
             ))}
             <Pagination
               ariaLabel="Phân trang yêu cầu hỗ trợ"
@@ -208,39 +253,34 @@ export function AdminSupportRequestsPage() {
             />
           </div>
 
-          <aside
-            className="border-2 border-heroDark-950 bg-rent-surface p-5 shadow-glass sm:p-6"
-            aria-label="Chi tiết yêu cầu hỗ trợ"
-          >
+          <aside className="rm-admin-detail" aria-label="Chi tiết yêu cầu hỗ trợ">
             {selected ? (
               <>
-                <div className="border-b-2 border-heroDark-950 pb-4">
-                  <p className="text-xs font-bold uppercase tracking-[0.12em] text-rent-secondary">
-                    {statusLabels[selected.status]}
-                  </p>
-                  <h2 className="mt-2 font-display text-2xl font-bold">{selected.subject}</h2>
-                  <p className="mt-2 text-xs font-semibold text-rent-secondary">
+                <div className="rm-admin-detail__header">
+                  <p className="rm-admin-detail__eyebrow">{statusLabels[selected.status]}</p>
+                  <h2 className="rm-admin-detail__title">{selected.subject}</h2>
+                  <p className="rm-admin-detail__meta">
                     #{selected.id} · {selected.requester.email}
                   </p>
                 </div>
-                <dl className="space-y-4 py-5 text-sm">
-                  <div>
-                    <dt className="font-bold text-rent-secondary">Chủ đề</dt>
-                    <dd className="mt-1 font-semibold">{categoryLabels[selected.category]}</dd>
-                  </div>
-                  <div>
-                    <dt className="font-bold text-rent-secondary">Nội dung</dt>
-                    <dd className="mt-1 whitespace-pre-wrap leading-6">{selected.message}</dd>
-                  </div>
+                <div className="space-y-4 py-5">
+                  <AdminEvidence title="Chủ đề" icon="note" tone="info">
+                    <p className="font-semibold">{categoryLabels[selected.category]}</p>
+                  </AdminEvidence>
+                  <AdminEvidence title="Nội dung yêu cầu" icon="message" tone="muted">
+                    <p className="whitespace-pre-wrap">{selected.message}</p>
+                  </AdminEvidence>
                   {selected.resolutionNote ? (
-                    <div>
-                      <dt className="font-bold text-rent-secondary">Ghi chú xử lý</dt>
-                      <dd className="mt-1 whitespace-pre-wrap leading-6">{selected.resolutionNote}</dd>
-                    </div>
+                    <AdminEvidence title="Ghi chú xử lý" icon="check" tone="success">
+                      <p className="whitespace-pre-wrap">{selected.resolutionNote}</p>
+                    </AdminEvidence>
                   ) : null}
-                </dl>
+                </div>
                 {selected.status !== "RESOLVED" ? (
-                  <div className="space-y-4 border-t-2 border-heroDark-950 pt-5">
+                  <AdminDecisionPanel
+                    title="Cập nhật trạng thái"
+                    description="Ghi chú bắt buộc khi đánh dấu yêu cầu đã xử lý."
+                  >
                     {selected.status === "OPEN" ? (
                       <Button
                         variant="secondary"
@@ -250,7 +290,7 @@ export function AdminSupportRequestsPage() {
                         Bắt đầu xử lý
                       </Button>
                     ) : null}
-                    <label className="block text-sm font-bold" htmlFor="support-resolution-note">
+                    <label className="rm-admin-field-label" htmlFor="support-resolution-note">
                       Ghi chú xử lý
                       <textarea
                         id="support-resolution-note"
@@ -258,7 +298,7 @@ export function AdminSupportRequestsPage() {
                         maxLength={2000}
                         value={note}
                         onChange={(event) => setNote(event.target.value)}
-                        className="mt-2 w-full border-2 border-heroDark-950 bg-white p-3 text-sm font-semibold outline-none focus-visible:ring-4 focus-visible:ring-rent-coral"
+                        className="rm-admin-textarea mt-2"
                       />
                     </label>
                     <Button pending={actionPending} onClick={() => void transition("RESOLVED")}>
@@ -269,7 +309,7 @@ export function AdminSupportRequestsPage() {
                         {actionError}
                       </p>
                     ) : null}
-                  </div>
+                  </AdminDecisionPanel>
                 ) : null}
               </>
             ) : (
@@ -278,6 +318,6 @@ export function AdminSupportRequestsPage() {
           </aside>
         </div>
       ) : null}
-    </section>
+    </AdminPage>
   );
 }

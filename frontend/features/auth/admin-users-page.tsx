@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { AdminPage, AdminSection, AdminSummaryCard, AdminSummaryGrid } from "../../components/ui/admin-workspace";
 import { Button } from "../../components/ui/button";
 import { EmptyState, ErrorState, LoadingState } from "../../components/ui/feedback-states";
 import { SelectField } from "../../components/ui/form-controls";
@@ -19,7 +20,6 @@ import {
   withAdminUserFilters,
   withAdminUserPage
 } from "./admin-user-query";
-import styles from "./admin-users-page.module.css";
 
 const roleLabels: Record<UserRole, string> = {
   TENANT: "Người thuê",
@@ -38,6 +38,7 @@ export function AdminUsersPage() {
   const rawQuery = searchParams.toString();
   const { status: authStatus, user: currentUser, error: authError, refresh } = useAuth();
   const parsed = useMemo(() => parseAdminUserQuery(new URLSearchParams(rawQuery)), [rawQuery]);
+  const [mounted, setMounted] = useState(false);
   const [loadState, setLoadState] = useState<LoadState>({ status: "idle" });
   const [reloadVersion, setReloadVersion] = useState(0);
   const [candidate, setCandidate] = useState<UserProfile | null>(null);
@@ -50,6 +51,8 @@ export function AdminUsersPage() {
   const queryIdentity = parsed.ok ? JSON.stringify(parsed.state) : "invalid";
 
   const requestReload = useCallback(() => setReloadVersion((value) => value + 1), []);
+
+  useEffect(() => setMounted(true), []);
 
   useEffect(() => {
     if (!adminReady || !parsed.ok) return;
@@ -135,53 +138,87 @@ export function AdminUsersPage() {
     );
   if (!currentUser || currentUser.role !== "ADMIN") return <ErrorState message="Trang này dành cho quản trị viên." />;
   if (!parsed.ok) return <ErrorState message={parsed.message} />;
+  if (!mounted) return <LoadingState message="Đang kiểm tra tài khoản…" />;
 
   const updateFilters = (role: UserRole | undefined, isActive: boolean | undefined) =>
     router.push(adminUsersUrl(withAdminUserFilters(parsed.state, { role, isActive })));
   const selectedRole = parsed.state.role ?? "";
   const selectedActivity = parsed.state.isActive === undefined ? "" : String(parsed.state.isActive);
+  const visibleUsers = loadState.status === "success" ? loadState.result.data : [];
+  const activeUsers = visibleUsers.filter((listedUser) => listedUser.isActive).length;
+  const landlordUsers = visibleUsers.filter((listedUser) => listedUser.role === "LANDLORD").length;
 
   return (
-    <section className={`${styles.adminUsers} rm-workspace space-y-8`}>
-      <header className="border-b border-rent-line pb-6">
+    <AdminPage labelledBy="admin-users-heading">
+      <header className="rm-admin-hero">
         <p className="text-sm font-semibold text-teal-700">QUẢN TRỊ</p>
-        <h1 className="mt-2 text-3xl font-bold text-rent-ink sm:text-4xl">Quản lý người dùng</h1>
+        <h1 id="admin-users-heading" className="rm-admin-title mt-2 text-3xl sm:text-4xl">
+          Quản lý người dùng
+        </h1>
         <p className="mt-3 max-w-2xl text-rent-secondary">Lọc tài khoản theo vai trò và trạng thái hoạt động.</p>
       </header>
-      <div className="rm-toolbar">
-        <SelectField
-          id="admin-user-role"
-          name="role"
-          label="Vai trò"
-          value={selectedRole}
-          onChange={(event) =>
-            updateFilters((event.currentTarget.value || undefined) as UserRole | undefined, parsed.state.isActive)
-          }
-        >
-          <option value="">Mọi vai trò</option>
-          {adminUserRoles.map((role) => (
-            <option key={role} value={role}>
-              {roleLabels[role]}
-            </option>
-          ))}
-        </SelectField>
-        <SelectField
-          id="admin-user-active"
-          name="isActive"
-          label="Trạng thái tài khoản"
-          value={selectedActivity}
-          onChange={(event) =>
-            updateFilters(
-              parsed.state.role,
-              event.currentTarget.value === "" ? undefined : event.currentTarget.value === "true"
-            )
-          }
-        >
-          <option value="">Mọi trạng thái</option>
-          <option value="true">Đang hoạt động</option>
-          <option value="false">Ngừng hoạt động</option>
-        </SelectField>
+      <div className="rm-admin-toolbar">
+        <div className="rm-admin-toolbar-controls">
+          <SelectField
+            id="admin-user-role"
+            name="role"
+            label="Vai trò"
+            value={selectedRole}
+            onChange={(event) =>
+              updateFilters((event.currentTarget.value || undefined) as UserRole | undefined, parsed.state.isActive)
+            }
+          >
+            <option value="">Mọi vai trò</option>
+            {adminUserRoles.map((role) => (
+              <option key={role} value={role}>
+                {roleLabels[role]}
+              </option>
+            ))}
+          </SelectField>
+          <SelectField
+            id="admin-user-active"
+            name="isActive"
+            label="Trạng thái tài khoản"
+            value={selectedActivity}
+            onChange={(event) =>
+              updateFilters(
+                parsed.state.role,
+                event.currentTarget.value === "" ? undefined : event.currentTarget.value === "true"
+              )
+            }
+          >
+            <option value="">Mọi trạng thái</option>
+            <option value="true">Đang hoạt động</option>
+            <option value="false">Ngừng hoạt động</option>
+          </SelectField>
+        </div>
       </div>
+
+      {loadState.status === "success" ? (
+        <AdminSummaryGrid>
+          <AdminSummaryCard
+            label="Tài khoản trong trang"
+            value={visibleUsers.length}
+            note={`Trang ${loadState.result.pagination.page} · không phải tổng hệ thống`}
+            icon="users"
+          />
+          <AdminSummaryCard
+            label="Đang hoạt động"
+            value={activeUsers}
+            note="Trạng thái hiện tại"
+            tone={activeUsers > 0 ? "success" : "muted"}
+            icon="check"
+          />
+          <AdminSummaryCard label="Chủ trọ" value={landlordUsers} note="Trong dữ liệu đang hiển thị" icon="building" />
+          <AdminSummaryCard
+            label="Tài khoản cần xem"
+            value={visibleUsers.filter((listedUser) => !listedUser.isActive).length}
+            note="Đang ngừng hoạt động"
+            tone={visibleUsers.some((listedUser) => !listedUser.isActive) ? "attention" : "muted"}
+            icon="shield"
+          />
+        </AdminSummaryGrid>
+      ) : null}
 
       {mutationMessage ? (
         <div
@@ -197,10 +234,7 @@ export function AdminUsersPage() {
         </div>
       ) : null}
       {candidate ? (
-        <section
-          aria-label="Xác nhận thay đổi trạng thái tài khoản"
-          className="rounded-card border border-amber-300 bg-amber-50 p-5 text-amber-950"
-        >
+        <section aria-label="Xác nhận thay đổi trạng thái tài khoản" className="rm-admin-decision-panel">
           <h2 className="font-semibold">Xác nhận thay đổi</h2>
           <p className="mt-2 text-sm">
             {candidate.role === "LANDLORD" && candidate.isActive
@@ -240,19 +274,24 @@ export function AdminUsersPage() {
         <EmptyState title="Không có người dùng phù hợp" description="Hãy thay đổi bộ lọc hoặc quay lại sau." />
       ) : null}
       {loadState.status === "success" && loadState.result.data.length > 0 ? (
-        <div className="rm-workspace-panel">
-          {loadState.result.data.map((listedUser) => (
-            <AdminUserCard
-              key={listedUser.id}
-              user={listedUser}
-              actionDisabled={mutationPending || recoveryRequired}
-              onActivationRequest={(next) => {
-                setMutationMessage(null);
-                setCandidate(next);
-              }}
-            />
-          ))}
-        </div>
+        <AdminSection
+          title="Tài khoản trong trang"
+          description="Chỉ hiển thị các trường cần thiết cho quản trị; hành động thay đổi trạng thái luôn cần xác nhận."
+        >
+          <div className="divide-y divide-border">
+            {loadState.result.data.map((listedUser) => (
+              <AdminUserCard
+                key={listedUser.id}
+                user={listedUser}
+                actionDisabled={mutationPending || recoveryRequired}
+                onActivationRequest={(next) => {
+                  setMutationMessage(null);
+                  setCandidate(next);
+                }}
+              />
+            ))}
+          </div>
+        </AdminSection>
       ) : null}
       {loadState.status === "success" ? (
         <Pagination
@@ -267,6 +306,6 @@ export function AdminUsersPage() {
           }
         />
       ) : null}
-    </section>
+    </AdminPage>
   );
 }
