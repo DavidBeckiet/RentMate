@@ -4,7 +4,9 @@ import test from "node:test";
 import { createApp } from "../../shared/src/runtime/app.js";
 import { createProtectedAuthenticationMiddleware } from "../../shared/src/runtime/shared/middleware/authentication.js";
 import { createRoleMiddleware } from "../../shared/src/runtime/shared/middleware/role.js";
+import { registerContactRoutes } from "../src/modules/contact/routes.js";
 import { registerRoommateRoutes } from "../src/modules/roommate/routes.js";
+import type { ContactService } from "../src/modules/contact/services/contact-service.js";
 import type { RoommateService } from "../src/modules/roommate/services/roommate-service.js";
 import type { RoommateSafetyService } from "../src/modules/roommate/services/roommate-safety-service.js";
 
@@ -101,18 +103,33 @@ test("Roommate safety additive projections survive Engagement HTTP DTO mapping w
       };
     }
   } as unknown as RoommateSafetyService;
+  const contactService = {
+    async listContactReports(principal: { readonly userId: number }, query: { readonly page: number; readonly pageSize: number }) {
+      assert.equal(principal.userId, 9);
+      return { data: [], page: query.page, pageSize: query.pageSize, hasNextPage: false };
+    }
+  } as unknown as ContactService;
   const app = createApp({
     frontendOrigin: "http://localhost:3000",
     logger: { debug() {}, info() {}, warn() {}, error() {} },
     checkDatabaseConnection: async () => undefined,
-    registerApiRoutes: (router) =>
+    registerApiRoutes: (router) => {
       registerRoommateRoutes(router, {
         authenticationMiddleware,
         tenantRoleMiddleware: createRoleMiddleware(["TENANT"]),
         adminRoleMiddleware: createRoleMiddleware(["ADMIN"]),
         service: {} as RoommateService,
         safetyService
-      })
+      });
+      registerContactRoutes(router, {
+        authenticationMiddleware,
+        tenantRoleMiddleware: createRoleMiddleware(["TENANT"]),
+        landlordRoleMiddleware: createRoleMiddleware(["LANDLORD"]),
+        adminRoleMiddleware: createRoleMiddleware(["ADMIN"]),
+        contactService,
+        realtimeHub: {} as never
+      });
+    }
   });
   const server = createServer(app);
   const port = await listen(server);
@@ -166,6 +183,13 @@ test("Roommate safety additive projections survive Engagement HTTP DTO mapping w
       ).error.code,
       "FORBIDDEN"
     );
+
+    const contactReports = await fetch(
+      `http://127.0.0.1:${port}/api/v1/admin/contact-reports?status=OPEN&page=1&pageSize=20`,
+      { headers: { cookie: "rentmate_session=admin" } }
+    );
+    assert.equal(contactReports.status, 200);
+    assert.deepEqual((await contactReports.json()).data, []);
   } finally {
     await close(server);
   }

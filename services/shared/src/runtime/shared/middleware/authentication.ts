@@ -61,6 +61,7 @@ async function resolvePrincipal(
 }
 
 function attachPrincipal(request: Request, principal: AuthenticatedPrincipal): void {
+  if (request.auth) return;
   Object.defineProperty(request, "auth", {
     configurable: false,
     enumerable: false,
