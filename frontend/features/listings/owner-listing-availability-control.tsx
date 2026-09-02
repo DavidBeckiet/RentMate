@@ -66,13 +66,13 @@ export function OwnerListingAvailabilityControl({
   return (
     <section
       aria-labelledby="availability-heading"
-      className={`space-y-3 rounded-control border-2 p-4 shadow-glass-sm ${
-        needsConfirmation ? "border-heroDark-950 bg-rent-yellow" : "border-rent-line bg-rent-surface"
+      className={`rm-workspace-card space-y-3 border-l-4 p-4 ${
+        needsConfirmation ? "border-warning bg-warning-subtle" : "border-border bg-surface"
       }`}
     >
       <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div>
-          <h2 id="availability-heading" className="text-base font-bold text-rent-ink">
+          <h2 id="availability-heading" className="rm-workspace-section-title">
             {detail.availabilityStatus === "AUTO_PAUSED"
               ? "Tin đã tạm dừng vì chưa xác nhận"
               : needsConfirmation

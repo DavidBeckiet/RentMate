@@ -42,6 +42,7 @@ function lookupAfterFailure<Value>(current: LookupResource<Value>): LookupResour
 export function OwnerListingDetail({ listingId }: { readonly listingId: string }) {
   const parsedId = useMemo(() => parseListingId(listingId), [listingId]);
   const { status: authStatus, user, error: authError, refresh } = useAuth();
+  const [mounted, setMounted] = useState(false);
   const [detailState, setDetailState] = useState<DetailState>({ status: "idle", detail: null, error: null });
   const [detailVersion, setDetailVersion] = useState(0);
   const [propertyVersion, setPropertyVersion] = useState(0);
@@ -56,7 +57,9 @@ export function OwnerListingDetail({ listingId }: { readonly listingId: string }
   const detailIdentity = useRef(0);
   const authRefreshForId = useRef<number | null>(null);
 
-  const landlordReady = authStatus === "authenticated" && user?.role === "LANDLORD";
+  const landlordReady = mounted && authStatus === "authenticated" && user?.role === "LANDLORD";
+
+  useEffect(() => setMounted(true), []);
 
   useEffect(() => {
     setEditorDirty(false);
@@ -159,7 +162,7 @@ export function OwnerListingDetail({ listingId }: { readonly listingId: string }
     setDetailVersion((version) => version + 1);
   }, []);
 
-  if (authStatus === "loading") return <LoadingState message="Đang kiểm tra tài khoản…" />;
+  if (!mounted || authStatus === "loading") return <LoadingState message="Đang kiểm tra tài khoản…" />;
   if (authStatus === "anonymous") {
     return (
       <ErrorState
@@ -210,19 +213,19 @@ export function OwnerListingDetail({ listingId }: { readonly listingId: string }
   const blocked = editorDirty || editorBusy || imageBusy || imageOrderDirty;
 
   return (
-    <article className={`${styles.ownerDetail} rm-workspace space-y-8`}>
-      <header className="space-y-4 border-b border-rent-line pb-7">
+    <article className={`${styles.ownerDetail} rm-workspace rm-workspace-page space-y-8`}>
+      <header className="rm-workspace-hero" data-tone={detail.status === "REJECTED" ? "attention" : "info"}>
         <Link
           href="/landlord"
-          className="text-sm font-semibold text-teal-800 underline decoration-2 underline-offset-4"
+          className="text-sm font-semibold text-primary-hover underline decoration-2 underline-offset-4"
         >
           ← Quay lại tin của tôi
         </Link>
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div>
-            <p className="text-sm font-semibold text-teal-700">TIN CỦA CHỦ NHÀ</p>
-            <h1 className="mt-2 text-3xl font-bold text-rent-ink sm:text-4xl">{title}</h1>
-            <p className="mt-2 text-sm text-rent-secondary">
+            <p className="rm-workspace-eyebrow">Chỉnh sửa tin đăng</p>
+            <h1 className="rm-workspace-title mt-3">{title}</h1>
+            <p className="mt-3 text-sm text-muted-foreground">
               Cập nhật lần cuối: {new Date(detail.updatedAt).toLocaleString("vi-VN")}
             </p>
           </div>
@@ -232,7 +235,7 @@ export function OwnerListingDetail({ listingId }: { readonly listingId: string }
           </div>
         </div>
         {reasonLabel && detail.currentModerationReason ? (
-          <div className="rounded-control border border-red-200 bg-red-50 p-4 text-sm text-red-950">
+          <div className="rounded-control border-l-4 border-danger bg-danger-subtle p-4 text-sm text-danger">
             <p className="font-semibold">{reasonLabel}</p>
             <p className="mt-1 whitespace-pre-wrap">{detail.currentModerationReason}</p>
           </div>

@@ -447,11 +447,18 @@ function WorkspaceShell({
   const items = actor === "landlord" ? landlordNavigationItems : adminNavigationItems;
   const title = actor === "landlord" ? "Không gian cho thuê" : "Khu vực quản trị";
   const navLabel = actor === "landlord" ? "Điều hướng không gian cho thuê" : "Điều hướng khu vực quản trị";
+  const landlordShell = actor === "landlord";
 
   useEffect(() => closeMenu(), [closeMenu, pathname]);
 
   const navigation = ready ? (
-    <NavigationLinks items={items} pathname={pathname} linkClassName={workspaceNavLink} onNavigate={closeMenu} />
+    <NavigationLinks
+      items={items}
+      pathname={pathname}
+      className={landlordShell ? "rm-workspace-nav" : undefined}
+      linkClassName={workspaceNavLink}
+      onNavigate={closeMenu}
+    />
   ) : (
     <div aria-label="Đang kiểm tra quyền truy cập" className="space-y-3 px-2 py-3">
       {[0, 1, 2, 3, 4].map((item) => (
@@ -461,13 +468,37 @@ function WorkspaceShell({
   );
 
   return (
-    <div className="min-h-screen bg-background text-foreground lg:grid lg:grid-cols-[16.5rem_minmax(0,1fr)]">
+    <div
+      className={cx(
+        "min-h-screen bg-background text-foreground lg:grid lg:grid-cols-[16.5rem_minmax(0,1fr)]",
+        landlordShell && "rm-landlord-shell"
+      )}
+    >
       <SkipLink />
-      <aside className="sticky top-0 hidden h-[100dvh] flex-col border-r border-primary/30 bg-brand-dark p-4 lg:flex">
+      <aside
+        className={cx(
+          "sticky top-0 hidden h-[100dvh] flex-col border-r border-primary/30 bg-brand-dark p-4 lg:flex",
+          landlordShell && "rm-landlord-sidebar"
+        )}
+      >
         <Brand inverse />
         <div className="mt-7 px-2">
-          <p className="text-ui-xs font-bold uppercase tracking-[0.14em] text-white/60">Workspace</p>
-          <p className="mt-1 font-display text-heading-sm font-semibold text-white">{title}</p>
+          <p
+            className={cx(
+              "text-ui-xs font-bold uppercase tracking-[0.14em] text-white/60",
+              landlordShell && "rm-workspace-side-label"
+            )}
+          >
+            Workspace
+          </p>
+          <p
+            className={cx(
+              "mt-1 font-display text-heading-sm font-semibold text-white",
+              landlordShell && "rm-workspace-side-title"
+            )}
+          >
+            {title}
+          </p>
         </div>
         <nav aria-label={navLabel} className="mt-5 flex-1 overflow-y-auto">
           {navigation}
@@ -484,7 +515,12 @@ function WorkspaceShell({
       </aside>
 
       <div className="min-w-0">
-        <header className="sticky top-0 z-header border-b border-border bg-surface">
+        <header
+          className={cx(
+            "sticky top-0 z-header border-b border-border bg-surface",
+            landlordShell && "rm-workspace-topbar"
+          )}
+        >
           <div className="flex min-h-16 items-center gap-3 px-4 sm:px-6 lg:min-h-[4.5rem] lg:px-8">
             <div className="lg:hidden">
               <Brand compact />
@@ -521,12 +557,24 @@ function WorkspaceShell({
 
         <AuthFeedback status={authStatus} logoutFailed={authError} onRefresh={onRefresh} />
 
-        <main id="main-content" className="mx-auto min-w-0 max-w-[90rem] px-4 py-6 sm:px-6 sm:py-8 lg:px-8 lg:py-10">
+        <main
+          id="main-content"
+          className={cx(
+            "mx-auto min-w-0 max-w-[90rem] px-4 py-6 sm:px-6 sm:py-8 lg:px-8 lg:py-10",
+            landlordShell && "rm-workspace-main"
+          )}
+        >
           <PageTransition>{children}</PageTransition>
         </main>
       </div>
 
-      <NavigationOverlay open={menuOpen} title={title} triggerRef={triggerRef} onClose={closeMenu}>
+      <NavigationOverlay
+        open={menuOpen}
+        title={title}
+        triggerRef={triggerRef}
+        onClose={closeMenu}
+        className={landlordShell ? "rm-landlord-drawer" : undefined}
+      >
         <nav id="workspace-mobile-navigation" aria-label={`${navLabel} trên di động`} className="mt-4">
           {navigation}
         </nav>

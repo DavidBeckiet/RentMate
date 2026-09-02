@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useId, useRef, type ReactNode, type RefObject } from "react";
+import { cx } from "./class-names";
 import { Icon } from "./icon";
 import { IconButton } from "./icon-button";
 
@@ -13,9 +14,10 @@ export interface NavigationOverlayProps {
   readonly triggerRef: RefObject<HTMLButtonElement | null>;
   readonly onClose: () => void;
   readonly children: ReactNode;
+  readonly className?: string;
 }
 
-export function NavigationOverlay({ open, title, triggerRef, onClose, children }: NavigationOverlayProps) {
+export function NavigationOverlay({ open, title, triggerRef, onClose, children, className }: NavigationOverlayProps) {
   const titleId = useId();
   const panelRef = useRef<HTMLDivElement>(null);
 
@@ -75,7 +77,10 @@ export function NavigationOverlay({ open, title, triggerRef, onClose, children }
         role="dialog"
         aria-modal="true"
         aria-labelledby={titleId}
-        className="rm-motion-drawer absolute inset-y-0 right-0 flex w-[min(88vw,22rem)] flex-col overflow-y-auto rounded-l-overlay border-y border-l border-border bg-surface p-4 shadow-overlay-soft"
+        className={cx(
+          "rm-motion-drawer absolute inset-y-0 right-0 flex w-[min(88vw,22rem)] flex-col overflow-y-auto rounded-l-overlay border-y border-l border-border bg-surface p-4 shadow-overlay-soft",
+          className
+        )}
       >
         <div className="flex min-h-12 items-center justify-between gap-3 border-b border-border pb-3">
           <h2 id={titleId} className="font-display text-heading-sm font-bold text-foreground">

@@ -85,14 +85,11 @@ export function OwnerBusinessStatusControl({
   };
 
   return (
-    <section
-      className="rounded-card border border-rent-line bg-white p-5 sm:p-6"
-      aria-labelledby="business-status-heading"
-    >
+    <section className="rm-workspace-card p-5 sm:p-6" aria-labelledby="business-status-heading">
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
-          <p className="text-xs font-bold uppercase tracking-[0.14em] text-teal-700">Trạng thái kinh doanh</p>
-          <h2 id="business-status-heading" className="mt-1 text-xl font-semibold text-rent-ink">
+          <p className="rm-workspace-eyebrow">Trạng thái kinh doanh</p>
+          <h2 id="business-status-heading" className="rm-workspace-section-title mt-1">
             Cho người thuê biết tin còn nhận phòng không
           </h2>
         </div>

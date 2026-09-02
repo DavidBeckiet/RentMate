@@ -25,21 +25,23 @@ export function OwnerListingCard({
   const reason = moderationReason(listing);
 
   return (
-    <ListingCardShell>
+    <ListingCardShell className="rm-listing-management-card">
       <Link
         href={`/landlord/listings/${listing.id}`}
-        className="grid min-h-44 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-teal-700 sm:grid-cols-[13rem_1fr]"
+        className="grid min-h-44 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-focus sm:grid-cols-[13rem_1fr]"
       >
         <ListingImage
           image={listing.coverImage}
           title={title}
           sizes="(min-width: 640px) 208px, 100vw"
-          className="min-h-44 sm:aspect-auto"
+          className="rm-listing-cover min-h-44 sm:aspect-auto"
         />
 
         <div className="min-w-0 space-y-3 p-4 sm:p-5">
           <div className="flex flex-wrap items-start justify-between gap-3">
-            <h2 className="text-lg font-semibold leading-6 text-rent-ink group-hover:text-teal-800">{title}</h2>
+            <h2 className="rm-listing-title text-lg font-semibold leading-6 text-foreground group-hover:text-primary-hover">
+              {title}
+            </h2>
             <div className="flex flex-wrap justify-end gap-2">
               <ListingStatusBadge status={listing.status} />
               <BusinessStatusBadge status={listing.businessStatus} />
@@ -61,18 +63,18 @@ export function OwnerListingCard({
               <p className="mt-1 whitespace-pre-wrap">{reason.value}</p>
             </div>
           ) : null}
-          <div className="flex flex-wrap items-center justify-between gap-2 border-t border-rent-line pt-3">
-            <p className="text-xs text-rent-subtle">Cập nhật {dateFormatter.format(new Date(listing.updatedAt))}</p>
-            <span className="text-sm font-semibold text-teal-800">Quản lý tin</span>
+          <div className="flex flex-wrap items-center justify-between gap-2 border-t border-border pt-3">
+            <p className="rm-listing-meta">Cập nhật {dateFormatter.format(new Date(listing.updatedAt))}</p>
+            <span className="text-sm font-semibold text-primary-hover">Quản lý tin</span>
           </div>
         </div>
       </Link>
       {onDuplicate ? (
-        <div className="flex items-center justify-between gap-3 border-t-2 border-heroDark-950 bg-rent-surface-muted px-4 py-3 sm:px-5">
+        <div className="rm-listing-actions flex items-center justify-between gap-3 px-4 py-3 sm:px-5">
           <p className="text-xs text-rent-subtle">Tạo tin mới từ nội dung này, ảnh sẽ không được sao chép.</p>
           <button
             type="button"
-            className="shrink-0 border-2 border-heroDark-950 bg-white px-3 py-2 text-sm font-bold text-rent-ink shadow-glass-sm transition-[background-color,box-shadow,transform] hover:-translate-x-0.5 hover:-translate-y-0.5 hover:bg-rent-accent hover:shadow-glass focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-700 disabled:cursor-not-allowed disabled:opacity-60"
+            className="min-h-11 shrink-0 rounded-control border border-border bg-surface px-3 py-2 text-sm font-bold text-foreground shadow-surface transition-[background-color,border-color,box-shadow,transform] hover:-translate-y-0.5 hover:border-primary/40 hover:bg-primary-subtle hover:shadow-raised focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus disabled:cursor-not-allowed disabled:opacity-60"
             disabled={duplicatePending}
             aria-busy={duplicatePending || undefined}
             onClick={onDuplicate}

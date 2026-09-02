@@ -168,12 +168,9 @@ export function OwnerLifecycleActions({
   ];
 
   return (
-    <section
-      aria-labelledby="owner-actions-heading"
-      className="space-y-5 rounded-card border border-rent-line bg-white p-5 sm:p-6"
-    >
+    <section aria-labelledby="owner-actions-heading" className="rm-workspace-card space-y-5 p-5 sm:p-6">
       <div>
-        <h2 id="owner-actions-heading" className="text-xl font-semibold text-rent-ink">
+        <h2 id="owner-actions-heading" className="rm-workspace-section-title">
           Trạng thái &amp; tác vụ
         </h2>
         <p className="mt-1 text-sm text-rent-secondary">
@@ -218,7 +215,7 @@ export function OwnerLifecycleActions({
         </div>
       ) : null}
 
-      <div className="flex flex-wrap gap-3">
+      <div className="rm-workspace-action-bar">
         {(detail.status === "DRAFT" || detail.status === "HIDDEN") && (
           <Button
             disabled={actionDisabled}

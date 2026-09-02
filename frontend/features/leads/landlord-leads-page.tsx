@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
+import { Badge, type BadgeVariant } from "../../components/ui/badge";
 import { Button } from "../../components/ui/button";
 import { EmptyState, ErrorState, LoadingState } from "../../components/ui/feedback-states";
 import { Icon } from "../../components/ui/icon";
@@ -24,6 +25,11 @@ const statusLabels: Record<LandlordLead["status"], string> = {
   CONTACTED: "Đang trao đổi",
   CLOSED: "Đã đóng"
 };
+
+function statusVariant(status: LandlordLead["status"], needsReply: boolean): BadgeVariant {
+  if (needsReply) return "danger";
+  return status === "NEW" ? "info" : status === "CONTACTED" ? "primary" : "neutral";
+}
 
 function toDateTimeLocalValue(value: Date): string {
   const part = (number: number) => String(number).padStart(2, "0");
@@ -108,215 +114,210 @@ function LeadCard({
   const reminderDue = lead.reminderAt !== null && new Date(lead.reminderAt).getTime() <= renderedAt;
 
   return (
-    <article className="border-2 border-heroDark-950 bg-rent-surface p-5 shadow-glass-sm">
-      <div className="flex flex-wrap items-start justify-between gap-4">
-        <div>
-          <div className="flex flex-wrap items-center gap-2">
-            <span className="rm-eyebrow">LEAD #{lead.inquiryId}</span>
-            {lead.hasUnreadTenantMessages ? (
-              <span className="border-2 border-heroDark-950 bg-rent-coral px-2 py-1 text-[0.65rem] font-extrabold uppercase">
-                Chưa đọc
-              </span>
+    <article className="rm-lead-card">
+      <div className="rm-lead-card-body">
+        <div className="flex flex-wrap items-start justify-between gap-4">
+          <div>
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="rm-workspace-eyebrow">Lead #{lead.inquiryId}</span>
+              {lead.hasUnreadTenantMessages ? (
+                <Badge variant="warning" context="Tin nhắn của người thuê" showIndicator>
+                  Chưa đọc
+                </Badge>
+              ) : null}
+            </div>
+            <h2 className="mt-3 font-display text-2xl font-bold">Tin đăng #{lead.listingId}</h2>
+          </div>
+          <Badge variant={statusVariant(lead.status, lead.needsReply)} context="Trạng thái lead" showIndicator>
+            {lead.needsReply ? "Cần phản hồi" : statusLabels[lead.status]}
+          </Badge>
+        </div>
+
+        {lead.lastMessage ? (
+          <blockquote className="mt-5 rounded-control border-l-4 border-info bg-info-subtle/60 p-4 text-sm font-medium leading-6 text-info-foreground">
+            <span className="mb-1 block text-xs font-extrabold uppercase text-slate-600">
+              Tin cuối từ {lead.lastMessage.senderRole === "TENANT" ? "người thuê" : "bạn"}
+            </span>
+            {lead.lastMessage.snippet}
+          </blockquote>
+        ) : null}
+
+        <dl className="mt-4 grid gap-3 text-sm sm:grid-cols-2">
+          <div className="rounded-control border border-border bg-surface-subtle/60 p-3">
+            <dt className="text-xs font-extrabold uppercase text-slate-600">Liên hệ</dt>
+            <dd className="mt-1 font-bold">
+              {lead.contactPhone ? (
+                <a className="underline" href={`tel:${lead.contactPhone}`}>
+                  {lead.contactPhone}
+                </a>
+              ) : (
+                "Chưa có số điện thoại"
+              )}
+            </dd>
+          </div>
+          <div className="rounded-control border border-border bg-surface-subtle/60 p-3">
+            <dt className="text-xs font-extrabold uppercase text-slate-600">Thời gian mong muốn</dt>
+            <dd className="mt-1 font-bold">
+              {lead.preferredContactAt ? new Date(lead.preferredContactAt).toLocaleString("vi-VN") : "Không chỉ định"}
+            </dd>
+          </div>
+        </dl>
+
+        <section className="mt-5 border-t border-border pt-5" aria-label={`Ghi chú nội bộ lead ${lead.inquiryId}`}>
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <h3 className="font-display text-sm font-bold uppercase">Ghi chú nội bộ</h3>
+            {!editing ? (
+              <button
+                type="button"
+                onClick={() => setEditing(true)}
+                className="min-h-11 cursor-pointer text-xs font-extrabold underline decoration-2 underline-offset-4 focus-visible:ring-4 focus-visible:ring-focus/25"
+              >
+                {lead.note ? "Chỉnh sửa" : "Thêm ghi chú"}
+              </button>
             ) : null}
           </div>
-          <h2 className="mt-3 font-display text-2xl font-bold">Tin đăng #{lead.listingId}</h2>
-        </div>
-        <span className="border-2 border-heroDark-950 bg-rent-accent px-3 py-1 text-xs font-extrabold uppercase">
-          {lead.needsReply ? "Cần phản hồi" : statusLabels[lead.status]}
-        </span>
-      </div>
-
-      {lead.lastMessage ? (
-        <blockquote className="mt-5 border-l-4 border-heroDark-950 bg-[#e5eefc] p-4 text-sm font-medium leading-6 text-slate-700">
-          <span className="mb-1 block text-xs font-extrabold uppercase text-slate-600">
-            Tin cuối từ {lead.lastMessage.senderRole === "TENANT" ? "người thuê" : "bạn"}
-          </span>
-          {lead.lastMessage.snippet}
-        </blockquote>
-      ) : null}
-
-      <dl className="mt-4 grid gap-3 text-sm sm:grid-cols-2">
-        <div className="border-2 border-heroDark-950 p-3">
-          <dt className="text-xs font-extrabold uppercase text-slate-600">Liên hệ</dt>
-          <dd className="mt-1 font-bold">
-            {lead.contactPhone ? (
-              <a className="underline" href={`tel:${lead.contactPhone}`}>
-                {lead.contactPhone}
-              </a>
-            ) : (
-              "Chưa có số điện thoại"
-            )}
-          </dd>
-        </div>
-        <div className="border-2 border-heroDark-950 p-3">
-          <dt className="text-xs font-extrabold uppercase text-slate-600">Thời gian mong muốn</dt>
-          <dd className="mt-1 font-bold">
-            {lead.preferredContactAt ? new Date(lead.preferredContactAt).toLocaleString("vi-VN") : "Không chỉ định"}
-          </dd>
-        </div>
-      </dl>
-
-      <section
-        className="mt-4 border-t-2 border-heroDark-950 pt-4"
-        aria-label={`Ghi chú nội bộ lead ${lead.inquiryId}`}
-      >
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <h3 className="font-display text-sm font-bold uppercase">Ghi chú nội bộ</h3>
           {!editing ? (
-            <button
-              type="button"
-              onClick={() => setEditing(true)}
-              className="cursor-pointer text-xs font-extrabold underline decoration-2 underline-offset-4 focus-visible:ring-4 focus-visible:ring-blue-300"
-            >
-              {lead.note ? "Chỉnh sửa" : "Thêm ghi chú"}
-            </button>
-          ) : null}
-        </div>
-        {!editing ? (
-          <p className="mt-2 whitespace-pre-wrap text-sm font-medium text-slate-700">
-            {lead.note ?? "Chưa có ghi chú. Nội dung này chỉ chủ trọ nhìn thấy."}
-          </p>
-        ) : (
-          <div className="mt-3 grid gap-3">
-            <label htmlFor={`lead-note-${lead.inquiryId}`} className="sr-only">
-              Ghi chú nội bộ
-            </label>
-            <textarea
-              id={`lead-note-${lead.inquiryId}`}
-              rows={4}
-              maxLength={2000}
-              value={note}
-              onChange={(event) => setNote(event.target.value)}
-              className="resize-y border-2 border-heroDark-950 bg-white p-3 text-sm font-medium outline-none focus-visible:ring-4 focus-visible:ring-blue-300"
-              placeholder="Ví dụ: khách muốn xem phòng sau 18 giờ…"
-            />
-            <div className="flex flex-wrap gap-3">
-              <Button pending={pending} pendingLabel="Đang lưu…" onClick={() => void save(note)}>
-                Lưu ghi chú
-              </Button>
-              <Button
-                variant="secondary"
-                disabled={pending}
-                onClick={() => {
-                  setNote(lead.note ?? "");
-                  setEditing(false);
-                  setError(null);
-                }}
-              >
-                Hủy
-              </Button>
-              {lead.note ? (
-                <Button variant="danger" pending={pending} onClick={() => void save(null)}>
-                  Xóa ghi chú
+            <p className="mt-2 whitespace-pre-wrap text-sm font-medium text-slate-700">
+              {lead.note ?? "Chưa có ghi chú. Nội dung này chỉ chủ trọ nhìn thấy."}
+            </p>
+          ) : (
+            <div className="mt-3 grid gap-3">
+              <label htmlFor={`lead-note-${lead.inquiryId}`} className="sr-only">
+                Ghi chú nội bộ
+              </label>
+              <textarea
+                id={`lead-note-${lead.inquiryId}`}
+                rows={4}
+                maxLength={2000}
+                value={note}
+                onChange={(event) => setNote(event.target.value)}
+                className="min-h-28 w-full resize-y rounded-control border border-border-strong bg-surface px-4 py-3 text-sm font-medium outline-none transition focus:border-primary focus:ring-[3px] focus:ring-primary/20"
+                placeholder="Ví dụ: khách muốn xem phòng sau 18 giờ…"
+              />
+              <div className="flex flex-wrap gap-3">
+                <Button pending={pending} pendingLabel="Đang lưu…" onClick={() => void save(note)}>
+                  Lưu ghi chú
                 </Button>
+                <Button
+                  variant="secondary"
+                  disabled={pending}
+                  onClick={() => {
+                    setNote(lead.note ?? "");
+                    setEditing(false);
+                    setError(null);
+                  }}
+                >
+                  Hủy
+                </Button>
+                {lead.note ? (
+                  <Button variant="danger" pending={pending} onClick={() => void save(null)}>
+                    Xóa ghi chú
+                  </Button>
+                ) : null}
+              </div>
+            </div>
+          )}
+          {error ? (
+            <p role="alert" className="mt-3 border-l-4 border-red-700 pl-3 text-sm font-bold text-red-800">
+              {error}
+            </p>
+          ) : null}
+        </section>
+
+        <section className="mt-5 border-t border-border pt-5" aria-label={`Nhắc việc lead ${lead.inquiryId}`}>
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div className="flex flex-wrap items-center gap-2">
+              <h3 className="font-display text-sm font-bold uppercase">Nhắc việc</h3>
+              {lead.reminderAt ? (
+                <Badge variant={reminderDue ? "warning" : "info"} context="Trạng thái nhắc việc" showIndicator>
+                  {reminderDue ? "Đã đến hạn" : "Đã lên lịch"}
+                </Badge>
               ) : null}
             </div>
-          </div>
-        )}
-        {error ? (
-          <p role="alert" className="mt-3 border-l-4 border-red-700 pl-3 text-sm font-bold text-red-800">
-            {error}
-          </p>
-        ) : null}
-      </section>
-
-      <section className="mt-4 border-t-2 border-heroDark-950 pt-4" aria-label={`Nhắc việc lead ${lead.inquiryId}`}>
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <div className="flex flex-wrap items-center gap-2">
-            <h3 className="font-display text-sm font-bold uppercase">Nhắc việc</h3>
-            {lead.reminderAt ? (
-              <span
-                className={`border-2 border-heroDark-950 px-2 py-1 text-[0.65rem] font-extrabold uppercase ${
-                  reminderDue ? "bg-rent-coral" : "bg-[#e5eefc]"
-                }`}
+            {!editingReminder ? (
+              <button
+                type="button"
+                onClick={() => {
+                  setReminderValue(
+                    lead.reminderAt ? toDateTimeLocalValue(new Date(lead.reminderAt)) : defaultReminderValue()
+                  );
+                  setReminderError(null);
+                  setEditingReminder(true);
+                }}
+                className="min-h-11 cursor-pointer text-xs font-extrabold underline decoration-2 underline-offset-4 focus-visible:ring-4 focus-visible:ring-focus/25"
               >
-                {reminderDue ? "Đã đến hạn" : "Đã lên lịch"}
-              </span>
+                {lead.reminderAt ? "Đổi thời gian" : "Thêm nhắc việc"}
+              </button>
             ) : null}
           </div>
+
           {!editingReminder ? (
-            <button
-              type="button"
-              onClick={() => {
-                setReminderValue(
-                  lead.reminderAt ? toDateTimeLocalValue(new Date(lead.reminderAt)) : defaultReminderValue()
-                );
-                setReminderError(null);
-                setEditingReminder(true);
-              }}
-              className="cursor-pointer text-xs font-extrabold underline decoration-2 underline-offset-4 focus-visible:ring-4 focus-visible:ring-blue-300"
-            >
-              {lead.reminderAt ? "Đổi thời gian" : "Thêm nhắc việc"}
-            </button>
-          ) : null}
-        </div>
-
-        {!editingReminder ? (
-          <p className="mt-2 text-sm font-medium text-slate-700">
-            {lead.reminderAt
-              ? `${reminderDue ? "Đến hạn" : "Nhắc lúc"} ${new Date(lead.reminderAt).toLocaleString("vi-VN")}`
-              : "Chưa có mốc theo dõi tiếp theo. Nhắc việc này chỉ chủ trọ nhìn thấy."}
-          </p>
-        ) : (
-          <div className="mt-3 grid gap-3">
-            <label htmlFor={`lead-reminder-${lead.inquiryId}`} className="text-xs font-extrabold text-slate-700">
-              Thời gian nhắc
-            </label>
-            <input
-              id={`lead-reminder-${lead.inquiryId}`}
-              type="datetime-local"
-              required
-              value={reminderValue}
-              onChange={(event) => setReminderValue(event.target.value)}
-              aria-describedby={`lead-reminder-help-${lead.inquiryId}`}
-              className="min-h-11 border-2 border-heroDark-950 bg-white px-3 text-sm font-bold outline-none focus-visible:ring-4 focus-visible:ring-blue-300"
-            />
-            <p id={`lead-reminder-help-${lead.inquiryId}`} className="text-xs font-medium text-slate-600">
-              Dùng giờ trên thiết bị của bạn. Reminder sẽ hiện trong bộ lọc Nhắc việc, không gửi push notification.
+            <p className="mt-2 text-sm font-medium text-slate-700">
+              {lead.reminderAt
+                ? `${reminderDue ? "Đến hạn" : "Nhắc lúc"} ${new Date(lead.reminderAt).toLocaleString("vi-VN")}`
+                : "Chưa có mốc theo dõi tiếp theo. Nhắc việc này chỉ chủ trọ nhìn thấy."}
             </p>
-            <div className="flex flex-wrap gap-3">
-              <Button
-                pending={reminderPending}
-                pendingLabel="Đang lưu…"
-                onClick={() => void saveReminder(reminderValue)}
-              >
-                Lưu nhắc việc
-              </Button>
-              <Button
-                variant="secondary"
-                disabled={reminderPending}
-                onClick={() => {
-                  setEditingReminder(false);
-                  setReminderError(null);
-                }}
-              >
-                Hủy
-              </Button>
-              {lead.reminderAt ? (
-                <Button variant="danger" pending={reminderPending} onClick={() => void saveReminder(null)}>
-                  Xóa nhắc việc
+          ) : (
+            <div className="mt-3 grid gap-3">
+              <label htmlFor={`lead-reminder-${lead.inquiryId}`} className="text-xs font-extrabold text-slate-700">
+                Thời gian nhắc
+              </label>
+              <input
+                id={`lead-reminder-${lead.inquiryId}`}
+                type="datetime-local"
+                required
+                value={reminderValue}
+                onChange={(event) => setReminderValue(event.target.value)}
+                aria-describedby={`lead-reminder-help-${lead.inquiryId}`}
+                className="min-h-12 w-full rounded-control border border-border-strong bg-surface px-4 text-sm font-bold outline-none transition focus:border-primary focus:ring-[3px] focus:ring-primary/20"
+              />
+              <p id={`lead-reminder-help-${lead.inquiryId}`} className="text-xs font-medium text-slate-600">
+                Dùng giờ trên thiết bị của bạn. Reminder sẽ hiện trong bộ lọc Nhắc việc, không gửi push notification.
+              </p>
+              <div className="flex flex-wrap gap-3">
+                <Button
+                  pending={reminderPending}
+                  pendingLabel="Đang lưu…"
+                  onClick={() => void saveReminder(reminderValue)}
+                >
+                  Lưu nhắc việc
                 </Button>
-              ) : null}
+                <Button
+                  variant="secondary"
+                  disabled={reminderPending}
+                  onClick={() => {
+                    setEditingReminder(false);
+                    setReminderError(null);
+                  }}
+                >
+                  Hủy
+                </Button>
+                {lead.reminderAt ? (
+                  <Button variant="danger" pending={reminderPending} onClick={() => void saveReminder(null)}>
+                    Xóa nhắc việc
+                  </Button>
+                ) : null}
+              </div>
             </div>
-          </div>
-        )}
-        {reminderError ? (
-          <p role="alert" className="mt-3 border-l-4 border-red-700 pl-3 text-sm font-bold text-red-800">
-            {reminderError}
-          </p>
-        ) : null}
-      </section>
+          )}
+          {reminderError ? (
+            <p role="alert" className="mt-3 border-l-4 border-red-700 pl-3 text-sm font-bold text-red-800">
+              {reminderError}
+            </p>
+          ) : null}
+        </section>
 
-      <div className="mt-5 flex flex-wrap items-center justify-between gap-3 border-t-2 border-heroDark-950 pt-4">
-        <time className="text-xs font-bold text-slate-600">
-          Cập nhật {new Date(lead.updatedAt).toLocaleString("vi-VN")}
-        </time>
-        <Link
-          href={`/inquiries/${lead.inquiryId}`}
-          className="inline-flex min-h-11 cursor-pointer items-center gap-2 border-2 border-heroDark-950 bg-[#c9f269] px-4 py-2 text-sm font-extrabold shadow-glass-sm transition-colors hover:bg-rent-accent focus-visible:ring-4 focus-visible:ring-blue-300"
-        >
-          Mở cuộc trao đổi <Icon name="arrow" className="h-4 w-4" />
-        </Link>
+        <div className="mt-5 flex flex-wrap items-center justify-between gap-3 border-t border-border pt-5">
+          <time className="text-xs font-bold text-slate-600">
+            Cập nhật {new Date(lead.updatedAt).toLocaleString("vi-VN")}
+          </time>
+          <Link
+            href={`/inquiries/${lead.inquiryId}`}
+            className="inline-flex min-h-11 cursor-pointer items-center gap-2 rounded-control bg-primary px-4 py-2 text-sm font-extrabold text-white shadow-surface transition-[background-color,box-shadow,transform] hover:-translate-y-0.5 hover:bg-primary-hover hover:shadow-raised focus-visible:ring-4 focus-visible:ring-focus/25"
+          >
+            Mở cuộc trao đổi <Icon name="arrow" className="h-4 w-4" />
+          </Link>
+        </div>
       </div>
     </article>
   );
@@ -324,13 +325,16 @@ function LeadCard({
 
 export function LandlordLeadsPage() {
   const { status: authStatus, user, error: authError, refresh } = useAuth();
-  const allowed = authStatus === "authenticated" && user?.role === "LANDLORD";
+  const [mounted, setMounted] = useState(false);
+  const allowed = mounted && authStatus === "authenticated" && user?.role === "LANDLORD";
   const [view, setView] = useState<LeadView>("NEEDS_REPLY");
   const [page, setPage] = useState(1);
   const [result, setResult] = useState<ApiPage<LandlordLead> | null>(null);
   const [status, setStatus] = useState<"idle" | "loading" | "success" | "error">("idle");
   const [error, setError] = useState<ApiError | null>(null);
   const [retryKey, setRetryKey] = useState(0);
+
+  useEffect(() => setMounted(true), []);
 
   useEffect(() => {
     if (!allowed) return;
@@ -354,7 +358,7 @@ export function LandlordLeadsPage() {
     return () => controller.abort();
   }, [allowed, page, retryKey, view]);
 
-  if (authStatus === "loading") return <LoadingState message="Đang kiểm tra tài khoản…" />;
+  if (!mounted || authStatus === "loading") return <LoadingState message="Đang kiểm tra tài khoản…" />;
   if (authStatus === "anonymous")
     return (
       <ErrorState
@@ -377,26 +381,23 @@ export function LandlordLeadsPage() {
   if (!allowed) return <ErrorState message="Trang này dành cho tài khoản chủ trọ." />;
 
   return (
-    <section className="rm-workspace my-8 space-y-6" aria-labelledby="landlord-leads-heading">
-      <header className="border-2 border-heroDark-950 bg-rent-accent p-6 shadow-glass sm:p-8">
-        <span className="rm-eyebrow inline-flex items-center gap-2">
-          <Icon name="users" className="h-4 w-4" /> LANDLORD OPERATIONS
-        </span>
-        <h1
-          id="landlord-leads-heading"
-          className="mt-3 font-display text-4xl font-bold tracking-[-0.055em] sm:text-6xl"
-        >
-          Khách quan tâm cần xử lý
-        </h1>
-        <p className="mt-3 max-w-2xl text-sm font-medium leading-6 text-slate-700">
-          Ưu tiên người thuê đang chờ phản hồi, tiếp tục cuộc trao đổi và lưu ngữ cảnh riêng cho lần liên hệ tiếp theo.
-        </p>
+    <section className="rm-workspace rm-workspace-page space-y-6 my-8" aria-labelledby="landlord-leads-heading">
+      <header className="rm-workspace-hero" data-tone="info">
+        <div className="min-w-0">
+          <span className="rm-workspace-eyebrow inline-flex items-center gap-2">
+            <Icon name="users" className="h-4 w-4" /> LANDLORD OPERATIONS
+          </span>
+          <h1 id="landlord-leads-heading" className="rm-workspace-title mt-3">
+            Khách quan tâm cần xử lý
+          </h1>
+          <p className="rm-workspace-description mt-3">
+            Ưu tiên người thuê đang chờ phản hồi, tiếp tục cuộc trao đổi và lưu ngữ cảnh riêng cho lần liên hệ tiếp
+            theo.
+          </p>
+        </div>
       </header>
 
-      <nav
-        className="flex flex-wrap gap-2 border-2 border-heroDark-950 bg-white p-3 shadow-glass-sm"
-        aria-label="Bộ lọc lead"
-      >
+      <nav className="rm-workspace-card flex flex-wrap gap-2 p-3" aria-label="Bộ lọc lead">
         {views.map((item) => (
           <button
             key={item.value}
@@ -406,7 +407,7 @@ export function LandlordLeadsPage() {
               setView(item.value);
               setPage(1);
             }}
-            className="min-h-11 cursor-pointer border-2 border-heroDark-950 px-4 text-sm font-extrabold transition-colors hover:bg-[#e5eefc] focus-visible:ring-4 focus-visible:ring-blue-300 aria-pressed:bg-rent-coral"
+            className="min-h-11 cursor-pointer rounded-full border border-border px-4 text-sm font-extrabold transition-[background-color,border-color,color] hover:border-primary/40 hover:bg-primary-subtle focus-visible:ring-4 focus-visible:ring-focus/25 aria-pressed:border-primary aria-pressed:bg-primary aria-pressed:text-white"
           >
             {item.label}
           </button>

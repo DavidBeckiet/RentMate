@@ -1,17 +1,21 @@
 "use client";
 
 import Link from "next/link";
+import { useEffect, useState } from "react";
 import { Button } from "../../components/ui/button";
 import { EmptyState, ErrorState, LoadingState } from "../../components/ui/feedback-states";
+import { Icon } from "../../components/ui/icon";
 import { useAuth } from "../../lib/auth/auth-provider";
 import { AccountProfileForm } from "./account-profile-form";
-import styles from "./landlord-profile.module.css";
 import { LandlordVerificationPanel } from "./landlord-verification-panel";
 
 export function LandlordProfile() {
   const { status, user, error: authError, refresh } = useAuth();
+  const [mounted, setMounted] = useState(false);
 
-  if (status === "loading") return <LoadingState message="Đang kiểm tra tài khoản…" />;
+  useEffect(() => setMounted(true), []);
+
+  if (!mounted || status === "loading") return <LoadingState message="Đang kiểm tra tài khoản…" />;
   if (status === "anonymous") {
     return (
       <EmptyState
@@ -49,25 +53,40 @@ export function LandlordProfile() {
   }
 
   return (
-    <section
-      aria-labelledby="landlord-profile-heading"
-      className={`${styles.profile} rm-workspace grid gap-8 lg:grid-cols-[0.72fr_1.28fr] lg:items-start`}
-    >
-      <header className="border-b border-rent-line pb-6">
-        <p className="text-sm font-semibold text-teal-700">TÀI KHOẢN NGƯỜI CHO THUÊ</p>
-        <h1 id="landlord-profile-heading" className="mt-2 text-3xl font-bold text-rent-ink sm:text-4xl">
-          Hồ sơ tài khoản
-        </h1>
-        <p className="mt-3 leading-7 text-rent-secondary">
-          Quản lý tên tài khoản và số điện thoại liên hệ. Email đăng nhập không thể thay đổi.
-        </p>
+    <section aria-labelledby="landlord-profile-heading" className="rm-workspace-page space-y-8">
+      <header className="rm-workspace-hero" data-tone="info">
+        <div className="min-w-0">
+          <p className="rm-workspace-eyebrow inline-flex items-center gap-2">
+            <Icon name="shield" className="h-4 w-4" /> Hồ sơ chủ trọ
+          </p>
+          <h1 id="landlord-profile-heading" className="rm-workspace-title mt-3">
+            Hồ sơ tài khoản
+          </h1>
+          <p className="rm-workspace-description mt-3">
+            Quản lý tên tài khoản, số điện thoại liên hệ và trạng thái xác minh. Email đăng nhập không thể thay đổi.
+          </p>
+        </div>
+        <div className="rounded-card border border-info/20 bg-surface/80 px-4 py-3 text-ui-sm">
+          <p className="font-semibold text-foreground">Không gian cho thuê</p>
+          <p className="mt-1 text-ui-xs text-muted-foreground">
+            Thông tin xác minh được hiển thị theo trạng thái thực tế.
+          </p>
+        </div>
       </header>
 
-      <div className="rm-workspace-panel p-5 sm:p-7">
-        <AccountProfileForm user={user} />
-      </div>
-      <div className="lg:col-start-2">
-        <LandlordVerificationPanel />
+      <div className="grid gap-5 lg:grid-cols-[minmax(0,0.85fr)_minmax(0,1.15fr)] lg:items-start">
+        <section className="rm-workspace-card p-5 sm:p-7" aria-labelledby="landlord-account-heading">
+          <h2 id="landlord-account-heading" className="rm-workspace-section-title">
+            Thông tin tài khoản
+          </h2>
+          <p className="rm-workspace-section-description mb-6">
+            Đây là thông tin dùng để người thuê nhận diện và liên hệ với bạn.
+          </p>
+          <AccountProfileForm user={user} />
+        </section>
+        <div>
+          <LandlordVerificationPanel />
+        </div>
       </div>
     </section>
   );

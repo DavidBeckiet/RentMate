@@ -111,13 +111,10 @@ export function LandlordVerificationPanel() {
   const contactsVerified = verification?.email.verified === true && verification.phone.verified === true;
 
   return (
-    <section
-      className="space-y-5 border-2 border-heroDark-950 bg-[#fffdf7] p-5 shadow-glass sm:p-7"
-      aria-labelledby="verification-heading"
-    >
+    <section className="rm-workspace-card space-y-5 p-5 sm:p-7" aria-labelledby="verification-heading">
       <header>
-        <span className="rm-eyebrow inline-flex items-center gap-2">
-          <Icon name="shield" className="h-4 w-4" /> Độ tin cậy
+        <span className="rm-workspace-eyebrow inline-flex items-center gap-2">
+          <Icon name="shield" className="h-4 w-4" /> Thông tin xác minh
         </span>
         <h2 id="verification-heading" className="mt-2 font-display text-2xl font-extrabold text-rent-ink">
           Xác minh hồ sơ chủ trọ
@@ -141,7 +138,7 @@ export function LandlordVerificationPanel() {
 
       {loadState === "success" && verification ? (
         <div className="grid gap-3 sm:grid-cols-2">
-          <article className="space-y-2 border-2 border-heroDark-950 bg-[#e5eefc] p-4">
+          <article className="rm-verification-channel space-y-2 rounded-control border border-info/20 bg-info-subtle/45 p-4">
             <p className="text-sm font-extrabold">Email</p>
             <p className="break-all text-sm text-rent-secondary">{verification.email.address}</p>
             <p className="inline-flex items-center gap-2 text-sm font-extrabold">
@@ -166,7 +163,7 @@ export function LandlordVerificationPanel() {
                       id="landlord-email-token"
                       value={emailToken}
                       onChange={(event) => setEmailToken(event.target.value)}
-                      className="min-h-11 w-full border-2 border-heroDark-950 bg-white px-3 outline-none focus:ring-4 focus:ring-brandBlue-500/30"
+                      className="min-h-12 w-full rounded-control border border-border-strong bg-surface px-4 outline-none transition focus:border-primary focus:ring-[3px] focus:ring-primary/20"
                       autoComplete="one-time-code"
                     />
                     <Button
@@ -186,7 +183,7 @@ export function LandlordVerificationPanel() {
             ) : null}
           </article>
 
-          <article className="space-y-2 border-2 border-heroDark-950 bg-[#e5eefc] p-4">
+          <article className="rm-verification-channel space-y-2 rounded-control border border-info/20 bg-info-subtle/45 p-4">
             <p className="text-sm font-extrabold">Số điện thoại</p>
             <p className="break-all text-sm text-rent-secondary">{verification.phone.number ?? "Chưa cập nhật"}</p>
             <p className="inline-flex items-center gap-2 text-sm font-extrabold">
@@ -213,7 +210,7 @@ export function LandlordVerificationPanel() {
                       maxLength={6}
                       inputMode="numeric"
                       onChange={(event) => setPhoneCode(event.target.value.replace(/\D/g, "").slice(0, 6))}
-                      className="min-h-11 w-full border-2 border-heroDark-950 bg-white px-3 outline-none focus:ring-4 focus:ring-brandBlue-500/30"
+                      className="min-h-12 w-full rounded-control border border-border-strong bg-surface px-4 outline-none transition focus:border-primary focus:ring-[3px] focus:ring-primary/20"
                       autoComplete="one-time-code"
                     />
                     <Button
@@ -236,7 +233,7 @@ export function LandlordVerificationPanel() {
       ) : null}
 
       {loadState === "success" && profile ? (
-        <div className="space-y-3 border-2 border-heroDark-950 bg-[#e5eefc] p-4">
+        <div className="rounded-control border border-info/20 bg-info-subtle/45 p-4">
           <p className="inline-flex items-center gap-2 text-sm font-extrabold">
             <Icon name={profile.status === "APPROVED" ? "check" : "shield"} className="h-4 w-4" />
             {statusLabels[profile.status]}
@@ -247,7 +244,7 @@ export function LandlordVerificationPanel() {
       ) : null}
 
       {loadState === "success" && !contactsVerified ? (
-        <p className="border-l-4 border-brandBlue-700 pl-3 text-sm font-bold text-rent-secondary">
+        <p className="border-l-4 border-info pl-3 text-sm font-semibold text-muted-foreground">
           Vui lòng xác minh cả email và số điện thoại để mở bước duyệt hồ sơ.
         </p>
       ) : null}
@@ -268,7 +265,7 @@ export function LandlordVerificationPanel() {
               setDisplayName(event.target.value);
               setError(null);
             }}
-            className="min-h-11 w-full border-2 border-heroDark-950 bg-white px-3 outline-none focus:ring-4 focus:ring-brandBlue-500/30"
+            className="min-h-12 w-full rounded-control border border-border-strong bg-surface px-4 outline-none transition focus:border-primary focus:ring-[3px] focus:ring-primary/20"
           />
           <label className="block text-sm font-extrabold" htmlFor="verification-note">
             Ghi chú hỗ trợ <span className="font-semibold text-rent-secondary">(không bắt buộc)</span>
@@ -279,7 +276,7 @@ export function LandlordVerificationPanel() {
             maxLength={1000}
             rows={4}
             onChange={(event) => setNote(event.target.value)}
-            className="w-full resize-y border-2 border-heroDark-950 bg-white p-3 outline-none focus:ring-4 focus:ring-brandBlue-500/30"
+            className="min-h-28 w-full resize-y rounded-control border border-border-strong bg-surface p-3 outline-none transition focus:border-primary focus:ring-[3px] focus:ring-primary/20"
           />
           <Button pending={pendingAction === "profile"} pendingLabel="Đang gửi…" onClick={() => void submitProfile()}>
             {profile?.status === "REJECTED" ? "Gửi lại yêu cầu" : "Gửi yêu cầu xác minh"}

@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
+import { Badge, type BadgeVariant } from "../../components/ui/badge";
 import { Button } from "../../components/ui/button";
 import { EmptyState, ErrorState, LoadingState } from "../../components/ui/feedback-states";
 import { api, ApiError } from "../../lib/api/client";
@@ -12,6 +13,10 @@ function statusLabel(status: Inquiry["status"]): string {
   return status === "NEW" ? "Mới" : status === "CONTACTED" ? "Đang trao đổi" : "Đã đóng";
 }
 
+function statusVariant(status: Inquiry["status"]): BadgeVariant {
+  return status === "NEW" ? "info" : status === "CONTACTED" ? "primary" : "neutral";
+}
+
 function errorMessage(error: ApiError | null): string {
   if (error?.status === 401) return "Phiên đăng nhập đã hết. Vui lòng đăng nhập lại.";
   if (error?.status === 403) return "Tài khoản này không có quyền xem các yêu cầu.";
@@ -20,13 +25,17 @@ function errorMessage(error: ApiError | null): string {
 
 export function InquiriesPage({ landlord = false }: Readonly<{ landlord?: boolean }>) {
   const { status: authStatus, user, refresh } = useAuth();
+  const [mounted, setMounted] = useState(false);
   const [data, setData] = useState<readonly Inquiry[]>([]);
   const [state, setState] = useState<"idle" | "loading" | "success" | "error">("idle");
   const [error, setError] = useState<ApiError | null>(null);
   const [retry, setRetry] = useState(0);
   const allowed =
+    mounted &&
     authStatus === "authenticated" &&
     ((landlord && user?.role === "LANDLORD") || (!landlord && user?.role === "TENANT"));
+
+  useEffect(() => setMounted(true), []);
 
   useEffect(() => {
     if (!allowed) return;
@@ -49,7 +58,7 @@ export function InquiriesPage({ landlord = false }: Readonly<{ landlord?: boolea
     return () => controller.abort();
   }, [allowed, landlord, retry]);
 
-  if (authStatus === "loading") return <LoadingState message="Đang kiểm tra tài khoản…" />;
+  if (!mounted || authStatus === "loading") return <LoadingState message="Đang kiểm tra tài khoản…" />;
   if (authStatus === "anonymous") {
     return (
       <EmptyState
@@ -85,17 +94,23 @@ export function InquiriesPage({ landlord = false }: Readonly<{ landlord?: boolea
     );
 
   return (
-    <section className="rm-workspace my-4 space-y-8" aria-labelledby="inquiries-heading">
-      <header className="space-y-3 border-2 border-heroDark-950 bg-rent-accent p-6 shadow-glass sm:p-8">
-        <span className="rm-eyebrow">KẾT NỐI RENTMATE</span>
-        <h1 id="inquiries-heading" className="font-display text-4xl font-bold tracking-[-0.055em] sm:text-6xl">
-          {landlord ? "Yêu cầu cần xử lý" : "Yêu cầu của tôi"}
-        </h1>
-        <p className="max-w-2xl text-sm font-medium leading-6 text-slate-700">
-          {landlord
-            ? "Theo dõi khách thuê đang chờ phản hồi và tiếp tục cuộc trao đổi."
-            : "Theo dõi những tin đăng bạn đã chủ động liên hệ."}
-        </p>
+    <section className="rm-workspace rm-workspace-page space-y-8 my-4" aria-labelledby="inquiries-heading">
+      <header className="rm-workspace-hero" data-tone={landlord ? "info" : "accent"}>
+        <div className="min-w-0">
+          <span className="rm-workspace-eyebrow">Kết nối RentMate</span>
+          <h1 id="inquiries-heading" className="rm-workspace-title mt-3">
+            {landlord ? "Yêu cầu cần xử lý" : "Yêu cầu của tôi"}
+          </h1>
+          <p className="rm-workspace-description mt-3">
+            {landlord
+              ? "Theo dõi khách thuê đang chờ phản hồi và tiếp tục cuộc trao đổi."
+              : "Theo dõi những tin đăng bạn đã chủ động liên hệ."}
+          </p>
+        </div>
+        <div className="rounded-card border border-border bg-surface/80 px-4 py-3 text-ui-sm">
+          <p className="font-semibold text-foreground">{data.length} yêu cầu</p>
+          <p className="mt-1 text-ui-xs text-muted-foreground">Đang hiển thị từ tài khoản của bạn</p>
+        </div>
       </header>
       {data.length === 0 ? (
         <EmptyState
@@ -119,18 +134,16 @@ export function InquiriesPage({ landlord = false }: Readonly<{ landlord?: boolea
             <Link
               key={inquiry.id}
               href={`/inquiries/${inquiry.id}`}
-              className="block border-2 border-heroDark-950 bg-rent-surface p-5 shadow-glass-sm transition-transform hover:-translate-y-0.5 focus-visible:outline-none focus-visible:shadow-glass"
+              className="rm-inquiry-card block p-5 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-focus/25 sm:p-6"
             >
               <div className="flex flex-wrap items-start justify-between gap-4">
                 <div>
-                  <p className="text-xs font-bold uppercase tracking-wider text-slate-500">
-                    Tin đăng #{inquiry.listingId}
-                  </p>
-                  <h2 className="mt-1 font-display text-xl font-bold">Yêu cầu liên hệ #{inquiry.id}</h2>
+                  <p className="rm-workspace-eyebrow">Tin đăng #{inquiry.listingId}</p>
+                  <h2 className="mt-2 font-display text-xl font-bold text-foreground">Yêu cầu liên hệ #{inquiry.id}</h2>
                 </div>
-                <span className="border-2 border-heroDark-950 bg-rent-yellow px-3 py-1 text-xs font-bold">
+                <Badge variant={statusVariant(inquiry.status)} context="Trạng thái yêu cầu" showIndicator>
                   {statusLabel(inquiry.status)}
-                </span>
+                </Badge>
               </div>
               <p className="mt-4 text-sm font-medium text-slate-600">
                 Cập nhật {new Date(inquiry.updatedAt).toLocaleString("vi-VN")}

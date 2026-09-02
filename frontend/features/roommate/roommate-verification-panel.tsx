@@ -5,6 +5,7 @@ import { Button } from "../../components/ui/button";
 import { Card } from "../../components/ui/card";
 import { Skeleton } from "../../components/ui/skeleton";
 import { Icon } from "../../components/ui/icon";
+import { cx } from "../../components/ui/class-names";
 import { api, ApiError } from "../../lib/api/client";
 import { useAuth } from "../../lib/auth/auth-provider";
 import type { TenantContactVerificationStatus } from "../../types/api";
@@ -133,7 +134,7 @@ function ChannelStatusCard({
   );
 }
 
-export function RoommateVerificationPanel() {
+export function RoommateVerificationPanel({ className = "" }: Readonly<{ className?: string }> = {}) {
   const { status: authStatus, user } = useAuth();
   const ready = authStatus === "authenticated" && user?.role === "TENANT" && user.isActive;
   const [verification, setVerification] = useState<TenantContactVerificationStatus | null>(null);
@@ -217,7 +218,7 @@ export function RoommateVerificationPanel() {
   return (
     <Card
       aria-labelledby="roommate-verification-heading"
-      className="rm-roommate-card-static mx-auto max-w-3xl space-y-5"
+      className={cx("rm-roommate-card-static mx-auto max-w-3xl space-y-5", className)}
     >
       <header>
         <p className="rm-roommate-section-label inline-flex items-center gap-2">

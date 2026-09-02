@@ -9,7 +9,14 @@ import { SelectField } from "../../components/ui/form-controls";
 import { Pagination } from "../../components/ui/pagination";
 import { api, ApiError } from "../../lib/api/client";
 import { useAuth } from "../../lib/auth/auth-provider";
-import type { ApiPage, ListingBusinessStatus, ListingStatus, OwnerListingSummary } from "../../types/api";
+import type {
+  ApiPage,
+  Inquiry,
+  LandlordAnalytics,
+  ListingBusinessStatus,
+  ListingStatus,
+  OwnerListingSummary
+} from "../../types/api";
 import { OwnerListingCard } from "./owner-listing-card";
 import {
   ownerListingStatuses,
@@ -25,6 +32,7 @@ import {
 import styles from "./owner-listings-page.module.css";
 
 type LoadStatus = "idle" | "loading" | "success" | "error";
+type SnapshotStatus = "idle" | "loading" | "success" | "error";
 
 const statusLabels: Record<ListingStatus, string> = {
   DRAFT: "Nháp",
@@ -60,6 +68,10 @@ function createError(error: ApiError | null): string {
   return "Không thể tạo bản nháp lúc này. Vui lòng thử lại sau.";
 }
 
+function inquiryStatusLabel(status: Inquiry["status"]): string {
+  return status === "NEW" ? "Mới" : status === "CONTACTED" ? "Đang trao đổi" : "Đã đóng";
+}
+
 export function OwnerListingsPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -67,7 +79,8 @@ export function OwnerListingsPage() {
   const parsed = useMemo(() => parseOwnerQuery(new URLSearchParams(rawQuery)), [rawQuery]);
   const queryIdentity = parsed.ok ? serializeOwnerQuery(parsed.state).toString() : `invalid:${rawQuery}`;
   const { status: authStatus, user, error: authError, refresh } = useAuth();
-  const isLandlord = authStatus === "authenticated" && user?.role === "LANDLORD";
+  const [mounted, setMounted] = useState(false);
+  const isLandlord = mounted && authStatus === "authenticated" && user?.role === "LANDLORD";
   const [result, setResult] = useState<ApiPage<OwnerListingSummary> | null>(null);
   const [loadStatus, setLoadStatus] = useState<LoadStatus>("idle");
   const [loadError, setLoadError] = useState<ApiError | null>(null);
@@ -76,10 +89,23 @@ export function OwnerListingsPage() {
   const [createFeedback, setCreateFeedback] = useState<string | null>(null);
   const [duplicatePendingId, setDuplicatePendingId] = useState<number | null>(null);
   const [duplicateFeedback, setDuplicateFeedback] = useState<string | null>(null);
+  const [workspaceSnapshot, setWorkspaceSnapshot] = useState<{
+    readonly analytics: LandlordAnalytics;
+    readonly inquiries: readonly Inquiry[];
+  } | null>(null);
+  const [snapshotStatus, setSnapshotStatus] = useState<SnapshotStatus>("idle");
   const requestIdentity = useRef(0);
   const authRefreshAttempted = useRef(false);
   const createPendingRef = useRef(false);
   const createController = useRef<AbortController | null>(null);
+  const showSnapshot =
+    isLandlord &&
+    parsed.ok &&
+    parsed.state.page === 1 &&
+    parsed.state.status === undefined &&
+    parsed.state.businessStatus === undefined;
+
+  useEffect(() => setMounted(true), []);
 
   useEffect(() => {
     if (!isLandlord || !parsed.ok) {
@@ -117,6 +143,33 @@ export function OwnerListingsPage() {
 
     return () => controller.abort();
   }, [isLandlord, parsed, queryIdentity, refresh, retryKey]);
+
+  useEffect(() => {
+    if (!showSnapshot) {
+      setWorkspaceSnapshot(null);
+      setSnapshotStatus("idle");
+      return;
+    }
+
+    const controller = new AbortController();
+    setWorkspaceSnapshot(null);
+    setSnapshotStatus("loading");
+    void Promise.all([
+      api.contact.listLandlordInquiries({ page: 1, pageSize: 3 }, controller.signal),
+      api.analytics.getLandlord("30D", controller.signal)
+    ])
+      .then(([inquiries, analytics]) => {
+        if (controller.signal.aborted) return;
+        setWorkspaceSnapshot({ inquiries: inquiries.data, analytics });
+        setSnapshotStatus("success");
+      })
+      .catch(() => {
+        if (controller.signal.aborted) return;
+        setSnapshotStatus("error");
+      });
+
+    return () => controller.abort();
+  }, [retryKey, showSnapshot]);
 
   useEffect(
     () => () => {
@@ -182,7 +235,7 @@ export function OwnerListingsPage() {
   );
 
   let content: ReactNode;
-  if (authStatus === "loading") {
+  if (!mounted || authStatus === "loading") {
     content = <LoadingState message="Đang kiểm tra tài khoản…" />;
   } else if (!parsed.ok) {
     content = (
@@ -240,6 +293,9 @@ export function OwnerListingsPage() {
     const currentListings = result.data.filter(
       (listing) => listing.status !== "INACTIVE" && listing.businessStatus !== "RENTED"
     );
+    const attentionListings = result.data.filter(
+      (listing) => listing.availabilityStatus === "REMINDER_DUE" || listing.availabilityStatus === "AUTO_PAUSED"
+    );
     const renderCards = (listings: readonly OwnerListingSummary[]) => (
       <div className="space-y-4" aria-label="Tin đăng của bạn">
         {listings.map((listing) => (
@@ -255,14 +311,174 @@ export function OwnerListingsPage() {
 
     content = (
       <div className="space-y-6">
-        {result.data.some(
-          (listing) => listing.availabilityStatus === "REMINDER_DUE" || listing.availabilityStatus === "AUTO_PAUSED"
-        ) ? (
-          <div className="border-2 border-heroDark-950 bg-rent-yellow p-4 shadow-glass-sm" role="status">
-            <p className="font-bold text-rent-ink">Tin cần cập nhật</p>
-            <p className="mt-1 text-sm text-rent-secondary">
-              Một số tin đăng cần xác nhận lại tình trạng phòng để tránh hiển thị thông tin đã cũ.
+        {attentionListings.length > 0 ? (
+          <div
+            className="rm-workspace-card flex flex-wrap items-start gap-3 border-l-4 border-warning bg-warning-subtle p-4"
+            role="status"
+          >
+            <span className="mt-0.5 grid h-7 w-7 shrink-0 place-items-center rounded-full bg-warning text-white">
+              !
+            </span>
+            <div>
+              <p className="font-bold text-rent-ink">Tin cần cập nhật</p>
+              <p className="mt-1 text-sm text-rent-secondary">
+                Một số tin đăng cần xác nhận lại tình trạng phòng để tránh hiển thị thông tin đã cũ.
+              </p>
+            </div>
+          </div>
+        ) : null}
+        <div className="rm-summary-grid" aria-label="Tóm tắt tin đăng trong trang này">
+          <div className="rm-summary-card" data-tone="accent">
+            <span className="rm-summary-label">Tin trong trang</span>
+            <strong className="rm-summary-value">{result.data.length}</strong>
+            <span className="rm-summary-note">Theo bộ lọc và trang hiện tại</span>
+          </div>
+          <div className="rm-summary-card" data-tone="attention">
+            <span className="rm-summary-label">Cần chú ý</span>
+            <strong className="rm-summary-value">{attentionListings.length}</strong>
+            <span className="rm-summary-note">Cần xác nhận lại tình trạng phòng</span>
+          </div>
+          <div className="rm-summary-card">
+            <span className="rm-summary-label">Đang quản lý</span>
+            <strong className="rm-summary-value">{currentListings.length}</strong>
+            <span className="rm-summary-note">Không gồm tin đã lưu trữ</span>
+          </div>
+          <div className="rm-summary-card" data-tone="muted">
+            <span className="rm-summary-label">Đã lưu trữ</span>
+            <strong className="rm-summary-value">{archivedListings.length}</strong>
+            <span className="rm-summary-note">Tin đã thuê hoặc ngừng hoạt động</span>
+          </div>
+        </div>
+        <section
+          className="rm-workspace-card flex flex-col gap-4 p-5 sm:flex-row sm:items-center sm:justify-between"
+          aria-labelledby="landlord-quick-actions-heading"
+        >
+          <div className="min-w-0">
+            <p className="rm-workspace-eyebrow">Điểm xử lý nhanh</p>
+            <h2 id="landlord-quick-actions-heading" className="mt-1 font-display text-lg font-bold text-foreground">
+              Giữ nhịp phản hồi với khách thuê
+            </h2>
+            <p className="mt-1 max-w-2xl text-sm leading-6 text-muted-foreground">
+              Mở đúng khu vực để xử lý yêu cầu, theo dõi lead hoặc xem số liệu từ các hoạt động đã ghi nhận.
             </p>
+          </div>
+          <div className="rm-workspace-action-bar shrink-0">
+            <Link
+              href="/landlord/inquiries"
+              className="min-h-11 rounded-control border border-border px-4 py-2 text-ui-sm font-semibold text-primary-hover transition-colors hover:border-primary/40 hover:bg-primary-subtle"
+            >
+              Yêu cầu liên hệ
+            </Link>
+            <Link
+              href="/landlord/analytics"
+              className="min-h-11 rounded-control bg-primary px-4 py-2 text-ui-sm font-semibold text-white transition-colors hover:bg-primary-hover"
+            >
+              Xem phân tích
+            </Link>
+          </div>
+        </section>
+        {showSnapshot && snapshotStatus === "loading" ? (
+          <section className="rm-workspace-card grid gap-4 p-5 sm:grid-cols-3" aria-label="Đang tải tóm tắt vận hành">
+            <div className="space-y-3">
+              <div className="rm-skeleton h-3 w-24 rounded-full bg-muted" />
+              <div className="rm-skeleton h-9 w-16 rounded-control bg-muted" />
+            </div>
+            <div className="space-y-3">
+              <div className="rm-skeleton h-3 w-28 rounded-full bg-muted" />
+              <div className="rm-skeleton h-9 w-16 rounded-control bg-muted" />
+            </div>
+            <div className="space-y-3">
+              <div className="rm-skeleton h-3 w-20 rounded-full bg-muted" />
+              <div className="rm-skeleton h-9 w-16 rounded-control bg-muted" />
+            </div>
+          </section>
+        ) : null}
+        {showSnapshot && snapshotStatus === "error" ? (
+          <div
+            className="rm-workspace-card border-l-4 border-warning bg-warning-subtle p-4 text-sm font-semibold text-warning-foreground"
+            role="status"
+          >
+            Chưa thể tải tóm tắt hoạt động lúc này. Bạn vẫn có thể quản lý tin đăng hoặc mở Analytics để thử lại.
+          </div>
+        ) : null}
+        {showSnapshot && workspaceSnapshot ? (
+          <div className="grid gap-5 lg:grid-cols-[minmax(0,1.15fr)_minmax(18rem,0.85fr)]">
+            <section className="rm-workspace-card p-5 sm:p-6" aria-labelledby="landlord-activity-heading">
+              <div className="flex flex-wrap items-start justify-between gap-3">
+                <div>
+                  <p className="rm-workspace-eyebrow">Dữ liệu 30 ngày</p>
+                  <h2 id="landlord-activity-heading" className="mt-1 font-display text-lg font-bold text-foreground">
+                    Hoạt động trên các tin đăng
+                  </h2>
+                </div>
+                <Link
+                  href="/landlord/analytics"
+                  className="text-sm font-semibold text-primary-hover underline underline-offset-4"
+                >
+                  Xem đầy đủ
+                </Link>
+              </div>
+              <div className="mt-5 grid gap-3 sm:grid-cols-3">
+                <div className="rounded-control bg-primary-subtle p-3">
+                  <span className="rm-summary-label">Inquiry mới</span>
+                  <strong className="rm-summary-value text-3xl">{workspaceSnapshot.analytics.inquiries}</strong>
+                </div>
+                <div className="rounded-control bg-warning-subtle p-3">
+                  <span className="rm-summary-label">Cần phản hồi</span>
+                  <strong className="rm-summary-value text-3xl">{workspaceSnapshot.analytics.needsReplyNow}</strong>
+                </div>
+                <div className="rounded-control bg-surface-subtle p-3">
+                  <span className="rm-summary-label">Lượt xem</span>
+                  <strong className="rm-summary-value text-3xl">{workspaceSnapshot.analytics.views}</strong>
+                </div>
+              </div>
+              <p className="mt-4 text-xs leading-5 text-muted-foreground">
+                Chỉ số lấy từ Analytics hiện có; không phải số hợp đồng hay doanh thu.
+              </p>
+            </section>
+            <section className="rm-workspace-card p-5 sm:p-6" aria-labelledby="recent-inquiries-heading">
+              <div className="flex flex-wrap items-start justify-between gap-3">
+                <div>
+                  <p className="rm-workspace-eyebrow">Hộp thư</p>
+                  <h2 id="recent-inquiries-heading" className="mt-1 font-display text-lg font-bold text-foreground">
+                    Yêu cầu mới nhất
+                  </h2>
+                </div>
+                <Link
+                  href="/landlord/inquiries"
+                  className="text-sm font-semibold text-primary-hover underline underline-offset-4"
+                >
+                  Mở hộp thư
+                </Link>
+              </div>
+              {workspaceSnapshot.inquiries.length === 0 ? (
+                <p className="mt-5 text-sm leading-6 text-muted-foreground">Chưa có yêu cầu liên hệ nào.</p>
+              ) : (
+                <ul className="mt-4 divide-y divide-border">
+                  {workspaceSnapshot.inquiries.map((inquiry) => (
+                    <li key={inquiry.id}>
+                      <Link
+                        href={`/inquiries/${inquiry.id}`}
+                        className="flex min-h-16 items-center gap-3 py-3 transition-colors hover:text-primary-hover"
+                      >
+                        <span className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-primary-subtle text-sm font-bold text-primary-hover">
+                          #{inquiry.id}
+                        </span>
+                        <span className="min-w-0 flex-1">
+                          <span className="block truncate text-sm font-semibold">Tin đăng #{inquiry.listingId}</span>
+                          <span className="block text-xs text-muted-foreground">
+                            {inquiryStatusLabel(inquiry.status)}
+                          </span>
+                        </span>
+                        <span className="shrink-0 text-xs text-muted-foreground">
+                          {new Date(inquiry.updatedAt).toLocaleDateString("vi-VN")}
+                        </span>
+                      </Link>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </section>
           </div>
         ) : null}
         {result.data.length === 0 ? (
@@ -320,17 +536,17 @@ export function OwnerListingsPage() {
   const committedState = parsed.ok ? parsed.state : { page: 1 };
 
   return (
-    <section aria-labelledby="owner-listings-heading" className={`${styles.ownerPage} rm-workspace space-y-8 my-4`}>
-      <header className="flex flex-col gap-6 border-2 border-heroDark-950 bg-rent-accent p-6 shadow-glass sm:flex-row sm:items-center sm:justify-between sm:p-8">
+    <section
+      aria-labelledby="owner-listings-heading"
+      className={`${styles.ownerPage} rm-workspace rm-workspace-page space-y-8 my-4`}
+    >
+      <header className="rm-workspace-hero" data-tone="accent">
         <div className="max-w-2xl space-y-2">
-          <span className="rm-eyebrow">KHU VỰC CHỦ NHÀ</span>
-          <h1
-            id="owner-listings-heading"
-            className="font-display text-4xl font-bold tracking-[-0.055em] text-rent-ink sm:text-6xl"
-          >
+          <span className="rm-workspace-eyebrow">Khu vực chủ nhà</span>
+          <h1 id="owner-listings-heading" className="rm-workspace-title mt-3">
             Quản lý tin cho thuê
           </h1>
-          <p className="text-sm font-medium text-slate-600 leading-relaxed">
+          <p className="rm-workspace-description mt-3">
             Theo dõi trạng thái duyệt, chỉnh sửa chi tiết và cập nhật vòng đời tin đăng của bạn.
           </p>
         </div>
@@ -347,7 +563,7 @@ export function OwnerListingsPage() {
       </header>
 
       {isLandlord && parsed.ok ? (
-        <div className="grid max-w-2xl gap-4 border-2 border-heroDark-950 bg-rent-surface p-4 shadow-glass-sm sm:grid-cols-2">
+        <div className="rm-workspace-card grid max-w-2xl gap-4 p-4 sm:grid-cols-2">
           <SelectField
             id="owner-status-filter"
             name="status"
@@ -389,7 +605,7 @@ export function OwnerListingsPage() {
       {createFeedback ? (
         <p
           role="alert"
-          className="border-2 border-heroDark-950 bg-rent-coral p-4 text-sm font-bold text-rent-ink shadow-glass-sm"
+          className="rm-workspace-card border-l-4 border-danger bg-danger-subtle p-4 text-sm font-semibold text-danger"
         >
           {createFeedback}
         </p>
@@ -397,7 +613,7 @@ export function OwnerListingsPage() {
       {duplicateFeedback ? (
         <p
           role="alert"
-          className="border-2 border-heroDark-950 bg-rent-coral p-4 text-sm font-bold text-rent-ink shadow-glass-sm"
+          className="rm-workspace-card border-l-4 border-danger bg-danger-subtle p-4 text-sm font-semibold text-danger"
         >
           {duplicateFeedback}
         </p>

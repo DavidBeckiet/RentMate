@@ -384,13 +384,13 @@ export function OwnerImageManager({
     : null;
 
   return (
-    <section aria-labelledby="owner-images-heading" className="rm-workspace-panel space-y-6 p-5 sm:p-6">
+    <section aria-labelledby="owner-images-heading" className="rm-workspace-card space-y-6 p-5 sm:p-6">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <h2 id="owner-images-heading" className="text-xl font-semibold text-rent-ink">
+          <h2 id="owner-images-heading" className="rm-workspace-section-title">
             Ảnh của tin
           </h2>
-          <p className="mt-1 text-sm text-rent-secondary">
+          <p className="rm-workspace-section-description">
             {canonicalImages.length}/{maximumImageCount} ảnh · ảnh đầu tiên là ảnh bìa
           </p>
         </div>
@@ -431,8 +431,8 @@ export function OwnerImageManager({
         </div>
       ) : null}
 
-      <div className="space-y-4 rounded-control border border-dashed border-teal-300 bg-rent-primary-subtle/50 p-5">
-        <h3 className="font-semibold text-rent-ink">Thêm ảnh</h3>
+      <div className="rm-image-upload-panel space-y-4 rounded-control border border-dashed border-primary/35 bg-primary-subtle/45 p-5">
+        <h3 className="font-display text-lg font-bold text-foreground">Thêm ảnh</h3>
         <div className="grid gap-4 sm:grid-cols-2">
           <div className="space-y-2">
             <label htmlFor="owner-image-file" className="block text-sm font-medium text-slate-900">
@@ -477,16 +477,16 @@ export function OwnerImageManager({
       </div>
 
       {proposedImages.length > 0 ? (
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        <div className="rm-gallery-grid">
           {proposedImages.map((image, index) => {
             const deleteForbidden = detail.status !== "DRAFT" && canonicalImages.length === 1;
             const isConfirming = confirmingDelete?.imageId === image.id && !confirmingDelete.replacement;
             return (
               <article
                 key={image.id}
-                className="group space-y-3 rounded-control border border-rent-line bg-white p-3 transition-[border-color,box-shadow,transform] duration-200 hover:-translate-y-0.5 hover:border-teal-300 hover:shadow-card-hover"
+                className="rm-gallery-item group space-y-3 transition-[border-color,box-shadow,transform] duration-200 hover:-translate-y-0.5 hover:border-primary/40 hover:shadow-raised"
               >
-                <div className="relative aspect-[4/3] overflow-hidden rounded-control bg-rent-surface-muted">
+                <div className="rm-gallery-image">
                   <Image
                     src={image.url}
                     alt={image.altText ?? `Ảnh ${index + 1} của ${detail.title ?? "tin đăng"}`}
@@ -560,7 +560,7 @@ export function OwnerImageManager({
         </p>
       )}
 
-      <div className="flex flex-wrap gap-3 border-t border-rent-line pt-4">
+      <div className="rm-workspace-action-bar border-t border-border pt-4">
         <Button
           variant="secondary"
           pending={pendingAction === "reorder"}

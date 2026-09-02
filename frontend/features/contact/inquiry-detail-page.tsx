@@ -45,6 +45,7 @@ const contactReportCategories: readonly { readonly value: ContactReportCategory;
 export function InquiryDetailPage({ inquiryId }: Readonly<{ inquiryId: string }>) {
   const id = useMemo(() => parseId(inquiryId), [inquiryId]);
   const { status: authStatus, user } = useAuth();
+  const [mounted, setMounted] = useState(false);
   const [inquiry, setInquiry] = useState<Inquiry | null>(null);
   const [state, setState] = useState<"loading" | "success" | "error">(id === null ? "error" : "loading");
   const [error, setError] = useState<ApiError | null>(null);
@@ -60,6 +61,8 @@ export function InquiryDetailPage({ inquiryId }: Readonly<{ inquiryId: string }>
   const [reportMessageId, setReportMessageId] = useState("");
   const [reportSubmitted, setReportSubmitted] = useState(false);
   const [realtimeStatus, setRealtimeStatus] = useState<InquiryRealtimeConnectionStatus>("connecting");
+
+  useEffect(() => setMounted(true), []);
 
   const load = useCallback(() => {
     if (id === null) return;
@@ -119,7 +122,9 @@ export function InquiryDetailPage({ inquiryId }: Readonly<{ inquiryId: string }>
     return () => connection.close();
   }, [authStatus, id, state, synchronize, user]);
 
-  if (authStatus === "loading" || state === "loading") return <LoadingState message="Đang mở cuộc trò chuyện…" />;
+  if (!mounted || authStatus === "loading" || state === "loading") {
+    return <LoadingState message="Đang mở cuộc trò chuyện…" />;
+  }
   if (authStatus !== "authenticated" || !user)
     return (
       <ErrorState
@@ -231,24 +236,24 @@ export function InquiryDetailPage({ inquiryId }: Readonly<{ inquiryId: string }>
 
   const isLandlord = user.role === "LANDLORD";
   return (
-    <section className="rm-workspace my-4 space-y-8" aria-labelledby="inquiry-detail-heading">
+    <section className="rm-workspace rm-workspace-page space-y-8 my-4" aria-labelledby="inquiry-detail-heading">
       <Link
         href={isLandlord ? "/landlord/inquiries" : "/inquiries"}
-        className="inline-flex font-bold text-teal-800 underline"
+        className="inline-flex min-h-11 items-center font-bold text-primary-hover underline decoration-2 underline-offset-4"
       >
         ← Quay lại danh sách yêu cầu
       </Link>
-      <header className="flex flex-col gap-4 border-2 border-heroDark-950 bg-rent-accent p-6 shadow-glass sm:flex-row sm:items-end sm:justify-between sm:p-8">
+      <header className="rm-workspace-hero" data-tone={inquiry.status === "CLOSED" ? "info" : "accent"}>
         <div>
-          <span className="rm-eyebrow">CUỘC TRÒ CHUYỆN</span>
-          <h1 id="inquiry-detail-heading" className="mt-2 font-display text-4xl font-bold">
+          <span className="rm-workspace-eyebrow">Cuộc trò chuyện</span>
+          <h1 id="inquiry-detail-heading" className="rm-workspace-title mt-3">
             Tin đăng #{inquiry.listingId}
           </h1>
-          <p className="mt-2 text-sm font-bold">Trạng thái: {statusLabel(inquiry.status)}</p>
+          <p className="mt-3 text-sm font-semibold text-muted-foreground">Trạng thái: {statusLabel(inquiry.status)}</p>
           <p
             role="status"
             aria-live="polite"
-            className="mt-3 inline-flex items-center gap-2 border-2 border-heroDark-950 bg-white px-3 py-2 text-xs font-extrabold"
+            className="mt-3 inline-flex min-h-8 items-center gap-2 rounded-full border border-border bg-surface px-3 py-1.5 text-xs font-extrabold"
           >
             <span
               aria-hidden="true"
@@ -286,7 +291,7 @@ export function InquiryDetailPage({ inquiryId }: Readonly<{ inquiryId: string }>
           </Button>
           {safetyMenuOpen ? (
             <div
-              className="absolute right-0 z-20 mt-2 w-56 border-2 border-heroDark-950 bg-rent-surface p-2 shadow-glass"
+              className="absolute right-0 z-20 mt-2 w-[min(18rem,calc(100vw-2rem))] rounded-card border border-border bg-surface p-2 shadow-overlay"
               role="menu"
             >
               <Button
@@ -313,12 +318,18 @@ export function InquiryDetailPage({ inquiryId }: Readonly<{ inquiryId: string }>
           ) : null}
         </div>
         {reportSubmitted ? (
-          <p role="status" className="w-full border-2 border-heroDark-950 bg-rent-accent p-3 text-sm font-bold">
+          <p
+            role="status"
+            className="rm-workspace-card w-full border-l-4 border-success bg-success-subtle p-3 text-sm font-semibold text-success-foreground"
+          >
             Đã gửi báo cáo. RentMate sẽ xem xét thông tin này.
           </p>
         ) : null}
         {safetyError ? (
-          <p role="alert" className="w-full border-2 border-heroDark-950 bg-rent-coral p-3 text-sm font-bold">
+          <p
+            role="alert"
+            className="rm-workspace-card w-full border-l-4 border-danger bg-danger-subtle p-3 text-sm font-semibold text-danger"
+          >
             {safetyError}
           </p>
         ) : null}
@@ -326,7 +337,7 @@ export function InquiryDetailPage({ inquiryId }: Readonly<{ inquiryId: string }>
       {reportOpen ? (
         <form
           onSubmit={(event) => void submitReport(event)}
-          className="space-y-4 border-2 border-heroDark-950 bg-rent-surface p-5 shadow-glass"
+          className="rm-workspace-card space-y-4 p-5 sm:p-6"
           aria-label="Báo cáo cuộc trò chuyện"
         >
           <div>
@@ -341,7 +352,7 @@ export function InquiryDetailPage({ inquiryId }: Readonly<{ inquiryId: string }>
               id="contact-report-category"
               value={reportCategory}
               onChange={(event) => setReportCategory(event.target.value as ContactReportCategory)}
-              className="mt-2 block min-h-11 w-full border-2 border-heroDark-950 bg-white px-3"
+              className="mt-2 block min-h-12 w-full rounded-control border border-border-strong bg-surface px-4"
             >
               {contactReportCategories.map((category) => (
                 <option key={category.value} value={category.value}>
@@ -356,7 +367,7 @@ export function InquiryDetailPage({ inquiryId }: Readonly<{ inquiryId: string }>
               id="contact-report-message"
               value={reportMessageId}
               onChange={(event) => setReportMessageId(event.target.value)}
-              className="mt-2 block min-h-11 w-full border-2 border-heroDark-950 bg-white px-3"
+              className="mt-2 block min-h-12 w-full rounded-control border border-border-strong bg-surface px-4"
             >
               <option value="">Toàn bộ cuộc trò chuyện</option>
               {inquiry.messages.map((item) => (
@@ -374,7 +385,7 @@ export function InquiryDetailPage({ inquiryId }: Readonly<{ inquiryId: string }>
               onChange={(event) => setReportDetails(event.target.value)}
               maxLength={2000}
               rows={4}
-              className="mt-2 block w-full resize-y border-2 border-heroDark-950 bg-white p-3 font-medium"
+              className="mt-2 block min-h-28 w-full resize-y rounded-control border border-border-strong bg-surface p-3 font-medium outline-none focus:border-primary focus:ring-[3px] focus:ring-primary/20"
             />
           </label>
           <div className="flex flex-wrap gap-3">
@@ -388,12 +399,15 @@ export function InquiryDetailPage({ inquiryId }: Readonly<{ inquiryId: string }>
         </form>
       ) : null}
       {error ? (
-        <p role="alert" className="border-2 border-heroDark-950 bg-rent-coral p-4 text-sm font-bold">
+        <p
+          role="alert"
+          className="rm-workspace-card border-l-4 border-danger bg-danger-subtle p-4 text-sm font-semibold text-danger"
+        >
           Không thể cập nhật cuộc trò chuyện. Vui lòng thử lại.
         </p>
       ) : null}
       <div
-        className="space-y-4"
+        className="rm-inquiry-thread space-y-4"
         aria-label="Tin nhắn trong cuộc trò chuyện"
         aria-live="polite"
         aria-relevant="additions text"
@@ -401,7 +415,7 @@ export function InquiryDetailPage({ inquiryId }: Readonly<{ inquiryId: string }>
         {inquiry.messages.map((item) => (
           <article
             key={item.id}
-            className={`max-w-2xl border-2 border-heroDark-950 p-4 shadow-glass-sm ${item.senderRole === user.role ? "ml-auto bg-rent-accent" : "bg-rent-surface"}`}
+            className={`rm-inquiry-message max-w-2xl rounded-card border border-border p-4 shadow-surface ${item.senderRole === user.role ? "ml-auto bg-primary-subtle" : "bg-surface"}`}
           >
             <p className="text-xs font-bold uppercase tracking-wider text-slate-500">
               {item.senderRole === "TENANT" ? "Người thuê" : "Chủ trọ"} ·{" "}
@@ -412,18 +426,15 @@ export function InquiryDetailPage({ inquiryId }: Readonly<{ inquiryId: string }>
         ))}
       </div>
       {inquiry.status === "CLOSED" ? (
-        <p className="border-2 border-heroDark-950 bg-slate-100 p-4 text-sm font-bold text-slate-600">
+        <p className="rm-workspace-card border-l-4 border-muted-foreground bg-surface-subtle p-4 text-sm font-semibold text-muted-foreground">
           Yêu cầu đã đóng, không thể gửi thêm tin nhắn.
         </p>
       ) : !inquiry.canSendMessage ? (
-        <p className="border-2 border-heroDark-950 bg-slate-100 p-4 text-sm font-bold text-slate-600">
+        <p className="rm-workspace-card border-l-4 border-muted-foreground bg-surface-subtle p-4 text-sm font-semibold text-muted-foreground">
           Cuộc trò chuyện đang bị giới hạn, không thể gửi tin nhắn mới.
         </p>
       ) : (
-        <form
-          onSubmit={(event) => void send(event)}
-          className="space-y-3 border-2 border-heroDark-950 bg-rent-surface p-5 shadow-glass"
-        >
+        <form onSubmit={(event) => void send(event)} className="rm-workspace-card space-y-3 p-5 sm:p-6">
           <label htmlFor="reply" className="text-sm font-bold">
             Tin nhắn mới
           </label>
@@ -434,7 +445,7 @@ export function InquiryDetailPage({ inquiryId }: Readonly<{ inquiryId: string }>
             rows={4}
             value={message}
             onChange={(event) => setMessage(event.target.value)}
-            className="w-full border-2 border-heroDark-950 bg-white p-3 text-sm font-medium outline-none focus-visible:shadow-glass-sm"
+            className="min-h-28 w-full resize-y rounded-control border border-border-strong bg-surface p-3 text-sm font-medium outline-none transition focus:border-primary focus:ring-[3px] focus:ring-primary/20"
             placeholder="Viết phản hồi…"
           />
           <Button type="submit" pending={pending} pendingLabel="Đang gửi…">

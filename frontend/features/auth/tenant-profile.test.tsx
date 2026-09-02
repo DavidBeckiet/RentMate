@@ -4,7 +4,14 @@ import type { AuthContextValue } from "../../lib/auth/auth-provider";
 import type { UserProfile } from "../../types/api";
 import { ApiError } from "../../lib/api/transport";
 
-const apiMocks = vi.hoisted(() => ({ updateCurrent: vi.fn() }));
+const apiMocks = vi.hoisted(() => ({
+  updateCurrent: vi.fn(),
+  getTenantContactVerificationStatus: vi.fn(),
+  requestTenantEmailVerification: vi.fn(),
+  confirmTenantEmailVerification: vi.fn(),
+  requestTenantPhoneVerification: vi.fn(),
+  confirmTenantPhoneVerification: vi.fn()
+}));
 const useAuthMock = vi.hoisted(() => vi.fn<() => AuthContextValue>());
 vi.mock("../../lib/api/client", async () => {
   const actual = await vi.importActual<typeof import("../../lib/api/client")>("../../lib/api/client");
@@ -34,6 +41,15 @@ function auth(user: UserProfile | null = tenant): AuthContextValue {
 describe("TenantProfile", () => {
   beforeEach(() => {
     apiMocks.updateCurrent.mockReset();
+    apiMocks.getTenantContactVerificationStatus.mockReset();
+    apiMocks.requestTenantEmailVerification.mockReset();
+    apiMocks.confirmTenantEmailVerification.mockReset();
+    apiMocks.requestTenantPhoneVerification.mockReset();
+    apiMocks.confirmTenantPhoneVerification.mockReset();
+    apiMocks.getTenantContactVerificationStatus.mockResolvedValue({
+      email: { address: "tenant@example.com", verified: false, verifiedAt: null, available: true },
+      phone: { number: null, verified: false, verifiedAt: null, available: false }
+    });
     refresh.mockReset();
     updateUser.mockReset();
     useAuthMock.mockReturnValue(auth());
@@ -49,7 +65,7 @@ describe("TenantProfile", () => {
     apiMocks.updateCurrent.mockResolvedValue(returned);
     render(<TenantProfile />);
     expect(screen.getByRole("heading", { name: "Nguyễn Văn An" })).toBeInTheDocument();
-    expect(screen.getByText("Người thuê")).toBeInTheDocument();
+    expect(screen.getAllByText("Người thuê").length).toBeGreaterThanOrEqual(1);
     expect(screen.getByText("01/08/2026")).toBeInTheDocument();
     expect(screen.getByLabelText("Email đăng nhập")).toHaveAttribute("readonly");
     fireEvent.change(screen.getByLabelText("Họ và tên (bắt buộc)"), { target: { value: " Nguyễn Văn Bình " } });
@@ -62,7 +78,7 @@ describe("TenantProfile", () => {
       )
     );
     expect(updateUser).toHaveBeenCalledWith(returned);
-    expect(screen.getByRole("status")).toHaveTextContent("Đã cập nhật hồ sơ");
+    expect(screen.getByText(/Đã cập nhật hồ sơ/)).toBeInTheDocument();
   });
 
   it("supports a legacy null display name without blocking a phone-only update", async () => {

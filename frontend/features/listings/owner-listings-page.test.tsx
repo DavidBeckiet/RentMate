@@ -3,7 +3,13 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { AuthContextValue } from "../../lib/auth/auth-provider";
 import type { ApiPage, OwnerListingDetail, OwnerListingSummary, UserProfile } from "../../types/api";
 
-const apiMocks = vi.hoisted(() => ({ listOwned: vi.fn(), createDraft: vi.fn(), duplicate: vi.fn() }));
+const apiMocks = vi.hoisted(() => ({
+  listOwned: vi.fn(),
+  createDraft: vi.fn(),
+  duplicate: vi.fn(),
+  listLandlordInquiries: vi.fn(),
+  getLandlord: vi.fn()
+}));
 const navigationMocks = vi.hoisted(() => ({ query: "", push: vi.fn(), replace: vi.fn() }));
 const useAuthMock = vi.hoisted(() => vi.fn<() => AuthContextValue>());
 
@@ -13,7 +19,7 @@ vi.mock("next/navigation", () => ({
 }));
 vi.mock("../../lib/api/client", async () => {
   const actual = await vi.importActual<typeof import("../../lib/api/client")>("../../lib/api/client");
-  return { ...actual, api: { listings: apiMocks } };
+  return { ...actual, api: { listings: apiMocks, contact: apiMocks, analytics: apiMocks } };
 });
 vi.mock("../../lib/auth/auth-provider", () => ({ useAuth: useAuthMock }));
 vi.mock("./owner-listing-card", () => ({
@@ -130,6 +136,10 @@ describe("OwnerListingsPage", () => {
     apiMocks.listOwned.mockReset();
     apiMocks.createDraft.mockReset();
     apiMocks.duplicate.mockReset();
+    apiMocks.listLandlordInquiries.mockReset();
+    apiMocks.getLandlord.mockReset();
+    apiMocks.listLandlordInquiries.mockRejectedValue(new Error("snapshot unavailable in listing tests"));
+    apiMocks.getLandlord.mockRejectedValue(new Error("snapshot unavailable in listing tests"));
     navigationMocks.query = "";
     navigationMocks.push.mockReset();
     navigationMocks.replace.mockReset();
@@ -190,16 +200,16 @@ describe("OwnerListingsPage", () => {
       expect.any(AbortSignal)
     );
     fireEvent.change(screen.getByLabelText("Tình trạng phòng"), { target: { value: "RENTED" } });
-    expect(navigationMocks.push).toHaveBeenCalledWith(
-      "/landlord?status=APPROVED&businessStatus=RENTED&pageSize=40"
-    );
+    expect(navigationMocks.push).toHaveBeenCalledWith("/landlord?status=APPROVED&businessStatus=RENTED&pageSize=40");
   });
 
   it("groups rented and inactive listings under the old-listings section", async () => {
     apiMocks.listOwned.mockResolvedValue(
-      page([listing(1, "Tin còn phòng"), listing(2, "Tin đã thuê")].map((item, index) =>
-        index === 1 ? { ...item, businessStatus: "RENTED" as const } : item
-      ))
+      page(
+        [listing(1, "Tin còn phòng"), listing(2, "Tin đã thuê")].map((item, index) =>
+          index === 1 ? { ...item, businessStatus: "RENTED" as const } : item
+        )
+      )
     );
     render(<OwnerListingsPage />);
     await screen.findByText("Tin còn phòng");
