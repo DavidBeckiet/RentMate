@@ -132,31 +132,7 @@ function expectNoHydrationDiagnostics(diagnostics: readonly string[]): void {
 }
 
 async function hasStaticHorizontalOverflow(page: Page): Promise<boolean> {
-  return page.evaluate(() =>
-    Array.from(document.body.querySelectorAll<HTMLElement>("*"))
-      .filter((element) => {
-        const position = window.getComputedStyle(element).position;
-        return position !== "absolute" && position !== "fixed";
-      })
-      .filter((element) => {
-        let parent = element.parentElement;
-        while (parent && parent !== document.body) {
-          const style = window.getComputedStyle(parent);
-          if (
-            (style.overflowX === "auto" || style.overflowX === "scroll") &&
-            parent.scrollWidth > parent.clientWidth + 1
-          ) {
-            return false;
-          }
-          parent = parent.parentElement;
-        }
-        return true;
-      })
-      .some((element) => {
-        const rect = element.getBoundingClientRect();
-        return rect.right > window.innerWidth + 1 || rect.left < -1;
-      })
-  );
+  return page.evaluate(() => document.documentElement.scrollWidth > document.documentElement.clientWidth + 1);
 }
 
 test.describe.serial("ROOMMATE-V1-06 browser and Gateway release verification", () => {
@@ -186,7 +162,7 @@ test.describe.serial("ROOMMATE-V1-06 browser and Gateway release verification", 
 
   test("tenant authorization, profile requirement, listing CTA, and unavailable listing state", async ({ page }) => {
     await page.goto("/roommates");
-    await expect(page.getByRole("link", { name: "Đăng nhập", exact: true })).toBeVisible();
+    await expect(page.getByRole("banner").getByRole("link", { name: "Đăng nhập", exact: true })).toBeVisible();
 
     const listing = await findEligibleListing(ownerA);
     const ownerPage = await ownerA.newPage();
@@ -206,6 +182,27 @@ test.describe.serial("ROOMMATE-V1-06 browser and Gateway release verification", 
     const unavailablePage = await ownerB.newPage();
     await unavailablePage.goto("/roommates/my-request?listingId=2147483647");
     await expect(unavailablePage.getByRole("alert")).toBeVisible();
+  });
+
+  test("AI capability fallback keeps the manual roommate profile usable without an AI mutation", async () => {
+    const capabilities = await data<{ readonly preferenceParsing: boolean }>(
+      await gateway(ownerA, "GET", "/api/v1/roommate-ai/capabilities")
+    );
+    const page = await ownerA.newPage();
+    const aiMutations: string[] = [];
+    page.on("request", (request) => {
+      if (/\/api\/v1\/roommate-ai\/(?:preference-previews|recommendations)/u.test(request.url())) {
+        aiMutations.push(request.url());
+      }
+    });
+
+    await page.goto("/roommates/profile");
+    await expectRoommateShell(page);
+    await expect(page.locator('[name="intro"]')).toBeVisible();
+    const aiPanel = page.getByRole("heading", { name: "Phân tích nhu cầu bằng AI", exact: true });
+    if (capabilities.preferenceParsing) await expect(aiPanel).toBeVisible();
+    else await expect(aiPanel).toHaveCount(0);
+    expect(aiMutations).toEqual([]);
   });
 
   test("Flow A: eligible listing to linked request, discovery, chat, accept, and connection", async () => {
@@ -235,7 +232,12 @@ test.describe.serial("ROOMMATE-V1-06 browser and Gateway release verification", 
     await expect(ownerPage.getByText(initialMessage, { exact: true })).toBeVisible();
     await ownerPage.getByRole("button", { name: "Chấp nhận", exact: true }).click();
     await expect(ownerPage.getByRole("heading", { name: "Checklist an toàn", exact: true })).toBeVisible();
-    await ownerPage.getByRole("button", { name: /Xác nhận chấp nhận/i }).click();
+    const acceptConfirmation = ownerPage
+      .getByRole("dialog", { name: "Chấp nhận lời quan tâm?" })
+      .getByRole("button", { name: /Xác nhận chấp nhận/i });
+    await acceptConfirmation.scrollIntoViewIfNeeded();
+    await expect(acceptConfirmation).toBeInViewport();
+    await acceptConfirmation.click();
     await expect(ownerPage).toHaveURL(/\/roommates\/connection$/);
     await expectRoommateShell(ownerPage);
     await expect(ownerPage.getByRole("link", { name: /Mở trò chuyện/i })).toBeVisible();

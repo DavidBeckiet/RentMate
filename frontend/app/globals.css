@@ -931,6 +931,8 @@ summary {
   /* Roommate is a more personal product surface built from the same warm marketplace tokens. */
   .rm-roommate-page {
     position: relative;
+    min-width: 0;
+    overflow-x: clip;
     isolation: isolate;
   }
 
@@ -1033,6 +1035,8 @@ summary {
 
   .rm-roommate-subnav {
     display: flex;
+    max-width: 100%;
+    min-width: 0;
     gap: 0.4rem;
     overflow-x: auto;
     scrollbar-width: none;
