@@ -62,6 +62,7 @@
 }
 
 .header h1 {
+  flex: 1 1 100%;
   margin-top: 0.8rem;
   max-width: 48rem;
   color: rgb(var(--color-foreground));
@@ -78,6 +79,7 @@
 }
 
 .header p {
+  flex: 1 1 100%;
   max-width: 46rem;
   margin-top: 0.75rem;
   color: rgb(var(--color-muted-foreground));
