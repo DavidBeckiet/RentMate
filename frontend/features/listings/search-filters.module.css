@@ -75,6 +75,69 @@
   background: rgb(var(--color-primary-subtle));
 }
 
+.mapSection {
+  border-bottom: 1px solid rgb(var(--color-border));
+  padding: 0.75rem 1rem;
+  background: rgb(var(--color-surface-subtle));
+}
+
+.mapAction {
+  display: flex;
+  width: 100%;
+  min-height: 3.25rem;
+  align-items: center;
+  gap: 0.65rem;
+  border: 1px solid rgb(var(--color-primary) / 0.32);
+  border-radius: var(--radius-control);
+  padding: 0.6rem 0.65rem;
+  background: rgb(var(--color-primary-subtle));
+  color: rgb(var(--color-primary-hover));
+  text-align: left;
+  transition:
+    border-color var(--motion-fast) ease,
+    background-color var(--motion-fast) ease,
+    box-shadow var(--motion-fast) ease;
+}
+
+.mapAction:hover {
+  border-color: rgb(var(--color-primary));
+  background: rgb(var(--color-surface));
+  box-shadow: var(--shadow-surface);
+}
+
+.mapActionIcon {
+  display: grid;
+  width: 2rem;
+  height: 2rem;
+  flex: 0 0 auto;
+  place-items: center;
+  border-radius: 50%;
+  background: rgb(var(--color-surface));
+}
+
+.mapActionCopy {
+  min-width: 0;
+  flex: 1;
+}
+
+.mapActionCopy strong,
+.mapActionCopy small {
+  display: block;
+}
+
+.mapActionCopy strong {
+  font-size: var(--font-size-xs);
+  font-weight: 800;
+}
+
+.mapActionCopy small {
+  margin-top: 0.15rem;
+  color: rgb(var(--color-muted-foreground));
+  font-size: 0.68rem;
+  font-weight: 600;
+  line-height: 1.35;
+}
+
 .scrollArea {
   scrollbar-color: rgb(var(--color-border-strong)) rgb(var(--color-surface-subtle));
   scrollbar-width: thin;
@@ -477,7 +540,8 @@
 
 .applyButton:focus-visible,
 .resetButton:focus-visible,
-.amenityToggle:focus-visible {
+.amenityToggle:focus-visible,
+.mapAction:focus-visible {
   outline: 3px solid rgb(var(--color-focus-ring));
   outline-offset: 2px;
 }
@@ -509,6 +573,7 @@
 
 @media (prefers-reduced-motion: reduce) {
   .resetButton,
+  .mapAction,
   .inputWithIcon,
   .choice,
   .chevron,

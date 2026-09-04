@@ -55,13 +55,6 @@ export const publicNavigationItems: readonly NavigationItem[] = [
     icon: "users",
     exactPaths: ["/roommates"],
     pathPrefixes: ["/roommates/"]
-  },
-  {
-    key: "help",
-    label: "Trợ giúp",
-    href: "/help",
-    icon: "note",
-    exactPaths: ["/help"]
   }
 ];
 

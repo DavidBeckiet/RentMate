@@ -36,6 +36,17 @@ beforeEach(() => {
 });
 
 describe("SearchFilters", () => {
+  it("translates safe room type and amenity labels for presentation only", () => {
+    renderFilters({
+      propertyTypes: { status: "success", data: [{ code: "APARTMENT", label: "Apartment" }] },
+      amenities: { status: "success", data: [{ code: "AIR_CONDITIONING", label: "Air conditioning" }] }
+    });
+
+    expect(screen.getByRole("radio", { name: "Căn hộ" })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: /^Tiện ích/ }));
+    expect(screen.getByRole("checkbox", { name: "Máy lạnh" })).toBeInTheDocument();
+  });
+
   it("keeps typing as a draft until the primary search action is applied", () => {
     renderFilters();
     expect(screen.getByLabelText("Từ khóa")).toBeVisible();
@@ -45,6 +56,15 @@ describe("SearchFilters", () => {
     expect(onApply).not.toHaveBeenCalled();
     fireEvent.click(screen.getByRole("button", { name: "Tìm kiếm" }));
     expect(onApply).toHaveBeenCalledWith({ q: "studio", amenities: [] }, "newest");
+  });
+
+  it("keeps map discovery as a secondary filter action", () => {
+    const onOpenMap = vi.fn();
+    renderFilters({ onOpenMap });
+
+    fireEvent.click(screen.getByRole("button", { name: "Mở bản đồ" }));
+
+    expect(onOpenMap).toHaveBeenCalledOnce();
   });
 
   it("maps both budget handles to the existing minimum and maximum rent contract", () => {

@@ -55,14 +55,21 @@ vi.mock("./search-filters", () => ({
   SearchFilters: ({
     committed,
     onApply,
-    onClear
+    onClear,
+    onOpenMap
   }: {
     committed: { q?: string; amenities: readonly string[]; sort: "newest" | "rent_asc" | "rent_desc" | "distance_asc" };
     onApply: (values: { q?: string; amenities: readonly string[] }, sort: "newest") => void;
     onClear: () => void;
+    onOpenMap?: () => void;
   }) => (
     <div>
       <span>filter:{committed.q ?? "browse"}</span>
+      {onOpenMap ? (
+        <button type="button" onClick={onOpenMap}>
+          Mở bản đồ
+        </button>
+      ) : null}
       <button type="button" onClick={() => onApply({ q: "applied", amenities: [] }, "newest")}>
         Apply mock filter
       </button>
@@ -186,9 +193,15 @@ describe("SearchPage", () => {
     expect(screen.getByRole("status")).toHaveTextContent("Đang tìm tin đăng");
     expect(await screen.findByText("card:Phòng A")).toBeInTheDocument();
     expect(screen.getByText("card:Phòng B")).toBeInTheDocument();
-    fireEvent.click(screen.getByRole("button", { name: "Xem bản đồ" }));
+    expect(screen.queryByRole("button", { name: "Xem bản đồ" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("dialog", { name: "Bản đồ khám phá" })).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "card:Phòng A" }));
     expect(screen.getByText("marker:Phòng A")).toBeInTheDocument();
     expect(screen.getByText("marker:Phòng B")).toBeInTheDocument();
+    expect(screen.getByRole("dialog", { name: "Bản đồ khám phá" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Đóng bản đồ" })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Đóng bản đồ" }));
+    expect(screen.queryByRole("dialog", { name: "Bản đồ khám phá" })).not.toBeInTheDocument();
     expect(apiMocks.searchPublic).toHaveBeenCalledTimes(1);
     expect(apiMocks.searchPublic).toHaveBeenCalledWith(
       { page: 1, pageSize: 20, sort: "newest" },
@@ -203,6 +216,7 @@ describe("SearchPage", () => {
     await screen.findByText("card:Phòng A");
 
     fireEvent.click(screen.getByRole("button", { name: "card:Phòng A" }));
+    expect(screen.getByRole("dialog", { name: "Bản đồ khám phá" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Đóng bản đồ" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "marker:Phòng A" })).toHaveAttribute("aria-pressed", "true");
 
@@ -218,7 +232,7 @@ describe("SearchPage", () => {
     await screen.findByText("card:Phòng A");
     expect(apiMocks.searchPublic).toHaveBeenCalledTimes(1);
 
-    fireEvent.click(screen.getByRole("button", { name: "Xem bản đồ" }));
+    fireEvent.click(screen.getByRole("button", { name: "card:Phòng A" }));
     fireEvent.click(screen.getByRole("button", { name: "Move map" }));
     expect(apiMocks.searchPublic).toHaveBeenCalledTimes(1);
     fireEvent.click(screen.getByRole("button", { name: "Tìm trong khu vực này" }));
@@ -235,7 +249,7 @@ describe("SearchPage", () => {
     apiMocks.searchPublic.mockResolvedValue(page([]));
     render(<SearchPage />);
     await waitFor(() => expect(apiMocks.searchPublic).toHaveBeenCalledOnce());
-    fireEvent.click(screen.getByRole("button", { name: "Xem bản đồ" }));
+    fireEvent.click(screen.getByRole("button", { name: "Mở bản đồ" }));
     fireEvent.click(screen.getByRole("button", { name: "Commit radius" }));
     expect(navigation.push).toHaveBeenCalledWith(
       "/search?centerLat=10.75&centerLng=106.67&radiusKm=75&sort=distance_asc"
@@ -257,8 +271,21 @@ describe("SearchPage", () => {
     expect(screen.getByRole("alert")).not.toHaveTextContent("private backend detail");
     expect(screen.getByText(/req-search/)).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "Thử lại" }));
-    expect(await screen.findByText("Chưa tìm thấy tin đăng phù hợp")).toBeInTheDocument();
+    expect(await screen.findByRole("heading", { name: "Không tìm thấy phòng phù hợp", level: 3 })).toBeInTheDocument();
     expect(document.body).not.toHaveTextContent(/tổng|kết quả trên tổng/i);
+  });
+
+  it("shows actual query context and Vietnamese presentation labels for active filters", async () => {
+    navigation.query = "q=studio&areaName=Qu%E1%BA%ADn+3&propertyType=STUDIO&amenities=AIR_CONDITIONING";
+    apiMocks.listPropertyTypes.mockResolvedValue([{ code: "STUDIO", label: "Studio" }]);
+    apiMocks.listAmenities.mockResolvedValue([{ code: "AIR_CONDITIONING", label: "Air conditioning" }]);
+    apiMocks.searchPublic.mockResolvedValue(page([listing(1, "Studio")]));
+    render(<SearchPage />);
+
+    await screen.findByText("card:Studio");
+    expect(screen.getByTitle("Quận 3 · studio")).toBeInTheDocument();
+    expect(screen.getByText("Loại: Căn studio")).toBeInTheDocument();
+    expect(screen.getByText("Tiện ích: Máy lạnh")).toBeInTheDocument();
   });
 
   it("uses page/hasNextPage only and preserves query during pagination", async () => {

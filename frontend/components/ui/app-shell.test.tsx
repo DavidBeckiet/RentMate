@@ -75,9 +75,11 @@ describe("AppShell", () => {
     expect(within(navigation).getByRole("link", { name: "Trang chủ" })).toHaveAttribute("href", "/");
     expect(within(navigation).getByRole("link", { name: "Tìm phòng" })).toHaveAttribute("href", "/search");
     expect(within(navigation).getByRole("link", { name: "Gần tôi" })).toHaveAttribute("href", "/near-me");
+    expect(within(navigation).queryByRole("link", { name: "Trợ giúp" })).not.toBeInTheDocument();
     expect(within(header).getByRole("link", { name: "Đăng nhập" })).toHaveAttribute("href", "/login");
     expect(within(header).getByRole("link", { name: "Đăng ký" })).toHaveAttribute("href", "/register");
     expect(within(navigation).queryByRole("link", { name: "Yêu thích" })).not.toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Trung tâm trợ giúp" })).toHaveAttribute("href", "/help");
   });
 
   it("keeps every anonymous route and auth action accessible in the mobile drawer", () => {

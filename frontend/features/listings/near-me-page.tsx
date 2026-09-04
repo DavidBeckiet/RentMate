@@ -1,14 +1,22 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import { MapBase, type MapPoint } from "../../components/map/map-base";
+import { MapBase, type MapMarker, type MapPoint } from "../../components/map/map-base";
 import { Button } from "../../components/ui/button";
 import { LoadingState } from "../../components/ui/feedback-states";
 import { Icon, type IconName } from "../../components/ui/icon";
 import { api } from "../../lib/api/client";
 import type { PublicListingSummary } from "../../types/api";
-import { formatDistanceKm } from "./format";
-import { ListingCard } from "./listing-card";
+import { formatVnd } from "./format";
+import {
+  formatNearMeDistance,
+  formatNearMeRadius,
+  formatNearMeRent,
+  formatNearMeResultSummary
+} from "./near-me-format";
+import { NearMeMapListingPopup } from "./near-me-map-listing-popup";
+import { NearMeResultCard } from "./near-me-result-card";
+import styles from "./near-me-page.module.css";
 
 interface PlaceSuggestion {
   readonly id: string;
@@ -86,6 +94,7 @@ export function NearMePage() {
   const [resultsScrollKey, setResultsScrollKey] = useState(0);
   const [committedSearch, setCommittedSearch] = useState<NearbySearch | null>(null);
   const [listings, setListings] = useState<readonly PublicListingSummary[]>([]);
+  const [activeListingId, setActiveListingId] = useState<number | null>(null);
   const searchRef = useRef<HTMLDivElement>(null);
   const resultsRef = useRef<HTMLElement>(null);
   const radiusRefreshTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -139,6 +148,7 @@ export function NearMePage() {
     setError(null);
     setSelectionError(null);
     setSearched(true);
+    setActiveListingId(null);
     if (options.scroll !== false) setResultsScrollKey((key) => key + 1);
     setDropdownOpen(false);
     try {
@@ -229,47 +239,64 @@ export function NearMePage() {
     );
   };
 
+  const handleMarkerSelect = (listingId: string | number) => {
+    if (typeof listingId !== "number" || !Number.isSafeInteger(listingId)) return;
+    setActiveListingId(listingId);
+    document.getElementById(`near-me-listing-${listingId}`)?.scrollIntoView({ behavior: "smooth", block: "nearest" });
+  };
+
   const activeSearch = committedSearch;
-  const mapMarkers = [
+  const mapMarkers: readonly MapMarker[] = [
     ...(activeSearch
-      ? [{ id: "search-center", position: activeSearch.center, label: `Tâm tìm kiếm: ${activeSearch.locationName}` }]
+      ? [
+          {
+            id: "search-center",
+            position: activeSearch.center,
+            label: `Tâm tìm kiếm tại ${activeSearch.locationName}`,
+            variant: "center" as const
+          }
+        ]
       : []),
     ...listings.map((listing) => ({
       id: listing.id,
       position: { latitude: listing.latitude, longitude: listing.longitude },
-      label: `${listing.title} — ${listing.distanceKm !== undefined ? formatDistanceKm(listing.distanceKm) : ""}`
+      label: `${listing.title} — ${formatVnd(listing.monthlyRent)}${
+        listing.distanceKm !== undefined ? ` — ${formatNearMeDistance(listing.distanceKm)}` : ""
+      }`,
+      displayLabel: formatNearMeRent(listing.monthlyRent),
+      variant: "price" as const,
+      selected: activeListingId === listing.id,
+      openPopup: activeListingId === listing.id,
+      popup: <NearMeMapListingPopup listing={listing} />
     }))
   ];
 
   return (
-    <div className="min-h-screen">
-      <section className="border-b-2 border-heroDark-950 bg-[#ff8a72] py-8 sm:py-10">
-        <div className="rm-page-container">
-          <div className="grid gap-6 lg:grid-cols-[0.65fr_1.35fr] lg:items-center">
-            <div>
-              <span className="inline-flex items-center gap-2 border-2 border-heroDark-950 bg-rent-yellow px-3 py-1 font-display text-xs font-bold uppercase tracking-[0.16em] shadow-glass-sm">
+    <div className={styles.page}>
+      <section className={styles.hero}>
+        <div className={`rm-page-container ${styles.heroInner}`}>
+          <div className={styles.heroGrid}>
+            <div className={styles.heroCopy}>
+              <span className={styles.eyebrow}>
                 <Icon name="compass" className="h-4 w-4" />
-                Radius explorer
+                Khám phá quanh bạn
               </span>
-              <h1 className="mt-5 font-display text-4xl font-bold leading-[0.9] tracking-[-0.065em] uppercase sm:text-5xl lg:text-6xl">
-                Quanh bạn
-                <br />
-                có gì?
-              </h1>
-              <p className="mt-4 max-w-lg text-sm font-semibold leading-6">
-                Đặt một tâm điểm, chọn bán kính rồi chủ động tìm. Bản đồ không tự gửi yêu cầu khi bạn di chuyển.
+              <h1 className={styles.heroTitle}>Phòng trọ gần bạn</h1>
+              <p className={styles.heroDescription}>
+                Chọn một điểm bắt đầu, đặt bán kính và xem những phòng trọ gần nhất trên bản đồ.
+              </p>
+              <p className={styles.privacyNote}>
+                <Icon name="shield" className="h-4 w-4" />
+                <span>Vị trí chỉ dùng để tìm phòng xung quanh và không được lưu lại.</span>
               </p>
             </div>
 
-            <div
-              ref={searchRef}
-              className="relative border-2 border-heroDark-950 bg-rent-surface p-4 shadow-card-elevated sm:p-5"
-            >
-              <label htmlFor="near-location" className="font-display text-[11px] font-bold uppercase tracking-[0.15em]">
+            <div ref={searchRef} className={styles.searchCard}>
+              <label htmlFor="near-location" className={styles.formLabel}>
                 Điểm bắt đầu
               </label>
-              <div className="mt-2 flex border-2 border-heroDark-950 bg-white">
-                <span className="grid w-12 shrink-0 place-items-center border-r-2 border-heroDark-950 bg-[#e5eefc]">
+              <div className={styles.locationControl}>
+                <span className={styles.locationIcon} aria-hidden="true">
                   <Icon name="search" className="h-5 w-5" />
                 </span>
                 <input
@@ -285,17 +312,19 @@ export function NearMePage() {
                     setSelectionError(null);
                     setDropdownOpen(true);
                   }}
-                  className="min-h-12 min-w-0 flex-1 bg-transparent px-3 text-sm font-bold outline-none"
+                  className={styles.locationInput}
                   placeholder="Trường học, bệnh viện, công ty..."
                 />
                 <button
                   type="button"
                   onClick={getCurrentLocation}
                   disabled={gettingLocation}
-                  className="inline-flex min-h-12 items-center gap-2 border-l-2 border-heroDark-950 bg-rent-accent px-3 font-display text-xs font-bold disabled:opacity-60"
+                  aria-label="Dùng vị trí hiện tại"
+                  aria-busy={gettingLocation}
+                  className={styles.gpsButton}
                 >
                   <Icon name="target" className="h-4 w-4" />
-                  <span className="hidden sm:inline">{gettingLocation ? "Đang lấy…" : "GPS"}</span>
+                  <span>{gettingLocation ? "Đang lấy vị trí…" : "GPS"}</span>
                 </button>
               </div>
 
@@ -303,11 +332,10 @@ export function NearMePage() {
                 <div
                   id="near-location-options"
                   role="listbox"
-                  className="absolute left-4 right-4 top-[6.6rem] z-30 max-h-72 overflow-y-auto border-2 border-heroDark-950 bg-rent-surface shadow-card-elevated sm:left-5 sm:right-5"
+                  aria-label="Gợi ý địa điểm"
+                  className={styles.suggestionList}
                 >
-                  <div className="border-b-2 border-heroDark-950 bg-rent-yellow px-4 py-2 font-display text-[10px] font-bold uppercase tracking-[0.14em]">
-                    Điểm đến phổ biến
-                  </div>
+                  <div className={styles.suggestionHeading}>Địa điểm phổ biến</div>
                   {matchingPlaces.map((place) => (
                     <button
                       key={place.id}
@@ -315,39 +343,37 @@ export function NearMePage() {
                       role="option"
                       aria-selected={locationName === place.name}
                       onClick={() => choosePlace(place)}
-                      className="group flex min-h-12 w-full items-center justify-between gap-3 border-b border-heroDark-950/20 px-4 text-left text-sm font-bold last:border-b-0 hover:bg-rent-accent"
+                      className={styles.suggestionOption}
                     >
-                      <span className="flex items-center gap-3">
-                        <Icon name={place.icon} className="h-4 w-4" />
-                        {place.name}
+                      <span className={styles.suggestionText}>
+                        <Icon name={place.icon} className="h-4 w-4 shrink-0" />
+                        <span>{place.name}</span>
                       </span>
-                      <Icon name="arrow" className="h-4 w-4 transition-transform group-hover:translate-x-1" />
+                      <Icon name="arrow" className="h-4 w-4 shrink-0" />
                     </button>
                   ))}
                   {matchingPlaces.length === 0 ? (
-                    <p className="p-4 text-sm font-semibold text-rent-secondary">Không có gợi ý phù hợp.</p>
+                    <p className="p-4 text-sm text-muted-foreground">Không có gợi ý phù hợp.</p>
                   ) : null}
                 </div>
               ) : null}
 
               {selectionError ? (
-                <p role="alert" className="mt-3 border-l-4 border-rose-700 pl-3 text-xs font-bold text-rose-800">
+                <p role="alert" className={styles.selectionError}>
                   {selectionError}
                 </p>
               ) : null}
 
-              <fieldset className="mt-5">
-                <legend className="font-display text-[11px] font-bold uppercase tracking-[0.15em]">
-                  Bán kính tìm kiếm
-                </legend>
-                <div className="mt-2 grid grid-cols-5 border-2 border-heroDark-950">
+              <fieldset className={styles.radiusFieldset}>
+                <legend className={styles.radiusLegend}>Bán kính tìm kiếm</legend>
+                <div className={styles.radiusOptions}>
                   {radiusOptions.map((radius) => (
                     <button
                       key={radius}
                       type="button"
                       onClick={() => chooseRadius(radius)}
                       aria-pressed={radiusKm === radius}
-                      className={`min-h-11 border-r-2 border-heroDark-950 font-display text-xs font-bold last:border-r-0 ${radiusKm === radius ? "bg-rent-coral" : "bg-white hover:bg-[#e5eefc]"}`}
+                      className={`${styles.radiusOption} ${radiusKm === radius ? styles.radiusOptionSelected : ""}`}
                     >
                       {radius} km
                     </button>
@@ -355,25 +381,25 @@ export function NearMePage() {
                 </div>
               </fieldset>
 
-              <Button className="mt-5 w-full" disabled={loading} onClick={() => void searchNear()}>
+              <Button
+                className={styles.searchButton}
+                pending={loading}
+                pendingLabel="Đang tìm phòng…"
+                onClick={() => void searchNear()}
+              >
                 <Icon name="compass" className="h-5 w-5" />
                 Tìm phòng trong bán kính
               </Button>
             </div>
           </div>
 
-          <div className="mt-8 flex flex-wrap items-center gap-2">
-            <span className="mr-2 font-display text-[10px] font-bold uppercase tracking-[0.14em]">Đi nhanh:</span>
+          <div className={styles.quickSearches} aria-label="Điểm đến nhanh">
+            <span className={styles.quickLabel}>Đi nhanh</span>
             {places
               .filter((place) => !place.currentLocation)
               .slice(0, 4)
               .map((place) => (
-                <button
-                  key={place.id}
-                  type="button"
-                  onClick={() => choosePlace(place)}
-                  className="inline-flex min-h-11 items-center gap-2 border-2 border-heroDark-950 bg-rent-surface px-3 text-xs font-bold shadow-glass-sm transition-transform hover:-translate-y-0.5"
-                >
+                <button key={place.id} type="button" onClick={() => choosePlace(place)} className={styles.quickButton}>
                   <Icon name={place.icon} className="h-3.5 w-3.5" />
                   {place.shortName}
                 </button>
@@ -383,36 +409,60 @@ export function NearMePage() {
       </section>
 
       {searched && activeSearch ? (
-        <section ref={resultsRef} className="rm-page-container scroll-mt-24 py-10 sm:py-12">
-          <div className="mb-7 border-b-2 border-heroDark-950 pb-5">
-            <span className="font-display text-[11px] font-bold uppercase tracking-[0.15em] text-rent-coral">
-              Kết quả bán kính
-            </span>
-            <h2 className="mt-2 font-display text-3xl font-bold tracking-[-0.05em] sm:text-5xl">
-              {loading ? "Đang tìm phòng quanh đây" : `${listings.length} chỗ ở quanh tâm điểm`}
-            </h2>
-            <div className="mt-2 flex flex-wrap items-center gap-3">
-              <p className="text-sm font-semibold text-rent-secondary">
-                {activeSearch.locationName} · {activeSearch.radiusKm} km · sắp xếp gần nhất
+        <section
+          ref={resultsRef}
+          className={`rm-page-container ${styles.resultsSection}`}
+          aria-labelledby="near-results-heading"
+        >
+          <header className={styles.resultsHeader}>
+            <div>
+              <span className={styles.resultsEyebrow}>
+                <Icon name="target" className="h-4 w-4" />
+                Kết quả quanh bạn
+              </span>
+              <h2 id="near-results-heading" className={styles.resultsTitle}>
+                {loading
+                  ? "Đang tìm phòng quanh đây…"
+                  : error
+                    ? "Không thể tải kết quả"
+                    : formatNearMeResultSummary(listings.length, activeSearch.radiusKm)}
+              </h2>
+              <p className={styles.resultsDescription}>
+                Kết quả tính từ vị trí hiện tại đã chọn và được xếp từ gần đến xa.
               </p>
               {refreshing ? (
-                <span
-                  role="status"
-                  className="inline-flex items-center gap-2 border border-heroDark-950 bg-rent-accent px-2 py-1 text-[10px] font-bold uppercase tracking-[0.1em]"
-                >
-                  <span className="h-2 w-2 animate-pulse rounded-full bg-heroDark-950 motion-reduce:animate-none" />
-                  Đang cập nhật kết quả
+                <span role="status" className={styles.refreshing}>
+                  <span
+                    className={`${styles.refreshingDot} animate-pulse motion-reduce:animate-none`}
+                    aria-hidden="true"
+                  />
+                  Đang cập nhật theo bán kính {formatNearMeRadius(activeSearch.radiusKm)} km
                 </span>
               ) : null}
             </div>
-          </div>
+
+            <div className={styles.resultsContext}>
+              <span className={styles.resultsContextIcon} aria-hidden="true">
+                <Icon name="map" className="h-5 w-5" />
+              </span>
+              <span>
+                <span className={styles.resultsContextLabel}>Khu vực đang xem</span>
+                <strong className={styles.resultsContextValue} title={activeSearch.locationName}>
+                  {activeSearch.locationName}
+                </strong>
+                <span className={styles.resultsContextLabel}>
+                  Bán kính {formatNearMeRadius(activeSearch.radiusKm)} km · vị trí xấp xỉ
+                </span>
+              </span>
+            </div>
+          </header>
 
           {error ? (
-            <div
-              role="alert"
-              className="mb-6 flex flex-col gap-3 border-2 border-heroDark-950 bg-rent-yellow p-4 shadow-glass-sm sm:flex-row sm:items-center sm:justify-between"
-            >
-              <p className="text-sm font-bold">{error}</p>
+            <div role="alert" className={styles.errorState}>
+              <div>
+                <strong>Chưa thể hiển thị phòng quanh bạn</strong>
+                <p>{error}</p>
+              </div>
               <Button variant="secondary" onClick={() => void searchNear(activeSearch)}>
                 Thử lại
               </Button>
@@ -420,18 +470,23 @@ export function NearMePage() {
           ) : null}
 
           {loading ? (
-            <LoadingState message="Đang quét các chỗ ở trong bán kính…" />
-          ) : (
-            <div className="grid gap-7 lg:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)] lg:items-start">
-              <div className="border-2 border-heroDark-950 bg-rent-surface p-3 shadow-card-elevated lg:sticky lg:top-24">
-                <div className="mb-3 flex items-center justify-between gap-3 px-1">
-                  <span className="inline-flex items-center gap-2 font-display text-xs font-bold uppercase tracking-[0.12em]">
-                    <Icon name="map" className="h-4 w-4" />
-                    Phạm vi {activeSearch.radiusKm} km
-                  </span>
-                  <span className="bg-rent-accent px-2 py-1 text-[10px] font-bold">{listings.length} điểm</span>
+            <LoadingState message="Đang quét các phòng trong bán kính…" className={styles.loadingState} />
+          ) : error ? null : (
+            <div className={styles.resultsStage}>
+              <section className={styles.mapPanel} aria-labelledby="near-map-heading">
+                <div className={styles.mapHeader}>
+                  <div>
+                    <span className={styles.mapEyebrow}>
+                      <Icon name="map" className="h-4 w-4" />
+                      Bản đồ khu vực
+                    </span>
+                    <h3 id="near-map-heading" className={styles.mapTitle}>
+                      Phòng quanh {activeSearch.locationName}
+                    </h3>
+                  </div>
+                  <p className={styles.mapHint}>Ghim hiển thị giá thuê · di chuyển bản đồ không tự tìm kiếm.</p>
                 </div>
-                <div className="h-[26rem] overflow-hidden border-2 border-heroDark-950 sm:h-[30rem]">
+                <div className={styles.mapFrame}>
                   <MapBase
                     ariaLabel={`Bản đồ phòng trong bán kính ${activeSearch.radiusKm} km`}
                     center={activeSearch.center}
@@ -442,28 +497,56 @@ export function NearMePage() {
                       radiusMeters: activeSearch.radiusKm * 1000,
                       label: `Bán kính ${activeSearch.radiusKm} km quanh ${activeSearch.locationName}`
                     }}
+                    onMarkerSelect={handleMarkerSelect}
                     className="h-full w-full"
                   />
+                  <div className={styles.mapLegend} aria-label="Chú thích bản đồ">
+                    <span className={styles.mapLegendItem}>
+                      <span className={styles.mapLegendSwatchCenter} aria-hidden="true" />
+                      Tâm tìm kiếm
+                    </span>
+                    <span className={styles.mapLegendItem}>
+                      <span className={styles.mapLegendSwatchPrice} aria-hidden="true" />
+                      Giá thuê
+                    </span>
+                  </div>
                 </div>
-              </div>
+              </section>
 
-              {listings.length > 0 ? (
-                <div className="grid gap-6 sm:grid-cols-2">
-                  {listings.map((listing) => (
-                    <ListingCard key={listing.id} listing={listing} showFavorite />
-                  ))}
-                </div>
-              ) : (
-                <div className="flex min-h-64 flex-col items-center justify-center border-2 border-dashed border-heroDark-950 bg-rent-surface p-8 text-center shadow-glass-sm">
-                  <span className="grid h-12 w-12 place-items-center border-2 border-heroDark-950 bg-rent-yellow shadow-glass-sm">
-                    <Icon name="search" className="h-6 w-6" />
+              <section className={styles.resultsRail} aria-labelledby="near-list-heading">
+                <header className={styles.railHeader}>
+                  <span className={styles.railEyebrow}>
+                    <Icon name="target" className="h-4 w-4" />
+                    Danh sách gần nhất
                   </span>
-                  <h3 className="mt-5 font-display text-xl font-bold">Chưa có phòng trong phạm vi này</h3>
-                  <p className="mt-2 max-w-sm text-sm font-semibold text-rent-secondary">
-                    Hãy thử tăng bán kính hoặc chọn một tâm tìm kiếm khác.
-                  </p>
-                </div>
-              )}
+                  <h3 id="near-list-heading" className={styles.railTitle}>
+                    {listings.length} phòng trong vùng
+                  </h3>
+                  <p className={styles.railDescription}>Xếp theo khoảng cách từ gần đến xa.</p>
+                </header>
+
+                {listings.length > 0 ? (
+                  <ol className={styles.railList} aria-label="Phòng xếp theo khoảng cách">
+                    {listings.map((listing, index) => (
+                      <li key={listing.id} className={styles.railItem}>
+                        <NearMeResultCard
+                          listing={listing}
+                          position={index + 1}
+                          selected={activeListingId === listing.id}
+                        />
+                      </li>
+                    ))}
+                  </ol>
+                ) : (
+                  <div className={styles.emptyState}>
+                    <span className={styles.emptyIcon} aria-hidden="true">
+                      <Icon name="search" className="h-6 w-6" />
+                    </span>
+                    <h3>Không tìm thấy phòng trong bán kính {formatNearMeRadius(activeSearch.radiusKm)} km.</h3>
+                    <p>Hãy thử tăng bán kính hoặc chọn một điểm bắt đầu khác.</p>
+                  </div>
+                )}
+              </section>
             </div>
           )}
         </section>

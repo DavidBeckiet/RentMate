@@ -4,7 +4,7 @@ import { divIcon, Icon, latLng, type Marker as LeafletMarker } from "leaflet";
 import markerIconUrl from "leaflet/dist/images/marker-icon.png";
 import markerIconRetinaUrl from "leaflet/dist/images/marker-icon-2x.png";
 import markerShadowUrl from "leaflet/dist/images/marker-shadow.png";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Circle, MapContainer, Marker, Popup, TileLayer, Tooltip, useMap, useMapEvents } from "react-leaflet";
 import MarkerClusterGroup from "react-leaflet-cluster";
 import type { MapBaseProps, MapMarker, MapViewport } from "./map-base";
@@ -36,6 +36,46 @@ const selectedMarkerIcon = new Icon({
   className: "rentmate-map-marker-selected"
 });
 
+const priceMarkerIconCache = new Map<string, ReturnType<typeof divIcon>>();
+const centerMarkerIcon = divIcon({
+  html: '<span class="rentmate-map-center-marker" aria-hidden="true"><span></span></span>',
+  className: "rentmate-map-center-marker-wrapper",
+  iconSize: [32, 32],
+  iconAnchor: [16, 16]
+});
+
+function escapeHtml(value: string): string {
+  return value.replace(
+    /[&<>"']/g,
+    (character) =>
+      ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[
+        character as "&" | "<" | ">" | '"' | "'"
+      ] ?? character
+  );
+}
+
+function priceMarkerIcon(label: string, selected: boolean): ReturnType<typeof divIcon> {
+  const key = `${selected ? "selected" : "default"}:${label}`;
+  const cached = priceMarkerIconCache.get(key);
+  if (cached) return cached;
+
+  const icon = divIcon({
+    html: `<span class="rentmate-map-price-marker${selected ? " rentmate-map-price-marker-selected" : ""}" aria-hidden="true">${escapeHtml(label)}</span>`,
+    className: "rentmate-map-price-marker-wrapper",
+    iconSize: [0, 0],
+    iconAnchor: [0, 0],
+    popupAnchor: [0, -24]
+  });
+  priceMarkerIconCache.set(key, icon);
+  return icon;
+}
+
+function markerIconFor(marker: MapMarker): ReturnType<typeof divIcon> | Icon {
+  if (marker.variant === "price") return priceMarkerIcon(marker.displayLabel ?? marker.label, marker.selected === true);
+  if (marker.variant === "center") return centerMarkerIcon;
+  return marker.selected ? selectedMarkerIcon : markerIcon;
+}
+
 function clusterIcon(cluster: { getChildCount: () => number }) {
   const count = cluster.getChildCount();
   return divIcon({
@@ -45,22 +85,55 @@ function clusterIcon(cluster: { getChildCount: () => number }) {
   });
 }
 
-function markerElement(
-  marker: MapMarker,
-  onMarkerSelect?: MapBaseProps["onMarkerSelect"],
-  onMarkerMove?: MapBaseProps["onMarkerMove"]
-) {
+function MarkerElement({
+  marker,
+  onMarkerSelect,
+  onMarkerMove
+}: {
+  readonly marker: MapMarker;
+  readonly onMarkerSelect?: MapBaseProps["onMarkerSelect"];
+  readonly onMarkerMove?: MapBaseProps["onMarkerMove"];
+}) {
+  const markerRef = useRef<LeafletMarker | null>(null);
+  const hasPopup = Boolean(marker.popup);
+
+  useEffect(() => {
+    const instance = markerRef.current;
+    if (!instance) return;
+    if (marker.openPopup && hasPopup) {
+      instance.openPopup();
+    } else {
+      instance.closePopup();
+    }
+  }, [hasPopup, marker.openPopup]);
+
+  useEffect(() => {
+    const element = markerRef.current?.getElement();
+    if (!element) return;
+    if (marker.variant === "price") {
+      element.removeAttribute("title");
+      element.setAttribute("aria-label", marker.label);
+      return;
+    }
+    element.removeAttribute("aria-label");
+  }, [marker.label, marker.selected, marker.variant]);
+
   return (
     <Marker
       key={marker.id}
+      ref={markerRef}
       position={[marker.position.latitude, marker.position.longitude]}
-      icon={marker.selected ? selectedMarkerIcon : markerIcon}
+      icon={markerIconFor(marker)}
       draggable={marker.draggable}
-      title={marker.label}
+      title={marker.variant === "price" ? undefined : marker.label}
       alt={marker.label}
       eventHandlers={{
         click() {
           onMarkerSelect?.(marker.id);
+          if (marker.popup) {
+            // Leaflet toggles a bound popup on repeated clicks; keep controlled marker selection open.
+            queueMicrotask(() => markerRef.current?.openPopup());
+          }
         },
         dragend(event) {
           const position = (event.target as LeafletMarker).getLatLng();
@@ -68,7 +141,7 @@ function markerElement(
         }
       }}
     >
-      <Tooltip>{marker.label}</Tooltip>
+      {marker.variant === "price" ? null : <Tooltip>{marker.label}</Tooltip>}
       {marker.popup ? <Popup>{marker.popup}</Popup> : null}
     </Marker>
   );
@@ -83,7 +156,13 @@ function MarkerLayer({
   readonly onMarkerSelect?: MapBaseProps["onMarkerSelect"];
   readonly onMarkerMove?: MapBaseProps["onMarkerMove"];
 }) {
-  return <>{markers.map((marker) => markerElement(marker, onMarkerSelect, onMarkerMove))}</>;
+  return (
+    <>
+      {markers.map((marker) => (
+        <MarkerElement key={marker.id} marker={marker} onMarkerSelect={onMarkerSelect} onMarkerMove={onMarkerMove} />
+      ))}
+    </>
+  );
 }
 
 function ClusteredMarkers({
@@ -108,7 +187,9 @@ function ClusteredMarkers({
         zoomToBoundsOnClick
         iconCreateFunction={clusterIcon}
       >
-        {clusterableMarkers.map((marker) => markerElement(marker, onMarkerSelect, onMarkerMove))}
+        {clusterableMarkers.map((marker) => (
+          <MarkerElement key={marker.id} marker={marker} onMarkerSelect={onMarkerSelect} onMarkerMove={onMarkerMove} />
+        ))}
       </MarkerClusterGroup>
       <MarkerLayer markers={standaloneMarkers} onMarkerSelect={onMarkerSelect} onMarkerMove={onMarkerMove} />
     </>

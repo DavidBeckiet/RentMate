@@ -1,0 +1,1101 @@
+.page {
+  min-height: 100vh;
+  min-height: 100dvh;
+  background: rgb(var(--color-background));
+}
+
+.hero {
+  border-bottom: 1px solid rgb(var(--color-border));
+  background: linear-gradient(135deg, rgb(var(--color-primary-subtle) / 0.72), rgb(var(--color-background)) 62%);
+}
+
+.heroInner {
+  padding-block: 2rem 2.5rem;
+}
+
+.heroGrid {
+  display: grid;
+  min-width: 0;
+  gap: 1.5rem;
+}
+
+.heroCopy {
+  min-width: 0;
+}
+
+.eyebrow,
+.resultsEyebrow,
+.mapEyebrow,
+.railEyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  color: rgb(var(--color-primary-hover));
+  font-size: var(--font-size-xs);
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  line-height: 1.4;
+  text-transform: uppercase;
+}
+
+.heroTitle {
+  max-width: 42rem;
+  margin-top: 0.7rem;
+  color: rgb(var(--color-foreground));
+  font-family: var(--font-manrope), sans-serif;
+  font-size: clamp(2.25rem, 6vw, 4.3rem);
+  font-weight: 800;
+  letter-spacing: -0.075em;
+  line-height: 1.02;
+}
+
+.heroDescription {
+  max-width: 37rem;
+  margin-top: 0.9rem;
+  color: rgb(var(--color-muted-foreground));
+  font-size: var(--font-size-sm);
+  line-height: 1.65;
+}
+
+.privacyNote {
+  display: inline-flex;
+  max-width: 100%;
+  align-items: flex-start;
+  gap: 0.5rem;
+  margin-top: 1.25rem;
+  border: 1px solid rgb(var(--color-border));
+  border-radius: 999px;
+  padding: 0.55rem 0.75rem;
+  background: rgb(var(--color-surface) / 0.7);
+  color: rgb(var(--color-muted-foreground));
+  font-size: var(--font-size-xs);
+  font-weight: 700;
+  line-height: 1.45;
+}
+
+.privacyNote svg {
+  flex: 0 0 auto;
+  color: rgb(var(--color-primary));
+}
+
+.searchCard {
+  position: relative;
+  min-width: 0;
+  border: 1px solid rgb(var(--color-border));
+  border-radius: var(--radius-overlay);
+  padding: 1rem;
+  background: rgb(var(--color-surface));
+  box-shadow: var(--shadow-raised);
+}
+
+.formLabel,
+.radiusLegend,
+.quickLabel {
+  color: rgb(var(--color-muted-foreground));
+  font-size: var(--font-size-xs);
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  line-height: 1.4;
+  text-transform: uppercase;
+}
+
+.locationControl {
+  display: flex;
+  min-width: 0;
+  align-items: stretch;
+  margin-top: 0.5rem;
+  border: 1px solid rgb(var(--color-border-strong));
+  border-radius: var(--radius-control);
+  background: rgb(var(--color-surface));
+  transition:
+    border-color var(--motion-fast) var(--rm-ease-standard),
+    box-shadow var(--motion-fast) var(--rm-ease-standard);
+}
+
+.locationControl:focus-within {
+  border-color: rgb(var(--color-primary));
+  box-shadow: 0 0 0 3px rgb(var(--color-focus-ring) / 0.16);
+}
+
+.locationIcon {
+  display: grid;
+  width: 2.75rem;
+  flex: 0 0 auto;
+  place-items: center;
+  color: rgb(var(--color-primary));
+}
+
+.locationInput {
+  min-width: 0;
+  flex: 1;
+  min-height: 2.75rem;
+  border: 0;
+  outline: none;
+  background: transparent;
+  color: rgb(var(--color-foreground));
+  font-size: var(--font-size-sm);
+  font-weight: 700;
+}
+
+.locationInput::placeholder {
+  color: rgb(var(--color-subtle-foreground));
+  font-weight: 500;
+}
+
+.gpsButton {
+  display: inline-flex;
+  min-height: 2.75rem;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: 0.35rem;
+  border-left: 1px solid rgb(var(--color-border));
+  border-radius: 0 var(--radius-control) var(--radius-control) 0;
+  padding: 0 0.8rem;
+  color: rgb(var(--color-primary-hover));
+  font-size: var(--font-size-xs);
+  font-weight: 800;
+  transition:
+    background-color var(--motion-fast) var(--rm-ease-standard),
+    color var(--motion-fast) var(--rm-ease-standard);
+}
+
+.gpsButton:hover:not(:disabled) {
+  background: rgb(var(--color-primary-subtle));
+}
+
+.gpsButton:disabled {
+  cursor: wait;
+  opacity: 0.6;
+}
+
+.suggestionList {
+  position: absolute;
+  z-index: 30;
+  top: 6.9rem;
+  right: 1rem;
+  left: 1rem;
+  max-height: 18rem;
+  overflow-y: auto;
+  border: 1px solid rgb(var(--color-border-strong));
+  border-radius: var(--radius-card);
+  background: rgb(var(--color-surface));
+  box-shadow: var(--shadow-overlay);
+}
+
+.suggestionHeading {
+  border-bottom: 1px solid rgb(var(--color-border));
+  padding: 0.65rem 0.85rem;
+  background: rgb(var(--color-surface-subtle));
+  color: rgb(var(--color-muted-foreground));
+  font-size: var(--font-size-xs);
+  font-weight: 800;
+}
+
+.suggestionOption {
+  display: flex;
+  min-height: 2.9rem;
+  width: 100%;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  border-bottom: 1px solid rgb(var(--color-border));
+  padding: 0.65rem 0.85rem;
+  color: rgb(var(--color-foreground));
+  font-size: var(--font-size-sm);
+  font-weight: 700;
+  text-align: left;
+  transition:
+    background-color var(--motion-fast) var(--rm-ease-standard),
+    color var(--motion-fast) var(--rm-ease-standard);
+}
+
+.suggestionOption:last-child {
+  border-bottom: 0;
+}
+
+.suggestionOption:hover,
+.suggestionOption[aria-selected="true"] {
+  background: rgb(var(--color-primary-subtle));
+  color: rgb(var(--color-primary-hover));
+}
+
+.suggestionText {
+  display: inline-flex;
+  min-width: 0;
+  align-items: center;
+  gap: 0.6rem;
+}
+
+.suggestionText span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.selectionError {
+  margin-top: 0.75rem;
+  border-left: 3px solid rgb(var(--color-danger));
+  padding-left: 0.65rem;
+  color: rgb(var(--color-danger-hover));
+  font-size: var(--font-size-xs);
+  font-weight: 700;
+  line-height: 1.5;
+}
+
+.radiusFieldset {
+  min-width: 0;
+  margin-top: 1.25rem;
+  border: 0;
+  padding: 0;
+}
+
+.radiusOptions {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  margin-top: 0.5rem;
+  border: 1px solid rgb(var(--color-border));
+  border-radius: var(--radius-control);
+  overflow: hidden;
+}
+
+.radiusOption {
+  min-height: 2.75rem;
+  border-right: 1px solid rgb(var(--color-border));
+  color: rgb(var(--color-muted-foreground));
+  font-size: var(--font-size-xs);
+  font-weight: 800;
+  transition:
+    background-color var(--motion-fast) var(--rm-ease-standard),
+    color var(--motion-fast) var(--rm-ease-standard);
+}
+
+.radiusOption:last-child {
+  border-right: 0;
+}
+
+.radiusOption:hover {
+  background: rgb(var(--color-primary-subtle));
+  color: rgb(var(--color-primary-hover));
+}
+
+.radiusOptionSelected {
+  background: rgb(var(--color-primary));
+  color: rgb(var(--color-primary-foreground));
+}
+
+.radiusOptionSelected:hover {
+  background: rgb(var(--color-primary-hover));
+  color: rgb(var(--color-primary-foreground));
+}
+
+.searchButton {
+  width: 100%;
+  margin-top: 1rem;
+}
+
+.quickSearches {
+  display: flex;
+  min-width: 0;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+  margin-top: 1.25rem;
+}
+
+.quickLabel {
+  margin-right: 0.2rem;
+}
+
+.quickButton {
+  display: inline-flex;
+  min-height: 2.5rem;
+  max-width: 100%;
+  align-items: center;
+  gap: 0.4rem;
+  border: 1px solid rgb(var(--color-border));
+  border-radius: 999px;
+  padding: 0.45rem 0.75rem;
+  background: rgb(var(--color-surface) / 0.76);
+  color: rgb(var(--color-foreground));
+  font-size: var(--font-size-xs);
+  font-weight: 800;
+  transition:
+    background-color var(--motion-fast) var(--rm-ease-standard),
+    border-color var(--motion-fast) var(--rm-ease-standard),
+    transform var(--motion-fast) var(--rm-ease-out);
+}
+
+.quickButton:hover {
+  border-color: rgb(var(--color-primary) / 0.42);
+  background: rgb(var(--color-primary-subtle));
+  color: rgb(var(--color-primary-hover));
+  transform: translateY(-1px);
+}
+
+.resultsSection {
+  min-width: 0;
+  padding-block: 2rem 5rem;
+}
+
+.resultsHeader {
+  display: grid;
+  min-width: 0;
+  gap: 1rem;
+  margin-bottom: 1rem;
+  border-bottom: 1px solid rgb(var(--color-border));
+  padding-bottom: 1rem;
+}
+
+.resultsTitle {
+  margin-top: 0.45rem;
+  color: rgb(var(--color-foreground));
+  font-family: var(--font-manrope), sans-serif;
+  font-size: clamp(1.65rem, 4vw, 2.6rem);
+  font-weight: 800;
+  letter-spacing: -0.06em;
+  line-height: 1.1;
+}
+
+.resultsDescription {
+  margin-top: 0.45rem;
+  color: rgb(var(--color-muted-foreground));
+  font-size: var(--font-size-sm);
+  line-height: 1.55;
+}
+
+.resultsContext {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 0.6rem;
+  border: 1px solid rgb(var(--color-border));
+  border-radius: var(--radius-card);
+  padding: 0.75rem 0.9rem;
+  background: rgb(var(--color-surface));
+  box-shadow: var(--shadow-surface);
+}
+
+.resultsContextIcon {
+  display: grid;
+  width: 2.25rem;
+  height: 2.25rem;
+  flex: 0 0 auto;
+  place-items: center;
+  border-radius: 50%;
+  background: rgb(var(--color-primary-subtle));
+  color: rgb(var(--color-primary-hover));
+}
+
+.resultsContextLabel {
+  display: block;
+  color: rgb(var(--color-muted-foreground));
+  font-size: var(--font-size-xs);
+  font-weight: 700;
+}
+
+.resultsContextValue {
+  display: block;
+  margin-top: 0.15rem;
+  color: rgb(var(--color-foreground));
+  font-family: var(--font-manrope), sans-serif;
+  font-size: var(--font-size-sm);
+  font-weight: 800;
+}
+
+.refreshing {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  margin-top: 0.75rem;
+  color: rgb(var(--color-primary-hover));
+  font-size: var(--font-size-xs);
+  font-weight: 800;
+}
+
+.refreshingDot {
+  width: 0.45rem;
+  height: 0.45rem;
+  border-radius: 50%;
+  background: rgb(var(--color-primary));
+}
+
+.errorState {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 1rem;
+  border: 1px solid rgb(var(--color-danger) / 0.28);
+  border-radius: var(--radius-card);
+  padding: 1rem;
+  background: rgb(var(--color-danger-subtle));
+  color: rgb(var(--color-danger-hover));
+}
+
+.errorState strong {
+  color: rgb(var(--color-foreground));
+  font-size: var(--font-size-sm);
+  font-weight: 800;
+}
+
+.errorState p {
+  margin-top: 0.25rem;
+  color: rgb(var(--color-muted-foreground));
+  font-size: var(--font-size-xs);
+  line-height: 1.5;
+}
+
+.loadingState {
+  min-height: 16rem;
+}
+
+.resultsStage {
+  display: grid;
+  min-width: 0;
+  gap: 1rem;
+}
+
+.mapPanel {
+  display: flex;
+  min-width: 0;
+  min-height: 22rem;
+  height: min(64dvh, 34rem);
+  flex-direction: column;
+  border: 1px solid rgb(var(--color-border));
+  border-radius: var(--radius-card);
+  padding: 0.75rem;
+  background: rgb(var(--color-surface));
+  box-shadow: var(--shadow-raised);
+}
+
+.mapHeader {
+  display: flex;
+  min-width: 0;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.25rem 0.25rem 0.75rem;
+}
+
+.mapTitle {
+  margin-top: 0.3rem;
+  color: rgb(var(--color-foreground));
+  font-family: var(--font-manrope), sans-serif;
+  font-size: 1.05rem;
+  font-weight: 800;
+  letter-spacing: -0.035em;
+  line-height: 1.25;
+}
+
+.mapHint {
+  max-width: 15rem;
+  color: rgb(var(--color-muted-foreground));
+  font-size: var(--font-size-xs);
+  line-height: 1.45;
+  text-align: right;
+}
+
+.mapFrame {
+  position: relative;
+  min-height: 0;
+  flex: 1;
+  overflow: hidden;
+  border-radius: calc(var(--radius-card) - 0.25rem);
+  background: rgb(var(--color-surface-subtle));
+}
+
+.mapFrame > :global([role="region"]) {
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+  border: 0;
+  border-radius: inherit;
+}
+
+.mapFrame :global(.leaflet-container) {
+  min-height: 0;
+  height: 100%;
+}
+
+.mapLegend {
+  position: absolute;
+  z-index: 400;
+  top: 0.75rem;
+  right: 0.75rem;
+  display: flex;
+  max-width: calc(100% - 1.5rem);
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.45rem 0.7rem;
+  border: 1px solid rgb(var(--color-border));
+  border-radius: 999px;
+  padding: 0.45rem 0.65rem;
+  background: rgb(var(--color-surface) / 0.92);
+  box-shadow: var(--shadow-surface);
+  color: rgb(var(--color-muted-foreground));
+  font-size: 0.68rem;
+  font-weight: 800;
+  pointer-events: none;
+}
+
+.mapLegendItem {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  white-space: nowrap;
+}
+
+.mapLegendSwatchCenter,
+.mapLegendSwatchPrice {
+  display: inline-block;
+  width: 0.6rem;
+  height: 0.6rem;
+  flex: 0 0 auto;
+  border-radius: 50%;
+}
+
+.mapLegendSwatchCenter {
+  border: 2px solid rgb(var(--color-primary));
+  background: rgb(var(--color-primary-subtle));
+}
+
+.mapLegendSwatchPrice {
+  background: rgb(var(--color-accent));
+}
+
+.mapPopup {
+  width: min(14rem, calc(100vw - 2rem));
+  max-width: 100%;
+  min-width: 0;
+  overflow: hidden;
+  color: rgb(var(--color-foreground));
+}
+
+.mapPopupTitle {
+  display: -webkit-box;
+  overflow: hidden;
+  margin: 0;
+  color: rgb(var(--color-foreground));
+  font-family: var(--font-manrope), sans-serif;
+  font-size: 0.8rem;
+  font-weight: 800;
+  line-height: 1.25;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+
+.mapPopupPrice {
+  margin-top: 0.3rem;
+  color: rgb(var(--color-primary-hover));
+  font-family: var(--font-manrope), sans-serif;
+  font-size: 0.9rem;
+  font-weight: 800;
+  letter-spacing: -0.025em;
+  line-height: 1.2;
+  white-space: nowrap;
+}
+
+.mapPopupDetails {
+  display: grid;
+  gap: 0.2rem;
+  margin-top: 0.45rem;
+  color: rgb(var(--color-muted-foreground));
+  font-size: 0.7rem;
+  font-weight: 700;
+}
+
+.mapPopupLocation,
+.mapPopupMeta {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 0.3rem;
+}
+
+.mapPopupLocation {
+  color: rgb(var(--color-foreground));
+}
+
+.mapPopupLocation span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.mapPopupMeta {
+  overflow: hidden;
+  white-space: nowrap;
+}
+
+.mapPopupMeta > span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.mapPopupSeparator {
+  flex: 0 0 auto;
+  color: rgb(var(--color-border-strong));
+}
+
+.mapPopupAction {
+  display: inline-flex;
+  width: 100%;
+  min-height: 2.75rem;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  margin-top: 0.6rem;
+  border-radius: var(--radius-control);
+  padding: 0.45rem 0.65rem;
+  background: rgb(var(--color-primary));
+  color: rgb(var(--color-primary-foreground));
+  font-size: 0.7rem;
+  font-weight: 800;
+  transition:
+    background-color var(--motion-fast) var(--rm-ease-standard),
+    transform var(--motion-fast) var(--rm-ease-out);
+}
+
+.mapPopup .mapPopupAction {
+  color: rgb(var(--color-primary-foreground));
+  text-decoration: none;
+}
+
+.mapPopupAction:hover {
+  background: rgb(var(--color-primary-hover));
+  transform: translateY(-1px);
+}
+
+.mapPopup .mapPopupAction:hover {
+  color: rgb(var(--color-primary-foreground));
+}
+
+.mapPopupAction:focus-visible {
+  outline: 3px solid rgb(var(--color-focus-ring));
+  outline-offset: 2px;
+}
+
+.resultsRail {
+  display: flex;
+  min-width: 0;
+  min-height: 0;
+  flex-direction: column;
+  border: 1px solid rgb(var(--color-border));
+  border-radius: var(--radius-card);
+  background: rgb(var(--color-surface-subtle) / 0.72);
+  box-shadow: var(--shadow-surface);
+}
+
+.railHeader {
+  flex: 0 0 auto;
+  border-bottom: 1px solid rgb(var(--color-border));
+  padding: 1rem;
+  background: rgb(var(--color-surface));
+}
+
+.railTitle {
+  margin-top: 0.35rem;
+  color: rgb(var(--color-foreground));
+  font-family: var(--font-manrope), sans-serif;
+  font-size: 1.15rem;
+  font-weight: 800;
+  letter-spacing: -0.035em;
+}
+
+.railDescription {
+  margin-top: 0.25rem;
+  color: rgb(var(--color-muted-foreground));
+  font-size: var(--font-size-xs);
+  line-height: 1.5;
+}
+
+.railList {
+  display: grid;
+  min-width: 0;
+  gap: 0.75rem;
+  margin: 0;
+  padding: 0.75rem;
+  list-style: none;
+}
+
+.railItem {
+  min-width: 0;
+}
+
+.railCard {
+  position: relative;
+  min-width: 0;
+  overflow: hidden;
+  border: 1px solid rgb(var(--color-border));
+  border-radius: var(--radius-card);
+  background: rgb(var(--color-surface));
+  box-shadow: var(--shadow-surface);
+  transition:
+    border-color var(--motion-fast) var(--rm-ease-standard),
+    box-shadow var(--motion-standard) var(--rm-ease-out),
+    transform var(--motion-standard) var(--rm-ease-out);
+}
+
+.railCard:hover,
+.railCardSelected {
+  border-color: rgb(var(--color-primary) / 0.5);
+  box-shadow: var(--shadow-raised);
+}
+
+.railCard:hover {
+  transform: translateY(-1px);
+}
+
+.railCardSelected {
+  box-shadow:
+    0 0 0 3px rgb(var(--color-primary) / 0.12),
+    var(--shadow-raised);
+}
+
+.railCardLink {
+  display: grid;
+  min-width: 0;
+  grid-template-columns: 7.5rem minmax(0, 1fr);
+  min-height: 9.5rem;
+  color: inherit;
+  outline: none;
+}
+
+.railCardLink:focus-visible {
+  outline: 3px solid rgb(var(--color-focus-ring));
+  outline-offset: -3px;
+}
+
+.railCardMedia {
+  position: relative;
+  min-width: 0;
+  min-height: 100%;
+  background: rgb(var(--color-decorative-blue));
+}
+
+.railCardImage {
+  transition: transform var(--motion-slow) var(--rm-ease-out);
+}
+
+.railCard:hover .railCardImage {
+  transform: scale(1.03);
+}
+
+.railCardImageFallback {
+  display: grid;
+  width: 100%;
+  height: 100%;
+  min-height: 9.5rem;
+  place-items: center;
+  color: rgb(var(--color-primary-hover));
+}
+
+.railCardBody {
+  min-width: 0;
+  padding: 0.8rem 3.8rem 0.8rem 0.9rem;
+}
+
+.railCardTopline {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.45rem;
+  color: rgb(var(--color-muted-foreground));
+  font-size: 0.68rem;
+  font-weight: 800;
+}
+
+.railCardDistance {
+  display: inline-flex;
+  min-width: 0;
+  align-items: center;
+  gap: 0.3rem;
+  overflow: hidden;
+  color: rgb(var(--color-primary-hover));
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.railCardRank {
+  flex: 0 0 auto;
+  color: rgb(var(--color-subtle-foreground));
+}
+
+.railCardPrice {
+  margin-top: 0.45rem;
+  color: rgb(var(--color-primary-hover));
+  font-family: var(--font-manrope), sans-serif;
+  font-size: 1.05rem;
+  font-weight: 800;
+  letter-spacing: -0.035em;
+}
+
+.railCardTitle {
+  display: -webkit-box;
+  overflow: hidden;
+  margin-top: 0.25rem;
+  color: rgb(var(--color-foreground));
+  font-family: var(--font-manrope), sans-serif;
+  font-size: var(--font-size-sm);
+  font-weight: 800;
+  line-height: 1.35;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+
+.railCardLocation {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 0.35rem;
+  margin-top: 0.4rem;
+  color: rgb(var(--color-muted-foreground));
+  font-size: 0.7rem;
+  font-weight: 700;
+}
+
+.railCardLocation span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.railCardMeta {
+  display: flex;
+  min-width: 0;
+  flex-wrap: wrap;
+  gap: 0.25rem 0.55rem;
+  margin-top: 0.55rem;
+  color: rgb(var(--color-muted-foreground));
+  font-size: 0.66rem;
+  font-weight: 700;
+  line-height: 1.35;
+}
+
+.railCardMeta span:not(:last-child)::after {
+  margin-left: 0.55rem;
+  color: rgb(var(--color-border-strong));
+  content: "•";
+}
+
+.railCardActions {
+  position: absolute;
+  z-index: 2;
+  top: 0.65rem;
+  right: 0.65rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.railCardActions :global(button) {
+  min-width: 2.75rem !important;
+  min-height: 2.75rem !important;
+}
+
+.emptyState {
+  display: flex;
+  min-height: 15rem;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 2rem 1.25rem;
+  text-align: center;
+}
+
+.emptyIcon {
+  display: grid;
+  width: 3rem;
+  height: 3rem;
+  place-items: center;
+  border-radius: 50%;
+  background: rgb(var(--color-primary-subtle));
+  color: rgb(var(--color-primary-hover));
+}
+
+.emptyState h3 {
+  margin-top: 0.85rem;
+  color: rgb(var(--color-foreground));
+  font-family: var(--font-manrope), sans-serif;
+  font-size: 1.05rem;
+  font-weight: 800;
+}
+
+.emptyState p {
+  max-width: 28rem;
+  margin-top: 0.35rem;
+  color: rgb(var(--color-muted-foreground));
+  font-size: var(--font-size-sm);
+  line-height: 1.55;
+}
+
+.invalidPage {
+  min-height: 100vh;
+  min-height: 100dvh;
+  background: rgb(var(--color-background));
+}
+
+.invalidHeader {
+  border-bottom: 1px solid rgb(var(--color-border));
+  background: rgb(var(--color-primary-subtle));
+  padding-block: 2.5rem;
+}
+
+.invalidHeader h1 {
+  max-width: 42rem;
+  margin-top: 0.75rem;
+  color: rgb(var(--color-foreground));
+  font-family: var(--font-manrope), sans-serif;
+  font-size: clamp(2rem, 5vw, 4rem);
+  font-weight: 800;
+  letter-spacing: -0.07em;
+  line-height: 1;
+}
+
+@media (min-width: 640px) {
+  .heroInner {
+    padding-block: 2.5rem 3rem;
+  }
+
+  .searchCard {
+    padding: 1.25rem;
+  }
+
+  .suggestionList {
+    top: 7.15rem;
+    right: 1.25rem;
+    left: 1.25rem;
+  }
+
+  .resultsHeader {
+    grid-template-columns: minmax(0, 1fr) minmax(15rem, 0.48fr);
+    align-items: end;
+  }
+
+  .resultsContext {
+    justify-self: end;
+  }
+
+  .mapPanel {
+    min-height: 28rem;
+    height: min(60dvh, 36rem);
+  }
+}
+
+@media (min-width: 1024px) {
+  .heroInner {
+    padding-block: 3rem 3.5rem;
+  }
+
+  .heroGrid {
+    grid-template-columns: minmax(0, 0.9fr) minmax(22rem, 1.1fr);
+    align-items: center;
+    gap: 3rem;
+  }
+
+  .resultsSection {
+    padding-block: 2.5rem 5rem;
+  }
+
+  .resultsStage {
+    grid-template-columns: minmax(0, 1.85fr) minmax(22rem, 1fr);
+    align-items: start;
+  }
+
+  .mapPanel {
+    position: sticky;
+    top: 5.5rem;
+    min-height: 31rem;
+    height: clamp(580px, 72vh, 700px);
+  }
+
+  .resultsRail {
+    height: clamp(580px, 72vh, 700px);
+    overflow: hidden;
+  }
+
+  .railHeader {
+    position: sticky;
+    top: 0;
+    z-index: 1;
+  }
+
+  .railList {
+    min-height: 0;
+    overflow-y: auto;
+  }
+
+  .railCardLink {
+    grid-template-columns: 6.75rem minmax(0, 1fr);
+    min-height: 9rem;
+  }
+
+  .railCardImageFallback {
+    min-height: 9rem;
+  }
+}
+
+@media (max-width: 639px) {
+  .privacyNote {
+    border-radius: var(--radius-control);
+  }
+
+  .mapHeader {
+    flex-direction: column;
+  }
+
+  .mapHint {
+    max-width: none;
+    text-align: left;
+  }
+
+  .errorState {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .errorState button {
+    width: 100%;
+  }
+
+  .mapLegend {
+    right: 0.5rem;
+    left: 0.5rem;
+    justify-content: center;
+  }
+}
+
+@media (max-width: 399px) {
+  .railCardLink {
+    grid-template-columns: 6.5rem minmax(0, 1fr);
+  }
+
+  .railCardBody {
+    padding-right: 3.5rem;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .locationControl,
+  .gpsButton,
+  .suggestionOption,
+  .radiusOption,
+  .quickButton,
+  .railCard,
+  .railCardImage,
+  .mapPopupAction {
+    transition: none;
+  }
+
+  .quickButton:hover,
+  .railCard:hover,
+  .mapPopup .mapPopupAction:hover {
+    transform: none;
+  }
+}

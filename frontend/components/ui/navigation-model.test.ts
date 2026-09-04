@@ -54,6 +54,10 @@ describe("actor-aware navigation model", () => {
     }
   });
 
+  it("keeps public help reachable outside the primary discovery navigation", () => {
+    expect(consumerNavigationItems("anonymous").some((item) => item.key === "help")).toBe(false);
+  });
+
   it("resolves route-owned, shared, auth, and wrong-role shells without treating role UX as authorization", () => {
     expect(resolveShellKind("/login", "anonymous")).toBe("auth");
     expect(resolveShellKind("/register", "anonymous")).toBe("auth");

@@ -4,6 +4,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { MapPoint, MapViewport } from "../../components/map/map-base";
 import { Button } from "../../components/ui/button";
+import { Dialog } from "../../components/ui/dialog";
 import { Drawer } from "../../components/ui/drawer";
 import { ErrorState } from "../../components/ui/feedback-states";
 import { Icon } from "../../components/ui/icon";
@@ -13,6 +14,7 @@ import type { Amenity, PropertyType, PublicListingSort, PublicListingSummary } f
 import { SaveSearchControl } from "../saved-searches/save-search-control";
 import { ListingCard, ListingCardSkeleton } from "./listing-card";
 import { RadiusControls } from "./radius-controls";
+import { amenityLabel, propertyTypeLabel } from "./room-type-label";
 import { SearchFilters, type LookupResource } from "./search-filters";
 import { SearchMap } from "./search-map";
 import {
@@ -74,9 +76,18 @@ function sameViewport(left: MapViewport | null, right: MapViewport): boolean {
 function optionLabel<T extends { readonly code: string; readonly label: string }>(
   resource: LookupResource<T>,
   code: string,
-  fallback: string
+  fallback: string,
+  format: (option: T) => string = (option) => option.label
 ): string {
-  return resource.data.find((option) => option.code === code)?.label ?? fallback;
+  const option = resource.data.find((item) => item.code === code);
+  return option ? format(option) : fallback;
+}
+
+function searchContextLabel(state: SearchQueryState): string {
+  if (state.areaName && state.q) return `${state.areaName} · ${state.q}`;
+  if (state.areaName) return `Khu vực ${state.areaName}`;
+  if (state.q) return `Từ khóa “${state.q}”`;
+  return "Tất cả phòng công khai";
 }
 
 function activeFilterChips(
@@ -100,11 +111,11 @@ function activeFilterChips(
   if (state.propertyType) {
     chips.push({
       key: "propertyType",
-      label: "Loại: " + optionLabel(propertyTypes, state.propertyType, "Loại phòng đã chọn")
+      label: "Loại: " + optionLabel(propertyTypes, state.propertyType, "Loại phòng đã chọn", propertyTypeLabel)
     });
   }
   if (state.amenities.length > 0) {
-    const labels = state.amenities.map((code) => optionLabel(amenities, code, "Tiện ích đã chọn"));
+    const labels = state.amenities.map((code) => optionLabel(amenities, code, "Tiện ích đã chọn", amenityLabel));
     chips.push({ key: "amenities", label: "Tiện ích: " + labels.join(", ") });
   }
   if (state.mode === "bounds") chips.push({ key: "mode", label: "Vùng bản đồ đang chọn" });
@@ -165,7 +176,7 @@ export function SearchPage() {
   const [proposedRadiusCenter, setProposedRadiusCenter] = useState<MapPoint | null>(null);
   const [selectingRadiusCenter, setSelectingRadiusCenter] = useState(false);
   const [radiusResetKey, setRadiusResetKey] = useState(0);
-  const [mobileMapOpen, setMobileMapOpen] = useState(false);
+  const [mapModeActive, setMapModeActive] = useState(false);
   const [mobileFiltersOpen, setMobileFiltersOpen] = useState(false);
   const [activeListingId, setActiveListingId] = useState<number | null>(null);
   const searchRequestIdentity = useRef(0);
@@ -270,6 +281,10 @@ export function SearchPage() {
     router.push(query ? "/search?" + query : "/search");
   };
 
+  const openMapMode = useCallback(() => setMapModeActive(true), []);
+
+  const closeMapMode = useCallback(() => setMapModeActive(false), []);
+
   const handleListingSelect = useCallback((listingId: number) => {
     setActiveListingId(listingId);
     const card = document.getElementById("listing-card-" + listingId);
@@ -288,7 +303,7 @@ export function SearchPage() {
     setProposedRadiusCenter(null);
     setSelectingRadiusCenter(false);
     setActiveListingId(null);
-    setMobileMapOpen(false);
+    setMapModeActive(false);
     setMobileFiltersOpen(false);
     setRadiusResetKey((key) => key + 1);
     router.push("/search");
@@ -318,6 +333,7 @@ export function SearchPage() {
   const committed = parsed.state;
   const filterCount = activeFilterCount(committed);
   const chips = activeFilterChips(committed, propertyTypes, amenities);
+  const contextLabel = searchContextLabel(committed);
   const applyFilters = (values: SearchFilterValues, sort: PublicListingSort) => {
     navigate(applySearchFilters(committed, values, sort));
   };
@@ -350,6 +366,10 @@ export function SearchPage() {
         applyFilters(values, sort);
       }}
       onClear={clearSearch}
+      onOpenMap={() => {
+        setMobileFiltersOpen(false);
+        openMapMode();
+      }}
     />
   );
 
@@ -361,12 +381,14 @@ export function SearchPage() {
             <span className={styles.introLabel}>
               <Icon name="search" className="h-4 w-4" /> Khám phá nơi ở
             </span>
-            <h1 id="search-heading">
-              Tìm nơi phù hợp.
-              <span> Lọc theo cách của bạn.</span>
-            </h1>
+            <h1 id="search-heading">Tìm phòng phù hợp</h1>
+            <p>Điều chỉnh khu vực, ngân sách và tiện ích ngay trên trang.</p>
           </div>
-          <p>Chọn khu vực, ngân sách và tiện ích. Bản đồ hiển thị vị trí xấp xỉ; bạn chủ động bấm tìm trong khu vực.</p>
+          <div className={styles.searchContext}>
+            <span className={styles.contextLabel}>Đang tìm</span>
+            <strong title={contextLabel}>{contextLabel}</strong>
+            <span className={styles.contextHint}>Vị trí trên bản đồ luôn là vị trí xấp xỉ.</span>
+          </div>
         </header>
 
         <div className={styles.layout}>
@@ -383,36 +405,22 @@ export function SearchPage() {
                   </span>
                   <div>
                     <h2>
-                      {searchStatus === "loading" ? "Đang tìm phòng" : "Tìm thấy "}
-                      <strong>{searchStatus === "loading" ? "" : items.length}</strong>
-                      {searchStatus === "loading" ? "…" : " phòng trên trang này"}
+                      {searchStatus === "loading" ? (
+                        "Đang tìm phòng…"
+                      ) : items.length > 0 ? (
+                        <>
+                          Hiển thị <strong>{items.length}</strong> phòng trên trang này
+                        </>
+                      ) : (
+                        "Không tìm thấy phòng phù hợp"
+                      )}
                     </h2>
-                    <p>Tin đăng công khai phù hợp với điều kiện của bạn</p>
+                    <p>{searchStatus === "loading" ? "Đang cập nhật kết quả" : contextLabel}</p>
                   </div>
                 </div>
 
                 <div className={styles.toolbarActions}>
                   <SaveSearchControl search={committed} />
-                  <div className={styles.mobileViewToggle} role="group" aria-label="Chế độ xem kết quả">
-                    <button
-                      type="button"
-                      aria-pressed={!mobileMapOpen}
-                      onClick={() => setMobileMapOpen(false)}
-                      className={`${styles.mobileViewButton} ${!mobileMapOpen ? styles.mobileViewButtonActive : ""}`}
-                    >
-                      Danh sách
-                    </button>
-                    <button
-                      type="button"
-                      aria-label={mobileMapOpen ? "Đóng bản đồ" : "Xem bản đồ"}
-                      aria-pressed={mobileMapOpen}
-                      onClick={() => setMobileMapOpen(true)}
-                      className={`${styles.mobileViewButton} ${mobileMapOpen ? styles.mobileViewButtonActive : ""}`}
-                    >
-                      <Icon name="map" className="h-4 w-4" />
-                      Bản đồ
-                    </button>
-                  </div>
                   <button
                     type="button"
                     aria-expanded={mobileFiltersOpen}
@@ -470,7 +478,7 @@ export function SearchPage() {
                 <div className={styles.loadingResults} role="status" aria-live="polite">
                   <span className="sr-only">Đang tìm tin đăng…</span>
                   <div className={styles.listingGrid} aria-hidden="true">
-                    {Array.from({ length: 4 }, (_, index) => (
+                    {Array.from({ length: 6 }, (_, index) => (
                       <ListingCardSkeleton key={index} variant="search" />
                     ))}
                   </div>
@@ -499,7 +507,7 @@ export function SearchPage() {
                   <span className={styles.emptyIcon}>
                     <Icon name="search" className="h-7 w-7" />
                   </span>
-                  <h3>Chưa tìm thấy tin đăng phù hợp</h3>
+                  <h3>Không tìm thấy phòng phù hợp</h3>
                   <p>Vui lòng thử thay đổi từ khóa hoặc nới lỏng một vài điều kiện lọc.</p>
                   <button type="button" onClick={clearSearch} className={styles.emptyAction}>
                     Xóa bộ lọc và xem tất cả
@@ -520,7 +528,7 @@ export function SearchPage() {
                         onMapFocus={() => setActiveListingId(listing.id)}
                         onMapSelect={() => {
                           setActiveListingId(listing.id);
-                          setMobileMapOpen(true);
+                          openMapMode();
                         }}
                       />
                     ))}
@@ -542,49 +550,57 @@ export function SearchPage() {
               ) : null}
             </main>
 
-            <section
-              id="search-map-panel"
-              className={styles.mapPanel}
-              data-open={mobileMapOpen ? "true" : "false"}
-              aria-labelledby="search-map-panel-heading"
+            <Dialog
+              open={mapModeActive}
+              title="Bản đồ khám phá"
+              description={`Vị trí xấp xỉ · ${contextLabel}`}
+              closeLabel="Đóng bản đồ"
+              onClose={closeMapMode}
+              className={styles.mapDialog}
             >
-              <div className={styles.mapPanelHeader}>
-                <div>
-                  <span className={styles.mapKicker}>
-                    <Icon name="map" className="h-4 w-4" /> Bản đồ khám phá
-                  </span>
-                  <h2 id="search-map-panel-heading">Khu vực xấp xỉ</h2>
+              <div className={styles.mapDialogContent}>
+                <div className={styles.mapDialogMeta}>
+                  <div>
+                    <span className={styles.mapDialogKicker}>
+                      <Icon name="search" className="h-4 w-4" /> Đang xem
+                    </span>
+                    <strong title={contextLabel}>{contextLabel}</strong>
+                  </div>
+                  <span className={styles.mapDialogCount}>{items.length} phòng trên trang này</span>
                 </div>
-                <span className={styles.mapHint}>Di chuyển bản đồ không tự tìm kiếm</span>
+
+                <div className={styles.mapDialogMap}>
+                  <SearchMap
+                    listings={items}
+                    pendingViewport={pendingViewport}
+                    viewportBounds={savedViewportBounds}
+                    proposedRadiusCenter={proposedRadiusCenter}
+                    selectingRadiusCenter={selectingRadiusCenter}
+                    activeListingId={activeListingId}
+                    onViewportChange={handleViewportChange}
+                    onSearchBounds={(viewport) => navigate(withBounds(committed, viewport.bounds))}
+                    onListingSelect={handleListingSelect}
+                    onRadiusCenterSelected={(point) => {
+                      if (!selectingRadiusCenter) return;
+                      setProposedRadiusCenter(point);
+                      setSelectingRadiusCenter(false);
+                    }}
+                  />
+                </div>
+
+                <div className={styles.mapDialogControls}>
+                  <RadiusControls
+                    proposedCenter={proposedRadiusCenter}
+                    selectingCenter={selectingRadiusCenter}
+                    initialRadiusKm={committed.mode === "radius" ? committed.radiusKm : undefined}
+                    resetKey={radiusResetKey}
+                    onProposedCenterChange={setProposedRadiusCenter}
+                    onSelectingCenterChange={setSelectingRadiusCenter}
+                    onCommit={(center, radiusKm) => navigate(withRadius(committed, center, radiusKm))}
+                  />
+                </div>
               </div>
-              <RadiusControls
-                proposedCenter={proposedRadiusCenter}
-                selectingCenter={selectingRadiusCenter}
-                initialRadiusKm={committed.mode === "radius" ? committed.radiusKm : undefined}
-                resetKey={radiusResetKey}
-                onProposedCenterChange={setProposedRadiusCenter}
-                onSelectingCenterChange={setSelectingRadiusCenter}
-                onCommit={(center, radiusKm) => navigate(withRadius(committed, center, radiusKm))}
-              />
-              <div className={styles.mapCanvas}>
-                <SearchMap
-                  listings={items}
-                  pendingViewport={pendingViewport}
-                  viewportBounds={savedViewportBounds}
-                  proposedRadiusCenter={proposedRadiusCenter}
-                  selectingRadiusCenter={selectingRadiusCenter}
-                  activeListingId={activeListingId}
-                  onViewportChange={handleViewportChange}
-                  onSearchBounds={(viewport) => navigate(withBounds(committed, viewport.bounds))}
-                  onListingSelect={handleListingSelect}
-                  onRadiusCenterSelected={(point) => {
-                    if (!selectingRadiusCenter) return;
-                    setProposedRadiusCenter(point);
-                    setSelectingRadiusCenter(false);
-                  }}
-                />
-              </div>
-            </section>
+            </Dialog>
           </div>
         </div>
       </div>

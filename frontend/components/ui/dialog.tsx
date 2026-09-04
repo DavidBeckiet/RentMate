@@ -1,12 +1,17 @@
 "use client";
 
-import { useEffect, useId, useRef, type ReactNode, type RefObject } from "react";
+import { useEffect, useId, useRef, useState, type ReactNode, type RefObject } from "react";
+import { createPortal } from "react-dom";
 import { cx } from "./class-names";
 import { Icon } from "./icon";
 import { IconButton } from "./icon-button";
 
 const focusableSelector =
   'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
+
+function restoreScrollPosition(scrollY: number) {
+  if (window.scrollY !== scrollY) window.scrollTo(0, scrollY);
+}
 
 export interface DialogProps {
   readonly open: boolean;
@@ -36,6 +41,11 @@ export function Dialog({
   const titleId = useId();
   const descriptionId = useId();
   const panelRef = useRef<HTMLDivElement>(null);
+  const [portalTarget, setPortalTarget] = useState<HTMLElement | null>(null);
+
+  useEffect(() => {
+    setPortalTarget(document.body);
+  }, []);
 
   useEffect(() => {
     if (!open) return;
@@ -43,12 +53,18 @@ export function Dialog({
     const panel = panelRef.current;
     const trigger = triggerRef?.current;
     const previousActive = document.activeElement as HTMLElement | null;
+    const previousScrollY = window.scrollY;
     const previousOverflow = document.body.style.overflow;
+    const previousPaddingRight = document.body.style.paddingRight;
+    const scrollbarWidth = window.innerWidth - document.documentElement.clientWidth;
     document.body.style.overflow = "hidden";
+    if (scrollbarWidth > 0) document.body.style.paddingRight = `${scrollbarWidth}px`;
+    restoreScrollPosition(previousScrollY);
 
     const focusable = panel?.querySelectorAll<HTMLElement>(focusableSelector);
     const first = focusable?.[0] ?? panel;
-    first?.focus();
+    first?.focus({ preventScroll: true });
+    restoreScrollPosition(previousScrollY);
 
     const handleKeyDown = (event: KeyboardEvent) => {
       if (event.key === "Escape") {
@@ -80,14 +96,16 @@ export function Dialog({
     return () => {
       window.removeEventListener("keydown", handleKeyDown);
       document.body.style.overflow = previousOverflow;
+      document.body.style.paddingRight = previousPaddingRight;
       const returnTarget = trigger ?? previousActive;
-      if (returnTarget?.isConnected) returnTarget.focus();
+      if (returnTarget?.isConnected) returnTarget.focus({ preventScroll: true });
+      restoreScrollPosition(previousScrollY);
     };
   }, [onClose, open, triggerRef]);
 
   if (!open) return null;
 
-  return (
+  const dialogContent = (
     <div
       className={cx(
         "fixed inset-0 z-dialog flex items-center justify-center p-4",
@@ -139,4 +157,6 @@ export function Dialog({
       </div>
     </div>
   );
+
+  return portalTarget ? createPortal(dialogContent, portalTarget) : dialogContent;
 }

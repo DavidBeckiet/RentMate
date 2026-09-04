@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Button } from "../../components/ui/button";
 import { Icon } from "../../components/ui/icon";
 import { api, ApiError } from "../../lib/api/client";
@@ -16,8 +16,12 @@ export function SaveSearchControl({ search }: { readonly search: SearchQueryStat
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [saved, setSaved] = useState(false);
+  const [mounted, setMounted] = useState(false);
   const saveLabel = search.mode === "ordinary" ? "Lưu bộ lọc" : "Lưu tìm kiếm khu vực này";
 
+  useEffect(() => setMounted(true), []);
+
+  if (!mounted || status === "loading") return null;
   if (status === "authenticated" && user?.role !== "TENANT") return null;
   if (status === "anonymous") {
     return (

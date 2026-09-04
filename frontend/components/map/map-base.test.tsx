@@ -26,6 +26,7 @@ const leafletMocks = vi.hoisted(() => {
     events: {} as MapEvents,
     markerEvents: new Map<string, MarkerEvents>(),
     markerIcons: new Map<string, unknown>(),
+    markerIconList: [] as Array<{ title?: string; icon: unknown }>,
     clusterOptions: null as null | Record<string, unknown>,
     tile: null as null | { url: string; attribution: string },
     setView: vi.fn(),
@@ -76,9 +77,22 @@ vi.mock("react-leaflet", () => ({
       {children}
     </div>
   ),
-  TileLayer: ({ url, attribution }: { url: string; attribution: string }) => {
+  TileLayer: ({
+    url,
+    attribution,
+    eventHandlers
+  }: {
+    url: string;
+    attribution: string;
+    eventHandlers?: { load?: () => void; tileerror?: () => void };
+  }) => {
     leafletMocks.state.tile = { url, attribution };
-    return <div data-testid="tile-layer" />;
+    return (
+      <>
+        <div data-testid="tile-layer" />
+        <button type="button" data-testid="tile-error-trigger" onClick={() => eventHandlers?.tileerror?.()} />
+      </>
+    );
   },
   Marker: ({
     children,
@@ -87,13 +101,16 @@ vi.mock("react-leaflet", () => ({
     eventHandlers
   }: {
     children: ReactNode;
-    title: string;
+    title?: string;
     icon: unknown;
     eventHandlers: MarkerEvents;
   }) => {
-    leafletMocks.state.markerEvents.set(title, eventHandlers);
-    leafletMocks.state.markerIcons.set(title, icon);
-    return <div data-testid={`marker-${title}`}>{children}</div>;
+    if (title) {
+      leafletMocks.state.markerEvents.set(title, eventHandlers);
+      leafletMocks.state.markerIcons.set(title, icon);
+    }
+    leafletMocks.state.markerIconList.push({ title, icon });
+    return <div data-testid={`marker-${title ?? "untitled"}`}>{children}</div>;
   },
   Circle: ({ children, radius }: { children: ReactNode; radius: number }) => (
     <div data-testid="radius-circle" data-radius={radius}>
@@ -133,6 +150,7 @@ beforeEach(() => {
   leafletMocks.state.events = {};
   leafletMocks.state.markerEvents.clear();
   leafletMocks.state.markerIcons.clear();
+  leafletMocks.state.markerIconList.length = 0;
   leafletMocks.state.clusterOptions = null;
   leafletMocks.state.tile = null;
   leafletMocks.state.setView.mockClear();
@@ -159,6 +177,15 @@ describe("LeafletMap", () => {
       url: "https://tile.openstreetmap.org/{z}/{x}/{y}.png",
       attribution: expect.stringContaining("OpenStreetMap")
     });
+  });
+
+  it("announces an OSM tile failure while keeping the map region mounted", () => {
+    render(<LeafletMap ariaLabel="Bản đồ kết quả" center={initialViewport.center} zoom={initialViewport.zoom} />);
+
+    act(() => fireEvent.click(screen.getByTestId("tile-error-trigger")));
+
+    expect(screen.getByRole("region", { name: "Bản đồ kết quả" })).toBeInTheDocument();
+    expect(screen.getByRole("status")).toHaveTextContent("Danh sách tin đăng vẫn sử dụng được");
   });
 
   it("updates viewport on moveend but searches only after the explicit action using the latest viewport", () => {
@@ -262,6 +289,57 @@ describe("LeafletMap", () => {
       />
     );
     expect(leafletMocks.state.markerIcons.get(marker.label)).not.toBe(defaultIcon);
+  });
+
+  it("renders compact price labels and a distinct search center marker", () => {
+    const priceMarker = {
+      id: "price-42",
+      label: "Phòng 4,2 triệu — 0,8 km",
+      displayLabel: "4,2tr",
+      variant: "price" as const,
+      position: initialViewport.center
+    };
+    const selectedPriceMarker = {
+      id: "price-65",
+      label: "Phòng 6,5 triệu — 2,3 km",
+      displayLabel: "6,5tr",
+      variant: "price" as const,
+      selected: true,
+      position: { latitude: 10.771, longitude: 106.701 }
+    };
+    const centerMarker = {
+      id: "search-center",
+      label: "Tâm tìm kiếm tại UIT",
+      variant: "center" as const,
+      position: { latitude: 10.772, longitude: 106.702 }
+    };
+
+    render(
+      <LeafletMap
+        ariaLabel="Bản đồ gần đây"
+        center={initialViewport.center}
+        zoom={initialViewport.zoom}
+        markers={[priceMarker, selectedPriceMarker, centerMarker]}
+      />
+    );
+
+    expect(leafletMocks.state.markerIconList[0]?.title).toBeUndefined();
+    expect(leafletMocks.state.markerIconList[0]?.icon).toMatchObject({
+      className: "rentmate-map-price-marker-wrapper",
+      html: expect.stringContaining("4,2tr")
+    });
+    expect(leafletMocks.state.markerIconList[1]?.title).toBeUndefined();
+    expect(leafletMocks.state.markerIconList[1]?.icon).toMatchObject({
+      className: "rentmate-map-price-marker-wrapper",
+      html: expect.stringContaining("rentmate-map-price-marker-selected")
+    });
+    expect(leafletMocks.state.markerIcons.get(centerMarker.label)).toMatchObject({
+      className: "rentmate-map-center-marker-wrapper",
+      html: expect.stringContaining("rentmate-map-center-marker")
+    });
+    expect(screen.queryByText(priceMarker.label)).not.toBeInTheDocument();
+    expect(screen.queryByText(selectedPriceMarker.label)).not.toBeInTheDocument();
+    expect(screen.getByText(centerMarker.label)).toBeInTheDocument();
   });
 
   it("renders an optional marker popup without changing markers that have no popup", () => {

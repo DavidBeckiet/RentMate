@@ -147,6 +147,92 @@ summary {
   cursor: pointer;
 }
 
+.rentmate-map-price-marker-wrapper {
+  width: 0 !important;
+  height: 0 !important;
+  border: 0 !important;
+  background: transparent !important;
+  overflow: visible !important;
+}
+
+.rentmate-map-price-marker {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  display: inline-flex;
+  min-height: 2rem;
+  min-width: 3rem;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid rgb(var(--color-border-strong));
+  border-radius: 9999px;
+  padding: 0.3rem 0.55rem;
+  background: rgb(var(--color-surface) / 0.96);
+  color: rgb(var(--color-foreground));
+  box-shadow: var(--shadow-surface);
+  font:
+    800 0.75rem/1 var(--font-be-vietnam-pro),
+    var(--font-manrope),
+    sans-serif;
+  white-space: nowrap;
+  transform: translate(-50%, calc(-100% - 0.35rem));
+  transition:
+    background-color var(--motion-fast) var(--rm-ease-standard),
+    border-color var(--motion-fast) var(--rm-ease-standard),
+    color var(--motion-fast) var(--rm-ease-standard),
+    transform var(--motion-fast) var(--rm-ease-out);
+}
+
+.rentmate-map-price-marker::after {
+  position: absolute;
+  bottom: -0.35rem;
+  left: 50%;
+  width: 0.65rem;
+  height: 0.65rem;
+  border-right: 1px solid rgb(var(--color-border-strong));
+  border-bottom: 1px solid rgb(var(--color-border-strong));
+  background: inherit;
+  content: "";
+  transform: translateX(-50%) rotate(45deg);
+}
+
+.rentmate-map-price-marker-selected {
+  border-color: rgb(var(--color-primary));
+  background: rgb(var(--color-primary));
+  color: rgb(var(--color-primary-foreground));
+  transform: translate(-50%, calc(-100% - 0.5rem)) scale(1.04);
+}
+
+.rentmate-map-price-marker-selected::after {
+  border-color: rgb(var(--color-primary));
+}
+
+.rentmate-map-center-marker-wrapper {
+  border: 0;
+  background: transparent;
+}
+
+.rentmate-map-center-marker {
+  display: grid;
+  width: 2rem;
+  height: 2rem;
+  place-items: center;
+  border: 3px solid rgb(var(--color-surface));
+  border-radius: 50%;
+  background: rgb(var(--color-primary));
+  box-shadow:
+    0 0 0 5px rgb(var(--color-primary) / 0.22),
+    var(--shadow-raised);
+}
+
+.rentmate-map-center-marker span {
+  display: block;
+  width: 0.5rem;
+  height: 0.5rem;
+  border: 2px solid rgb(var(--color-surface));
+  border-radius: 50%;
+}
+
 .rentmate-map-marker-selected {
   filter: hue-rotate(105deg) saturate(1.4) drop-shadow(0 2px 0 rgb(9 43 39 / 0.72));
 }
@@ -178,6 +264,12 @@ summary {
 .rentmate-map-cluster-button:focus-visible {
   outline: 3px solid rgb(var(--color-focus-accent));
   outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .rentmate-map-price-marker {
+    transition: none;
+  }
 }
 
 ::selection {

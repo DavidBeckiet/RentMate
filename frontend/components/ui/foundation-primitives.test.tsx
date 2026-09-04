@@ -76,6 +76,7 @@ describe("foundation feedback primitives", () => {
     fireEvent.click(trigger);
     const dialog = await screen.findByRole("dialog", { name: "Xác nhận hành động" });
     expect(dialog).toBeInTheDocument();
+    expect(dialog.parentElement?.parentElement).toBe(document.body);
     await waitFor(() => expect(screen.getByRole("button", { name: "Đóng hộp thoại" })).toHaveFocus());
 
     fireEvent.keyDown(window, { key: "Escape" });

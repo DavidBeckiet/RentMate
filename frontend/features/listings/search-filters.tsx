@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState, type FormEvent } from "react";
 import { Icon } from "../../components/ui/icon";
 import type { Amenity, PropertyType, PublicListingSort } from "../../types/api";
 import { activeFilterCount, searchFilterValues, type SearchFilterValues, type SearchQueryState } from "./search-query";
+import { amenityLabel, propertyTypeLabel } from "./room-type-label";
 import styles from "./search-filters.module.css";
 
 export interface LookupResource<T> {
@@ -19,6 +20,7 @@ export interface SearchFiltersProps {
   readonly onRetryAmenities: () => void;
   readonly onApply: (values: SearchFilterValues, sort: PublicListingSort) => void;
   readonly onClear: () => void;
+  readonly onOpenMap?: () => void;
   readonly idPrefix?: string;
 }
 
@@ -178,6 +180,7 @@ export function SearchFilters({
   onRetryAmenities,
   onApply,
   onClear,
+  onOpenMap,
   idPrefix = ""
 }: SearchFiltersProps) {
   const fieldIdPrefix = idPrefix ? `${idPrefix}-` : "";
@@ -255,6 +258,21 @@ export function SearchFilters({
         </button>
       </header>
 
+      {onOpenMap ? (
+        <section className={styles.mapSection}>
+          <button type="button" className={styles.mapAction} aria-label="Mở bản đồ" onClick={onOpenMap}>
+            <span className={styles.mapActionIcon}>
+              <Icon name="map" className="h-4 w-4" />
+            </span>
+            <span className={styles.mapActionCopy}>
+              <strong>Bộ lọc bản đồ</strong>
+              <small>Mở bản đồ để chọn khu vực hoặc bán kính.</small>
+            </span>
+            <Icon name="arrow" className="h-4 w-4 shrink-0" />
+          </button>
+        </section>
+      ) : null}
+
       <div className={styles.scrollArea}>
         <section className={styles.section}>
           <label className={styles.sectionLabel} htmlFor={`${fieldIdPrefix}listing-search-q`}>
@@ -323,7 +341,7 @@ export function SearchFilters({
                     checked={draft.propertyType === option.code}
                     onChange={() => setDraft((current) => ({ ...current, propertyType: option.code }))}
                   />
-                  <span>{option.label}</span>
+                  <span>{propertyTypeLabel(option)}</span>
                 </label>
               ))}
             </div>
@@ -546,7 +564,7 @@ export function SearchFilters({
                           }))
                         }
                       />
-                      <span>{amenity.label}</span>
+                      <span>{amenityLabel(amenity)}</span>
                     </label>
                   ))}
                 </div>

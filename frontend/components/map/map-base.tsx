@@ -26,8 +26,11 @@ export interface MapMarker {
   readonly id: string | number;
   readonly position: MapPoint;
   readonly label: string;
+  readonly displayLabel?: string;
+  readonly variant?: "default" | "price" | "center";
   readonly draggable?: boolean;
   readonly selected?: boolean;
+  readonly openPopup?: boolean;
   readonly popup?: ReactNode;
   readonly clusterable?: boolean;
 }
