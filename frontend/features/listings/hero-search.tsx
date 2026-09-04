@@ -4,6 +4,7 @@ import { useState, type FormEvent } from "react";
 import { Icon } from "../../components/ui/icon";
 import type { PropertyType } from "../../types/api";
 import type { SearchFilterValues } from "./search-query";
+import { propertyTypeLabel } from "./room-type-label";
 import styles from "./hero-search.module.css";
 
 export interface HeroSearchProps {
@@ -37,6 +38,13 @@ export function HeroSearch({ propertyTypes, loading = false, onSearch }: HeroSea
 
   return (
     <div className={styles.shell}>
+      <div className={styles.searchIntro}>
+        <div>
+          <p className={styles.searchEyebrow}>TÌM CHỖ Ở</p>
+          <h2 className={styles.searchTitle}>Bạn muốn sống ở đâu?</h2>
+        </div>
+        <p className={styles.searchHint}>Lọc theo khu vực và kiểu phòng.</p>
+      </div>
       <form onSubmit={submit} noValidate aria-label="Tìm kiếm phòng">
         <div className={styles.searchGrid}>
           <label className={styles.field}>
@@ -44,13 +52,13 @@ export function HeroSearch({ propertyTypes, loading = false, onSearch }: HeroSea
               <Icon name="search" className="h-5 w-5" />
             </span>
             <span className="min-w-0 flex-1">
-              <span className={styles.fieldLabel}>Bạn muốn sống ở đâu?</span>
+              <span className={styles.fieldLabel}>Khu vực hoặc tên phòng</span>
               <input
                 id="hero-search-keyword"
                 name="q"
                 value={keyword}
                 onChange={(event) => setKeyword(event.currentTarget.value)}
-                placeholder="Nhập khu vực hoặc tên phòng"
+                placeholder="Nhập khu vực, quận hoặc địa điểm..."
                 className={styles.textInput}
               />
             </span>
@@ -73,7 +81,7 @@ export function HeroSearch({ propertyTypes, loading = false, onSearch }: HeroSea
                 <option value="">Tất cả loại hình</option>
                 {propertyTypes.map((type) => (
                   <option key={type.code} value={type.code}>
-                    {type.label}
+                    {propertyTypeLabel(type)}
                   </option>
                 ))}
               </select>

@@ -10,6 +10,7 @@ export function ComparisonToggle({ listingId, compact = false }: Readonly<{ list
   const selected = contains(listingId);
   const messageId = useId();
   const [message, setMessage] = useState("");
+  const compactLabel = selected ? "Bỏ khỏi so sánh" : "Thêm vào so sánh";
 
   useEffect(() => setMessage(""), [listingId]);
 
@@ -31,7 +32,8 @@ export function ComparisonToggle({ listingId, compact = false }: Readonly<{ list
         onClick={activate}
         aria-pressed={selected}
         aria-describedby={message ? messageId : undefined}
-        aria-label={compact ? (selected ? "Bỏ khỏi so sánh" : "Thêm vào so sánh") : undefined}
+        aria-label={compact ? compactLabel : undefined}
+        title={compact ? compactLabel : undefined}
         className={compact ? "!min-h-10 !min-w-10 !rounded-full !p-0" : ""}
       >
         <Icon name="compare" className="h-5 w-5" />

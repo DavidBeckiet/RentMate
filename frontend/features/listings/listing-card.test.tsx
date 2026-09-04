@@ -40,11 +40,22 @@ describe("ListingCard", () => {
 
     expect(screen.getByRole("link", { name: /Studio sáng gần trung tâm/ })).toHaveAttribute("href", "/listings/42");
     expect(screen.getByText(/7[.\s]500[.\s]000/)).toBeInTheDocument();
-    expect(screen.getByText(/28,5 m²/)).toHaveTextContent("Studio");
+    expect(screen.getByText(/28,5 m²/)).toBeInTheDocument();
+    expect(screen.queryByText("Căn studio")).not.toBeInTheDocument();
     expect(screen.getByText("Bến Thành, Quận 1")).toBeInTheDocument();
-    expect(screen.getByText("Wi-Fi")).toBeInTheDocument();
+    expect(screen.queryByText("Wi-Fi")).not.toBeInTheDocument();
+    expect(screen.getByText(/Cập nhật/)).toBeInTheDocument();
     expect(screen.getByRole("img", { name: "Ảnh của Studio sáng gần trung tâm" })).toBeInTheDocument();
     expect(document.body).not.toHaveTextContent(/landlord|addressText|moderation|106\.698/i);
+  });
+
+  it("keeps full title and public area available when the card truncates visually", () => {
+    const title = "Căn studio nhiều ánh sáng gần trung tâm thành phố với ban công rộng";
+    const areaName = "Phường 14, Gò Vấp, Thành phố Hồ Chí Minh";
+    render(<ListingCard listing={listing({ title, areaName })} />);
+
+    expect(screen.getByRole("heading", { name: title })).toHaveAttribute("title", title);
+    expect(screen.getByText(areaName)).toHaveAttribute("title", areaName);
   });
 
   it("renders distance only when the radius result supplies it and respects backend alt text", () => {

@@ -1,5 +1,6 @@
 .card {
   position: relative;
+  height: 100%;
   min-width: 0;
   overflow: hidden;
   border: 1px solid rgb(var(--color-border));
@@ -88,16 +89,10 @@
   text-align: center;
 }
 
-.badge,
 .distance,
 .businessStatus {
   position: absolute;
   z-index: 1;
-}
-
-.badge {
-  top: 0.75rem;
-  left: 0.75rem;
 }
 
 .distance {
@@ -139,6 +134,7 @@
   display: -webkit-box;
   overflow: hidden;
   margin-top: 0.5rem;
+  min-height: calc(2 * 1.4em);
   color: rgb(var(--color-foreground));
   font-family: var(--font-manrope), sans-serif;
   font-size: 1rem;
@@ -159,8 +155,19 @@
   font-weight: 700;
 }
 
+.locationText {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.verifiedSlot {
+  min-height: 2.5rem;
+}
+
 .verified {
-  margin-top: 0.75rem;
+  margin-top: 0;
 }
 
 .meta {
@@ -169,6 +176,7 @@
   align-items: center;
   gap: 0.55rem 0.75rem;
   border-top: 1px solid rgb(var(--color-border));
+  min-height: 4.35rem;
   padding-top: 0.85rem;
   color: rgb(var(--color-muted-foreground));
   font-size: var(--font-size-xs);
@@ -179,14 +187,13 @@
   display: inline-flex;
   align-items: center;
   gap: 0.4rem;
+  white-space: nowrap;
 }
 
-.amenity {
-  border: 1px solid rgb(var(--color-border));
-  border-radius: 999px;
-  padding: 0.25rem 0.55rem;
-  background: rgb(var(--color-surface-subtle));
-  color: rgb(var(--color-foreground));
+.freshness {
+  display: inline-flex;
+  align-items: center;
+  white-space: nowrap;
 }
 
 .actions {

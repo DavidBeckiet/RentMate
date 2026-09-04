@@ -1,15 +1,52 @@
 .shell {
   overflow: hidden;
-  border: 1px solid rgb(var(--color-border-strong));
+  border: 1px solid rgb(var(--color-primary) / 0.35);
   border-radius: var(--radius-overlay);
   background: rgb(var(--color-surface));
-  box-shadow: var(--shadow-raised);
+  box-shadow: var(--shadow-overlay);
   animation: searchArrival var(--motion-slow) var(--rm-ease-out) both;
 }
 
 .shell:focus-within {
   border-color: rgb(var(--color-primary));
   box-shadow: var(--shadow-overlay);
+}
+
+.searchIntro {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 1.5rem;
+  border-bottom: 1px solid rgb(var(--color-border));
+  padding: 1rem 1.25rem 0.9rem;
+  background: rgb(var(--color-primary-subtle) / 0.45);
+}
+
+.searchEyebrow {
+  color: rgb(var(--color-primary-hover));
+  font-size: var(--font-size-xs);
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  line-height: 1.2;
+}
+
+.searchTitle {
+  margin-top: 0.25rem;
+  color: rgb(var(--color-foreground));
+  font-family: var(--font-manrope), sans-serif;
+  font-size: clamp(1.35rem, 2.4vw, 2rem);
+  font-weight: 800;
+  letter-spacing: -0.045em;
+  line-height: 1.1;
+}
+
+.searchHint {
+  max-width: 24rem;
+  color: rgb(var(--color-muted-foreground));
+  font-size: var(--font-size-xs);
+  font-weight: 600;
+  line-height: 1.5;
+  text-align: right;
 }
 
 .searchGrid {
@@ -19,10 +56,10 @@
 .field {
   display: flex;
   min-width: 0;
-  min-height: 4.25rem;
+  min-height: 4.5rem;
   align-items: center;
   gap: 0.75rem;
-  padding: 0.65rem 0.9rem;
+  padding: 0.75rem 1rem;
   cursor: text;
   transition: background-color var(--motion-fast) ease;
 }
@@ -89,7 +126,7 @@
 
 .submitButton {
   display: inline-flex;
-  min-height: 4.25rem;
+  min-height: 4.5rem;
   align-items: center;
   justify-content: center;
   gap: 0.55rem;
@@ -127,7 +164,7 @@
   align-items: center;
   gap: 0.45rem;
   border-top: 1px solid rgb(var(--color-border));
-  padding: 0.65rem 0.9rem;
+  padding: 0.75rem 1.25rem;
   background: rgb(var(--color-surface-subtle));
   color: rgb(var(--color-muted-foreground));
   font-size: var(--font-size-xs);
@@ -188,6 +225,19 @@
     min-height: 100%;
     border-top: 0;
     border-left: 1px solid rgb(var(--color-border));
+  }
+}
+
+@media (max-width: 719px) {
+  .searchIntro {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 0.45rem;
+  }
+
+  .searchHint {
+    max-width: 32rem;
+    text-align: left;
   }
 }
 

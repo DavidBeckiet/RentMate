@@ -14,6 +14,7 @@ import styles from "./listing-card.module.css";
 export interface ListingCardProps {
   readonly listing: PublicListingSummary;
   readonly showFavorite?: boolean;
+  readonly showCompare?: boolean;
   readonly href?: string;
   readonly variant?: "default" | "search";
   readonly mapSelected?: boolean;
@@ -48,6 +49,7 @@ export function ListingCardSkeleton({ variant = "default" }: { readonly variant?
 export function ListingCard({
   listing,
   showFavorite = true,
+  showCompare = true,
   href,
   variant = "default",
   mapSelected = false,
@@ -94,9 +96,6 @@ export function ListingCard({
             </div>
           )}
 
-          <Badge variant="primary" className={styles.badge}>
-            {listing.propertyType.label}
-          </Badge>
           {listing.distanceKm !== undefined ? (
             <Badge variant="info" className={styles.distance}>
               <Icon name="target" className="h-3.5 w-3.5" />
@@ -114,23 +113,29 @@ export function ListingCard({
               <p className={styles.price}>{formatVnd(listing.monthlyRent)}</p>
               <Icon name="arrowUpRight" className="h-5 w-5 shrink-0" />
             </div>
-            <h2 className={styles.title}>{listing.title}</h2>
+            <h2 className={styles.title} title={listing.title}>
+              {listing.title}
+            </h2>
             <p className={styles.location}>
               <Icon name="pin" className="h-4 w-4 shrink-0" />
-              <span className="truncate">{listing.areaName}</span>
+              <span className={styles.locationText} title={listing.areaName}>
+                {listing.areaName}
+              </span>
             </p>
-            {listing.landlordVerified ? (
-              <Badge variant="verified" showIndicator context="Chủ nhà" className={styles.verified}>
-                <Icon name="shield" className="h-3.5 w-3.5" />
-                Đã xác minh
-              </Badge>
-            ) : null}
+            <div className={styles.verifiedSlot}>
+              {listing.landlordVerified ? (
+                <Badge variant="verified" showIndicator context="Chủ nhà" className={styles.verified}>
+                  <Icon name="shield" className="h-3.5 w-3.5" />
+                  Đã xác minh
+                </Badge>
+              ) : null}
+            </div>
           </div>
 
           <div className={styles.meta}>
             <span className={styles.fact}>
               <Icon name="ruler" className="h-4 w-4" />
-              {formatAreaSqm(listing.roomAreaSqm)} · {listing.propertyType.label}
+              {formatAreaSqm(listing.roomAreaSqm)}
             </span>
             {listing.maxOccupants !== null ? (
               <span className={styles.fact}>
@@ -138,12 +143,9 @@ export function ListingCard({
                 {listing.maxOccupants} người tối đa
               </span>
             ) : null}
-            {listing.amenities.slice(0, 1).map((amenity) => (
-              <span key={amenity.code} className={styles.amenity}>
-                {amenity.label}
-              </span>
-            ))}
-            <ListingFreshnessLabel updatedAt={listing.updatedAt} />
+            <span className={styles.freshness}>
+              <ListingFreshnessLabel updatedAt={listing.updatedAt} />
+            </span>
           </div>
         </div>
       </Link>
@@ -161,7 +163,7 @@ export function ListingCard({
           </button>
         ) : null}
         {showFavorite ? <ListingSaveControl listingId={String(listing.id)} compact /> : null}
-        <ComparisonToggle listingId={listing.id} compact />
+        {showCompare ? <ComparisonToggle listingId={listing.id} compact /> : null}
       </div>
     </article>
   );

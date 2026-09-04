@@ -7,15 +7,37 @@ import { Icon } from "../../components/ui/icon";
 import { MediaImage } from "../../components/ui/media-image";
 import { Reveal } from "../../components/ui/reveal";
 import { SectionHeader } from "../../components/ui/section-header";
-import { BusinessStatusBadge } from "../../components/ui/status-badge";
 import { useAuth } from "../../lib/auth/auth-provider";
 import type { ApiPage, PropertyType, PublicListingSummary } from "../../types/api";
-import { FavoriteSaveControl } from "../favorites/favorite-save-control";
-import { ListingCardSkeleton } from "./listing-card";
-import { formatAreaSqm, formatVnd } from "./format";
+import { ListingCard, ListingCardSkeleton } from "./listing-card";
 import { HeroSearch } from "./hero-search";
 import type { SearchFilterValues } from "./search-query";
 import styles from "./marketplace-home.module.css";
+
+const homepageAreaLimit = 8;
+
+const landlordBenefits = [
+  {
+    icon: "building",
+    title: "Đăng và cập nhật tin phòng",
+    description: "Giữ thông tin tin đăng rõ ràng và luôn đúng với thực tế."
+  },
+  {
+    icon: "clipboard",
+    title: "Quản lý các phòng đang đăng",
+    description: "Theo dõi các tin đăng trong cùng một không gian quản lý."
+  },
+  {
+    icon: "message",
+    title: "Theo dõi yêu cầu liên hệ",
+    description: "Biết khách thuê nào đang chờ phản hồi để tiếp tục trao đổi."
+  },
+  {
+    icon: "chart",
+    title: "Theo dõi hiệu quả tin đăng",
+    description: "Xem thông tin hỗ trợ bạn điều chỉnh cách đăng tin."
+  }
+] as const;
 
 export interface MarketplaceHomeProps {
   readonly propertyTypes: readonly PropertyType[];
@@ -27,71 +49,12 @@ export interface MarketplaceHomeProps {
   readonly onRetryListings: () => void;
 }
 
-function ListingPreview({ listing }: { readonly listing: PublicListingSummary }) {
-  return (
-    <article className={styles.listingCard}>
-      <Link href={"/listings/" + listing.id} className={styles.listingLink}>
-        <div className={styles.listingImage}>
-          <MediaImage
-            src={listing.coverImage.url}
-            alt={listing.coverImage.altText ?? "Ảnh của " + listing.title}
-            fill
-            sizes="(min-width: 1100px) 25vw, (min-width: 640px) 50vw, 100vw"
-            className={styles.listingImageAsset}
-            fallback={
-              <div className={styles.listingImageFallback}>
-                <Icon name="home" className="h-8 w-8" />
-                <span>Chưa có ảnh</span>
-              </div>
-            }
-          />
-          <Badge variant="primary" className={styles.listingType}>
-            {listing.propertyType.label}
-          </Badge>
-          <span className={styles.listingStatus}>
-            <BusinessStatusBadge status={listing.businessStatus} />
-          </span>
-        </div>
-
-        <div className={styles.listingBody}>
-          <div>
-            <div className={styles.listingTitleRow}>
-              <p className={styles.listingPrice}>{formatVnd(listing.monthlyRent)}</p>
-              <Icon name="arrowUpRight" className="h-5 w-5 shrink-0" />
-            </div>
-            <h3 className={styles.listingTitle}>{listing.title}</h3>
-          </div>
-          <div className={styles.listingMeta}>
-            <p className={styles.listingLocation}>
-              <Icon name="pin" className="h-4 w-4 shrink-0" />
-              <span className="truncate">{listing.areaName}</span>
-            </p>
-            <span className={styles.listingFact}>
-              <Icon name="ruler" className="h-4 w-4 shrink-0" />
-              {formatAreaSqm(listing.roomAreaSqm)}
-            </span>
-            {listing.maxOccupants !== null ? (
-              <span className={styles.listingFact}>
-                <Icon name="users" className="h-4 w-4 shrink-0" />
-                {listing.maxOccupants} người
-              </span>
-            ) : null}
-          </div>
-        </div>
-      </Link>
-      <div className={styles.listingActions}>
-        <FavoriteSaveControl listingId={String(listing.id)} compact />
-      </div>
-    </article>
-  );
-}
-
 function HeroEditorialVisual() {
   return (
     <div className={styles.heroVisual}>
       <MediaImage
-        src="/images/rentmate-home-hero.png"
-        alt="Minh hoạ khu nhà đô thị ấm áp cho trải nghiệm tìm chỗ ở RentMate"
+        src="https://images.unsplash.com/photo-1522708323590-d24dbb6b0267?w=1200&q=85"
+        alt="Căn studio sáng với nội thất gỗ và cửa sổ lớn"
         fill
         priority
         sizes="(min-width: 1024px) 50vw, 100vw"
@@ -99,16 +62,16 @@ function HeroEditorialVisual() {
         fallback={
           <div className={styles.heroImageFallback}>
             <Icon name="home" className="h-14 w-14" />
-            <span>Khám phá nơi ở phù hợp với nhịp sống của bạn.</span>
+            <span>Khám phá một không gian ở phù hợp với nhịp sống của bạn.</span>
           </div>
         }
       />
       <div className={styles.heroVisualShade} aria-hidden="true" />
       <div className={styles.heroVisualNote}>
         <Badge variant="verified" showIndicator>
-          Thông tin rõ ràng hơn
+          Không gian thật
         </Badge>
-        <p>Vị trí công khai được mô tả là vị trí xấp xỉ.</p>
+        <p>Hình ảnh phòng ở giúp bạn hình dung nơi mình sẽ sống.</p>
       </div>
     </div>
   );
@@ -120,6 +83,7 @@ function JourneyCard({
   eyebrow,
   title,
   description,
+  cta,
   tone
 }: {
   readonly href: string;
@@ -127,6 +91,7 @@ function JourneyCard({
   readonly eyebrow: string;
   readonly title: string;
   readonly description: string;
+  readonly cta: string;
   readonly tone: "primary" | "accent";
 }) {
   return (
@@ -140,10 +105,36 @@ function JourneyCard({
       <span className={styles.journeyContent}>
         <span className={styles.journeyEyebrow}>{eyebrow}</span>
         <strong>{title}</strong>
+        <span className={styles.journeyDescription}>{description}</span>
+        <span className={styles.journeyCta}>
+          {cta}
+          <Icon name="arrow" className="h-4 w-4" aria-hidden="true" />
+        </span>
+      </span>
+      <Icon name="arrowUpRight" className={styles.journeyArrow} aria-hidden="true" />
+    </Link>
+  );
+}
+
+function LandlordBenefit({
+  icon,
+  title,
+  description
+}: Readonly<{
+  readonly icon: (typeof landlordBenefits)[number]["icon"];
+  readonly title: string;
+  readonly description: string;
+}>) {
+  return (
+    <li className={styles.landlordBenefit}>
+      <span className={styles.landlordBenefitIcon} aria-hidden="true">
+        <Icon name={icon} className="h-5 w-5" />
+      </span>
+      <span>
+        <strong>{title}</strong>
         <span>{description}</span>
       </span>
-      <Icon name="arrowUpRight" className={styles.journeyArrow} />
-    </Link>
+    </li>
   );
 }
 
@@ -159,6 +150,9 @@ export function MarketplaceHome({
   const { status, user } = useAuth();
   const liveListings = listings?.data ?? [];
   const landlordHref = status === "authenticated" && user?.role === "LANDLORD" ? "/landlord" : "/register/landlord";
+  const homepageAreas = Array.from(
+    new Set(liveListings.map((listing) => listing.areaName.trim()).filter((area) => area.length > 0))
+  ).slice(0, homepageAreaLimit);
 
   return (
     <div className={styles.home}>
@@ -216,7 +210,7 @@ export function MarketplaceHome({
         <div className="rm-page-container">
           <SectionHeader
             title="Tin đăng mới nhất"
-            description="Những lựa chọn công khai được tải trực tiếp từ RentMate."
+            description="Những lựa chọn công khai mới nhất từ RentMate. Chọn tin để so sánh khi cần."
             action={
               <Link href="/search" className={styles.sectionAction}>
                 Xem tất cả <Icon name="arrowUpRight" className="h-4 w-4" />
@@ -269,7 +263,7 @@ export function MarketplaceHome({
             <div className={styles.listingGrid}>
               {liveListings.slice(0, 4).map((listing, index) => (
                 <Reveal key={listing.id} delay={(index % 4) as 0 | 1 | 2 | 3}>
-                  <ListingPreview listing={listing} />
+                  <ListingCard listing={listing} showFavorite showCompare />
                 </Reveal>
               ))}
             </div>
@@ -281,10 +275,8 @@ export function MarketplaceHome({
         <div className={"rm-page-container " + styles.journeyLayout}>
           <Reveal className={styles.journeyIntro}>
             <p className={styles.sectionKicker}>Hai cách bắt đầu</p>
-            <h2 id="journey-heading">Chọn điều đang cần hôm nay.</h2>
-            <p>
-              RentMate kết nối những nhu cầu thật trong một không gian dễ đi qua, từ tìm phòng đến tìm người ở cùng.
-            </p>
+            <h2 id="journey-heading">Bạn đang tìm gì?</h2>
+            <p>Chọn hành trình phù hợp với nhu cầu hiện tại của bạn.</p>
           </Reveal>
           <div className={styles.journeyCards}>
             <Reveal delay={1}>
@@ -293,7 +285,8 @@ export function MarketplaceHome({
                 icon="search"
                 eyebrow="Tôi đang tìm chỗ ở"
                 title="Tìm phòng"
-                description="Lọc theo khu vực, loại hình, ngân sách và tiện ích."
+                description="Khám phá phòng trọ và căn hộ theo khu vực, mức giá và nhu cầu của bạn."
+                cta="Khám phá phòng"
                 tone="primary"
               />
             </Reveal>
@@ -303,7 +296,8 @@ export function MarketplaceHome({
                 icon="users"
                 eyebrow="Tôi muốn ở cùng ai đó"
                 title="Tìm người ở ghép"
-                description="Khám phá luồng roommate dành cho nhu cầu ở cùng."
+                description="Tìm người có nhu cầu ở ghép và nhịp sống phù hợp với bạn."
+                cta="Tìm người ở ghép"
                 tone="accent"
               />
             </Reveal>
@@ -315,16 +309,76 @@ export function MarketplaceHome({
         <div className="rm-page-container">
           <SectionHeader
             title="Khám phá theo khu vực"
-            description="Bắt đầu từ nơi bạn muốn sống, rồi điều chỉnh bộ lọc theo nhu cầu thực tế."
+            description="Bắt đầu từ những khu vực đang xuất hiện trong các tin mới nhất."
           />
-          <div className={styles.areaGrid}>
-            {["Thảo Điền", "Bình Thạnh", "Phú Nhuận", "Quận 3"].map((area, index) => (
-              <Link key={area} href={"/search?q=" + encodeURIComponent(area)} className={styles.areaLink}>
-                <span className={styles.areaNumber}>0{index + 1}</span>
-                <span>{area}</span>
+          {homepageAreas.length > 0 ? (
+            <div className={styles.areaGrid} aria-label="Các khu vực đang có tin mới">
+              {homepageAreas.map((area, index) => (
+                <Link key={area} href={"/search?areaName=" + encodeURIComponent(area)} className={styles.areaLink}>
+                  <span className={styles.areaNumber}>{String(index + 1).padStart(2, "0")}</span>
+                  <span>{area}</span>
+                  <Icon name="arrowUpRight" className="h-4 w-4" aria-hidden="true" />
+                </Link>
+              ))}
+            </div>
+          ) : (
+            <p className={styles.areaEmpty}>Mở tìm kiếm để xem phòng theo khu vực.</p>
+          )}
+          <div className={styles.areaFooter}>
+            <Link href="/search" className={styles.sectionAction}>
+              Xem tất cả phòng <Icon name="arrowUpRight" className="h-4 w-4" />
+            </Link>
+          </div>
+        </div>
+      </section>
+
+      <section className={styles.landlordSection} aria-labelledby="landlord-heading">
+        <div className={"rm-page-container " + styles.landlordLayout}>
+          <div className={styles.landlordCopy}>
+            <p className={styles.sectionKicker}>Dành cho chủ trọ</p>
+            <h2 id="landlord-heading">Quản lý phòng trọ dễ dàng hơn với RentMate.</h2>
+            <p className={styles.landlordDescription}>
+              Từ đăng tin đến theo dõi yêu cầu liên hệ, mọi việc nằm trong không gian dành riêng cho chủ trọ.
+            </p>
+            <ul className={styles.landlordBenefits}>
+              {landlordBenefits.map((benefit) => (
+                <LandlordBenefit key={benefit.title} {...benefit} />
+              ))}
+            </ul>
+            <Link href={landlordHref} className={styles.landlordAction}>
+              Đăng phòng trên RentMate <Icon name="arrow" className="h-5 w-5" />
+            </Link>
+          </div>
+          <div className={styles.landlordVisual} aria-hidden="true">
+            <div className={styles.landlordVisualHeader}>
+              <span className={styles.landlordVisualIcon}>
+                <Icon name="building" className="h-5 w-5" />
+              </span>
+              <span>
+                <small>Không gian chủ trọ</small>
+                <strong>Quản lý tin đăng</strong>
+              </span>
+            </div>
+            <div className={styles.landlordVisualList}>
+              <div className={styles.landlordVisualItem}>
+                <span>
+                  <Icon name="clipboard" className="h-4 w-4" /> Tin đăng
+                </span>
                 <Icon name="arrowUpRight" className="h-4 w-4" />
-              </Link>
-            ))}
+              </div>
+              <div className={styles.landlordVisualItem}>
+                <span>
+                  <Icon name="message" className="h-4 w-4" /> Yêu cầu liên hệ
+                </span>
+                <Icon name="arrowUpRight" className="h-4 w-4" />
+              </div>
+              <div className={styles.landlordVisualItem}>
+                <span>
+                  <Icon name="chart" className="h-4 w-4" /> Hiệu quả tin đăng
+                </span>
+                <Icon name="arrowUpRight" className="h-4 w-4" />
+              </div>
+            </div>
           </div>
         </div>
       </section>
@@ -352,19 +406,6 @@ export function MarketplaceHome({
               <p>Thông tin liên hệ được mở theo ngữ cảnh tài khoản và tin đăng.</p>
             </article>
           </div>
-        </div>
-      </section>
-
-      <section className={styles.landlordSection} aria-labelledby="landlord-heading">
-        <div className={"rm-page-container " + styles.landlordLayout}>
-          <div>
-            <p className={styles.sectionKicker}>Dành cho chủ nhà</p>
-            <h2 id="landlord-heading">Có chỗ trống? Đưa thông tin đến đúng người.</h2>
-            <p>Quản lý tin đăng theo quy trình RentMate và giữ quyền kiểm soát thông tin của bạn.</p>
-          </div>
-          <Link href={landlordHref} className={styles.landlordAction}>
-            Đăng tin trên RentMate <Icon name="arrow" className="h-5 w-5" />
-          </Link>
         </div>
       </section>
     </div>
