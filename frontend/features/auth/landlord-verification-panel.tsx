@@ -157,12 +157,14 @@ export function LandlordVerificationPanel() {
                 {emailRequested ? (
                   <div className="space-y-2">
                     <label className="block text-sm font-bold" htmlFor="landlord-email-token">
-                      Mã xác minh trong email
+                      Mã OTP email 6 số
                     </label>
                     <input
                       id="landlord-email-token"
                       value={emailToken}
-                      onChange={(event) => setEmailToken(event.target.value)}
+                      maxLength={6}
+                      inputMode="numeric"
+                      onChange={(event) => setEmailToken(event.target.value.replace(/\D/gu, "").slice(0, 6))}
                       className="min-h-12 w-full rounded-control border border-border-strong bg-surface px-4 outline-none transition focus:border-primary focus:ring-[3px] focus:ring-primary/20"
                       autoComplete="one-time-code"
                     />

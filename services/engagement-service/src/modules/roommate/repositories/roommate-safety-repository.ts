@@ -43,6 +43,11 @@ export interface RoommateOwnedBlockRecord extends RoommateBlockRecord {
   readonly blockedAt: string;
 }
 
+export interface RoommateReportAcknowledgement {
+  readonly profileHasReported: boolean;
+  readonly requestHasReported: boolean;
+}
+
 export interface RoommateReportRecord {
   readonly id: number;
   readonly reporterTenantId: number;
@@ -126,6 +131,10 @@ export interface RoommateSafetyRepository {
     limit: number,
     offset: number
   ) => Promise<readonly RoommateOwnedBlockRecord[]>;
+  readonly findReportAcknowledgement: (
+    executor: SqlExecutor,
+    input: { readonly reporterTenantId: number; readonly requestId: number; readonly subjectTenantId: number }
+  ) => Promise<RoommateReportAcknowledgement>;
   readonly createBlock: (
     executor: SqlExecutor,
     input: { readonly blockerTenantId: number; readonly blockedTenantId: number; readonly requestId: number }
@@ -673,6 +682,49 @@ export function createRoommateSafetyRepository(): RoommateSafetyRepository {
           values: [blockerTenantId, limit, offset]
         },
         mapOwnedBlock
+      );
+    },
+
+    findReportAcknowledgement(executor, input) {
+      return queryExactlyOne<
+        { readonly profile_has_reported: unknown; readonly request_has_reported: unknown },
+        RoommateReportAcknowledgement
+      >(
+        executor,
+        {
+          text: `
+            SELECT
+              EXISTS (
+                SELECT 1
+                FROM contact_reports
+                WHERE source = 'ROOMMATE'
+                  AND reporter_id = $1
+                  AND target_type = 'ROOMMATE_PROFILE'
+                  AND subject_tenant_id = $2
+                  AND status IN ('OPEN', 'INVESTIGATING')
+              ) AS profile_has_reported,
+              EXISTS (
+                SELECT 1
+                FROM contact_reports
+                WHERE source = 'ROOMMATE'
+                  AND reporter_id = $1
+                  AND roommate_request_id = $3
+                  AND target_type = 'ROOMMATE_REQUEST'
+                  AND subject_tenant_id IS NULL
+                  AND status IN ('OPEN', 'INVESTIGATING')
+              ) AS request_has_reported
+          `,
+          values: [input.reporterTenantId, input.subjectTenantId, input.requestId]
+        },
+        (row) => {
+          if (typeof row.profile_has_reported !== "boolean" || typeof row.request_has_reported !== "boolean") {
+            throw new RepositoryInvariantError("Roommate report acknowledgement is invalid.");
+          }
+          return Object.freeze({
+            profileHasReported: row.profile_has_reported,
+            requestHasReported: row.request_has_reported
+          });
+        }
       );
     },
 

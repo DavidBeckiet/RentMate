@@ -32,11 +32,19 @@ export type IconName =
   | "plus"
   | "ruler"
   | "search"
+  | "send"
   | "share"
   | "shield"
   | "sliders"
   | "sparkles"
   | "star"
+  | "snowflake"
+  | "bath"
+  | "utensils"
+  | "refrigerator"
+  | "washingMachine"
+  | "car"
+  | "paw"
   | "target"
   | "refresh"
   | "user"
@@ -160,6 +168,12 @@ const paths: Record<IconName, ReactNode> = {
       <path d="m20 20-4-4" />
     </>
   ),
+  send: (
+    <>
+      <path d="m22 2-7 20-4-9-9-4Z" />
+      <path d="M22 2 11 13" />
+    </>
+  ),
   share: (
     <>
       <circle cx="18" cy="5" r="3" />
@@ -179,6 +193,51 @@ const paths: Record<IconName, ReactNode> = {
     <path d="m12 3 1.2 3.8L17 8l-3.8 1.2L12 13l-1.2-3.8L7 8l3.8-1.2L12 3ZM5 14l.9 2.1L8 17l-2.1.9L5 20l-.9-2.1L2 17l2.1-.9L5 14Zm13 0 1.2 2.8L22 18l-2.8 1.2L18 22l-1.2-2.8L14 18l2.8-1.2L18 14Z" />
   ),
   star: <path d="m12 3 2.8 5.7 6.2.9-4.5 4.4 1.1 6.2-5.6-3-5.6 3 1.1-6.2L3 9.6l6.2-.9L12 3Z" />,
+  snowflake: (
+    <>
+      <path d="M12 2v20M4.9 6l14.2 12M4.9 18 19.1 6M5 12h14" />
+      <path d="m12 2-2 2m2-2 2 2m0 16-2 2m2-2-2-2M4.9 6h2.8m-2.8 0 .7 2.7m13.5 9.3h-2.8m2.8 0-.7-2.7M4.9 18h2.8m-2.8 0 .7-2.7m13.5-9.3h-2.8m2.8 0-.7 2.7" />
+    </>
+  ),
+  bath: (
+    <>
+      <path d="M4 12h16v3a5 5 0 0 1-5 5H9a5 5 0 0 1-5-5v-3Z" />
+      <path d="M6 12V6a3 3 0 0 1 5.5-1.7M3 20l-1 2m19-2 1 2" />
+    </>
+  ),
+  utensils: (
+    <>
+      <path d="M6 3v8m0 0a2 2 0 0 0 2-2V3m-2 8a2 2 0 0 1-2-2V3m4 18V3M16 3v18m0-10h3a2 2 0 0 0 2-2V3" />
+    </>
+  ),
+  refrigerator: (
+    <>
+      <rect x="6" y="2" width="12" height="20" rx="2" />
+      <path d="M6 10h12M9 6v2m0 6v2" />
+    </>
+  ),
+  washingMachine: (
+    <>
+      <rect x="4" y="3" width="16" height="18" rx="2" />
+      <circle cx="12" cy="13" r="4" />
+      <path d="M8 7h.01M11 7h5" />
+    </>
+  ),
+  car: (
+    <>
+      <path d="m5 16 1.5-6h11L19 16v4H5v-4Z" />
+      <path d="M7 10 8.5 6h7l1.5 4M3 16h2m14 0h2M8 17h.01M16 17h.01" />
+    </>
+  ),
+  paw: (
+    <>
+      <path d="M8.5 14.5c-1.5 0-3 1.4-3 3.1 0 1.5 1.1 2.4 2.5 2.4h8c1.4 0 2.5-.9 2.5-2.4 0-1.7-1.5-3.1-3-3.1-.9 0-1.5.4-2 1-.4.5-1.6.5-2 0-.5-.6-1.1-1-2-1Z" />
+      <circle cx="6" cy="9" r="1.8" />
+      <circle cx="10" cy="6" r="1.8" />
+      <circle cx="14" cy="6" r="1.8" />
+      <circle cx="18" cy="9" r="1.8" />
+    </>
+  ),
   target: (
     <>
       <circle cx="12" cy="12" r="9" />

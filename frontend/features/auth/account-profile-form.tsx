@@ -32,7 +32,14 @@ function friendlyError(error: unknown): Feedback {
   };
 }
 
-export function AccountProfileForm({ user }: Readonly<{ user: UserProfile }>) {
+interface AccountProfileFormProps {
+  readonly user: UserProfile;
+  readonly onSaved?: (user: UserProfile, noOp: boolean) => void;
+  readonly onCancel?: () => void;
+  readonly submitLabel?: string;
+}
+
+export function AccountProfileForm({ user, onSaved, onCancel, submitLabel = "Lưu hồ sơ" }: AccountProfileFormProps) {
   const { updateUser, refresh } = useAuth();
   const [displayName, setDisplayName] = useState(user.displayName ?? "");
   const [phone, setPhone] = useState(user.phone ?? "");
@@ -72,7 +79,8 @@ export function AccountProfileForm({ user }: Readonly<{ user: UserProfile }>) {
       setDisplayName(returned.displayName ?? "");
       setPhone(returned.phone ?? "");
       updateUser?.(returned);
-      setFeedback({ success: noOp ? "Không có thay đổi cần lưu." : "Đã cập nhật hồ sơ." });
+      onSaved?.(returned, noOp);
+      if (!onSaved) setFeedback({ success: noOp ? "Không có thay đổi cần lưu." : "Đã cập nhật hồ sơ." });
     } catch (error) {
       if (controller.signal.aborted) return;
       setFeedback(friendlyError(error));
@@ -113,6 +121,7 @@ export function AccountProfileForm({ user }: Readonly<{ user: UserProfile }>) {
         type="email"
         value={user.email}
         readOnly
+        hint="Không thể thay đổi email đăng nhập."
       />
       <InputField
         id={`${user.role.toLowerCase()}-phone`}
@@ -148,9 +157,16 @@ export function AccountProfileForm({ user }: Readonly<{ user: UserProfile }>) {
           {feedback.success}
         </p>
       ) : null}
-      <Button type="submit" pending={pending} pendingLabel="Đang lưu…">
-        Lưu hồ sơ
-      </Button>
+      <div className="flex flex-wrap items-center gap-3">
+        <Button type="submit" pending={pending} pendingLabel="Đang lưu…">
+          {submitLabel}
+        </Button>
+        {onCancel ? (
+          <Button type="button" variant="outline" disabled={pending} onClick={onCancel}>
+            Hủy
+          </Button>
+        ) : null}
+      </div>
     </form>
   );
 }

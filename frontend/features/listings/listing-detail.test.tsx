@@ -17,8 +17,21 @@ vi.mock("next/image", () => ({
   default: ({ alt }: { alt: string }) => <span role="img" aria-label={alt} />
 }));
 vi.mock("../../components/map/map-base", () => ({
-  MapBase: ({ ariaLabel, markers }: { ariaLabel: string; markers: readonly { label: string }[] }) => (
+  MapBase: ({
+    ariaLabel,
+    markers,
+    recenterControl
+  }: {
+    ariaLabel: string;
+    markers: readonly { label: string }[];
+    recenterControl?: { label: string };
+  }) => (
     <div role="region" aria-label={ariaLabel}>
+      {recenterControl ? (
+        <button type="button" aria-label={recenterControl.label}>
+          {recenterControl.label}
+        </button>
+      ) : null}
       {markers.map((marker) => (
         <span key={marker.label}>{marker.label}</span>
       ))}
@@ -72,6 +85,7 @@ function detail(overrides: Partial<PublicListingDetail> = {}): PublicListingDeta
       { url: "https://res.cloudinary.com/rentmate/image/upload/first.webp", altText: null, displayOrder: 1 }
     ],
     landlordVerified: false,
+    hasReported: false,
     updatedAt: "2026-08-01T00:00:00.000Z",
     ...overrides,
     businessStatus: overrides.businessStatus ?? "AVAILABLE"
@@ -85,7 +99,7 @@ function backendError(status: number): ApiError {
 beforeEach(() => {
   window.localStorage.clear();
   apiMocks.getPublicDetail.mockReset();
-  apiMocks.listReviews.mockResolvedValue({ data: [], pagination: { page: 1, pageSize: 10, hasNextPage: false } });
+  apiMocks.listReviews.mockResolvedValue({ data: [], pagination: { page: 1, pageSize: 3, hasNextPage: false } });
   apiMocks.listSimilar.mockReset();
   apiMocks.listSimilar.mockResolvedValue({ data: [], pagination: { page: 1, pageSize: 3, hasNextPage: false } });
   useAuthMock.mockReturnValue(authValue());
@@ -97,20 +111,41 @@ describe("ListingDetail", () => {
     apiMocks.getPublicDetail.mockResolvedValue(detail({ maxOccupants: 2, businessStatus: "AVAILABLE" }));
     const eligible = render(<ListingDetail listingId="42" />);
 
-    expect(await screen.findByText("Tenant đang tìm một người để cân nhắc cùng thuê listing này.")).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Tìm người ở ghép cho listing này" })).toBeInTheDocument();
+    expect(
+      await screen.findByText("Người thuê đang tìm một người để cân nhắc cùng thuê phòng này.")
+    ).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Tìm người ở ghép cho tin đăng này" })).toBeInTheDocument();
     eligible.unmount();
 
     apiMocks.getPublicDetail.mockResolvedValue(detail({ maxOccupants: 1, businessStatus: "AVAILABLE" }));
     render(<ListingDetail listingId="42" />);
     await screen.findByRole("heading", { level: 1, name: "Studio sáng gần trung tâm" });
-    expect(screen.queryByRole("button", { name: "Tìm người ở ghép cho listing này" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Tìm người ở ghép cho tin đăng này" })).not.toBeInTheDocument();
   });
 
   it("shows the optional maximum occupancy in the public detail facts", async () => {
     apiMocks.getPublicDetail.mockResolvedValue(detail({ maxOccupants: 3 }));
     render(<ListingDetail listingId="42" />);
     expect(await screen.findByText("3 người tối đa")).toBeInTheDocument();
+  });
+
+  it("renders public amenity labels and icons without changing the API values", async () => {
+    apiMocks.getPublicDetail.mockResolvedValue(
+      detail({
+        amenities: [
+          { code: "AIR_CONDITIONING", label: "Air conditioning" },
+          { code: "WIFI", label: "Wi-Fi" },
+          { code: "PARKING", label: "Parking" }
+        ]
+      })
+    );
+    render(<ListingDetail listingId="42" />);
+
+    const amenities = await screen.findByRole("list", { name: "Tiện ích" });
+    expect(amenities).toHaveTextContent("Điều hòa");
+    expect(amenities).toHaveTextContent("Wi-Fi");
+    expect(amenities).toHaveTextContent("Chỗ để xe");
+    expect(amenities.querySelectorAll("svg")).toHaveLength(3);
   });
 
   it("renders a generic action only after public detail succeeds", async () => {
@@ -148,6 +183,11 @@ describe("ListingDetail", () => {
     expect(screen.getAllByRole("img", { name: "Ảnh thứ hai" }).length).toBeGreaterThan(0);
     expect(screen.getByRole("region", { name: "Bản đồ vị trí xấp xỉ của tin đăng" })).toBeInTheDocument();
     expect(screen.getAllByText(/Vị trí xấp xỉ/i).length).toBeGreaterThan(0);
+    expect(screen.getByRole("button", { name: "Đưa bản đồ về vị trí phòng" })).toBeInTheDocument();
+    const mapsLink = screen.getByRole("link", { name: /Mở khu vực này trên Google Maps/ });
+    expect(mapsLink).toHaveAttribute("href", "https://www.google.com/maps/search/?api=1&query=10.772%2C106.698");
+    expect(mapsLink).toHaveAttribute("target", "_blank");
+    expect(mapsLink).toHaveAttribute("rel", "noopener noreferrer");
     expect(screen.getByRole("heading", { name: "Lưu ý an toàn" })).toBeInTheDocument();
     expect(document.body).not.toHaveTextContent(/10\.772|106\.698|addressText|landlordId|moderation/i);
     expect(screen.getByRole("link", { name: "Đăng nhập bằng tài khoản người thuê" })).toHaveAttribute("href", "/login");

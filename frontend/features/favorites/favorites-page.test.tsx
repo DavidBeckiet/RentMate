@@ -22,6 +22,7 @@ vi.mock("next/image", () => ({
 
 import { ApiError } from "../../lib/api/client";
 import { FavoritesPage } from "./favorites-page";
+import { resetFavoriteStateForTests } from "./favorite-state";
 
 const refresh = vi.fn<() => Promise<void>>();
 
@@ -89,6 +90,7 @@ function deferred<T>() {
 
 describe("FavoritesPage", () => {
   beforeEach(() => {
+    resetFavoriteStateForTests();
     navigationMocks.query = "";
     navigationMocks.push.mockReset();
     navigationMocks.replace.mockReset();
@@ -131,6 +133,14 @@ describe("FavoritesPage", () => {
     expect(screen.getByText(/Tin tạm ngừng công khai có thể không xuất hiện/i)).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Khám phá tin đăng" })).toHaveAttribute("href", "/");
     expect(screen.queryByText(/chưa từng lưu/i)).not.toBeInTheDocument();
+  });
+
+  it("hides pagination when the first page is the complete result", async () => {
+    apiMocks.list.mockResolvedValue(page([listing(1, "Tin duy nhất")], 1, false));
+    render(<FavoritesPage />);
+
+    expect(await screen.findByRole("heading", { level: 2, name: "Tin duy nhất" })).toBeInTheDocument();
+    expect(screen.queryByRole("navigation", { name: "Phân trang tin đã lưu" })).not.toBeInTheDocument();
   });
 
   it("parses optional URL pagination, ignores unknown keys, and preserves backend order/privacy", async () => {
@@ -203,10 +213,11 @@ describe("FavoritesPage", () => {
     apiMocks.list.mockResolvedValueOnce(page([listing(2, "Trang hai")], 2, true, 40));
     const view = render(<FavoritesPage />);
     await screen.findByRole("heading", { level: 2, name: "Trang hai" });
+    expect(screen.getByRole("navigation", { name: "Phân trang tin đã lưu" })).toHaveClass("w-fit", "max-w-full");
 
-    fireEvent.click(screen.getByRole("button", { name: "Trang trước" }));
+    fireEvent.click(screen.getByRole("button", { name: "Trước" }));
     expect(navigationMocks.push).toHaveBeenCalledWith("/favorites?pageSize=40");
-    fireEvent.click(screen.getByRole("button", { name: "Trang sau" }));
+    fireEvent.click(screen.getByRole("button", { name: "Sau" }));
     expect(navigationMocks.push).toHaveBeenCalledWith("/favorites?page=3&pageSize=40");
 
     apiMocks.list.mockResolvedValueOnce(page([listing(3, "Trang ba")], 3, false, 40));

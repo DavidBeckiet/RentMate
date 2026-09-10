@@ -73,3 +73,52 @@ test("rejects mixed geographic fields, unknown fields, and empty patches", () =>
   assert.throws(() => validateCreateSavedSearchBody({ query: { mode: "ordinary", page: 2 } }), /invalid data/i);
   assert.throws(() => validateUpdateSavedSearchBody({}), /invalid data/i);
 });
+
+test("keeps Search text limits aligned with Saved Search storage", () => {
+  const result = validateCreateSavedSearchBody({
+    query: {
+      mode: "ordinary",
+      q: "q".repeat(160),
+      areaName: "a".repeat(120)
+    }
+  });
+
+  assert.equal(result.query.q?.length, 160);
+  assert.equal(result.query.areaName?.length, 120);
+  assert.throws(
+    () =>
+      validateCreateSavedSearchBody({
+        query: { mode: "ordinary", q: "q".repeat(161) }
+      }),
+    /invalid data/i
+  );
+  assert.throws(
+    () =>
+      validateCreateSavedSearchBody({
+        query: { mode: "ordinary", areaName: "a".repeat(121) }
+      }),
+    /invalid data/i
+  );
+});
+
+test("rejects unknown property types, amenities, and sort values", () => {
+  assert.throws(
+    () => validateCreateSavedSearchBody({ query: { mode: "ordinary", propertyType: "PROPERTY_XYZ" } }),
+    /invalid data/i
+  );
+  assert.throws(
+    () => validateCreateSavedSearchBody({ query: { mode: "ordinary", amenities: ["AMENITY_XYZ"] } }),
+    /invalid data/i
+  );
+  assert.throws(() => validateCreateSavedSearchBody({ query: { mode: "ordinary", sort: "popular" } }), /invalid data/i);
+  assert.doesNotThrow(() =>
+    validateCreateSavedSearchBody({
+      query: {
+        mode: "ordinary",
+        propertyType: "studio",
+        amenities: ["wifi", "washing_machine"],
+        sort: "rent_asc"
+      }
+    })
+  );
+});

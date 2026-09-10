@@ -101,6 +101,9 @@ export function DropdownMenu({ label, trigger, children, className }: DropdownMe
           id={menuId}
           role="menu"
           aria-label={label}
+          onClick={(event) => {
+            if ((event.target as HTMLElement).closest<HTMLElement>('[role="menuitem"]')) setOpen(false);
+          }}
           onKeyDown={handleMenuKeyDown}
           className="absolute right-0 z-dropdown mt-2 min-w-48 rounded-card border border-border bg-surface p-2 shadow-raised"
         >

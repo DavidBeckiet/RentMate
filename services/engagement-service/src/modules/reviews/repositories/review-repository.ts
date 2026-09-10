@@ -24,6 +24,7 @@ export interface ListingReview {
   readonly createdAt: string;
   readonly updatedAt: string;
   readonly reviewedAt: string | null;
+  readonly hasReported: boolean;
 }
 export interface ReviewInquiryContext {
   readonly id: number;
@@ -48,6 +49,7 @@ interface ReviewRow extends QueryResultRow {
   created_at: unknown;
   updated_at: unknown;
   reviewed_at: unknown;
+  has_reported?: unknown;
 }
 interface InquiryContextRow extends QueryResultRow {
   id: unknown;
@@ -98,6 +100,11 @@ function rating(value: unknown, field: string): number {
 function isStatus(value: unknown): value is ReviewStatus {
   return value === "PENDING" || value === "APPROVED" || value === "REJECTED";
 }
+function hasReported(value: unknown): boolean {
+  if (value === undefined) return false;
+  if (typeof value !== "boolean") throw new RepositoryInvariantError("Review report projection is invalid.");
+  return value;
+}
 function mapReview(row: Readonly<ReviewRow>): ListingReview {
   if (!isStatus(row.status)) throw new RepositoryInvariantError("Listing review representation is invalid.");
   return Object.freeze({
@@ -114,7 +121,8 @@ function mapReview(row: Readonly<ReviewRow>): ListingReview {
     reviewedByAdminId: nullableId(row.reviewed_by_admin_id, "review.reviewedByAdminId"),
     createdAt: timestamp(row.created_at, "review.createdAt"),
     updatedAt: timestamp(row.updated_at, "review.updatedAt"),
-    reviewedAt: nullableTimestamp(row.reviewed_at, "review.reviewedAt")
+    reviewedAt: nullableTimestamp(row.reviewed_at, "review.reviewedAt"),
+    hasReported: hasReported(row.has_reported)
   });
 }
 function mapContext(row: Readonly<InquiryContextRow>): ReviewInquiryContext {
@@ -149,7 +157,8 @@ export interface ReviewRepository {
     executor: SqlExecutor,
     listingId: number,
     limit: number,
-    offset: number
+    offset: number,
+    reporterId?: number
   ) => Promise<readonly ListingReview[]>;
   readonly listAdmin: (
     executor: SqlExecutor,
@@ -208,12 +217,12 @@ export function createReviewRepository(): ReviewRepository {
         mapReview
       );
     },
-    listPublic(executor, listingId, limit, offset) {
+    listPublic(executor, listingId, limit, offset, reporterId) {
       return queryMany<ReviewRow, ListingReview>(
         executor,
         {
-          text: `SELECT ${reviewProjection} FROM listing_reviews WHERE listing_id = $1 AND status = 'APPROVED' ORDER BY created_at DESC, id DESC LIMIT $2 OFFSET $3`,
-          values: [listingId, limit, offset]
+          text: `SELECT ${reviewProjection}, ${reporterId === undefined ? "false" : "EXISTS (SELECT 1 FROM review_reports AS report WHERE report.review_id = listing_reviews.id AND report.reporter_id = $4)"} AS has_reported FROM listing_reviews WHERE listing_id = $1 AND status = 'APPROVED' ORDER BY created_at DESC, id DESC LIMIT $2 OFFSET $3`,
+          values: reporterId === undefined ? [listingId, limit, offset] : [listingId, limit, offset, reporterId]
         },
         mapReview
       );

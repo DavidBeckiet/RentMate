@@ -1,38 +1,23 @@
 "use client";
 
 import Link from "next/link";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { Badge } from "../../components/ui/badge";
 import { Button } from "../../components/ui/button";
 import { ErrorState, LoadingState } from "../../components/ui/feedback-states";
+import { MediaImage } from "../../components/ui/media-image";
 import { api, ApiError } from "../../lib/api/client";
-import { connectInquiryRealtime, type InquiryRealtimeConnectionStatus } from "../../lib/api/inquiry-realtime";
 import { useAuth } from "../../lib/auth/auth-provider";
 import type { ContactReportCategory, Inquiry } from "../../types/api";
+import { formatVnd } from "../listings/format";
+import { getInquiryStatusLabel, getInquiryStatusVariant } from "./inquiry-presentation";
+import { InquiryConversationCore, mergeMessages, useInquiryConversation } from "./inquiry-conversation";
 import { TenantReviewPanel } from "../reviews/tenant-review-panel";
 
 function parseId(value: string): number | null {
   const parsed = Number(value);
   return Number.isSafeInteger(parsed) && parsed > 0 ? parsed : null;
 }
-
-function statusLabel(status: Inquiry["status"]): string {
-  return status === "NEW" ? "Mới" : status === "CONTACTED" ? "Đang trao đổi" : "Đã đóng";
-}
-
-function mergeMessages(...collections: readonly (readonly Inquiry["messages"][number][])[]): Inquiry["messages"] {
-  const messages = new Map<number, Inquiry["messages"][number]>();
-  for (const collection of collections) {
-    for (const message of collection) messages.set(message.id, message);
-  }
-  return Object.freeze([...messages.values()].sort((left, right) => left.id - right.id));
-}
-
-const realtimeStatusLabels: Readonly<Record<InquiryRealtimeConnectionStatus, string>> = Object.freeze({
-  connecting: "Đang kết nối trực tiếp…",
-  connected: "Đã kết nối trực tiếp — tin mới sẽ tự xuất hiện",
-  reconnecting: "Mất kết nối — đang thử kết nối lại…",
-  unsupported: "Trình duyệt không hỗ trợ kết nối trực tiếp; bạn vẫn có thể gửi tin"
-});
 
 const contactReportCategories: readonly { readonly value: ContactReportCategory; readonly label: string }[] = [
   { value: "SPAM", label: "Spam hoặc quảng cáo" },
@@ -42,15 +27,69 @@ const contactReportCategories: readonly { readonly value: ContactReportCategory;
   { value: "OTHER", label: "Lý do khác" }
 ];
 
+function InquiryListingContext({ inquiry }: Readonly<{ inquiry: Inquiry }>) {
+  if (inquiry.listingContextState === "AVAILABLE" && inquiry.listingSummary) {
+    const listing = inquiry.listingSummary;
+    return (
+      <section
+        className="flex min-w-0 flex-col gap-4 rounded-card border border-border bg-surface p-4 shadow-surface sm:flex-row sm:items-center"
+        aria-label="Thông tin tin đăng"
+      >
+        <div className="relative h-24 w-full shrink-0 overflow-hidden rounded-control bg-info-subtle sm:h-20 sm:w-28">
+          {listing.coverImage ? (
+            <MediaImage
+              src={listing.coverImage.url}
+              alt={listing.coverImage.altText ?? `Ảnh của ${listing.title}`}
+              fill
+              sizes="(min-width: 640px) 7rem, 100vw"
+            />
+          ) : (
+            <div className="grid h-full place-items-center text-sm font-semibold text-info-foreground">RentMate</div>
+          )}
+        </div>
+        <div className="min-w-0 flex-1">
+          <p className="text-xs font-bold uppercase tracking-[0.12em] text-muted-foreground">Tin đăng</p>
+          <h2 className="mt-1 line-clamp-2 font-display text-lg font-bold leading-6 text-foreground">
+            {listing.title}
+          </h2>
+          <p className="mt-2 flex flex-wrap items-baseline gap-x-2 gap-y-1 text-sm font-semibold text-muted-foreground">
+            <span className="font-display text-base font-bold text-primary-hover">
+              {formatVnd(listing.monthlyRent)}
+            </span>
+            <span>· {listing.areaName}</span>
+          </p>
+        </div>
+        <Link
+          href={`/listings/${listing.id}`}
+          className="inline-flex min-h-11 shrink-0 items-center justify-center rounded-control border border-primary/30 px-4 text-sm font-bold text-primary-hover transition-colors duration-fast hover:border-primary hover:bg-primary-subtle focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-focus/30"
+        >
+          Xem tin đăng
+        </Link>
+      </section>
+    );
+  }
+
+  const unavailable = inquiry.listingContextState === "UNAVAILABLE";
+  return (
+    <section className="rounded-card border border-border bg-surface-subtle p-4" aria-label="Thông tin tin đăng">
+      <p className="text-xs font-bold uppercase tracking-[0.12em] text-muted-foreground">Tin đăng</p>
+      <h2 className="mt-1 font-display text-lg font-bold text-foreground">
+        {unavailable ? "Tin đăng không còn khả dụng" : "Thông tin tin đăng tạm thời chưa tải được"}
+      </h2>
+      <p className="mt-1 text-sm leading-6 text-muted-foreground">
+        {unavailable ? "Cuộc trò chuyện vẫn được lưu." : "Bạn vẫn có thể xem lại và tiếp tục cuộc trò chuyện."}
+      </p>
+    </section>
+  );
+}
+
 export function InquiryDetailPage({ inquiryId }: Readonly<{ inquiryId: string }>) {
   const id = useMemo(() => parseId(inquiryId), [inquiryId]);
   const { status: authStatus, user } = useAuth();
   const [mounted, setMounted] = useState(false);
-  const [inquiry, setInquiry] = useState<Inquiry | null>(null);
-  const [state, setState] = useState<"loading" | "success" | "error">(id === null ? "error" : "loading");
-  const [error, setError] = useState<ApiError | null>(null);
-  const [message, setMessage] = useState("");
-  const [pending, setPending] = useState(false);
+  const conversation = useInquiryConversation(id, mounted && authStatus === "authenticated" && Boolean(user));
+  const { inquiry, state } = conversation;
+  const [actionError, setActionError] = useState<ApiError | null>(null);
   const [statusPending, setStatusPending] = useState(false);
   const [safetyPending, setSafetyPending] = useState(false);
   const [safetyError, setSafetyError] = useState<string | null>(null);
@@ -60,69 +99,10 @@ export function InquiryDetailPage({ inquiryId }: Readonly<{ inquiryId: string }>
   const [reportDetails, setReportDetails] = useState("");
   const [reportMessageId, setReportMessageId] = useState("");
   const [reportSubmitted, setReportSubmitted] = useState(false);
-  const [realtimeStatus, setRealtimeStatus] = useState<InquiryRealtimeConnectionStatus>("connecting");
 
   useEffect(() => setMounted(true), []);
 
-  const load = useCallback(() => {
-    if (id === null) return;
-    const controller = new AbortController();
-    setState("loading");
-    void api.contact
-      .getInquiry(id, controller.signal)
-      .then((result) => {
-        if (!controller.signal.aborted) {
-          setInquiry(result);
-          setState("success");
-        }
-      })
-      .catch((caught: unknown) => {
-        if (!controller.signal.aborted) {
-          setError(caught instanceof ApiError ? caught : null);
-          setState("error");
-        }
-      });
-    return () => controller.abort();
-  }, [id]);
-
-  useEffect(() => load(), [load]);
-
-  const synchronize = useCallback(async () => {
-    if (id === null) return;
-    try {
-      const fresh = await api.contact.getInquiry(id);
-      setInquiry((current) =>
-        current === null ? fresh : { ...fresh, messages: mergeMessages(current.messages, fresh.messages) }
-      );
-    } catch {
-      // EventSource continues reconnecting; the ordinary page controls remain usable.
-    }
-  }, [id]);
-
-  useEffect(() => {
-    if (id === null || authStatus !== "authenticated" || !user || state !== "success") return;
-    const connection = connectInquiryRealtime(id, {
-      onStatusChange: setRealtimeStatus,
-      onEvent: (event) => {
-        if (event.inquiryId !== id) return;
-        if (event.type === "MESSAGE_CREATED") {
-          setInquiry((current) =>
-            current === null ? current : { ...current, messages: mergeMessages(current.messages, [event.message]) }
-          );
-          if (event.message.senderRole !== user.role) void synchronize();
-        } else if (event.type === "STATUS_CHANGED") {
-          setInquiry((current) =>
-            current === null ? current : { ...current, status: event.status, updatedAt: event.updatedAt }
-          );
-        } else {
-          void synchronize();
-        }
-      }
-    });
-    return () => connection.close();
-  }, [authStatus, id, state, synchronize, user]);
-
-  if (!mounted || authStatus === "loading" || state === "loading") {
+  if (!mounted || authStatus === "loading") {
     return <LoadingState message="Đang mở cuộc trò chuyện…" />;
   }
   if (authStatus !== "authenticated" || !user)
@@ -136,44 +116,31 @@ export function InquiryDetailPage({ inquiryId }: Readonly<{ inquiryId: string }>
         }
       />
     );
-  if (state === "error" || !inquiry)
+  if (id === null || state === "error")
     return (
       <ErrorState
         message={
-          error?.status === 404
+          conversation.error?.status === 404
             ? "Cuộc trò chuyện không tồn tại hoặc bạn không có quyền xem."
             : "Không thể tải cuộc trò chuyện."
         }
-        action={<Button onClick={load}>Thử lại</Button>}
+        action={<Button onClick={conversation.reload}>Thử lại</Button>}
       />
     );
-
-  const send = async (event: React.FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-    if (pending || !message.trim()) return;
-    setPending(true);
-    try {
-      const sent = await api.contact.sendMessage(inquiry.id, message.trim());
-      setInquiry((current) =>
-        current === null ? current : { ...current, messages: mergeMessages(current.messages, [sent]) }
-      );
-      setMessage("");
-    } catch (caught: unknown) {
-      setError(caught instanceof ApiError ? caught : null);
-    } finally {
-      setPending(false);
-    }
-  };
+  if (state === "loading" || state === "idle" || !inquiry) {
+    return <LoadingState message="Đang mở cuộc trò chuyện…" />;
+  }
 
   const changeStatus = async (nextStatus: "CONTACTED" | "CLOSED") => {
     setStatusPending(true);
+    setActionError(null);
     try {
       const updated = await api.contact.updateInquiryStatus(inquiry.id, nextStatus);
-      setInquiry((current) =>
+      conversation.updateInquiry((current) =>
         current === null ? updated : { ...updated, messages: mergeMessages(current.messages, updated.messages) }
       );
     } catch (caught: unknown) {
-      setError(caught instanceof ApiError ? caught : null);
+      setActionError(caught instanceof ApiError ? caught : null);
     } finally {
       setStatusPending(false);
     }
@@ -183,7 +150,7 @@ export function InquiryDetailPage({ inquiryId }: Readonly<{ inquiryId: string }>
     readonly canSendMessage: boolean;
     readonly blockedByCurrentUser: boolean;
   }) => {
-    setInquiry((current) => (current === null ? current : { ...current, ...nextState }));
+    conversation.updateInquiry((current) => (current === null ? current : { ...current, ...nextState }));
   };
 
   const toggleBlock = async () => {
@@ -235,38 +202,32 @@ export function InquiryDetailPage({ inquiryId }: Readonly<{ inquiryId: string }>
   };
 
   const isLandlord = user.role === "LANDLORD";
+  const viewerRole = isLandlord ? "LANDLORD" : "TENANT";
   return (
-    <section className="rm-workspace rm-workspace-page space-y-8 my-4" aria-labelledby="inquiry-detail-heading">
+    <section
+      className="rm-workspace rm-workspace-page mx-auto my-4 max-w-5xl space-y-5"
+      aria-labelledby="inquiry-detail-heading"
+    >
       <Link
         href={isLandlord ? "/landlord/inquiries" : "/inquiries"}
         className="inline-flex min-h-11 items-center font-bold text-primary-hover underline decoration-2 underline-offset-4"
       >
-        ← Quay lại danh sách yêu cầu
+        ← {isLandlord ? "Danh sách yêu cầu" : "Tin nhắn"}
       </Link>
-      <header className="rm-workspace-hero" data-tone={inquiry.status === "CLOSED" ? "info" : "accent"}>
-        <div>
+      <header className="flex flex-wrap items-start justify-between gap-4 border-b border-border pb-4">
+        <div className="min-w-0">
           <span className="rm-workspace-eyebrow">Cuộc trò chuyện</span>
-          <h1 id="inquiry-detail-heading" className="rm-workspace-title mt-3">
-            Tin đăng #{inquiry.listingId}
-          </h1>
-          <p className="mt-3 text-sm font-semibold text-muted-foreground">Trạng thái: {statusLabel(inquiry.status)}</p>
-          <p
-            role="status"
-            aria-live="polite"
-            className="mt-3 inline-flex min-h-8 items-center gap-2 rounded-full border border-border bg-surface px-3 py-1.5 text-xs font-extrabold"
+          <h1
+            id="inquiry-detail-heading"
+            className="mt-2 font-display text-2xl font-bold tracking-tight text-foreground sm:text-3xl"
           >
-            <span
-              aria-hidden="true"
-              className={`h-2.5 w-2.5 rounded-full border border-heroDark-950 ${
-                realtimeStatus === "connected"
-                  ? "bg-[#22c55e]"
-                  : realtimeStatus === "reconnecting"
-                    ? "bg-rent-coral"
-                    : "bg-rent-yellow"
-              }`}
-            />
-            {realtimeStatusLabels[realtimeStatus]}
-          </p>
+            {isLandlord ? "Trao đổi với người thuê" : "Nhắn tin với chủ trọ"}
+          </h1>
+          <div className="mt-3">
+            <Badge variant={getInquiryStatusVariant(inquiry.status)} context="Trạng thái cuộc trò chuyện" showIndicator>
+              {getInquiryStatusLabel(inquiry.status, viewerRole)}
+            </Badge>
+          </div>
         </div>
         {isLandlord && inquiry.status !== "CLOSED" ? (
           <div className="flex flex-wrap gap-3">
@@ -279,6 +240,7 @@ export function InquiryDetailPage({ inquiryId }: Readonly<{ inquiryId: string }>
           </div>
         ) : null}
       </header>
+      <InquiryListingContext inquiry={inquiry} />
       <div className="flex flex-col items-end gap-3">
         <div className="relative">
           <Button
@@ -398,7 +360,7 @@ export function InquiryDetailPage({ inquiryId }: Readonly<{ inquiryId: string }>
           </div>
         </form>
       ) : null}
-      {error ? (
+      {actionError ? (
         <p
           role="alert"
           className="rm-workspace-card border-l-4 border-danger bg-danger-subtle p-4 text-sm font-semibold text-danger"
@@ -406,53 +368,7 @@ export function InquiryDetailPage({ inquiryId }: Readonly<{ inquiryId: string }>
           Không thể cập nhật cuộc trò chuyện. Vui lòng thử lại.
         </p>
       ) : null}
-      <div
-        className="rm-inquiry-thread space-y-4"
-        aria-label="Tin nhắn trong cuộc trò chuyện"
-        aria-live="polite"
-        aria-relevant="additions text"
-      >
-        {inquiry.messages.map((item) => (
-          <article
-            key={item.id}
-            className={`rm-inquiry-message max-w-2xl rounded-card border border-border p-4 shadow-surface ${item.senderRole === user.role ? "ml-auto bg-primary-subtle" : "bg-surface"}`}
-          >
-            <p className="text-xs font-bold uppercase tracking-wider text-slate-500">
-              {item.senderRole === "TENANT" ? "Người thuê" : "Chủ trọ"} ·{" "}
-              {new Date(item.createdAt).toLocaleString("vi-VN")}
-            </p>
-            <p className="mt-2 whitespace-pre-wrap text-sm font-medium leading-6">{item.body}</p>
-          </article>
-        ))}
-      </div>
-      {inquiry.status === "CLOSED" ? (
-        <p className="rm-workspace-card border-l-4 border-muted-foreground bg-surface-subtle p-4 text-sm font-semibold text-muted-foreground">
-          Yêu cầu đã đóng, không thể gửi thêm tin nhắn.
-        </p>
-      ) : !inquiry.canSendMessage ? (
-        <p className="rm-workspace-card border-l-4 border-muted-foreground bg-surface-subtle p-4 text-sm font-semibold text-muted-foreground">
-          Cuộc trò chuyện đang bị giới hạn, không thể gửi tin nhắn mới.
-        </p>
-      ) : (
-        <form onSubmit={(event) => void send(event)} className="rm-workspace-card space-y-3 p-5 sm:p-6">
-          <label htmlFor="reply" className="text-sm font-bold">
-            Tin nhắn mới
-          </label>
-          <textarea
-            id="reply"
-            required
-            maxLength={4000}
-            rows={4}
-            value={message}
-            onChange={(event) => setMessage(event.target.value)}
-            className="min-h-28 w-full resize-y rounded-control border border-border-strong bg-surface p-3 text-sm font-medium outline-none transition focus:border-primary focus:ring-[3px] focus:ring-primary/20"
-            placeholder="Viết phản hồi…"
-          />
-          <Button type="submit" pending={pending} pendingLabel="Đang gửi…">
-            Gửi tin nhắn
-          </Button>
-        </form>
-      )}
+      <InquiryConversationCore conversation={conversation} currentUserRole={user.role} variant="page" />
       {!isLandlord && inquiry.status === "CLOSED" ? <TenantReviewPanel inquiryId={inquiry.id} /> : null}
     </section>
   );

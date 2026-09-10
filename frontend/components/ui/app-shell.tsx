@@ -4,7 +4,7 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
 import { useComparisonSelection } from "../../features/comparison/comparison-store";
-import { api } from "../../lib/api/client";
+import { useNotificationUnreadCount } from "../../features/contact/notification-unread-store";
 import { useAuth } from "../../lib/auth/auth-provider";
 import type { UserProfile } from "../../types/api";
 import { accountInitials, accountPrimaryIdentity, accountRoleLabels } from "./account-identity";
@@ -27,6 +27,7 @@ import {
   type WorkspaceActor
 } from "./navigation-model";
 import { NavigationOverlay } from "./navigation-overlay";
+import { NotificationUnreadBadge, notificationAccessibleLabel } from "./notification-unread-badge";
 import { PageTransition } from "./page-transition";
 import { RentMateMark } from "./rentmate-mark";
 import { Skeleton } from "./skeleton";
@@ -132,33 +133,12 @@ function AccountSummary({ user, inverse = false }: Readonly<{ user: UserProfile;
 
 function NotificationLink({ pathname }: Readonly<{ pathname: string }>) {
   const { user } = useAuth();
-  const [unreadCount, setUnreadCount] = useState<number | null>(null);
-
-  useEffect(() => {
-    if (!user) {
-      setUnreadCount(null);
-      return;
-    }
-
-    const controller = new AbortController();
-    setUnreadCount(null);
-    void api.contact
-      .getUnreadNotificationCount(controller.signal)
-      .then((value) => setUnreadCount(value.unreadCount))
-      .catch(() => {
-        if (!controller.signal.aborted) setUnreadCount(null);
-      });
-
-    return () => controller.abort();
-  }, [pathname, user]);
-
-  const accessibleLabel =
-    unreadCount === null || unreadCount === 0 ? "Thông báo" : `Thông báo, ${unreadCount} chưa đọc`;
+  const unreadCount = useNotificationUnreadCount(user?.id ?? null, pathname);
 
   return (
     <Link
       href="/notifications"
-      aria-label={accessibleLabel}
+      aria-label={notificationAccessibleLabel(unreadCount)}
       aria-current={pathname === "/notifications" ? "page" : undefined}
       className={cx(
         buttonClassName("ghost", "sm"),
@@ -166,14 +146,23 @@ function NotificationLink({ pathname }: Readonly<{ pathname: string }>) {
       )}
     >
       <Icon name="bell" />
-      {unreadCount !== null && unreadCount > 0 ? (
-        <span
-          aria-hidden="true"
-          className="absolute right-0 -top-1 grid h-5 min-w-5 place-items-center rounded-full border border-surface bg-coral px-1 text-[0.65rem] font-bold leading-none text-foreground"
-        >
-          {unreadCount > 99 ? "99+" : unreadCount}
-        </span>
-      ) : null}
+      <NotificationUnreadBadge unreadCount={unreadCount} className="absolute right-0 -top-1" />
+    </Link>
+  );
+}
+
+function MobileNotificationLink({ userId, onNavigate }: Readonly<{ userId: number; onNavigate: () => void }>) {
+  const unreadCount = useNotificationUnreadCount(userId);
+  return (
+    <Link
+      href="/notifications"
+      aria-label={notificationAccessibleLabel(unreadCount)}
+      className={drawerNavLink}
+      onClick={onNavigate}
+    >
+      <Icon name="bell" />
+      <span className="min-w-0 flex-1">Thông báo</span>
+      <NotificationUnreadBadge unreadCount={unreadCount} className="ml-auto" />
     </Link>
   );
 }
@@ -237,6 +226,13 @@ const tenantMobileNavigationItems: readonly NavigationItem[] = [
     pathPrefixes: ["/listings/"]
   },
   {
+    key: "near-me",
+    label: "Gần tôi",
+    href: "/near-me",
+    icon: "compass",
+    exactPaths: ["/near-me"]
+  },
+  {
     key: "roommates",
     label: "Ở ghép",
     href: "/roommates",
@@ -244,8 +240,14 @@ const tenantMobileNavigationItems: readonly NavigationItem[] = [
     exactPaths: ["/roommates"],
     pathPrefixes: ["/roommates/"]
   },
-  { key: "favorites", label: "Đã lưu", href: "/favorites", icon: "heart", exactPaths: ["/favorites"] },
-  { key: "profile", label: "Tài khoản", href: "/profile", icon: "user", exactPaths: ["/profile"] }
+  {
+    key: "inquiries",
+    label: "Tin nhắn",
+    href: "/inquiries",
+    icon: "message",
+    exactPaths: ["/inquiries"],
+    pathPrefixes: ["/inquiries/"]
+  }
 ];
 
 function TenantMobileNav({ pathname }: Readonly<{ pathname: string }>) {
@@ -295,6 +297,7 @@ function ConsumerShell({
   useEffect(() => closeMenu(), [closeMenu, pathname]);
 
   const fullBleed = pathname === "/" || pathname === "/search" || pathname === "/near-me";
+  const listingDetail = /^\/listings\/[^/]+$/.test(pathname);
   const showTenantMobileNav =
     actor === "tenant" && !pathname.startsWith("/inquiries/") && !pathname.startsWith("/roommates/conversations/");
 
@@ -349,7 +352,9 @@ function ConsumerShell({
       <main
         id="main-content"
         className={cx(
-          fullBleed ? "min-w-0 flex-1" : "rm-page-container min-w-0 flex-1 py-8 sm:py-12",
+          fullBleed
+            ? "min-w-0 flex-1"
+            : cx("rm-page-container min-w-0 flex-1", listingDetail ? "py-4 sm:py-6" : "py-8 sm:py-12"),
           showTenantMobileNav && (fullBleed ? "pb-24 lg:pb-0" : "pb-24 sm:pb-24 lg:pb-12")
         )}
       >
@@ -385,6 +390,7 @@ function ConsumerShell({
           {user ? (
             <div className="space-y-3">
               <AccountSummary user={user} />
+              <MobileNotificationLink userId={user.id} onNavigate={closeMenu} />
               {user.role === "TENANT" ? (
                 <Link href="/profile" className={drawerNavLink} onClick={closeMenu}>
                   <Icon name="user" />
@@ -828,6 +834,7 @@ export function AppShell({ children }: Readonly<{ children: ReactNode }>) {
   // first client effect has run. The auth provider may resolve its cookie
   // refresh before this component's descendants hydrate.
   const visibleUser = mounted ? user : null;
+  useNotificationUnreadCount(visibleUser?.id ?? null);
   const actor = navigationActor(visibleUser?.role ?? null, status);
   const shellKind = resolveShellKind(pathname, actor);
 

@@ -165,19 +165,16 @@ export function MarketplaceHome({
               </p>
               <h1 id="home-title" className={styles.heroTitle}>
                 Tìm phòng.
-                <span>Tìm người ở ghép.</span>
+                <span>Tìm bạn.</span>
                 <em>Sống đúng nhịp.</em>
               </h1>
-              <p className={styles.heroDescription}>
-                Tìm một nơi vừa túi tiền, đúng khu vực và phù hợp với cách bạn muốn sống — với thông tin được trình bày
-                dễ hiểu.
-              </p>
+              <p className={styles.heroDescription}>Tìm nơi ở vừa túi tiền, đúng khu vực và hợp với bạn.</p>
               <div className={styles.heroLinks}>
                 <Link href="/search" className={styles.heroPrimaryLink}>
-                  Khám phá tin đăng <Icon name="arrow" className="h-5 w-5" />
+                  Xem phòng <Icon name="arrow" className="h-5 w-5" />
                 </Link>
                 <Link href="/roommates" className={styles.heroSecondaryLink}>
-                  Tìm người ở ghép <Icon name="users" className="h-4 w-4" />
+                  Tìm bạn ở ghép <Icon name="users" className="h-4 w-4" />
                 </Link>
               </div>
             </div>

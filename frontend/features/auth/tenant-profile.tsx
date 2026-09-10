@@ -1,12 +1,14 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
-import { accountInitials, accountRoleLabels } from "../../components/ui/account-identity";
+import workspace from "./tenant-workspace.module.css";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { accountInitials, accountPrimaryIdentity, accountRoleLabels } from "../../components/ui/account-identity";
 import { Button } from "../../components/ui/button";
 import { EmptyState, ErrorState, LoadingState } from "../../components/ui/feedback-states";
 import { Icon } from "../../components/ui/icon";
 import { useAuth } from "../../lib/auth/auth-provider";
+import type { TenantContactVerificationStatus } from "../../types/api";
 import { AccountProfileForm } from "./account-profile-form";
 import { RoommateVerificationPanel } from "../roommate/roommate-verification-panel";
 
@@ -19,8 +21,36 @@ function joinDate(value: string): string {
 export function TenantProfile() {
   const { status, user, error, refresh } = useAuth();
   const [mounted, setMounted] = useState(false);
+  const [editing, setEditing] = useState(false);
+  const [profileNotice, setProfileNotice] = useState<string | null>(null);
+  const [verificationStatus, setVerificationStatus] = useState<TenantContactVerificationStatus | null>(null);
+  const [verificationRefreshKey, setVerificationRefreshKey] = useState(0);
+  const editButtonRef = useRef<HTMLButtonElement>(null);
+  const restoreFocusRef = useRef(false);
 
   useEffect(() => setMounted(true), []);
+
+  useEffect(() => {
+    if (!editing && restoreFocusRef.current) {
+      restoreFocusRef.current = false;
+      editButtonRef.current?.focus();
+    }
+  }, [editing]);
+
+  const handleVerificationStatus = useCallback((next: TenantContactVerificationStatus) => {
+    setVerificationStatus(next);
+  }, []);
+
+  const startEditing = useCallback(() => {
+    setProfileNotice(null);
+    setEditing(true);
+  }, []);
+
+  const cancelEditing = useCallback(() => {
+    restoreFocusRef.current = true;
+    setProfileNotice(null);
+    setEditing(false);
+  }, []);
 
   if (!mounted || status === "loading") return <LoadingState message="Đang tải hồ sơ…" />;
   if (status === "anonymous") {
@@ -59,101 +89,205 @@ export function TenantProfile() {
     );
   }
 
+  const handleProfileSaved = (returned: typeof user, noOp: boolean) => {
+    restoreFocusRef.current = true;
+    setEditing(false);
+    setProfileNotice(noOp ? "Không có thay đổi cần lưu." : "Đã cập nhật hồ sơ.");
+    if (returned.phone !== user.phone) {
+      setVerificationStatus(null);
+      setVerificationRefreshKey((value) => value + 1);
+    }
+  };
+
   return (
-    <section
-      aria-labelledby="tenant-profile-heading"
-      className="rm-workspace-page rm-tenant-workspace mx-auto max-w-6xl space-y-8"
-    >
-      <header className="rm-workspace-hero" data-tone="accent">
-        <div className="min-w-0">
-          <p className="rm-workspace-eyebrow">Không gian người thuê</p>
-          <h1 id="tenant-profile-heading" className="rm-workspace-title mt-3 break-words">
-            {user.displayName ?? user.email}
-          </h1>
-          <p className="rm-workspace-description mt-3">
-            Quản lý thông tin liên hệ, trạng thái xác minh và các lối tắt cá nhân của bạn trên RentMate.
-          </p>
-        </div>
-        <div className="flex shrink-0 items-center gap-3 rounded-card border border-primary/15 bg-surface/75 px-4 py-3">
-          <span
-            aria-hidden="true"
-            className="grid h-12 w-12 place-items-center rounded-full bg-primary-subtle font-display text-lg font-bold text-primary-hover"
-          >
-            {accountInitials(user)}
-          </span>
+    <section aria-labelledby="tenant-profile-heading" className={workspace.page}>
+      <header className={workspace.header}>
+        <div className="flex w-full flex-col gap-5 sm:flex-row sm:items-center sm:justify-between">
           <div className="min-w-0">
-            <p className="text-ui-sm font-semibold text-foreground">{accountRoleLabels[user.role]}</p>
-            <p className="max-w-[14rem] truncate text-ui-xs text-muted-foreground">{user.email}</p>
+            <div className="flex min-w-0 items-center gap-4">
+              <span
+                role="img"
+                aria-label={`Chữ viết tắt của ${accountPrimaryIdentity(user)}`}
+                className="grid h-14 w-14 shrink-0 place-items-center rounded-full bg-primary-subtle font-display text-xl font-bold text-primary-hover ring-4 ring-primary-subtle/70"
+              >
+                {accountInitials(user)}
+              </span>
+              <div className="min-w-0">
+                <p className="rm-workspace-eyebrow">Hồ sơ người thuê</p>
+                <h1
+                  id="tenant-profile-heading"
+                  className="mt-1 break-words font-display text-heading-lg font-bold text-foreground"
+                >
+                  {accountPrimaryIdentity(user)}
+                </h1>
+                <p className="mt-1 text-ui-sm font-semibold text-muted-foreground">{accountRoleLabels[user.role]}</p>
+              </div>
+            </div>
+            <div className="mt-4 flex flex-wrap items-center gap-2" aria-live="polite">
+              {verificationStatus ? (
+                <>
+                  <span
+                    className={
+                      verificationStatus.email.verified
+                        ? "inline-flex items-center gap-1.5 rounded-full border border-success/30 bg-success-subtle px-2.5 py-1 text-ui-xs font-bold text-success"
+                        : "inline-flex items-center gap-1.5 rounded-full border border-border-strong bg-surface-subtle px-2.5 py-1 text-ui-xs font-bold text-muted-foreground"
+                    }
+                  >
+                    <Icon name={verificationStatus.email.verified ? "check" : "mail"} className="h-3.5 w-3.5" />
+                    {verificationStatus.email.verified ? "Email đã xác minh" : "Email chưa xác minh"}
+                  </span>
+                  <span
+                    className={
+                      verificationStatus.phone.verified
+                        ? "inline-flex items-center gap-1.5 rounded-full border border-success/30 bg-success-subtle px-2.5 py-1 text-ui-xs font-bold text-success"
+                        : "inline-flex items-center gap-1.5 rounded-full border border-border-strong bg-surface-subtle px-2.5 py-1 text-ui-xs font-bold text-muted-foreground"
+                    }
+                  >
+                    <Icon name={verificationStatus.phone.verified ? "check" : "phone"} className="h-3.5 w-3.5" />
+                    {verificationStatus.phone.verified ? "Số điện thoại đã xác minh" : "Số điện thoại chưa xác minh"}
+                  </span>
+                </>
+              ) : (
+                <span role="status" className="text-ui-xs font-semibold text-muted-foreground">
+                  Đang tải trạng thái xác minh…
+                </span>
+              )}
+            </div>
           </div>
+          <Button
+            ref={editButtonRef}
+            type="button"
+            className="w-full shrink-0 sm:w-auto"
+            disabled={editing}
+            onClick={startEditing}
+          >
+            {editing ? "Đang chỉnh sửa" : "Chỉnh sửa hồ sơ"}
+          </Button>
         </div>
       </header>
 
-      <div className="grid gap-5 lg:grid-cols-[minmax(15rem,0.72fr)_minmax(0,1.28fr)] lg:items-start">
-        <section className="rm-workspace-card p-5 sm:p-6" aria-labelledby="tenant-identity-heading">
-          <div className="rm-workspace-section-title" id="tenant-identity-heading">
-            Hồ sơ cá nhân
-          </div>
-          <p className="rm-workspace-section-description">Những thông tin RentMate đang lưu cho tài khoản này.</p>
-          <dl className="mt-5 grid gap-4 border-t border-border pt-5 text-ui-sm">
-            <div>
-              <dt className="text-muted-foreground">Vai trò</dt>
-              <dd className="mt-1 font-semibold text-foreground">{accountRoleLabels[user.role]}</dd>
-            </div>
-            <div>
-              <dt className="text-muted-foreground">Ngày tham gia</dt>
-              <dd className="mt-1 font-semibold text-foreground">{joinDate(user.createdAt)}</dd>
-            </div>
-            <div>
-              <dt className="text-muted-foreground">Số điện thoại</dt>
-              <dd className="mt-1 break-all font-semibold text-foreground">{user.phone ?? "Chưa cập nhật"}</dd>
-            </div>
-          </dl>
-        </section>
-        <section className="rm-workspace-card p-5 sm:p-6" aria-labelledby="tenant-account-heading">
-          <h2 id="tenant-account-heading" className="rm-workspace-section-title">
-            Thông tin tài khoản
-          </h2>
-          <p className="rm-workspace-section-description mb-6">
-            Cập nhật thông tin để RentMate hiển thị tài khoản của bạn rõ ràng hơn.
-          </p>
-          <AccountProfileForm user={user} />
-        </section>
-      </div>
+      <div className={workspace.profileGrid}>
+        <div className={workspace.profileMain}>
+          <section className={workspace.panel} aria-labelledby="tenant-personal-heading">
+            <header>
+              <p className="rm-workspace-eyebrow">Thông tin tài khoản</p>
+              <h2 id="tenant-personal-heading" className="mt-2 font-display text-heading-sm font-bold text-foreground">
+                Thông tin cá nhân
+              </h2>
+              <p className="mt-2 max-w-prose text-ui-sm leading-6 text-muted-foreground">
+                Thông tin chỉ hiển thị trong tài khoản RentMate của bạn.
+              </p>
+            </header>
+            {editing ? (
+              <div className="mt-5 border-t border-border pt-5">
+                <AccountProfileForm
+                  user={user}
+                  submitLabel="Lưu thay đổi"
+                  onSaved={handleProfileSaved}
+                  onCancel={cancelEditing}
+                />
+              </div>
+            ) : (
+              <dl className={workspace.details}>
+                <div className="min-w-0">
+                  <dt className="text-muted-foreground">Họ và tên</dt>
+                  <dd className="mt-1 break-words font-semibold text-foreground">{accountPrimaryIdentity(user)}</dd>
+                </div>
+                <div className="min-w-0">
+                  <dt className="text-muted-foreground">Email đăng nhập</dt>
+                  <dd className="mt-1 break-all font-semibold text-foreground">{user.email}</dd>
+                </div>
+                <div className="min-w-0">
+                  <dt className="text-muted-foreground">Số điện thoại</dt>
+                  <dd className="mt-1 break-all font-semibold text-foreground">{user.phone ?? "Chưa cập nhật"}</dd>
+                </div>
+                <div className="min-w-0">
+                  <dt className="text-muted-foreground">Ngày tham gia</dt>
+                  <dd className="mt-1 font-semibold text-foreground">{joinDate(user.createdAt)}</dd>
+                </div>
+              </dl>
+            )}
+            {profileNotice && !editing ? (
+              <p
+                role="status"
+                className="mt-5 rounded-control bg-primary-subtle p-3 text-ui-sm font-semibold text-primary-hover"
+              >
+                {profileNotice}
+              </p>
+            ) : null}
+          </section>
 
-      <div className="grid gap-5 lg:grid-cols-[minmax(0,1.2fr)_minmax(15rem,0.8fr)] lg:items-start">
-        <RoommateVerificationPanel className="rm-workspace-verification h-full max-w-none" />
-        <section className="rm-workspace-card p-5 sm:p-6" aria-labelledby="tenant-shortcuts-heading">
-          <p className="rm-workspace-eyebrow">Lối tắt cá nhân</p>
-          <h2 id="tenant-shortcuts-heading" className="mt-2 font-display text-heading-sm font-bold text-foreground">
-            Tiếp tục hành trình tìm phòng
-          </h2>
-          <div className="mt-5 grid gap-2">
-            <Link
-              href="/favorites"
-              className="flex min-h-12 items-center gap-3 rounded-control border border-border px-3 py-2.5 text-ui-sm font-semibold transition-colors hover:border-primary/40 hover:bg-primary-subtle"
-            >
-              <Icon name="heart" className="h-5 w-5 text-primary" />
-              <span className="min-w-0 flex-1">Phòng đã lưu</span>
-              <Icon name="arrow" className="h-4 w-4 text-muted-foreground" />
-            </Link>
-            <Link
-              href="/inquiries"
-              className="flex min-h-12 items-center gap-3 rounded-control border border-border px-3 py-2.5 text-ui-sm font-semibold transition-colors hover:border-primary/40 hover:bg-primary-subtle"
-            >
-              <Icon name="message" className="h-5 w-5 text-primary" />
-              <span className="min-w-0 flex-1">Tin nhắn &amp; kết nối</span>
-              <Icon name="arrow" className="h-4 w-4 text-muted-foreground" />
-            </Link>
-            <Link
-              href="/roommates/profile"
-              className="flex min-h-12 items-center gap-3 rounded-control border border-border px-3 py-2.5 text-ui-sm font-semibold transition-colors hover:border-primary/40 hover:bg-primary-subtle"
-            >
-              <Icon name="users" className="h-5 w-5 text-primary" />
-              <span className="min-w-0 flex-1">Hồ sơ ở ghép</span>
-              <Icon name="arrow" className="h-4 w-4 text-muted-foreground" />
-            </Link>
-          </div>
-        </section>
+          <section className={workspace.panel} aria-labelledby="tenant-shortcuts-heading">
+            <header>
+              <p className="rm-workspace-eyebrow">Lối tắt cho người thuê</p>
+              <h2 id="tenant-shortcuts-heading" className="mt-2 font-display text-heading-sm font-bold text-foreground">
+                Tiếp tục hành trình tìm phòng
+              </h2>
+            </header>
+            <div className="mt-5 grid gap-3 sm:grid-cols-1 xl:grid-cols-3">
+              <Link
+                href="/favorites"
+                className="group flex min-w-0 items-center gap-3 rounded-control border border-border bg-surface-subtle px-3 py-3 transition-[background-color,border-color,box-shadow] duration-standard hover:border-primary/40 hover:bg-primary-subtle hover:shadow-surface focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-primary/20"
+              >
+                <span className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-primary-subtle text-primary">
+                  <Icon name="heart" className="h-5 w-5" />
+                </span>
+                <span className="min-w-0 flex-1">
+                  <span className="block text-ui-sm font-bold text-foreground">Tin đã lưu</span>
+                  <span className="mt-0.5 block text-ui-xs leading-5 text-muted-foreground">
+                    Các phòng bạn đã đánh dấu
+                  </span>
+                </span>
+                <Icon
+                  name="arrow"
+                  className="h-4 w-4 shrink-0 text-muted-foreground transition-transform duration-standard group-hover:translate-x-0.5"
+                />
+              </Link>
+              <Link
+                href="/inquiries"
+                className="group flex min-w-0 items-center gap-3 rounded-control border border-border bg-surface-subtle px-3 py-3 transition-[background-color,border-color,box-shadow] duration-standard hover:border-primary/40 hover:bg-primary-subtle hover:shadow-surface focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-primary/20"
+              >
+                <span className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-primary-subtle text-primary">
+                  <Icon name="message" className="h-5 w-5" />
+                </span>
+                <span className="min-w-0 flex-1">
+                  <span className="block text-ui-sm font-bold text-foreground">Tin nhắn</span>
+                  <span className="mt-0.5 block text-ui-xs leading-5 text-muted-foreground">Trao đổi với chủ trọ</span>
+                </span>
+                <Icon
+                  name="arrow"
+                  className="h-4 w-4 shrink-0 text-muted-foreground transition-transform duration-standard group-hover:translate-x-0.5"
+                />
+              </Link>
+              <Link
+                href="/roommates/profile"
+                className="group flex min-w-0 items-center gap-3 rounded-control border border-border bg-surface-subtle px-3 py-3 transition-[background-color,border-color,box-shadow] duration-standard hover:border-primary/40 hover:bg-primary-subtle hover:shadow-surface focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-primary/20"
+              >
+                <span className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-primary-subtle text-primary">
+                  <Icon name="users" className="h-5 w-5" />
+                </span>
+                <span className="min-w-0 flex-1">
+                  <span className="block text-ui-sm font-bold text-foreground">Hồ sơ ở ghép</span>
+                  <span className="mt-0.5 block text-ui-xs leading-5 text-muted-foreground">
+                    Quản lý hồ sơ tìm người ở ghép
+                  </span>
+                </span>
+                <Icon
+                  name="arrow"
+                  className="h-4 w-4 shrink-0 text-muted-foreground transition-transform duration-standard group-hover:translate-x-0.5"
+                />
+              </Link>
+            </div>
+          </section>
+        </div>
+
+        <RoommateVerificationPanel
+          presentation="compact"
+          refreshKey={verificationRefreshKey}
+          onStatusChange={handleVerificationStatus}
+          onEditProfile={startEditing}
+          className={workspace.verification}
+        />
       </div>
     </section>
   );

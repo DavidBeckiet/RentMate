@@ -3,6 +3,7 @@ import { Icon } from "../../components/ui/icon";
 import { MediaImage } from "../../components/ui/media-image";
 import type { Amenity, OwnerImage, PublicImage } from "../../types/api";
 import { formatVnd } from "./format";
+import { amenityIcon, amenityLabel } from "./room-type-label";
 
 type ListingImageSource = Pick<PublicImage | OwnerImage, "url" | "altText">;
 
@@ -84,9 +85,10 @@ export function ListingAmenityChips({ amenities }: { readonly amenities: readonl
       {amenities.map((amenity) => (
         <li
           key={amenity.code}
-          className="rounded-full border border-border bg-surface-subtle px-2.5 py-1 font-sans text-ui-xs font-semibold text-foreground"
+          className="inline-flex items-center gap-2 rounded-full border border-border bg-surface-subtle px-2.5 py-1 font-sans text-ui-xs font-semibold text-foreground"
         >
-          {amenity.label}
+          <Icon name={amenityIcon(amenity)} className="h-4 w-4 shrink-0 text-primary-hover" />
+          {amenityLabel(amenity)}
         </li>
       ))}
     </ul>

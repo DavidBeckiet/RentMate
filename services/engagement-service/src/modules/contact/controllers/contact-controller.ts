@@ -42,6 +42,26 @@ function messageDto(message: InquiryMessage) {
   };
 }
 
+function listingSummaryDto(summary: InquiryView["listingSummary"]) {
+  if (!summary) return null;
+  return {
+    id: summary.id,
+    title: summary.title,
+    propertyType: { code: summary.propertyType.code, label: summary.propertyType.label },
+    monthlyRent: summary.monthlyRent,
+    roomAreaSqm: summary.roomAreaSqm,
+    areaName: summary.areaName,
+    businessStatus: summary.businessStatus,
+    coverImage: summary.coverImage
+      ? {
+          url: summary.coverImage.url,
+          altText: summary.coverImage.altText,
+          displayOrder: summary.coverImage.displayOrder
+        }
+      : null
+  };
+}
+
 function inquiryDto(inquiry: InquiryView) {
   return {
     id: inquiry.id,
@@ -53,7 +73,10 @@ function inquiryDto(inquiry: InquiryView) {
     updatedAt: inquiry.updatedAt,
     canSendMessage: inquiry.canSendMessage,
     blockedByCurrentUser: inquiry.blockedByCurrentUser,
-    messages: inquiry.messages.map(messageDto)
+    messages: inquiry.messages.map(messageDto),
+    listingSummary: listingSummaryDto(inquiry.listingSummary),
+    listingContextState: inquiry.listingContextState,
+    lastMessage: inquiry.lastMessage ? messageDto(inquiry.lastMessage) : null
   };
 }
 

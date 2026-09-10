@@ -123,9 +123,9 @@ describe("RoommateRequestPage", () => {
   it("searches listings with Enter without submitting the outer request form", async () => {
     render(<RoommateRequestPage />);
     await screen.findByRole("heading", { name: "Tạo yêu cầu tìm người ở ghép" });
-    fireEvent.click(screen.getByRole("button", { name: /Cân nhắc một listing/ }));
+    fireEvent.click(screen.getByRole("button", { name: /Đã có phòng muốn cân nhắc/ }));
 
-    const searchInput = screen.getByLabelText("Tìm listing công khai");
+    const searchInput = screen.getByLabelText("Tìm phòng đang được đăng");
     fireEvent.change(searchInput, { target: { value: "Quận 3" } });
     fireEvent.keyDown(searchInput, { key: "Enter" });
 
@@ -150,8 +150,8 @@ describe("RoommateRequestPage", () => {
     apiMocks.linkListing.mockResolvedValue(roommateRequest({ listingId: 23, listingMode: "LINKED" }));
     render(<RoommateRequestPage />);
 
-    expect(await screen.findByText(/Listing từ trang chi tiết đã được chọn\./)).toBeInTheDocument();
-    fireEvent.click(screen.getByRole("button", { name: "Liên kết listing đã chọn" }));
+    expect(await screen.findByText(/Phòng từ trang chi tiết đã được chọn\./)).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Gắn phòng đã chọn" }));
 
     await waitFor(() => expect(apiMocks.linkListing).toHaveBeenCalledWith(42, 23));
     expect(apiMocks.createRequest).not.toHaveBeenCalled();
@@ -179,7 +179,8 @@ describe("RoommateRequestPage", () => {
     render(<RoommateRequestPage />);
 
     expect(await screen.findByText("Listing không còn khả dụng")).toBeInTheDocument();
-    fireEvent.click(screen.getByRole("button", { name: "Gỡ liên kết listing" }));
+    fireEvent.click(screen.getByText("Chọn hoặc thay đổi phòng"));
+    fireEvent.click(screen.getByRole("button", { name: "Gỡ phòng đã chọn" }));
     await waitFor(() => expect(apiMocks.unlinkListing).toHaveBeenCalledWith(42));
 
     fireEvent.click(screen.getByRole("button", { name: "Hủy yêu cầu" }));

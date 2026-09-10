@@ -35,6 +35,9 @@ const pool = createPostgresPool(
 );
 
 async function cleanIdentitySchema(): Promise<void> {
+  await pool.query("DROP TABLE IF EXISTS user_auth_identities");
+  await pool.query("DROP TABLE IF EXISTS password_reset_tokens");
+  await pool.query("DROP TABLE IF EXISTS contact_verification_challenges");
   await pool.query("DROP TABLE IF EXISTS landlord_verifications");
   await pool.query("DROP TABLE IF EXISTS users");
   await pool.query("DROP TYPE IF EXISTS user_role");

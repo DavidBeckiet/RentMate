@@ -2,6 +2,12 @@ FROM node:22.15-alpine
 
 WORKDIR /app
 
+COPY services/shared/package.json services/shared/package-lock.json ./services/shared/
+COPY services/shared ./services/shared
+RUN npm ci --prefix services/shared \
+  && npm --prefix services/shared run build \
+  && npm prune --omit=dev --prefix services/shared
+
 COPY services/identity-service/package.json services/identity-service/package-lock.json ./services/identity-service/
 RUN npm ci --omit=dev --prefix services/identity-service
 
@@ -13,9 +19,6 @@ RUN npm ci --omit=dev --prefix services/engagement-service
 
 COPY services/verification-delivery-adapter/package.json services/verification-delivery-adapter/package-lock.json ./services/verification-delivery-adapter/
 RUN npm ci --omit=dev --prefix services/verification-delivery-adapter
-
-COPY services/shared/package.json services/shared/package-lock.json ./services/shared/
-RUN npm ci --omit=dev --prefix services/shared
 
 COPY services ./services
 

@@ -20,7 +20,7 @@ Leave unknown production values blank. A checked repository rehearsal is not a p
 
 ## Pre-deploy
 
-- [ ] RM-053/RM-054/release regression evidence is green for this commit.
+- [ ] Current-architecture E2E and release-closure regression evidence are green for this commit; RM-054 is historical only.
 - [ ] Target platform, same-site topology, domain, DNS, and TLS ownership are recorded.
 - [ ] Frontend/API URLs are HTTPS and the frontend/API relationship is same-site.
 - [ ] Database, provider, smoke-actor, backup, and rollback owners are available.

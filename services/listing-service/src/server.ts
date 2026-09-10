@@ -145,6 +145,7 @@ async function startListingService(): Promise<void> {
     registerApiRoutes: (router) => {
       registerListingsRoutes(router, {
         lookupRepository: createLookupRepository(sqlExecutor),
+        loadActiveLandlordIds: identityAccountClient.loadActiveLandlordIds,
         authenticationMiddleware: requiredAuthentication,
         optionalAuthenticationMiddleware: optionalAuthentication,
         landlordRoleMiddleware: landlordRole,

@@ -59,13 +59,16 @@ export const publicNavigationItems: readonly NavigationItem[] = [
 ];
 
 const tenantPrimaryItems: readonly NavigationItem[] = [
-  ...marketplaceItems,
+  marketplaceItems[0],
+  marketplaceItems[1],
+  marketplaceItems[2],
   {
-    key: "favorites",
-    label: "Yêu thích",
-    href: "/favorites",
-    icon: "heart",
-    exactPaths: ["/favorites"]
+    key: "roommates",
+    label: "Ở ghép",
+    href: "/roommates",
+    icon: "users",
+    exactPaths: ["/roommates"],
+    pathPrefixes: ["/roommates/"]
   },
   {
     key: "inquiries",
@@ -74,14 +77,6 @@ const tenantPrimaryItems: readonly NavigationItem[] = [
     icon: "message",
     exactPaths: ["/inquiries"],
     pathPrefixes: ["/inquiries/"]
-  },
-  {
-    key: "roommates",
-    label: "Ở ghép",
-    href: "/roommates",
-    icon: "users",
-    exactPaths: ["/roommates"],
-    pathPrefixes: ["/roommates/"]
   }
 ];
 
@@ -111,8 +106,22 @@ const adminMarketplaceItems: readonly NavigationItem[] = [
 
 export const tenantSecondaryItems: readonly NavigationItem[] = [
   {
+    key: "favorites",
+    label: "Yêu thích",
+    href: "/favorites",
+    icon: "heart",
+    exactPaths: ["/favorites"]
+  },
+  {
+    key: "recently-viewed",
+    label: "Đã xem gần đây",
+    href: "/recently-viewed",
+    icon: "eye",
+    exactPaths: ["/recently-viewed"]
+  },
+  {
     key: "saved-searches",
-    label: "Bộ lọc đã lưu",
+    label: "Tìm kiếm đã lưu",
     href: "/saved-searches",
     icon: "sliders",
     exactPaths: ["/saved-searches"]

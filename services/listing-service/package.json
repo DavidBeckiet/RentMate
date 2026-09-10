@@ -13,7 +13,9 @@
     "backfill": "tsx backfill.ts"
   },
   "dependencies": {
+    "@rentmate/service-shared": "file:../shared",
     "multer": "^2.2.0",
+    "rentmate": "file:../..",
     "tsx": "4.19.4"
   },
   "devDependencies": {

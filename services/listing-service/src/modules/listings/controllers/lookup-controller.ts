@@ -32,3 +32,17 @@ export function createGetAmenitiesHandler(repository: LookupRepository): Request
     })().catch(next);
   };
 }
+
+export function createGetPublicAreasHandler(
+  repository: LookupRepository,
+  loadActiveLandlordIds: () => Promise<readonly number[]>
+): RequestHandler {
+  return (request, response, next): void => {
+    void (async () => {
+      validateQueryKeys(request.query, []);
+      validateAbsentBody(request.body);
+      const areas = await repository.findPublicAreaNames(await loadActiveLandlordIds());
+      sendObject(response, { areas });
+    })().catch(next);
+  };
+}

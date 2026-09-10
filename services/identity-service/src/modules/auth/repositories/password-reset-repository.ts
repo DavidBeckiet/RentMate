@@ -52,7 +52,10 @@ export interface PasswordResetRepository {
     executor: SqlExecutor,
     input: { readonly userId: number; readonly tokenHash: string; readonly expiresAt: Date }
   ) => Promise<void>;
-  readonly findTokenForUpdate: (executor: SqlExecutor, tokenHash: string) => Promise<PasswordResetToken | null>;
+  readonly findActiveTokenForUserForUpdate: (
+    executor: SqlExecutor,
+    userId: number
+  ) => Promise<PasswordResetToken | null>;
   readonly consumeToken: (executor: SqlExecutor, tokenId: number) => Promise<boolean>;
   readonly updatePasswordHash: (executor: SqlExecutor, userId: number, passwordHash: string) => Promise<boolean>;
 }
@@ -80,17 +83,17 @@ export function createPasswordResetRepository(executor: SqlExecutor): PasswordRe
       });
     },
 
-    async findTokenForUpdate(transactionExecutor, tokenHash) {
+    async findActiveTokenForUserForUpdate(transactionExecutor, userId) {
       return queryOptional<PasswordResetTokenRow, PasswordResetToken>(
         transactionExecutor,
         {
           text: `
             SELECT id, user_id, token_hash, expires_at
             FROM password_reset_tokens
-            WHERE token_hash = $1 AND consumed_at IS NULL
+            WHERE user_id = $1 AND consumed_at IS NULL
             FOR UPDATE
           `,
-          values: [tokenHash]
+          values: [userId]
         },
         mapToken
       );

@@ -1,11 +1,13 @@
 import type { MapBounds, MapPoint } from "../../components/map/map-base";
 import type { PublicListingSearchQuery, PublicListingSort } from "../../types/api";
+import { formatAreaLabel } from "../../lib/area";
 
 const ordinarySorts = ["newest", "rent_asc", "rent_desc"] as const;
 const wholeNumberPattern = /^[0-9]+$/;
 const areaPattern = /^[0-9]+(?:\.[0-9]{1,2})?$/;
 const decimalPattern = /^-?[0-9]+(?:\.[0-9]+)?$/;
 const codePattern = /^[A-Z][A-Z0-9_]*$/;
+const maximumMonthlyRent = 999_999_999_999;
 
 export type OrdinarySearchSort = (typeof ordinarySorts)[number];
 
@@ -139,8 +141,8 @@ function ordinarySort(params: SearchParamsReader): OrdinarySearchSort {
 }
 
 function commonState(params: SearchParamsReader): SearchStateBase {
-  const minMonthlyRent = positiveInteger(params, "minMonthlyRent");
-  const maxMonthlyRent = positiveInteger(params, "maxMonthlyRent");
+  const minMonthlyRent = positiveInteger(params, "minMonthlyRent", maximumMonthlyRent);
+  const maxMonthlyRent = positiveInteger(params, "maxMonthlyRent", maximumMonthlyRent);
   const minRoomAreaSqm = positiveArea(params, "minRoomAreaSqm");
   const maxRoomAreaSqm = positiveArea(params, "maxRoomAreaSqm");
   const minOccupants = positiveInteger(params, "minOccupants", 20);
@@ -153,7 +155,7 @@ function commonState(params: SearchParamsReader): SearchStateBase {
 
   return {
     ...(text(params, "q") ? { q: text(params, "q") } : {}),
-    ...(text(params, "areaName") ? { areaName: text(params, "areaName") } : {}),
+    ...(text(params, "areaName") ? { areaName: formatAreaLabel(text(params, "areaName")!) } : {}),
     ...(minMonthlyRent === undefined ? {} : { minMonthlyRent }),
     ...(maxMonthlyRent === undefined ? {} : { maxMonthlyRent }),
     ...(minRoomAreaSqm === undefined ? {} : { minRoomAreaSqm }),
@@ -162,7 +164,7 @@ function commonState(params: SearchParamsReader): SearchStateBase {
     ...(code(params, "propertyType") ? { propertyType: code(params, "propertyType") } : {}),
     amenities: amenityCodes(params),
     page: positiveInteger(params, "page") ?? 1,
-    pageSize: positiveInteger(params, "pageSize", 100) ?? 15
+    pageSize: positiveInteger(params, "pageSize", 100) ?? 20
   };
 }
 
@@ -211,7 +213,7 @@ function appendNumber(params: URLSearchParams, key: string, value: number | unde
 export function serializeSearchState(state: SearchQueryState): URLSearchParams {
   const params = new URLSearchParams();
   if (state.q) params.set("q", state.q);
-  if (state.areaName) params.set("areaName", state.areaName);
+  if (state.areaName) params.set("areaName", formatAreaLabel(state.areaName));
   appendNumber(params, "minMonthlyRent", state.minMonthlyRent);
   appendNumber(params, "maxMonthlyRent", state.maxMonthlyRent);
   appendNumber(params, "minRoomAreaSqm", state.minRoomAreaSqm);
@@ -232,7 +234,7 @@ export function serializeSearchState(state: SearchQueryState): URLSearchParams {
   }
 
   if (state.page !== 1) appendNumber(params, "page", state.page);
-  if (state.pageSize !== 15) appendNumber(params, "pageSize", state.pageSize);
+  if (state.pageSize !== 20) appendNumber(params, "pageSize", state.pageSize);
   if (state.mode === "radius" || state.sort !== "newest") params.set("sort", state.sort);
   return params;
 }

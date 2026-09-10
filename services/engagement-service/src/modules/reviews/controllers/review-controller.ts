@@ -45,7 +45,8 @@ function publicReviewDto(review: ListingReview) {
     responsivenessRating: review.responsivenessRating,
     comment: review.comment,
     createdAt: review.createdAt,
-    verifiedInteraction: true as const
+    verifiedInteraction: true as const,
+    hasReported: review.hasReported
   };
 }
 
@@ -128,7 +129,11 @@ export function createCreateReviewHandler(service: ReviewService): RequestHandle
 export function createListPublicReviewsHandler(service: ReviewService): RequestHandler {
   return (request, response, next) => {
     void service
-      .listPublic(parseReviewId(request.params.listingId, "listingId"), validatePublicReviewQuery(request.query))
+      .listPublic(
+        parseReviewId(request.params.listingId, "listingId"),
+        validatePublicReviewQuery(request.query),
+        request.auth
+      )
       .then((page) => sendPaginated(response, page.data.map(publicReviewDto), page))
       .catch(next);
   };

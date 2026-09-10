@@ -1,0 +1,307 @@
+.page {
+  display: grid;
+  gap: 24px;
+  min-width: 0;
+  align-items: start;
+}
+
+.page > :global(.rm-roommate-hero) {
+  background: rgb(var(--color-primary-subtle));
+  box-shadow: none;
+}
+
+.page :global(.rm-roommate-hero-content) {
+  padding: clamp(24px, 3vw, 40px);
+}
+
+.page :global(.rm-roommate-hero-title) {
+  font-size: clamp(28px, 3.2vw, 44px);
+  letter-spacing: -0.045em;
+  line-height: 1.18;
+}
+
+.page :global(.rm-roommate-subnav) {
+  border-radius: 16px;
+  box-shadow: none;
+}
+
+.filters {
+  padding: 20px;
+  min-width: 0;
+  box-shadow: none;
+}
+
+.filterForm {
+  display: grid;
+  gap: 22px;
+}
+
+.filterToggle {
+  display: none;
+}
+
+.note {
+  font-size: 12px;
+  color: rgb(var(--color-muted-foreground));
+}
+
+.note summary {
+  cursor: pointer;
+  padding-block: 6px;
+}
+
+.note p {
+  padding-block: 8px;
+  line-height: 1.65;
+  overflow-wrap: anywhere;
+}
+
+.filterForm h2 {
+  font-size: 18px;
+}
+
+.filterForm input,
+.filterForm select {
+  min-width: 0;
+  min-height: 46px;
+  padding-inline: 10px;
+  box-shadow: none;
+  border-radius: 10px;
+}
+
+.filterForm input::placeholder {
+  font-size: 12px;
+}
+
+.range {
+  min-width: 0;
+}
+
+.range legend {
+  margin-bottom: 10px;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.rangeInputs {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.rangeInputs label {
+  font-size: 12px;
+  color: rgb(var(--color-muted-foreground));
+}
+
+.filterActions {
+  display: grid;
+  gap: 8px;
+  border-top: 1px solid rgb(var(--color-border));
+  padding-top: 16px;
+}
+
+.filterActions button {
+  width: 100%;
+}
+
+.results,
+.ai {
+  min-width: 0;
+}
+
+.ai {
+  padding: 20px;
+  background: rgb(var(--color-surface));
+  box-shadow: none;
+}
+
+.ai h2 {
+  margin-top: 6px;
+  font-size: 19px;
+}
+
+.resultsHeading {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+  padding-block: 4px 8px;
+}
+
+.resultsHeading h2 {
+  font-size: 23px;
+}
+
+.personCard {
+  height: 100%;
+  border-radius: 18px;
+  box-shadow: 0 2px 8px rgb(var(--color-foreground) / 0.035);
+}
+
+.personCard:hover {
+  transform: none;
+}
+
+.personCard :global(.rm-roommate-card-body) {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  padding: 22px;
+}
+
+.personCard header h2 {
+  font-size: 18px;
+}
+
+.personCard :global(.rm-roommate-section-label) {
+  text-transform: none;
+  letter-spacing: 0;
+  font-weight: 500;
+}
+
+.personCard :global(.rm-roommate-discovery-facts) {
+  order: -1;
+  border-block: 1px solid rgb(var(--color-border));
+  padding-block: 16px;
+  gap: 14px;
+}
+
+.personCard header {
+  order: -3;
+}
+
+.personCard header + div {
+  order: -2;
+}
+
+.personCard :global(.rm-roommate-discovery-facts) dt {
+  text-transform: none;
+  letter-spacing: 0;
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.personCard :global(.rm-roommate-discovery-facts) > div:first-child dd {
+  color: rgb(var(--color-primary-hover));
+  font-size: 17px;
+}
+
+.personCard :global(.rm-roommate-chip) {
+  min-height: 26px;
+  border: 0;
+  padding: 4px 8px;
+  font-size: 11px;
+}
+
+.personCard :global(.rm-roommate-discovery-listing) {
+  border: 0;
+  background: transparent;
+  padding: 0;
+  font-size: 12px;
+}
+
+.personCard :global(.rm-roommate-discovery-compatibility) {
+  border: 0;
+  font-size: 12px;
+  background: rgb(var(--color-primary-subtle) / 0.5);
+}
+
+.compatibilityToggle {
+  cursor: pointer;
+  padding-block: 5px;
+  font-size: 12px;
+  font-weight: 700;
+  color: rgb(var(--color-primary-hover));
+}
+
+.compatibilityToggle:focus-visible {
+  outline: 2px solid rgb(var(--color-primary));
+  outline-offset: 4px;
+}
+
+.personCard footer {
+  margin-top: auto;
+  padding-top: 16px;
+}
+
+@media (max-width: 1023px) {
+  .filterToggle {
+    display: flex;
+    width: 100%;
+    min-height: 44px;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    text-align: left;
+    font-size: 13px;
+    font-weight: 700;
+    color: rgb(var(--color-primary-hover));
+  }
+
+  .filterToggle span:first-child {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .filterToggle span:last-child {
+    flex-shrink: 0;
+    font-size: 12px;
+  }
+
+  .filterForm[data-expanded="false"] {
+    display: none;
+  }
+
+  .filterForm[data-expanded="true"] {
+    margin-top: 20px;
+  }
+}
+
+@media (min-width: 1024px) {
+  .page {
+    grid-template-columns: 310px minmax(0, 1fr);
+    column-gap: 28px;
+  }
+
+  .page > :global(.rm-roommate-hero),
+  .page > :global(.rm-roommate-subnav) {
+    grid-column: 1 / -1;
+  }
+
+  .filters {
+    grid-column: 1;
+    grid-row: 3 / span 2;
+  }
+
+  .ai,
+  .results {
+    grid-column: 2;
+  }
+}
+
+@media (max-width: 767px) {
+  .page {
+    gap: 16px;
+  }
+
+  .filters,
+  .ai {
+    padding: 16px;
+  }
+
+  .personCard :global(.rm-roommate-card-body) {
+    padding: 16px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .page *,
+  .page *::before,
+  .page *::after {
+    transition: none !important;
+    animation: none !important;
+  }
+}

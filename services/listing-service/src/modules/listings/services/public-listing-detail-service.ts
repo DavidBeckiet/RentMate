@@ -30,7 +30,8 @@ export function createPublicListingDetailService(
       principal?: AuthenticatedPrincipal
     ): Promise<PublicListingDetail | TenantPublicListingDetail> {
       const includeContact = principal?.role === "TENANT";
-      const result = await repository.findPublicDetailById(listingId, includeContact);
+      const reporterId = includeContact ? principal?.userId : undefined;
+      const result = await repository.findPublicDetailById(listingId, includeContact, reporterId);
       if (result === null) {
         throw new ApplicationError("RESOURCE_NOT_FOUND", resourceNotFoundMessage);
       }

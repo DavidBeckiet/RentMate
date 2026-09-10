@@ -11,7 +11,8 @@ export interface PasswordResetRequestInput {
 }
 
 export interface PasswordResetConfirmationInput {
-  readonly token: string;
+  readonly email: string;
+  readonly code: string;
   readonly password: string;
 }
 
@@ -22,19 +23,24 @@ export function validatePasswordResetRequestBody(value: unknown): PasswordResetR
 }
 
 export function validatePasswordResetConfirmationBody(value: unknown): PasswordResetConfirmationInput {
-  const body = validateBodyFields(value, ["token", "password"]);
-  if (!("token" in body)) throwValidationIssue("token", "REQUIRED", "token is required.");
+  const body = validateBodyFields(value, ["email", "code", "password"]);
+  if (!("email" in body)) throwValidationIssue("email", "REQUIRED", "email is required.");
+  if (!("code" in body)) throwValidationIssue("code", "REQUIRED", "code is required.");
   if (!("password" in body)) throwValidationIssue("password", "REQUIRED", "password is required.");
 
-  const token = validateJsonText(body.token, "token", {
-    maximumLength: 128,
+  const code = validateJsonText(body.code, "code", {
+    maximumLength: 6,
     nullable: false,
     nonblank: true,
     trim: false
   }) as string;
-  if (!/^[A-Za-z0-9_-]{32,128}$/u.test(token)) {
-    throwValidationIssue("token", "INVALID_VALUE", "token is invalid.");
+  if (!/^\d{6}$/u.test(code)) {
+    throwValidationIssue("code", "INVALID_VALUE", "code is invalid.");
   }
 
-  return Object.freeze({ token, password: validatePasswordRepresentation(body.password) });
+  return Object.freeze({
+    email: normalizeEmail(body.email),
+    code,
+    password: validatePasswordRepresentation(body.password)
+  });
 }

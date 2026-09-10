@@ -24,7 +24,7 @@ describe("RM-048 search query state", () => {
       state: {
         mode: "ordinary",
         q: "Studio",
-        areaName: "Quan 1",
+        areaName: "Quận 1",
         minMonthlyRent: 3_000_000,
         maxMonthlyRent: 9_000_000,
         minRoomAreaSqm: 18.5,
@@ -82,8 +82,22 @@ describe("RM-048 search query state", () => {
   });
 
   it("supports pageSize 1 through 100 without exposing a selector policy", () => {
+    expect(parse("")).toEqual(expect.objectContaining({ ok: true, state: expect.objectContaining({ pageSize: 20 }) }));
     expect(parse("pageSize=1")).toEqual(expect.objectContaining({ ok: true }));
     expect(parse("pageSize=100")).toEqual(expect.objectContaining({ ok: true }));
     expect(parse("pageSize=101")).toEqual(expect.objectContaining({ ok: false }));
+  });
+
+  it("keeps backend-valid high and equal rent bounds through URL round-trip", () => {
+    const result = parse("minMonthlyRent=20000000&maxMonthlyRent=20000000");
+    expect(result).toEqual(
+      expect.objectContaining({
+        ok: true,
+        state: expect.objectContaining({ minMonthlyRent: 20_000_000, maxMonthlyRent: 20_000_000, pageSize: 20 })
+      })
+    );
+    if (result.ok) {
+      expect(serializeSearchState(result.state).toString()).toBe("minMonthlyRent=20000000&maxMonthlyRent=20000000");
+    }
   });
 });

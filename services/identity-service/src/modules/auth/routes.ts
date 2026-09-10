@@ -46,7 +46,7 @@ export const passwordResetRequestRateLimitPolicy = Object.freeze({
 
 export const passwordResetConfirmRateLimitPolicy = Object.freeze({
   scope: "auth:password-reset-confirm",
-  limit: 10,
+  limit: 5,
   windowMs: 15 * 60 * 1000
 });
 

@@ -17,7 +17,8 @@ import {
 export interface PublicListingDetailRepository {
   readonly findPublicDetailById: (
     listingId: number,
-    includeContact: boolean
+    includeContact: boolean,
+    reporterId?: number
   ) => Promise<MappedPublicListingDetailResult | null>;
   readonly findSimilarPublicListings: (listingId: number, limit: number) => Promise<readonly PublicListingSummary[]>;
 }
@@ -92,22 +93,27 @@ const publicFrom = `
       LIMIT 1
     `;
 
-const basePublicDetailQuery = (listingId: number): ParameterizedQuery => ({
+const reportProjection = (reporterId: number | undefined): string =>
+  reporterId === undefined
+    ? "false AS has_reported"
+    : "EXISTS (SELECT 1 FROM listing_reports AS report WHERE report.listing_id = l.id AND report.reporter_id = $2) AS has_reported";
+
+const basePublicDetailQuery = (listingId: number, reporterId?: number): ParameterizedQuery => ({
   text: `
-      SELECT${publicProjection}
+      SELECT${publicProjection}, ${reportProjection(reporterId)}
       ${publicFrom}
   `,
-  values: [listingId]
+  values: reporterId === undefined ? [listingId] : [listingId, reporterId]
 });
 
-const tenantPublicDetailQuery = (listingId: number): ParameterizedQuery => ({
+const tenantPublicDetailQuery = (listingId: number, reporterId?: number): ParameterizedQuery => ({
   text: `
-      SELECT${publicProjection},
+      SELECT${publicProjection}, ${reportProjection(reporterId)},
         landlord.email AS landlord_email,
         landlord.phone_e164 AS landlord_phone
       ${publicFrom}
   `,
-  values: [listingId]
+  values: reporterId === undefined ? [listingId] : [listingId, reporterId]
 });
 
 const similarPublicListingsQuery = (
@@ -189,11 +195,11 @@ const similarPublicListingsQuery = (
   };
 };
 
-const remotePublicDetailQuery = (listingId: number): ParameterizedQuery => ({
+const remotePublicDetailQuery = (listingId: number, reporterId?: number): ParameterizedQuery => ({
   text: `
       SELECT
         l.landlord_id,
-        ${publicProjection}
+        ${publicProjection}, ${reportProjection(reporterId)}
       FROM listings AS l
       JOIN property_types AS pt
         ON pt.id = l.property_type_id
@@ -226,7 +232,7 @@ const remotePublicDetailQuery = (listingId: number): ParameterizedQuery => ({
         AND l.business_status IN ('AVAILABLE', 'UNKNOWN')
       LIMIT 1
     `,
-  values: [listingId]
+  values: reporterId === undefined ? [listingId] : [listingId, reporterId]
 });
 
 export function createPublicListingDetailRepository(
@@ -236,12 +242,13 @@ export function createPublicListingDetailRepository(
   const repository: PublicListingDetailRepository = {
     async findPublicDetailById(
       listingId: number,
-      includeContact: boolean
+      includeContact: boolean,
+      reporterId?: number
     ): Promise<MappedPublicListingDetailResult | null> {
       if (dependencies.loadLandlordProfiles) {
         const row = await queryOptional<PublicListingDetailRow, PublicListingDetailRow>(
           executor,
-          remotePublicDetailQuery(listingId),
+          remotePublicDetailQuery(listingId, reporterId),
           (value) => value
         );
         if (row === null || !Number.isSafeInteger(row.landlord_id) || (row.landlord_id as number) < 1) return null;
@@ -271,14 +278,14 @@ export function createPublicListingDetailRepository(
       if (includeContact) {
         return queryOptional<TenantPublicListingDetailRow, MappedPublicListingDetailResult>(
           executor,
-          tenantPublicDetailQuery(listingId),
+          tenantPublicDetailQuery(listingId, reporterId),
           mapTenantPublicListingDetailResult
         );
       }
 
       return queryOptional<PublicListingDetailRow, MappedPublicListingDetailResult>(
         executor,
-        basePublicDetailQuery(listingId),
+        basePublicDetailQuery(listingId, reporterId),
         mapBasePublicListingDetailResult
       );
     },

@@ -1,4 +1,4 @@
-import { createHmac, randomBytes } from "node:crypto";
+import { createHmac, randomInt, timingSafeEqual } from "node:crypto";
 import { ApplicationError } from "../../../../../shared/src/runtime/shared/errors/application-error.js";
 import type { TransactionRunner } from "../../../shared/transaction.js";
 import type { PasswordService } from "../password.js";
@@ -12,23 +12,31 @@ import type {
 } from "../validations/password-reset-validation.js";
 
 const passwordResetLifetimeMs = 30 * 60 * 1_000;
-const invalidPasswordResetMessage = "Liên kết đặt lại mật khẩu không hợp lệ hoặc đã hết hạn.";
+const invalidPasswordResetMessage = "Mã đặt lại mật khẩu không hợp lệ hoặc đã hết hạn.";
 
 export interface PasswordResetService {
   readonly request: (input: PasswordResetRequestInput) => Promise<void>;
   readonly confirm: (input: PasswordResetConfirmationInput) => Promise<void>;
 }
 
-function hashToken(secretPepper: string, token: string): string {
-  return createHmac("sha256", secretPepper).update(token, "utf8").digest("hex");
+function hashCode(secretPepper: string, userId: number, expiresAt: Date, code: string): string {
+  return createHmac("sha256", secretPepper)
+    .update(`${userId}:${expiresAt.toISOString()}:${code}`, "utf8")
+    .digest("hex");
+}
+
+function hashesEqual(left: string, right: string): boolean {
+  const leftBuffer = Buffer.from(left, "utf8");
+  const rightBuffer = Buffer.from(right, "utf8");
+  return leftBuffer.length === rightBuffer.length && timingSafeEqual(leftBuffer, rightBuffer);
 }
 
 function invalidPasswordReset(): ApplicationError {
   return new ApplicationError("VALIDATION_FAILED", invalidPasswordResetMessage);
 }
 
-function createToken(): string {
-  return randomBytes(32).toString("base64url");
+function createCode(): string {
+  return String(randomInt(0, 1_000_000)).padStart(6, "0");
 }
 
 export function createPasswordResetService(dependencies: {
@@ -38,22 +46,21 @@ export function createPasswordResetService(dependencies: {
   readonly transactionRunner: TransactionRunner;
   readonly delivery: PasswordResetDelivery;
   readonly secretPepper: string;
-  readonly frontendOrigin: string;
   readonly now?: () => Date;
-  readonly createToken?: () => string;
+  readonly createCode?: () => string;
   readonly logger?: Pick<Logger, "warn">;
 }): PasswordResetService {
   const now = dependencies.now ?? (() => new Date());
-  const createTokenValue = dependencies.createToken ?? createToken;
+  const createCodeValue = dependencies.createCode ?? createCode;
 
   const service: PasswordResetService = {
     async request(input) {
       const account = await dependencies.authRepository.findLoginAccount(input.email);
       if (!account || !account.isActive) return;
 
-      const token = createTokenValue();
+      const code = createCodeValue();
       const expiresAt = new Date(now().getTime() + passwordResetLifetimeMs);
-      const tokenHash = hashToken(dependencies.secretPepper, token);
+      const tokenHash = hashCode(dependencies.secretPepper, account.id, expiresAt, code);
       await dependencies.transactionRunner(async (executor) => {
         await dependencies.passwordResetRepository.invalidateActiveTokens(executor, account.id);
         await dependencies.passwordResetRepository.createToken(executor, {
@@ -63,13 +70,10 @@ export function createPasswordResetService(dependencies: {
         });
       });
 
-      const resetUrl = new URL("/reset-password", dependencies.frontendOrigin);
-      resetUrl.searchParams.set("token", token);
       try {
         await dependencies.delivery.deliver({
           destination: account.email,
-          secret: token,
-          resetUrl: resetUrl.toString()
+          secret: code
         });
       } catch (error) {
         dependencies.logger?.warn("Password reset delivery failed", {
@@ -80,11 +84,14 @@ export function createPasswordResetService(dependencies: {
     },
 
     async confirm(input) {
-      const tokenHash = hashToken(dependencies.secretPepper, input.token);
+      const account = await dependencies.authRepository.findLoginAccount(input.email);
+      if (!account || !account.isActive) throw invalidPasswordReset();
       const currentTime = now();
       await dependencies.transactionRunner(async (executor) => {
-        const token = await dependencies.passwordResetRepository.findTokenForUpdate(executor, tokenHash);
+        const token = await dependencies.passwordResetRepository.findActiveTokenForUserForUpdate(executor, account.id);
         if (!token || token.expiresAt.getTime() <= currentTime.getTime()) throw invalidPasswordReset();
+        const submittedHash = hashCode(dependencies.secretPepper, account.id, token.expiresAt, input.code);
+        if (!hashesEqual(token.tokenHash, submittedHash)) throw invalidPasswordReset();
 
         const passwordHash = await dependencies.passwordService.hashPassword(input.password);
         const updated = await dependencies.passwordResetRepository.updatePasswordHash(

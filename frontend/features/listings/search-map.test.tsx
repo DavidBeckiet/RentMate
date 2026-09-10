@@ -108,6 +108,7 @@ describe("SearchMap", () => {
     expect(screen.getByText("Phòng B — Quận 3")).toBeInTheDocument();
     const received = mapState.props as MapBaseProps;
     expect(received.clusterMarkers).toBe(true);
+    expect(received.markers?.[0]).toMatchObject({ variant: "price", displayLabel: "5tr", hideTooltip: true });
     expect(received.markers?.map((marker) => marker.position)).toEqual([
       { latitude: 10.77, longitude: 106.69 },
       { latitude: 10.78, longitude: 106.68 }

@@ -9,6 +9,7 @@ import type {
   RadiusPublicListingSearch
 } from "../validations/public-listing-search-validation.js";
 import type { RadiusBoundingBox } from "../public-listing-search-bounding-box.js";
+import { areaSearchTerms } from "@rentmate/service-shared/area-domain";
 import {
   mapPublicListingSummaryRow,
   mapPublicRadiusListingSummaryRow,
@@ -85,7 +86,9 @@ function addCommonPredicates(search: PublicSearchCommonFilters, builder: QueryBu
     );
   }
   if (search.areaName !== null) {
-    predicates.push(`strpos(lower(l.area_name), lower(${builder.parameter(search.areaName)})) > 0`);
+    predicates.push(
+      `EXISTS (SELECT 1 FROM unnest(${builder.parameter(areaSearchTerms(search.areaName))}::text[]) AS search_term(value) WHERE strpos(lower(l.area_name), lower(search_term.value)) > 0)`
+    );
   }
   if (search.minMonthlyRent !== null) predicates.push(`l.monthly_rent >= ${builder.parameter(search.minMonthlyRent)}`);
   if (search.maxMonthlyRent !== null) predicates.push(`l.monthly_rent <= ${builder.parameter(search.maxMonthlyRent)}`);

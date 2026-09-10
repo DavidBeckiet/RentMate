@@ -48,7 +48,11 @@ import { createConfirmOwnerListingAvailabilityHandler } from "./controllers/list
 import type { ListingAvailabilityService } from "./services/listing-availability-service.js";
 import { createDuplicateOwnerListingHandler } from "./controllers/listing-duplicate-controller.js";
 import type { ListingDuplicateService } from "./services/listing-duplicate-service.js";
-import { createGetAmenitiesHandler, createGetPropertyTypesHandler } from "./controllers/lookup-controller.js";
+import {
+  createGetAmenitiesHandler,
+  createGetPropertyTypesHandler,
+  createGetPublicAreasHandler
+} from "./controllers/lookup-controller.js";
 import type { LookupRepository } from "./repositories/lookup-repository.js";
 import {
   createGetOwnerListingDetailHandler,
@@ -65,6 +69,7 @@ import type { PublicListingDetailService } from "./services/public-listing-detai
 
 export interface ListingsRouteDependencies {
   readonly lookupRepository: LookupRepository;
+  readonly loadActiveLandlordIds: () => Promise<readonly number[]>;
   readonly authenticationMiddleware: RequestHandler;
   readonly optionalAuthenticationMiddleware: RequestHandler;
   readonly landlordRoleMiddleware: RequestHandler;
@@ -120,6 +125,10 @@ export function registerListingsRoutes(router: Router, dependencies: ListingsRou
 
   router.get("/lookups/property-types", createGetPropertyTypesHandler(dependencies.lookupRepository));
   router.get("/lookups/amenities", createGetAmenitiesHandler(dependencies.lookupRepository));
+  router.get(
+    "/listings/areas",
+    createGetPublicAreasHandler(dependencies.lookupRepository, dependencies.loadActiveLandlordIds)
+  );
   router.get("/listings", createPublicListingSearchHandler(dependencies.publicListingSearchService));
   router.get("/listings/:listingId/similar", createSimilarListingsHandler(dependencies.publicListingDetailService));
   router.get(

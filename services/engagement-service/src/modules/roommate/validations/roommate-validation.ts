@@ -10,6 +10,7 @@ import {
   validateQueryKeys,
   type PlainJsonObject
 } from "../../../../../shared/src/runtime/shared/validation/request.js";
+import { matchAreaAlias } from "@rentmate/service-shared/area-domain";
 
 export const roommateProfileEnumValues = Object.freeze({
   sleepSchedule: ["EARLY", "STANDARD", "LATE", "FLEXIBLE"] as const,
@@ -186,7 +187,10 @@ function addDays(value: string, days: number): string {
 
 export function normalizeAreaKeys(value: unknown, field = "preferredAreaKeys"): readonly string[] {
   if (!Array.isArray(value)) throwValidationIssue(field, "INVALID_TYPE", `${field} must be an array.`);
-  const normalized = value.map((item) => normalizeSingleLineText(item, `${field}`, 1, maximumAreaCodePoints));
+  const normalized = value.map((item) => {
+    const safeText = normalizeSingleLineText(item, `${field}`, 1, maximumAreaCodePoints);
+    return safeText;
+  });
   const byComparison = new Map<string, string>();
   for (const item of normalized) {
     const comparison = item.toLocaleLowerCase("vi-VN");
@@ -380,7 +384,8 @@ export function validateRoommateDiscoveryQuery(value: unknown): RoommateDiscover
     "pageSize"
   ]);
   const areaValue = readScalarQueryValue(query.area, "area");
-  const area = areaValue === undefined ? null : normalizeSingleLineText(areaValue, "area", 1, maximumAreaCodePoints);
+  const rawArea = areaValue === undefined ? null : normalizeSingleLineText(areaValue, "area", 1, maximumAreaCodePoints);
+  const area = rawArea === null ? null : (matchAreaAlias(rawArea)?.key ?? rawArea);
   const budgetMinPerPerson = optionalQueryBudget(query.budgetMinPerPerson, "budgetMinPerPerson");
   const budgetMaxPerPerson = optionalQueryBudget(query.budgetMaxPerPerson, "budgetMaxPerPerson");
   if (budgetMinPerPerson !== null && budgetMaxPerPerson !== null && budgetMinPerPerson > budgetMaxPerPerson) {

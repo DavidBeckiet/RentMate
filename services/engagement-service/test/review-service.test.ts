@@ -51,14 +51,16 @@ function harness(options: { visible?: boolean; context?: ReviewInquiryContext } 
         reviewedByAdminId: null,
         createdAt,
         updatedAt: createdAt,
-        reviewedAt: null
+        reviewedAt: null,
+        hasReported: false
       });
       rows.set(row.id, row);
       return row;
     },
-    async listPublic(_executor, listingId, limit, offset) {
+    async listPublic(_executor, listingId, limit, offset, reporterId) {
       return [...rows.values()]
         .filter((row) => row.listingId === listingId && row.status === "APPROVED")
+        .map((row) => Object.freeze({ ...row, hasReported: reporterId === tenant.userId }))
         .slice(offset, offset + limit);
     },
     async listAdmin(_executor, status, limit, offset) {

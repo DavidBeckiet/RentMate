@@ -1,25 +1,28 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useState } from "react";
 import { Button } from "../../components/ui/button";
 import { EmptyState, ErrorState, LoadingState } from "../../components/ui/feedback-states";
 import { Icon } from "../../components/ui/icon";
-import { Pagination } from "../../components/ui/pagination";
 import { api } from "../../lib/api/client";
 import type { ApiPage, PublicListingReview } from "../../types/api";
-import { ReportReviewControl } from "./report-review-control";
+import { PublicReviewRow } from "./public-review-row";
+import { ReviewReportDialog } from "./report-review-control";
+
+export const reviewPreviewPageSize = 3;
 
 export function ListingReviews({ listingId }: Readonly<{ listingId: number }>) {
-  const [page, setPage] = useState(1);
   const [result, setResult] = useState<ApiPage<PublicListingReview> | null>(null);
   const [status, setStatus] = useState<"loading" | "success" | "error">("loading");
   const [retryKey, setRetryKey] = useState(0);
+  const [reportReviewId, setReportReviewId] = useState<number | null>(null);
 
   useEffect(() => {
     const controller = new AbortController();
     setStatus("loading");
     void api.listings
-      .listReviews(listingId, { page, pageSize: 10 }, controller.signal)
+      .listReviews(listingId, { page: 1, pageSize: reviewPreviewPageSize }, controller.signal)
       .then((data) => {
         if (!controller.signal.aborted) {
           setResult(data);
@@ -30,73 +33,80 @@ export function ListingReviews({ listingId }: Readonly<{ listingId: number }>) {
         if (!controller.signal.aborted) setStatus("error");
       });
     return () => controller.abort();
-  }, [listingId, page, retryKey]);
+  }, [listingId, retryKey]);
+
+  const previewReviews = result?.data.slice(0, reviewPreviewPageSize) ?? [];
+  const showAllReviewsLink =
+    status === "success" && (previewReviews.length > 0 || result?.pagination.hasNextPage === true);
+  const markReported = (reviewId: number) => {
+    setResult(
+      (current) =>
+        current && {
+          ...current,
+          data: current.data.map((review) => (review.id === reviewId ? { ...review, hasReported: true } : review))
+        }
+    );
+    setReportReviewId(null);
+  };
 
   return (
-    <section className="space-y-5 border-t-2 border-heroDark-950 pt-8" aria-labelledby="listing-reviews-heading">
-      <header className="flex flex-wrap items-end justify-between gap-4">
-        <div>
-          <span className="rm-eyebrow inline-flex items-center gap-2">
-            <Icon name="star" className="h-4 w-4" /> ĐÁNH GIÁ ĐÃ DUYỆT
-          </span>
-          <h2 id="listing-reviews-heading" className="mt-3 font-display text-3xl font-bold tracking-tight">
-            Trải nghiệm từ người thuê
-          </h2>
-        </div>
-        <p className="max-w-sm text-xs font-bold leading-5 text-slate-600">
-          Chỉ hiển thị đánh giá từ cuộc trao đổi thực tế đã được RentMate kiểm duyệt.
+    <section className="space-y-5 border-t border-border pt-8" aria-labelledby="listing-reviews-heading">
+      <header className="max-w-3xl">
+        <span className="rm-eyebrow inline-flex items-center gap-2">
+          <Icon name="star" className="h-4 w-4" /> ĐÁNH GIÁ ĐÃ DUYỆT
+        </span>
+        <h2 id="listing-reviews-heading" className="mt-3 font-display text-3xl font-bold tracking-tight">
+          Đánh giá tin đăng
+        </h2>
+        <p className="mt-2 max-w-2xl text-ui-sm leading-6 text-muted-foreground">
+          Các đánh giá đã được duyệt từ người thuê có tương tác hợp lệ với tin đăng.
         </p>
       </header>
-      {status === "loading" ? <LoadingState message="Đang tải đánh giá…" /> : null}
+
+      {status === "loading" ? (
+        <LoadingState className="min-h-28 max-w-4xl gap-3 p-4" message="Đang tải đánh giá…" />
+      ) : null}
+
       {status === "error" ? (
         <ErrorState
+          className="max-w-4xl"
           message="Không thể tải đánh giá lúc này."
           action={<Button onClick={() => setRetryKey((value) => value + 1)}>Thử lại</Button>}
         />
       ) : null}
-      {status === "success" && result?.data.length === 0 ? (
+
+      {status === "success" && previewReviews.length === 0 ? (
         <EmptyState
+          className="max-w-4xl !items-start !text-left"
           visual={<Icon name="star" className="h-8 w-8" />}
-          title="Chưa có đánh giá đã duyệt"
+          title="Chưa có đánh giá được duyệt cho tin đăng này."
           description="Các đánh giá hợp lệ sẽ xuất hiện tại đây."
         />
       ) : null}
-      {status === "success" && result && result.data.length > 0 ? (
-        <div className="space-y-4">
-          {result.data.map((review) => (
-            <article key={review.id} className="border-2 border-heroDark-950 bg-white p-5 shadow-glass-sm">
-              <div className="flex flex-wrap items-center justify-between gap-3">
-                <strong className="font-display text-3xl">{review.overallRating}/5</strong>
-                <span className="inline-flex items-center gap-2 border-2 border-heroDark-950 bg-[#c9f269] px-3 py-1 text-xs font-extrabold uppercase">
-                  <Icon name="check" className="h-4 w-4" /> Tương tác đã xác minh
-                </span>
-              </div>
-              <dl className="mt-4 grid gap-2 text-xs font-bold sm:grid-cols-2">
-                <div className="flex justify-between border-b border-slate-300 pb-2">
-                  <dt>Độ chính xác</dt>
-                  <dd>{review.accuracyRating}/5</dd>
-                </div>
-                <div className="flex justify-between border-b border-slate-300 pb-2">
-                  <dt>Phản hồi</dt>
-                  <dd>{review.responsivenessRating}/5</dd>
-                </div>
-              </dl>
-              <p className="mt-4 whitespace-pre-wrap text-sm font-medium leading-6 text-slate-700">{review.comment}</p>
-              <time className="mt-4 block text-xs font-bold text-slate-500">
-                {new Date(review.createdAt).toLocaleDateString("vi-VN")}
-              </time>
-              <ReportReviewControl reviewId={review.id} />
-            </article>
+
+      {status === "success" && previewReviews.length > 0 ? (
+        <div className="max-w-4xl divide-y divide-border rounded-card border border-border bg-surface px-5 sm:px-6">
+          {previewReviews.map((review) => (
+            <PublicReviewRow key={review.id} review={review} onRequestReport={setReportReviewId} />
           ))}
-          <Pagination
-            ariaLabel="Phân trang đánh giá"
-            page={result.pagination.page}
-            hasNextPage={result.pagination.hasNextPage}
-            onPrevious={() => setPage((value) => value - 1)}
-            onNext={() => setPage((value) => value + 1)}
-          />
         </div>
       ) : null}
+
+      {showAllReviewsLink ? (
+        <Link
+          href={`/listings/${listingId}/reviews`}
+          className="inline-flex min-h-11 items-center gap-2 rounded-control border border-border-strong bg-surface px-4 text-ui-sm font-bold text-primary-hover transition-[background-color,border-color,color,transform] duration-fast hover:-translate-y-0.5 hover:border-primary hover:bg-primary-subtle focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-focus motion-reduce:transform-none"
+        >
+          Xem tất cả đánh giá
+          <Icon name="arrowUpRight" className="h-4 w-4" />
+        </Link>
+      ) : null}
+      <ReviewReportDialog
+        reviewId={reportReviewId}
+        open={reportReviewId !== null}
+        onClose={() => setReportReviewId(null)}
+        onReported={markReported}
+      />
     </section>
   );
 }

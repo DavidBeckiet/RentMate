@@ -10,14 +10,15 @@ describe("listing presentation primitives", () => {
     expect(screen.getByText("Chưa có ảnh")).toBeInTheDocument();
   });
 
-  it("keeps pricing and every API-provided amenity visible", () => {
+  it("keeps pricing and every API-provided amenity visible with readable labels and icons", () => {
     render(
       <>
         <ListingPrice monthlyRent={8500000} />
         <ListingAmenityChips
           amenities={[
             { code: "WIFI", label: "Wi-Fi" },
-            { code: "PARKING", label: "Chỗ để xe" }
+            { code: "PARKING", label: "Parking" },
+            { code: "PRIVATE_BATHROOM", label: "Private bathroom" }
           ]}
         />
       </>
@@ -27,5 +28,7 @@ describe("listing presentation primitives", () => {
     expect(screen.getByText("/ tháng")).toBeInTheDocument();
     expect(screen.getByRole("list", { name: "Tiện ích" })).toHaveTextContent("Wi-Fi");
     expect(screen.getByRole("list", { name: "Tiện ích" })).toHaveTextContent("Chỗ để xe");
+    expect(screen.getByRole("list", { name: "Tiện ích" })).toHaveTextContent("Phòng tắm riêng");
+    expect(screen.getByRole("list", { name: "Tiện ích" }).querySelectorAll("svg")).toHaveLength(3);
   });
 });

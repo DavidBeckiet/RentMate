@@ -143,6 +143,53 @@
   scrollbar-width: thin;
 }
 
+.primaryGroup {
+  border-bottom: 1px solid rgb(var(--color-border));
+  background: rgb(var(--color-surface));
+}
+
+.advancedSection {
+  background: rgb(var(--color-surface-subtle));
+}
+
+.advancedToggle {
+  display: flex;
+  width: 100%;
+  min-height: 3.4rem;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  border-bottom: 1px solid rgb(var(--color-border));
+  padding: 0.75rem 1rem;
+  color: rgb(var(--color-foreground));
+  text-align: left;
+}
+
+.advancedToggle:hover {
+  background: rgb(var(--color-primary-subtle) / 0.45);
+}
+
+.advancedToggle strong,
+.advancedToggle small {
+  display: block;
+}
+
+.advancedToggle strong {
+  font-size: var(--font-size-sm);
+  font-weight: 800;
+}
+
+.advancedToggle small {
+  margin-top: 0.15rem;
+  color: rgb(var(--color-muted-foreground));
+  font-size: var(--font-size-xs);
+  font-weight: 600;
+}
+
+.advancedPanel {
+  animation: revealPanel var(--motion-fast) var(--rm-ease-out) both;
+}
+
 .section {
   margin: 0;
   border: 0;
@@ -158,6 +205,64 @@
   font-weight: 800;
   letter-spacing: 0.05em;
   text-transform: uppercase;
+}
+
+.areaCombobox {
+  position: relative;
+}
+
+.areaSuggestions {
+  position: absolute;
+  z-index: 5;
+  top: calc(100% + 0.35rem);
+  right: 0;
+  left: 0;
+  overflow: hidden;
+  border: 1px solid rgb(var(--color-border-strong));
+  border-radius: var(--radius-control);
+  background: rgb(var(--color-surface));
+  box-shadow: var(--shadow-surface);
+}
+
+.areaSuggestion {
+  display: flex;
+  width: 100%;
+  min-height: 2.75rem;
+  align-items: center;
+  gap: 0.55rem;
+  padding: 0.6rem 0.75rem;
+  color: rgb(var(--color-foreground));
+  font-size: var(--font-size-sm);
+  font-weight: 700;
+  text-align: left;
+  transition:
+    background-color var(--motion-fast) ease,
+    color var(--motion-fast) ease;
+}
+
+.areaSuggestion:hover,
+.areaSuggestion[aria-selected="true"] {
+  background: rgb(var(--color-primary-subtle));
+  color: rgb(var(--color-primary-hover));
+}
+
+.areaSuggestionStatus {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  border-top: 1px solid rgb(var(--color-border));
+  padding: 0.6rem 0.75rem;
+  color: rgb(var(--color-muted-foreground));
+  font-size: var(--font-size-xs);
+  line-height: 1.45;
+}
+
+.areaSuggestionStatus button {
+  flex: 0 0 auto;
+  color: rgb(var(--color-primary-hover));
+  font-weight: 800;
+  text-decoration: underline;
+  text-underline-offset: 0.2rem;
 }
 
 .inputWithIcon {
@@ -275,6 +380,44 @@
   color: rgb(var(--color-foreground));
   font-size: var(--font-size-sm);
   font-weight: 700;
+}
+
+.budgetInputs {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.5rem;
+  margin-top: 0.75rem;
+}
+
+.budgetInputs label {
+  min-width: 0;
+}
+
+.budgetInputs label > span {
+  display: block;
+  margin-bottom: 0.3rem;
+  color: rgb(var(--color-muted-foreground));
+  font-size: var(--font-size-xs);
+  font-weight: 700;
+}
+
+.budgetInputs input {
+  width: 100%;
+  min-height: 2.75rem;
+  border: 1px solid rgb(var(--color-border-strong));
+  border-radius: var(--radius-control);
+  outline: 0;
+  padding: 0.45rem 0.6rem;
+  background: rgb(var(--color-surface-subtle));
+  color: rgb(var(--color-foreground));
+  font-size: var(--font-size-sm);
+  font-weight: 700;
+}
+
+.budgetInputs input:focus {
+  border-color: rgb(var(--color-primary));
+  background: rgb(var(--color-surface));
+  box-shadow: 0 0 0 3px rgb(var(--color-primary) / 0.12);
 }
 
 .customArea input:focus {
@@ -541,7 +684,11 @@
 .applyButton:focus-visible,
 .resetButton:focus-visible,
 .amenityToggle:focus-visible,
-.mapAction:focus-visible {
+.mapAction:focus-visible,
+.advancedToggle:focus-visible,
+.areaSuggestion:focus-visible,
+.areaSuggestionStatus button:focus-visible,
+.budgetInputs input:focus-visible {
   outline: 3px solid rgb(var(--color-focus-ring));
   outline-offset: 2px;
 }
@@ -560,14 +707,29 @@
 
 @media (min-width: 1024px) {
   .filters {
+    display: flex;
+    min-height: 0;
+    flex-direction: column;
     position: sticky;
     top: 5.75rem;
+    height: calc(100dvh - 6.75rem);
     max-height: calc(100dvh - 6.75rem);
   }
 
   .scrollArea {
-    max-height: calc(100dvh - 11.5rem);
+    min-height: 0;
+    flex: 1 1 auto;
     overflow-y: auto;
+  }
+
+  .applyBar {
+    flex: 0 0 auto;
+  }
+}
+
+@media (max-width: 1023px) {
+  .scrollArea {
+    padding-bottom: 5.5rem;
   }
 }
 
@@ -580,6 +742,7 @@
   .chevronOpen,
   .applyButton,
   .amenityPanel,
+  .advancedPanel,
   .customArea {
     animation: none;
     transition: none;

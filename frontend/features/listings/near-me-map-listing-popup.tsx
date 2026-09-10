@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { Icon } from "../../components/ui/icon";
+import { formatAreaLabel } from "../../lib/area";
 import type { PublicListingSummary } from "../../types/api";
 import { formatAreaSqm } from "./format";
 import { formatNearMeDistance, formatNearMePopupRent } from "./near-me-format";
@@ -18,9 +19,9 @@ export function NearMeMapListingPopup({ listing }: Readonly<{ listing: PublicLis
       </h3>
       <p className={styles.mapPopupPrice}>{formatNearMePopupRent(listing.monthlyRent)}</p>
       <div className={styles.mapPopupDetails}>
-        <span className={styles.mapPopupLocation} title={listing.areaName}>
+        <span className={styles.mapPopupLocation} title={formatAreaLabel(listing.areaName)}>
           <Icon name="pin" className="h-3.5 w-3.5 shrink-0" />
-          <span>{listing.areaName}</span>
+          <span>{formatAreaLabel(listing.areaName)}</span>
         </span>
         <span className={styles.mapPopupMeta}>
           <Icon name="target" className="h-3.5 w-3.5 shrink-0" />

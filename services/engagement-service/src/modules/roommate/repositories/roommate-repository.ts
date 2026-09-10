@@ -8,6 +8,7 @@ import {
 } from "../../../../../shared/src/runtime/db/repository-primitives.js";
 import type { SqlExecutor } from "../../../../../shared/src/runtime/db/sql-executor.js";
 import { formatApiTimestamp } from "../../../../../shared/src/runtime/shared/mapping/api-values.js";
+import { areaSearchTerms } from "@rentmate/service-shared/area-domain";
 import type {
   CleanlinessLevel,
   CreateRoommateRequestInput,
@@ -951,9 +952,9 @@ export function createRoommateRepository(): RoommateRepository {
       if (query.listingMode === "LINKED") conditions.push("r.listing_id IS NOT NULL");
       if (query.listingMode === "UNLINKED") conditions.push("r.listing_id IS NULL");
       if (query.area !== null) {
-        const index = values.push(query.area);
+        const index = values.push(areaSearchTerms(query.area));
         conditions.push(
-          `(r.listing_id IS NOT NULL OR EXISTS (SELECT 1 FROM unnest(r.preferred_area_keys) AS area_key WHERE position(lower($${index}) in lower(area_key)) > 0))`
+          `(r.listing_id IS NOT NULL OR EXISTS (SELECT 1 FROM unnest(r.preferred_area_keys) AS area_key CROSS JOIN unnest($${index}::text[]) AS search_term(value) WHERE position(lower(search_term.value) in lower(area_key)) > 0))`
         );
       }
       if (query.budgetMinPerPerson !== null) {

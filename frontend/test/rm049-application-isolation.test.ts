@@ -8,7 +8,8 @@ const browserTestPackageImport =
 const favoriteProduction = [
   "features/favorites/favorite-save-control.tsx",
   "features/favorites/favorite-remove-control.tsx",
-  "features/favorites/favorites-page.tsx"
+  "features/favorites/favorites-page.tsx",
+  "features/favorites/favorite-state.ts"
 ] as const;
 
 function read(path: string): string {

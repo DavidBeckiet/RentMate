@@ -3,8 +3,11 @@
 import { useCallback, useMemo } from "react";
 import { MapBase, type MapBounds, type MapPoint, type MapViewport } from "../../components/map/map-base";
 import { MapSearchControl } from "../../components/map/map-search-control";
+import { formatAreaLabel } from "../../lib/area";
 import type { PublicListingSummary } from "../../types/api";
 import { SearchMapListingPopup } from "./search-map-listing-popup";
+import styles from "./search-map.module.css";
+import { formatNearMeRent } from "./near-me-format";
 
 const defaultMapCenter: MapPoint = Object.freeze({ latitude: 10.776, longitude: 106.7 });
 
@@ -52,7 +55,10 @@ export function SearchMap({
       ...listings.map((listing) => ({
         id: listing.id,
         position: { latitude: listing.latitude, longitude: listing.longitude },
-        label: `${listing.title} — ${listing.areaName}`,
+        label: `${listing.title} — ${formatAreaLabel(listing.areaName)}`,
+        variant: "price" as const,
+        displayLabel: formatNearMeRent(listing.monthlyRent),
+        hideTooltip: true,
         selected: activeListingId === listing.id,
         popup: <SearchMapListingPopup listing={listing} />
       })),
@@ -77,16 +83,13 @@ export function SearchMap({
   );
 
   return (
-    <section
-      aria-labelledby="search-map-heading"
-      className="min-w-0 rounded-card border border-border bg-surface p-4 shadow-surface"
-    >
-      <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+    <section aria-labelledby="search-map-heading" className={styles.map}>
+      <div className={styles.toolbar}>
         <div>
           <h2 id="search-map-heading" className="font-display text-heading-sm font-bold text-foreground">
             Bản đồ kết quả
           </h2>
-          <p className="mt-1 text-ui-sm text-muted-foreground">Vị trí xấp xỉ, dựa trên tọa độ công khai đã làm tròn.</p>
+          <p className="mt-1 text-ui-xs text-muted-foreground">Vị trí xấp xỉ · Chọn giá để xem phòng</p>
         </div>
         {pendingViewport ? (
           <MapSearchControl viewport={pendingViewport} onSearchRequested={onSearchBounds} />
@@ -112,7 +115,7 @@ export function SearchMap({
         onViewportChange={onViewportChange}
         onMapClick={selectingRadiusCenter ? onRadiusCenterSelected : undefined}
         onMarkerSelect={handleMarkerSelect}
-        className="h-80 w-full min-w-0 overflow-hidden rounded-control border border-border sm:h-96 lg:h-[36rem]"
+        className={styles.canvas}
       />
     </section>
   );

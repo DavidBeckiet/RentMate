@@ -1,5 +1,9 @@
 # RentMate deployment guide
 
+> This document covers the retained compatibility-backend production path. For the current microservices graduation
+> demo topology (Gateway `:4001` plus Identity, Listing, Engagement, Verification Delivery, and PostgreSQL), use
+> [LOCAL_DEMO_RUNBOOK.md](LOCAL_DEMO_RUNBOOK.md). Do not use this guide to start the local demo.
+
 This guide describes a platform-neutral production release. It does not select a hosting vendor, domain, database,
 provider account, or backup operator. A successful configuration rehearsal is not evidence that production is
 deployed.

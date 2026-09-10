@@ -8,6 +8,10 @@
   },
   "packageManager": "npm@10.9.2",
   "scripts": {
+    "predev": "npm --prefix ../services/shared run build",
+    "prebuild": "npm --prefix ../services/shared run build",
+    "pretest": "npm --prefix ../services/shared run build",
+    "pretypecheck": "npm --prefix ../services/shared run build",
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
@@ -18,7 +22,7 @@
     "test:rm046": "vitest run --config vitest.config.mts components/ui/form-controls.test.tsx components/ui/shared-primitives.test.tsx lib/validation/api-field-errors.test.ts components/map/map-base.test.tsx test/rm046-application-isolation.test.ts",
     "test:rm047": "vitest run --config vitest.config.mts features/auth/validation.test.ts features/auth/registration-form.test.tsx features/auth/login-form.test.tsx features/auth/auth-page-shell.test.tsx components/ui/app-shell.test.tsx lib/auth/auth-provider.test.tsx test/rm045-application-isolation.test.ts test/rm047-application-isolation.test.ts",
     "test:rm048": "vitest run --config vitest.config.mts features/listings/search-query.test.ts features/listings/search-filters.test.tsx features/listings/search-page.test.tsx features/listings/search-map.test.tsx features/listings/radius-controls.test.tsx features/listings/listing-card.test.tsx features/listings/listing-detail.test.tsx test/rm048-application-isolation.test.ts app/page.test.tsx components/ui/app-shell.test.tsx",
-    "test:rm049": "vitest run --config vitest.config.mts features/favorites/favorite-save-control.test.tsx features/favorites/favorite-remove-control.test.tsx features/favorites/favorites-page.test.tsx features/listings/listing-detail.test.tsx components/ui/app-shell.test.tsx test/rm049-application-isolation.test.ts",
+    "test:rm049": "vitest run --config vitest.config.mts features/favorites/favorite-state.test.tsx features/favorites/favorite-save-control.test.tsx features/favorites/favorite-remove-control.test.tsx features/favorites/favorites-page.test.tsx features/listings/listing-detail.test.tsx components/ui/app-shell.test.tsx test/rm049-application-isolation.test.ts",
     "test:rm050": "vitest run --config vitest.config.mts features/auth/landlord-profile.test.tsx features/listings/owner-query.test.ts features/listings/owner-listing-card.test.tsx features/listings/owner-listings-page.test.tsx features/listings/owner-listing-detail.test.tsx features/listings/owner-listing-editor.test.tsx features/listings/owner-lifecycle-actions.test.tsx test/rm050-application-isolation.test.ts components/ui/app-shell.test.tsx",
     "test:rm051": "vitest run --config vitest.config.mts features/listings/owner-location-controls.test.tsx features/listings/owner-image-manager.test.tsx features/listings/owner-listing-editor.test.tsx features/listings/owner-listing-detail.test.tsx features/listings/owner-lifecycle-actions.test.tsx components/map/map-base.test.tsx test/rm051-application-isolation.test.ts",
     "test:rm052": "vitest run --config vitest.config.mts features/auth/admin-user-query.test.ts features/auth/admin-user-card.test.tsx features/auth/admin-users-page.test.tsx features/listings/admin-listing-query.test.ts features/listings/admin-listing-card.test.tsx features/listings/admin-listings-page.test.tsx features/listings/admin-listing-detail.test.tsx features/listings/moderation-history.test.tsx features/listings/moderation-actions.test.tsx test/rm052-application-isolation.test.ts features/auth/login-form.test.tsx features/auth/auth-page-shell.test.tsx components/ui/app-shell.test.tsx",
@@ -31,12 +35,14 @@
     "format:check": "prettier --config ../.prettierrc.json --ignore-path ../.prettierignore --check ."
   },
   "dependencies": {
+    "@rentmate/service-shared": "file:../services/shared",
     "leaflet": "1.9.4",
     "next": "16.3.2",
     "react": "19.1.0",
     "react-dom": "19.1.0",
     "react-leaflet": "5.0.0",
-    "react-leaflet-cluster": "4.1.3"
+    "react-leaflet-cluster": "4.1.3",
+    "rentmate": "file:.."
   },
   "devDependencies": {
     "@playwright/test": "1.62.1",

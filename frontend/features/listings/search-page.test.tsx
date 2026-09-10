@@ -6,7 +6,8 @@ const navigation = vi.hoisted(() => ({ query: "", push: vi.fn() }));
 const apiMocks = vi.hoisted(() => ({
   searchPublic: vi.fn(),
   listPropertyTypes: vi.fn(),
-  listAmenities: vi.fn()
+  listAmenities: vi.fn(),
+  listPublicAreas: vi.fn()
 }));
 
 vi.mock("next/navigation", () => ({
@@ -19,7 +20,11 @@ vi.mock("../../lib/api/client", async () => {
   return {
     ...actual,
     api: {
-      lookups: { listPropertyTypes: apiMocks.listPropertyTypes, listAmenities: apiMocks.listAmenities },
+      lookups: {
+        listPropertyTypes: apiMocks.listPropertyTypes,
+        listAmenities: apiMocks.listAmenities,
+        listPublicAreas: apiMocks.listPublicAreas
+      },
       listings: { searchPublic: apiMocks.searchPublic }
     }
   };
@@ -182,6 +187,7 @@ beforeEach(() => {
   apiMocks.searchPublic.mockReset();
   apiMocks.listPropertyTypes.mockReset().mockResolvedValue([{ code: "ROOM", label: "Room" }]);
   apiMocks.listAmenities.mockReset().mockResolvedValue([{ code: "WIFI", label: "Wi-Fi" }]);
+  apiMocks.listPublicAreas.mockReset().mockResolvedValue(["Quan 1", "Quan 3"]);
 });
 
 describe("SearchPage", () => {
@@ -285,7 +291,7 @@ describe("SearchPage", () => {
     await screen.findByText("card:Studio");
     expect(screen.getByTitle("Quận 3 · studio")).toBeInTheDocument();
     expect(screen.getByText("Loại: Căn studio")).toBeInTheDocument();
-    expect(screen.getByText("Tiện ích: Máy lạnh")).toBeInTheDocument();
+    expect(screen.getByText("Tiện ích: Điều hòa")).toBeInTheDocument();
   });
 
   it("uses page/hasNextPage only and preserves query during pagination", async () => {

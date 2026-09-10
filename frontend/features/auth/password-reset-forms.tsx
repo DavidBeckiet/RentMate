@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useRouter } from "next/navigation";
 import { useState, type FormEvent } from "react";
 import { Button } from "../../components/ui/button";
 import { ErrorState } from "../../components/ui/feedback-states";
@@ -28,7 +28,7 @@ export function PasswordResetRequestForm() {
   const [email, setEmail] = useState("");
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [accepted, setAccepted] = useState(false);
+  const [acceptedEmail, setAcceptedEmail] = useState<string | null>(null);
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -44,7 +44,7 @@ export function PasswordResetRequestForm() {
     setError(null);
     try {
       await api.auth.requestPasswordReset({ email: validation.value.email });
-      setAccepted(true);
+      setAcceptedEmail(validation.value.email);
     } catch (nextError) {
       setError(emailError(nextError));
     } finally {
@@ -52,12 +52,17 @@ export function PasswordResetRequestForm() {
     }
   };
 
-  if (accepted) {
+  if (acceptedEmail) {
     return (
-      <div className="space-y-4" role="status" aria-live="polite">
-        <p className="rounded-control border border-success/25 bg-success-subtle p-4 text-ui-sm font-semibold text-success-foreground shadow-surface">
-          Nếu email tồn tại, RentMate đã gửi hướng dẫn đặt lại mật khẩu. Hãy kiểm tra cả thư mục spam.
+      <div className="space-y-5">
+        <p
+          className="rounded-control border border-success/25 bg-success-subtle p-4 text-ui-sm font-semibold text-success-foreground shadow-surface"
+          role="status"
+          aria-live="polite"
+        >
+          Nếu email tồn tại, RentMate đã gửi mã đặt lại mật khẩu gồm 6 số. Hãy kiểm tra cả thư mục spam.
         </p>
+        <PasswordResetConfirmationForm initialEmail={acceptedEmail} />
         <Link href="/login" className={secondaryLinkClasses}>
           Quay lại đăng nhập
         </Link>
@@ -86,7 +91,7 @@ export function PasswordResetRequestForm() {
       />
       <Button type="submit" pending={pending} pendingLabel="Đang gửi…" className="rm-auth-primary w-full">
         <Icon name="mail" className="h-4 w-4" />
-        Gửi hướng dẫn
+        Gửi mã 6 số
       </Button>
       <Link href="/login" className={secondaryLinkClasses}>
         Quay lại đăng nhập
@@ -95,11 +100,12 @@ export function PasswordResetRequestForm() {
   );
 }
 
-type ResetField = "token" | "password" | "confirmPassword";
+type ResetField = "email" | "code" | "password" | "confirmPassword";
 
-export function PasswordResetConfirmationForm() {
+export function PasswordResetConfirmationForm({ initialEmail = "" }: { readonly initialEmail?: string }) {
   const router = useRouter();
-  const searchParams = useSearchParams();
+  const [email, setEmail] = useState(initialEmail);
+  const [code, setCode] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [pending, setPending] = useState(false);
@@ -120,9 +126,10 @@ export function PasswordResetConfirmationForm() {
     event.preventDefault();
     if (pending) return;
 
-    const token = searchParams.get("token") ?? "";
     const nextErrors: Partial<Record<ResetField, string>> = {};
-    if (!/^[A-Za-z0-9_-]{32,128}$/u.test(token)) nextErrors.token = "Liên kết đặt lại mật khẩu không hợp lệ.";
+    const emailValidation = validatePasswordResetRequestInput(email);
+    if (!emailValidation.valid) nextErrors.email = emailValidation.errors.email ?? "Email chưa đúng định dạng.";
+    if (!/^\d{6}$/u.test(code)) nextErrors.code = "Mã đặt lại mật khẩu phải gồm đúng 6 số.";
     if ([...password].length < 8) nextErrors.password = "Mật khẩu phải có ít nhất 8 ký tự.";
     else if (new TextEncoder().encode(password).length > 72)
       nextErrors.password = "Mật khẩu không được dài quá 72 byte.";
@@ -137,13 +144,14 @@ export function PasswordResetConfirmationForm() {
     setFieldErrors({});
     setFormError(null);
     try {
-      await api.auth.confirmPasswordReset({ token, password });
+      if (!emailValidation.valid) return;
+      await api.auth.confirmPasswordReset({ email: emailValidation.value.email, code, password });
       setCompleted(true);
     } catch (error) {
       if (error instanceof ApiError && error.code === "RATE_LIMITED") {
         setFormError("Bạn đã thử quá nhiều lần. Vui lòng thử lại sau.");
       } else if (error instanceof ApiError && error.code === "VALIDATION_FAILED") {
-        setFormError("Liên kết đặt lại mật khẩu không hợp lệ hoặc đã hết hạn.");
+        setFormError("Mã đặt lại mật khẩu không hợp lệ hoặc đã hết hạn.");
       } else {
         setFormError("Không thể đặt lại mật khẩu lúc này. Vui lòng thử lại sau.");
       }
@@ -167,7 +175,43 @@ export function PasswordResetConfirmationForm() {
 
   return (
     <form noValidate aria-busy={pending} className="space-y-4" onSubmit={(event) => void handleSubmit(event)}>
-      <p className="text-ui-sm text-muted-foreground">Liên kết chỉ dùng một lần và có hiệu lực trong thời gian ngắn.</p>
+      <p className="text-ui-sm text-muted-foreground">Mã 6 số chỉ dùng một lần và có hiệu lực trong 30 phút.</p>
+      <InputField
+        id="password-reset-confirmation-email"
+        name="email"
+        label="Email tài khoản"
+        type="email"
+        autoComplete="email"
+        required
+        requiredIndicator="sr-only"
+        leadingIcon={<Icon name="mail" className="h-4 w-4" />}
+        className="rm-auth-control"
+        value={email}
+        error={fieldErrors.email}
+        onChange={(event) => {
+          setEmail(event.currentTarget.value);
+          clearField("email");
+        }}
+      />
+      <InputField
+        id="password-reset-code"
+        name="code"
+        label="Mã đặt lại mật khẩu"
+        type="text"
+        inputMode="numeric"
+        autoComplete="one-time-code"
+        maxLength={6}
+        required
+        requiredIndicator="sr-only"
+        leadingIcon={<Icon name="shield" className="h-4 w-4" />}
+        className="rm-auth-control tracking-[0.28em]"
+        value={code}
+        error={fieldErrors.code}
+        onChange={(event) => {
+          setCode(event.currentTarget.value.replace(/\D/gu, "").slice(0, 6));
+          clearField("code");
+        }}
+      />
       <PasswordField
         id="password-reset-password"
         name="password"
@@ -200,7 +244,6 @@ export function PasswordResetConfirmationForm() {
           clearField("confirmPassword");
         }}
       />
-      {fieldErrors.token ? <p className="text-ui-sm font-semibold text-danger">{fieldErrors.token}</p> : null}
       {formError ? <ErrorState message={formError} /> : null}
       <Button type="submit" pending={pending} pendingLabel="Đang cập nhật…" className="rm-auth-primary w-full">
         Cập nhật mật khẩu

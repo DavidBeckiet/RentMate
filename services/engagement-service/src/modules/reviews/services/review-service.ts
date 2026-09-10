@@ -55,7 +55,11 @@ export interface ReviewService {
     inquiryId: number,
     input: CreateReviewInput
   ) => Promise<ListingReview>;
-  readonly listPublic: (listingId: number, query: ReviewCollectionQuery) => Promise<ReviewPage>;
+  readonly listPublic: (
+    listingId: number,
+    query: ReviewCollectionQuery,
+    principal?: AuthenticatedPrincipal
+  ) => Promise<ReviewPage>;
   readonly listAdmin: (principal: AuthenticatedPrincipal, query: AdminReviewCollectionQuery) => Promise<ReviewPage>;
   readonly getAdmin: (principal: AuthenticatedPrincipal, reviewId: number) => Promise<ListingReview>;
   readonly moderate: (
@@ -155,13 +159,14 @@ export function createReviewService(dependencies: {
         return mapDuplicate(error);
       }
     },
-    async listPublic(listingId, query) {
+    async listPublic(listingId, query, principal) {
       const visible = await listingCatalogClient.loadPublicSummariesByIds([listingId]);
       if (!visible.some((listing) => listing.id === listingId)) {
         throw new ApplicationError("RESOURCE_NOT_FOUND", notFoundMessage);
       }
+      const reporterId = principal?.role === "TENANT" || principal?.role === "LANDLORD" ? principal.userId : undefined;
       const rows = await transactionRunner.run((executor) =>
-        repository.listPublic(executor, listingId, query.pageSize + 1, query.offset)
+        repository.listPublic(executor, listingId, query.pageSize + 1, query.offset, reporterId)
       );
       return Object.freeze({
         data: Object.freeze(rows.slice(0, query.pageSize)),

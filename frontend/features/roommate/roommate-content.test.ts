@@ -19,7 +19,7 @@ describe("roommate content contracts", () => {
     expect(roommateSafetyCopy.checklist).toEqual([
       "Trao đổi qua RentMate trước.",
       "Xem phòng thực tế khi có thể.",
-      "Xác nhận listing và điều kiện thuê với người cho thuê.",
+      "Xác nhận phòng và điều kiện thuê với người cho thuê.",
       "Không chuyển tiền hoặc đặt cọc chỉ dựa vào tin nhắn.",
       "Không chia sẻ OTP, mật khẩu hoặc thông tin tài chính nhạy cảm.",
       "Báo cáo và ngừng tương tác nếu thấy hành vi đáng ngờ."

@@ -39,16 +39,17 @@ describe("ReportListingControl", () => {
     });
   });
 
-  it("submits a labeled tenant report and renders a safe receipt", async () => {
+  it("submits from the dialog and renders a persistent safe acknowledgement", async () => {
     render(<ReportListingControl listingId={42} />);
-    fireEvent.click(screen.getByRole("button", { name: "Báo cáo tin này" }));
+    fireEvent.click(screen.getByRole("button", { name: "Báo cáo tin đăng" }));
+    expect(screen.getByRole("dialog", { name: "Báo cáo tin đăng" })).toBeInTheDocument();
     fireEvent.change(screen.getByLabelText("Lý do"), { target: { value: "FRAUD" } });
     fireEvent.change(screen.getByLabelText(/Chi tiết/), { target: { value: "Đề nghị chuyển cọc ngoài hệ thống." } });
     fireEvent.click(screen.getByRole("button", { name: "Gửi báo cáo" }));
     await waitFor(() =>
       expect(reportMock).toHaveBeenCalledWith(42, { category: "FRAUD", details: "Đề nghị chuyển cọc ngoài hệ thống." })
     );
-    expect(await screen.findByRole("status")).toHaveTextContent("Báo cáo đã được gửi");
+    expect(await screen.findByRole("status")).toHaveTextContent("Bạn đã gửi báo cáo về tin này.");
   });
 
   it("prompts anonymous users to sign in without exposing the form", () => {
@@ -56,5 +57,11 @@ describe("ReportListingControl", () => {
     render(<ReportListingControl listingId={42} />);
     expect(screen.getByRole("link", { name: "Đăng nhập để báo cáo tin" })).toHaveAttribute("href", "/login");
     expect(screen.queryByLabelText("Lý do")).not.toBeInTheDocument();
+  });
+
+  it("uses the server-derived report state after a reload", () => {
+    render(<ReportListingControl listingId={42} hasReported />);
+    expect(screen.getByRole("status")).toHaveTextContent("Bạn đã gửi báo cáo về tin này.");
+    expect(screen.queryByRole("button", { name: "Báo cáo tin đăng" })).not.toBeInTheDocument();
   });
 });

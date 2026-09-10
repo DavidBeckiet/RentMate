@@ -29,11 +29,11 @@ describe("MarketplaceHome", () => {
       />
     );
 
-    expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent("Tìm phòng.Tìm người ở ghép.Sống đúng nhịp.");
+    expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent("Tìm phòng.Tìm bạn.Sống đúng nhịp.");
     expect(screen.getByRole("heading", { name: "Tin đăng mới nhất" })).toBeInTheDocument();
     expect(screen.getByText("Chưa có tin đăng công khai mới")).toBeInTheDocument();
     expect(screen.queryByText("Preview")).not.toBeInTheDocument();
-    expect(screen.getByRole("link", { name: /Khám phá tin đăng/ })).toHaveAttribute("href", "/search");
+    expect(screen.getByRole("link", { name: /Xem phòng/ })).toHaveAttribute("href", "/search");
     expect(screen.getByRole("heading", { name: "Bạn đang tìm gì?" })).toBeInTheDocument();
     expect(
       screen

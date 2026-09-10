@@ -2,6 +2,7 @@ import Link from "next/link";
 import { Icon } from "../../components/ui/icon";
 import { ListingSaveControl } from "../../components/ui/listing-save-control";
 import { MediaImage } from "../../components/ui/media-image";
+import { formatAreaLabel } from "../../lib/area";
 import { ComparisonToggle } from "../comparison/comparison-toggle";
 import type { PublicListingSummary } from "../../types/api";
 import { formatAreaSqm, formatVnd } from "./format";
@@ -55,7 +56,7 @@ export function NearMeResultCard({ listing, position, selected }: NearMeResultCa
           </h3>
           <p className={styles.railCardLocation}>
             <Icon name="pin" className="h-3.5 w-3.5 shrink-0" />
-            <span title={listing.areaName}>{listing.areaName}</span>
+            <span title={formatAreaLabel(listing.areaName)}>{formatAreaLabel(listing.areaName)}</span>
           </p>
           <div className={styles.railCardMeta}>
             <span>{formatAreaSqm(listing.roomAreaSqm)}</span>

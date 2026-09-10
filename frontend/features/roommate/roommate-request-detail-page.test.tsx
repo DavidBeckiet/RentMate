@@ -10,7 +10,9 @@ const apiMocks = vi.hoisted(() => ({
   getProfile: vi.fn(),
   createInterest: vi.fn(),
   getAiCapabilities: vi.fn(),
-  createAiExplanation: vi.fn()
+  createAiExplanation: vi.fn(),
+  blockRequest: vi.fn(),
+  reportRequest: vi.fn()
 }));
 const useAuthMock = vi.hoisted(() => vi.fn<() => AuthContextValue>());
 const routerMocks = vi.hoisted(() => ({ push: vi.fn() }));
@@ -40,6 +42,8 @@ describe("RoommateRequestDetailPage", () => {
     apiMocks.createInterest.mockReset();
     apiMocks.getAiCapabilities.mockReset();
     apiMocks.createAiExplanation.mockReset();
+    apiMocks.blockRequest.mockReset();
+    apiMocks.reportRequest.mockReset();
     routerMocks.push.mockReset();
     useAuthMock.mockReturnValue(auth());
     apiMocks.listMine.mockResolvedValue(emptyPage());
@@ -58,6 +62,9 @@ describe("RoommateRequestDetailPage", () => {
     render(<RoommateRequestDetailPage requestId="42" />);
 
     expect(await screen.findByRole("heading", { name: "Chi tiết yêu cầu ở ghép" })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Kết nối với người đăng" })).toHaveAttribute("href", "#roommate-next-step");
+    expect(screen.getByRole("heading", { name: "Bạn sẽ cùng tìm một nơi như thế nào?" })).toBeInTheDocument();
+    expect(screen.getByText("Những điều nên kiểm tra trước khi ở ghép").closest("details")).not.toHaveAttribute("open");
     expect(
       screen.getByText(
         "RentMate không giữ chỗ, thu tiền hoặc bảo đảm giao dịch giữa người ở ghép. Không chuyển tiền hoặc đặt cọc chỉ dựa vào yêu cầu ở ghép hay tin nhắn. Hãy kiểm tra phòng, người cho thuê và điều kiện thuê trước khi giao dịch."
@@ -276,5 +283,73 @@ describe("RoommateRequestDetailPage", () => {
     expect(screen.queryByText(/nhà cung cấp|provider|Gemini/i)).not.toBeInTheDocument();
     expect(screen.queryByRole("heading", { name: "Giải thích do AI hỗ trợ" })).not.toBeInTheDocument();
     expect(screen.getByText("Chưa đủ dữ liệu để tổng hợp các điểm cần trao đổi.")).toBeInTheDocument();
+  });
+
+  it("redirects to the blocked list immediately after blocking succeeds", async () => {
+    apiMocks.getRequest.mockResolvedValue(roommateRequest());
+    apiMocks.blockRequest.mockResolvedValue({ blocked: true });
+    render(<RoommateRequestDetailPage requestId="42" />);
+
+    expect(await screen.findByRole("heading", { name: "Bảo vệ tương tác của bạn" })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Chặn" }));
+    fireEvent.click(screen.getByRole("button", { name: "Xác nhận chặn" }));
+
+    await waitFor(() => expect(apiMocks.blockRequest).toHaveBeenCalledWith(42));
+    expect(routerMocks.push).toHaveBeenCalledWith("/roommates/blocked");
+  });
+
+  it("renders an unavailable neutral state for an inaccessible request without retry or technical details", async () => {
+    apiMocks.getRequest.mockRejectedValue(
+      new ApiError({
+        status: 404,
+        code: "RESOURCE_NOT_FOUND",
+        message: "private backend detail",
+        requestId: "request-404",
+        category: "backend"
+      })
+    );
+    render(<RoommateRequestDetailPage requestId="42" />);
+
+    expect(await screen.findByRole("heading", { name: "Nội dung ở ghép không còn khả dụng" })).toBeInTheDocument();
+    expect(screen.getByText("Nội dung ở ghép này hiện không còn khả dụng.")).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Thử lại" })).not.toBeInTheDocument();
+    expect(screen.queryByText(/Mã yêu cầu/)).not.toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Đến danh sách đã chặn" })).toHaveAttribute("href", "/roommates/blocked");
+  });
+
+  it("hydrates report acknowledgements from the request projection", async () => {
+    apiMocks.getRequest.mockResolvedValue(
+      roommateRequest({ reporting: { profileHasReported: true, requestHasReported: false } })
+    );
+    render(<RoommateRequestDetailPage requestId="42" />);
+
+    expect(await screen.findByText("✓ Đã gửi báo cáo")).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Báo cáo hồ sơ" })).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Báo cáo yêu cầu" })).toBeInTheDocument();
+  });
+
+  it("uses one controlled report dialog with target-specific titles and immediate acknowledgement", async () => {
+    apiMocks.getRequest.mockResolvedValue(roommateRequest());
+    apiMocks.reportRequest.mockResolvedValue({ id: 1, status: "OPEN" });
+    render(<RoommateRequestDetailPage requestId="42" />);
+
+    expect(await screen.findByRole("button", { name: "Báo cáo hồ sơ" })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Báo cáo hồ sơ" }));
+    expect(await screen.findByRole("heading", { name: "Báo cáo hồ sơ ở ghép" })).toBeInTheDocument();
+    expect(screen.queryByRole("heading", { name: "Báo cáo yêu cầu ở ghép" })).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Đóng hộp thoại" }));
+
+    fireEvent.click(screen.getByRole("button", { name: "Báo cáo yêu cầu" }));
+    expect(await screen.findByRole("heading", { name: "Báo cáo yêu cầu ở ghép" })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Gửi báo cáo" }));
+
+    await waitFor(() =>
+      expect(apiMocks.reportRequest).toHaveBeenCalledWith(42, {
+        targetType: "ROOMMATE_REQUEST",
+        category: "OTHER",
+        details: null
+      })
+    );
+    expect(await screen.findByText("✓ Đã gửi báo cáo")).toBeInTheDocument();
   });
 });

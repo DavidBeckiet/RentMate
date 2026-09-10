@@ -18,7 +18,7 @@ const initialSearchState: SearchQueryState = {
   mode: "ordinary",
   amenities: [],
   page: 1,
-  pageSize: 15,
+  pageSize: 20,
   sort: "newest"
 };
 

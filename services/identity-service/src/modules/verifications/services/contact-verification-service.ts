@@ -1,4 +1,4 @@
-import { createHmac, randomBytes, randomInt, timingSafeEqual } from "node:crypto";
+import { createHmac, randomInt, timingSafeEqual } from "node:crypto";
 import { ApplicationError } from "../../../../../shared/src/runtime/shared/errors/application-error.js";
 import { forbiddenRoleMessage } from "../../../../../shared/src/runtime/shared/middleware/role.js";
 import type { AuthenticatedPrincipal } from "../../../../../shared/src/runtime/shared/types/authentication.js";
@@ -106,8 +106,8 @@ function secretsEqual(left: string, right: string): boolean {
   return leftBuffer.length === rightBuffer.length && timingSafeEqual(leftBuffer, rightBuffer);
 }
 
-function createEmailToken(): string {
-  return randomBytes(32).toString("base64url");
+function createEmailCode(): string {
+  return String(randomInt(0, 1_000_000)).padStart(6, "0");
 }
 
 function createPhoneCode(): string {
@@ -121,11 +121,11 @@ export function createContactVerificationService(dependencies: {
   readonly delivery: ContactVerificationDelivery;
   readonly secretPepper: string;
   readonly now?: () => Date;
-  readonly createEmailToken?: () => string;
+  readonly createEmailCode?: () => string;
   readonly createPhoneCode?: () => string;
 }): ContactVerificationService {
   const now = dependencies.now ?? (() => new Date());
-  const createEmailTokenValue = dependencies.createEmailToken ?? createEmailToken;
+  const createEmailCodeValue = dependencies.createEmailCode ?? createEmailCode;
   const createPhoneCodeValue = dependencies.createPhoneCode ?? createPhoneCode;
 
   async function loadStatus(userId: number, includeLandlordProfile: boolean): Promise<ContactVerificationStatusResult> {
@@ -144,7 +144,7 @@ export function createContactVerificationService(dependencies: {
     userId: number,
     includeLandlordProfile: boolean
   ): Promise<ContactVerificationStatusResult> {
-    const secret = channel === "EMAIL" ? createEmailTokenValue() : createPhoneCodeValue();
+    const secret = channel === "EMAIL" ? createEmailCodeValue() : createPhoneCodeValue();
     const expiresAt = new Date(
       now().getTime() + (channel === "EMAIL" ? emailChallengeLifetimeMs : phoneChallengeLifetimeMs)
     );
@@ -240,7 +240,7 @@ export function createContactVerificationService(dependencies: {
       return request("EMAIL", requireLandlord(principal), true);
     },
     confirmEmail(principal, input) {
-      return confirm("EMAIL", input.token, requireLandlord(principal), true);
+      return confirm("EMAIL", input.code, requireLandlord(principal), true);
     },
     requestPhone(principal) {
       return request("PHONE", requireLandlord(principal), true);
@@ -255,7 +255,7 @@ export function createContactVerificationService(dependencies: {
       return request("EMAIL", requireTenant(principal), false);
     },
     confirmTenantEmail(principal, input) {
-      return confirm("EMAIL", input.token, requireTenant(principal), false);
+      return confirm("EMAIL", input.code, requireTenant(principal), false);
     },
     requestTenantPhone(principal) {
       return request("PHONE", requireTenant(principal), false);

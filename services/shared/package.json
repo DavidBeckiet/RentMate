@@ -2,7 +2,14 @@
   "name": "@rentmate/service-shared",
   "version": "0.1.0",
   "private": true,
+  "exports": {
+    "./area-domain": {
+      "types": "./dist/area-domain.d.ts",
+      "default": "./dist/area-domain.js"
+    }
+  },
   "scripts": {
+    "build": "tsc -p tsconfig.build.json",
     "typecheck": "tsc --noEmit -p tsconfig.json"
   },
   "dependencies": {

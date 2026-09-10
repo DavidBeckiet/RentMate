@@ -21,6 +21,7 @@ import {
 
 export interface ReviewRouteDependencies {
   readonly authenticationMiddleware: RequestHandler;
+  readonly optionalAuthenticationMiddleware: RequestHandler;
   readonly tenantRoleMiddleware: RequestHandler;
   readonly adminRoleMiddleware: RequestHandler;
   readonly service: ReviewService;
@@ -61,7 +62,11 @@ export function registerReviewRoutes(router: Router, dependencies: ReviewRouteDe
     }),
     createCreateReviewReportHandler(dependencies.service)
   );
-  router.get("/listings/:listingId/reviews", createListPublicReviewsHandler(dependencies.service));
+  router.get(
+    "/listings/:listingId/reviews",
+    dependencies.optionalAuthenticationMiddleware,
+    createListPublicReviewsHandler(dependencies.service)
+  );
   router.get(
     "/admin/reviews",
     dependencies.authenticationMiddleware,

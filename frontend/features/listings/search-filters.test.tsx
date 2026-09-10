@@ -5,6 +5,7 @@ import { SearchFilters, type SearchFiltersProps } from "./search-filters";
 
 const onRetryPropertyTypes = vi.fn();
 const onRetryAmenities = vi.fn();
+const onRetryAreas = vi.fn();
 const onApply = vi.fn<SearchFiltersProps["onApply"]>();
 const onClear = vi.fn();
 
@@ -22,8 +23,10 @@ function renderFilters(overrides: Partial<SearchFiltersProps> = {}) {
       committed={ordinary}
       propertyTypes={{ status: "success", data: [{ code: "STUDIO", label: "Studio" }] }}
       amenities={{ status: "success", data: [{ code: "WIFI", label: "Wi-Fi" }] }}
+      areas={{ status: "success", data: ["Binh Thanh", "Quan 1", "Quan 3"] }}
       onRetryPropertyTypes={onRetryPropertyTypes}
       onRetryAmenities={onRetryAmenities}
+      onRetryAreas={onRetryAreas}
       onApply={onApply}
       onClear={onClear}
       {...overrides}
@@ -43,16 +46,18 @@ describe("SearchFilters", () => {
     });
 
     expect(screen.getByRole("radio", { name: "Căn hộ" })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: /Bộ lọc nâng cao/ }));
     fireEvent.click(screen.getByRole("button", { name: /^Tiện ích/ }));
-    expect(screen.getByRole("checkbox", { name: "Máy lạnh" })).toBeInTheDocument();
+    expect(screen.getByRole("checkbox", { name: "Điều hòa" })).toBeInTheDocument();
   });
 
   it("keeps typing as a draft until the primary search action is applied", () => {
     renderFilters();
-    expect(screen.getByLabelText("Từ khóa")).toBeVisible();
+    fireEvent.click(screen.getByRole("button", { name: /Bộ lọc nâng cao/ }));
+    expect(screen.getByLabelText("Tên tin đăng hoặc khu vực")).toBeVisible();
     expect(screen.queryByRole("checkbox", { name: "Wi-Fi" })).not.toBeInTheDocument();
 
-    fireEvent.change(screen.getByLabelText("Từ khóa"), { target: { value: "  studio  " } });
+    fireEvent.change(screen.getByLabelText("Tên tin đăng hoặc khu vực"), { target: { value: "  studio  " } });
     expect(onApply).not.toHaveBeenCalled();
     fireEvent.click(screen.getByRole("button", { name: "Tìm kiếm" }));
     expect(onApply).toHaveBeenCalledWith({ q: "studio", amenities: [] }, "newest");
@@ -86,15 +91,38 @@ describe("SearchFilters", () => {
       target: { value: "7000000" }
     });
     fireEvent.change(screen.getByRole("slider", { name: "Giá tối thiểu" }), {
-      target: { value: "9000000" }
+      target: { value: "7000000" }
     });
     fireEvent.click(screen.getByRole("button", { name: "Tìm kiếm" }));
 
-    expect(onApply).toHaveBeenCalledWith({ minMonthlyRent: 6000000, maxMonthlyRent: 7000000, amenities: [] }, "newest");
+    expect(onApply).toHaveBeenCalledWith({ minMonthlyRent: 7000000, maxMonthlyRent: 7000000, amenities: [] }, "newest");
+  });
+
+  it("preserves an exact narrow or above-slider budget through editable inputs", () => {
+    renderFilters();
+    fireEvent.change(screen.getByLabelText("Giá tối thiểu chính xác"), { target: { value: "20000000" } });
+    fireEvent.change(screen.getByLabelText("Giá tối đa chính xác"), { target: { value: "20000000" } });
+    fireEvent.click(screen.getByRole("button", { name: "Tìm kiếm" }));
+
+    expect(onApply).toHaveBeenCalledWith(
+      { minMonthlyRent: 20000000, maxMonthlyRent: 20000000, amenities: [] },
+      "newest"
+    );
+  });
+
+  it("shows a validation error instead of applying an inverted budget range", () => {
+    renderFilters();
+    fireEvent.change(screen.getByLabelText("Giá tối thiểu chính xác"), { target: { value: "6000000" } });
+    fireEvent.change(screen.getByLabelText("Giá tối đa chính xác"), { target: { value: "5000000" } });
+    fireEvent.click(screen.getByRole("button", { name: "Tìm kiếm" }));
+
+    expect(screen.getByText("Giá tối đa phải lớn hơn hoặc bằng giá tối thiểu.")).toBeInTheDocument();
+    expect(onApply).not.toHaveBeenCalled();
   });
 
   it("validates a custom area pair", () => {
     renderFilters();
+    fireEvent.click(screen.getByRole("button", { name: /Bộ lọc nâng cao/ }));
     fireEvent.click(screen.getByRole("radio", { name: "Tùy chỉnh" }));
     fireEvent.change(screen.getByLabelText("Diện tích từ (m²)"), { target: { value: "20.123" } });
     fireEvent.click(screen.getByRole("button", { name: "Tìm kiếm" }));
@@ -129,13 +157,14 @@ describe("SearchFilters", () => {
       propertyTypes: { status: "error", data: [] },
       amenities: { status: "error", data: [] }
     });
+    fireEvent.click(screen.getByRole("button", { name: /Bộ lọc nâng cao/ }));
     fireEvent.click(screen.getByRole("button", { name: /^Tiện ích/ }));
     const retries = screen.getAllByRole("button", { name: "Thử lại" });
     fireEvent.click(retries[0]!);
     fireEvent.click(retries[1]!);
     expect(onRetryPropertyTypes).toHaveBeenCalledOnce();
     expect(onRetryAmenities).toHaveBeenCalledOnce();
-    expect(screen.getByLabelText("Từ khóa")).toBeEnabled();
+    expect(screen.getByLabelText("Tên tin đăng hoặc khu vực")).toBeEnabled();
 
     fireEvent.click(screen.getByRole("button", { name: "Đặt lại" }));
     expect(onClear).toHaveBeenCalledOnce();
@@ -144,9 +173,45 @@ describe("SearchFilters", () => {
   it("maps a one-tap area preset to the existing min/max query contract", () => {
     renderFilters();
 
+    fireEvent.click(screen.getByRole("button", { name: /Bộ lọc nâng cao/ }));
     fireEvent.click(screen.getByRole("radio", { name: "20 – 30 m²" }));
     fireEvent.click(screen.getByRole("button", { name: "Tìm kiếm" }));
 
-    expect(onApply).toHaveBeenCalledWith({ minRoomAreaSqm: 20, maxRoomAreaSqm: 30, amenities: [] }, "newest");
+    expect(onApply).toHaveBeenCalledWith({ minRoomAreaSqm: 20, maxRoomAreaSqm: 29.99, amenities: [] }, "newest");
+  });
+
+  it("uses non-overlapping inclusive decimal boundaries for the outer area presets", () => {
+    renderFilters();
+    fireEvent.click(screen.getByRole("button", { name: /Bộ lọc nâng cao/ }));
+
+    fireEvent.click(screen.getByRole("radio", { name: "Dưới 20 m²" }));
+    fireEvent.click(screen.getByRole("button", { name: "Tìm kiếm" }));
+    expect(onApply).toHaveBeenLastCalledWith({ maxRoomAreaSqm: 19.99, amenities: [] }, "newest");
+
+    fireEvent.click(screen.getByRole("radio", { name: "Từ 60 m²" }));
+    fireEvent.click(screen.getByRole("button", { name: "Tìm kiếm" }));
+    expect(onApply).toHaveBeenLastCalledWith({ minRoomAreaSqm: 60, amenities: [] }, "newest");
+  });
+
+  it("filters real area suggestions, supports selection, and keeps free text available", () => {
+    renderFilters();
+    const area = screen.getByRole("combobox", { name: "Khu vực" });
+    fireEvent.change(area, { target: { value: "binh" } });
+    expect(screen.getByRole("option", { name: "Bình Thạnh" })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("option", { name: "Bình Thạnh" }));
+    expect(area).toHaveValue("Bình Thạnh");
+    fireEvent.change(area, { target: { value: "Khu tự nhập" } });
+    expect(area).toHaveValue("Khu tự nhập");
+  });
+
+  it("keeps the area input usable when suggestions fail", () => {
+    renderFilters({ areas: { status: "error", data: [] } });
+    const area = screen.getByRole("combobox", { name: "Khu vực" });
+    fireEvent.change(area, { target: { value: "Quan" } });
+    expect(screen.getByText(/Gợi ý tạm thời không khả dụng/)).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Thử lại" }));
+    expect(onRetryAreas).toHaveBeenCalledOnce();
+    fireEvent.click(screen.getByRole("button", { name: "Tìm kiếm" }));
+    expect(onApply).toHaveBeenCalledWith({ areaName: "Quan", amenities: [] }, "newest");
   });
 });

@@ -42,4 +42,15 @@ describe("AccountMenu", () => {
     expect(within(menu).queryByRole("link")).not.toBeInTheDocument();
     expect(within(menu).getByRole("menuitem", { name: "Đăng xuất" })).toBeInTheDocument();
   });
+
+  it("keeps tenant personal utilities in the account menu", () => {
+    render(<AccountMenu user={user("TENANT")} logoutPending={false} onLogout={vi.fn()} />);
+    fireEvent.click(screen.getByRole("button", { name: /Nguyễn Văn An/ }));
+    const menu = screen.getByRole("menu", { name: "Tài khoản" });
+
+    expect(within(menu).getByRole("menuitem", { name: "Yêu thích" })).toHaveAttribute("href", "/favorites");
+    expect(within(menu).getByRole("menuitem", { name: "Đã xem gần đây" })).toHaveAttribute("href", "/recently-viewed");
+    expect(within(menu).getByRole("menuitem", { name: "Tìm kiếm đã lưu" })).toHaveAttribute("href", "/saved-searches");
+    expect(within(menu).getByRole("menuitem", { name: "So sánh tin" })).toHaveAttribute("href", "/compare");
+  });
 });

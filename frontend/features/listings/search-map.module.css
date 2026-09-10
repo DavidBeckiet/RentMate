@@ -1,0 +1,42 @@
+.map {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  height: 100%;
+  background: rgb(var(--color-surface));
+}
+.toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.875rem 1rem;
+  border-bottom: 1px solid rgb(var(--color-border));
+}
+.toolbar h2 {
+  font-size: 1rem;
+}
+.toolbar button {
+  min-height: 2.75rem;
+  font-size: 0.8125rem;
+  padding: 0.6rem 0.875rem;
+}
+.canvas {
+  flex: 1;
+  min-width: 0;
+  min-height: 20rem;
+  overflow: hidden;
+}
+.canvas :global(.leaflet-container) {
+  height: 100%;
+  min-height: 100%;
+}
+.map > [role="status"] {
+  margin: 0.5rem 1rem;
+}
+@media (min-width: 900px) {
+  .canvas {
+    min-height: 0;
+  }
+}

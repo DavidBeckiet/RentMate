@@ -2,7 +2,7 @@
 
 > Trạng thái: kế hoạch triển khai chi tiết; chưa tích hợp AI provider.
 >
-> Mục tiêu: dùng AI để giảm công sức tìm phòng và tạo tin, nhưng mọi dữ liệu nghiệp vụ cuối cùng vẫn lấy từ API và database hiện tại của RentMate.
+> Mục tiêu: dùng AI để giảm công sức tìm phòng, nhưng mọi dữ liệu nghiệp vụ cuối cùng vẫn lấy từ API và database hiện tại của RentMate.
 
 ## 1. Định hướng sản phẩm
 
@@ -12,7 +12,6 @@ RentMate không cần bắt đầu bằng một chatbot tổng quát. AI nên xu
 Tenant tìm phòng      → panel trợ lý AI
 Tenant xem listing    → điểm phù hợp và lý do
 Admin duyệt tin       → cảnh báo rủi ro
-Landlord đăng tin     → trợ lý viết mô tả
 ```
 
 AI không được tự nhận là landlord, tự hứa hẹn về phòng, tự quyết định duyệt hồ sơ hoặc tự tạo dữ liệu không có trong listing.
@@ -73,17 +72,6 @@ AI có thể đánh dấu để admin kiểm tra:
 
 Kết quả chỉ là tín hiệu hỗ trợ, không phải kết luận. Admin vẫn là người điều tra và quyết định xử lý report hoặc moderation.
 
-### P2 — Trợ lý viết tin cho landlord
-
-Trong form đăng tin có nút `Gợi ý viết bằng AI`. AI có thể:
-
-- Viết lại tiêu đề và mô tả cho dễ đọc.
-- Sắp xếp thông tin đã được landlord nhập.
-- Gợi ý trường còn thiếu.
-- Cảnh báo câu mô tả mơ hồ hoặc mâu thuẫn.
-
-Landlord phải xem và bấm chèn vào form. AI không được tự lưu hoặc tự đăng tin, không được tự thêm giá, địa chỉ, tiện ích hay cam kết không có trong dữ liệu đầu vào.
-
 ## 3. Hình dung giao diện
 
 ### Tenant
@@ -103,10 +91,6 @@ Landlord phải xem và bấm chèn vào form. AI không được tự lưu ho�
 ```
 
 Đây là panel hoặc modal ngắn, không phải trang chatbot riêng và không dùng chung với chat landlord.
-
-### Landlord
-
-Nút AI nằm cạnh ô mô tả trong form đăng tin. Kết quả mở ở side panel hoặc modal để landlord duyệt trước khi chèn.
 
 ### Admin
 
@@ -144,7 +128,7 @@ Cảnh báo AI nằm trong hàng đợi moderation/report, có nhãn `Cần ki�
 2. Làm parser/validator ở backend với dữ liệu mô phỏng, chưa cần provider thật.
 3. Kết nối parser với search API hiện tại và bổ sung fallback.
 4. Thêm điểm phù hợp bằng rule-based để kiểm chứng nhu cầu.
-5. Sau khi có dữ liệu sử dụng, mới cân nhắc cảnh báo listing và trợ lý viết tin.
+5. Sau khi có dữ liệu sử dụng, mới cân nhắc mở rộng cảnh báo listing bằng AI.
 
 ## 7. Ngoài phạm vi hiện tại
 
@@ -174,7 +158,6 @@ Hệ quả thiết kế:
 - Module AI đầu tiên nên nằm trong Listing Service vì nó sở hữu search schema và lookup codes.
 - Điểm phù hợp nên bắt đầu bằng pure function, không gọi provider.
 - Cảnh báo rủi ro phải mở rộng trust signals hiện có, không tạo một queue moderation thứ hai.
-- Trợ lý viết tin chỉ trả bản nháp, không tự gọi endpoint update listing.
 
 ## 9. Kiến trúc đề xuất cho giai đoạn đầu
 
@@ -591,50 +574,7 @@ File có khả năng liên quan:
 
 Commit chỉ chốt sau data design; chưa ấn định migration trong kế hoạch này.
 
-### Giai đoạn 6 — Trợ lý viết tin landlord
-
-Mục tiêu: tạo suggestion từ dữ liệu landlord đã nhập, không tự lưu.
-
-Endpoint dự kiến:
-
-```text
-POST /api/v1/landlord/listings/ai/draft-copy
-```
-
-Quy tắc:
-
-- Bắt buộc authenticated active landlord.
-- Input chỉ gồm title, description, area name, property type, diện tích, sức chứa và amenity labels cần thiết.
-- Không gửi exact address, coordinates, contact hoặc thông tin xác minh nội bộ.
-- Output chỉ gồm title/description suggestion và danh sách field còn thiếu.
-- Landlord phải bấm `Chèn vào form`; không gọi PATCH listing tự động.
-- Giữ dirty-state, undo và validation của owner editor hiện tại.
-
-File dự kiến:
-
-- Module/provider use case riêng trong Listing Service; không ép chung prompt với search intent.
-- `frontend/features/listings/owner-listing-ai-assistant.tsx`
-- `frontend/features/listings/owner-listing-editor.tsx`
-- API/types và test tương ứng.
-
-Test bắt buộc:
-
-- Role/ownership và Origin guard.
-- Không gửi exact address/contact.
-- Provider timeout/error giữ nguyên form.
-- Chèn suggestion tạo dirty state nhưng chưa lưu.
-- Undo khôi phục nội dung trước suggestion.
-- Nội dung output vẫn qua giới hạn 160/5.000 ký tự và validation hiện có.
-
-Điều kiện hoàn thành:
-
-- Không tự lưu, submit hoặc thay lifecycle.
-- Landlord nhìn thấy toàn bộ nội dung trước khi áp dụng.
-- Nội dung không thêm dữ kiện ngoài input.
-
-Commit dự kiến: `them tro ly viet tin cho chu tro`
-
-### Giai đoạn 7 — Quality gate và đo hiệu quả
+### Giai đoạn 6 — Quality gate và đo hiệu quả
 
 Kiểm tra tự động tối thiểu:
 
@@ -677,7 +617,6 @@ Không ghi raw prompt để đo analytics. Event chỉ dùng category/count/timi
 | Parse nhu cầu tìm phòng | Có, rate limit | Có | Có thể dùng search công khai | Có thể dùng search công khai | Prompt đã redaction + lookup allowlist |
 | Điểm phù hợp | Có | Có | Không cần trong owner flow | Không cần | Không gọi provider |
 | Cảnh báo rủi ro | Không | Không | Không | Có | Public/admin-safe listing fields đã chọn lọc |
-| Viết tin | Không | Không | Có | Không | Nội dung form đã loại exact address/contact |
 
 Mọi endpoint protected vẫn phải kiểm tra current account active, role và unsafe Origin theo middleware hiện tại.
 
@@ -689,7 +628,6 @@ Mọi endpoint protected vẫn phải kiểm tra current account active, role v�
 | Provider thật | Có | Config/client | Không đổi route table | Không | Có |
 | Match score | Có | Không | Không | Không | Không |
 | Admin risk | Có | Có | Prefix hiện có | Có thể cần forward migration | Có thể có |
-| Landlord copy | Có | Có | Prefix hiện có | Không | Có |
 
 ## 14. Rủi ro và cách kiểm soát
 
@@ -728,13 +666,6 @@ Mọi endpoint protected vẫn phải kiểm tra current account active, role v�
 - Persistence/audit được chốt trước khi migration.
 - Admin là người ra quyết định cuối.
 
-### Trợ lý viết tin
-
-- Không gửi exact address/contact.
-- Không tự lưu hoặc submit.
-- Output qua validation title/description hiện có.
-- Undo và dirty-state hoạt động.
-
 ## 16. Thứ tự commit đề xuất
 
 1. `chot contract tro ly ai tim phong`
@@ -743,8 +674,7 @@ Mọi endpoint protected vẫn phải kiểm tra current account active, role v�
 4. `them giao dien tim phong bang ai`
 5. `them diem phu hop cho phong`
 6. Chỉ triển khai admin risk sau khi chốt data design.
-7. `them tro ly viet tin cho chu tro`
-8. `bo sung regression tinh nang ai`
+7. `bo sung regression tinh nang ai`
 
 Mỗi commit phải có test tương ứng và không chứa secret/provider response hoặc thay đổi không liên quan.
 

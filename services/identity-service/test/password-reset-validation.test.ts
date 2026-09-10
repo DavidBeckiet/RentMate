@@ -10,23 +10,29 @@ test("normalizes reset request emails and validates confirmation fields", () => 
   assert.deepEqual(validatePasswordResetRequestBody({ email: "  TENANT@EXAMPLE.TEST " }), {
     email: "tenant@example.test"
   });
-  assert.equal(
+  assert.deepEqual(
     validatePasswordResetConfirmationBody({
-      token: "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ-_0123456789",
+      email: "  TENANT@EXAMPLE.TEST ",
+      code: "012345",
       password: "new-password"
-    }).password,
-    "new-password"
+    }),
+    { email: "tenant@example.test", code: "012345", password: "new-password" }
   );
 });
 
-test("rejects unknown fields and malformed reset tokens", () => {
+test("rejects unknown fields and malformed reset codes", () => {
   assert.throws(
     () => validatePasswordResetRequestBody({ email: "tenant@example.test", extra: true }),
     (error: unknown) =>
       error instanceof ApplicationError && error.details.some((detail) => detail.code === "UNKNOWN_FIELD")
   );
   assert.throws(
-    () => validatePasswordResetConfirmationBody({ token: "short", password: "new-password" }),
-    (error: unknown) => error instanceof ApplicationError && error.details.some((detail) => detail.field === "token")
+    () =>
+      validatePasswordResetConfirmationBody({
+        email: "tenant@example.test",
+        code: "12345",
+        password: "new-password"
+      }),
+    (error: unknown) => error instanceof ApplicationError && error.details.some((detail) => detail.field === "code")
   );
 });

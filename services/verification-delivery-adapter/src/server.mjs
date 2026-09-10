@@ -5,14 +5,17 @@ import { resolve } from "node:path";
 import { loadAdapterConfig, AdapterConfigurationError } from "./config.mjs";
 import { createBrevoClient, BrevoConfigurationError, BrevoProviderError } from "./brevo-client.mjs";
 import { createSpeedSmsClient, SpeedSmsConfigurationError, SpeedSmsProviderError } from "./speedsms-client.mjs";
+import { createSmtpClient, SmtpConfigurationError, SmtpProviderError } from "./smtp-client.mjs";
+import { createDevPreviewClient, DevPreviewConfigurationError } from "./dev-preview-client.mjs";
 import { RequestBodyTooLargeError, readJsonBody } from "./validation.mjs";
 
 export const verificationDeliveryPath = "/internal/v1/verification-delivery";
+export const previewPath = "/internal/v1/verification-delivery/preview";
 export const healthPath = "/api/health";
 export const readinessPath = "/api/ready";
 
 function createDefaultLogger() {
-  const safeKeys = new Set(["channel", "providerStatus", "reason", "path", "status", "durationMs"]);
+  const safeKeys = new Set(["channel", "provider", "providerStatus", "reason", "path", "status", "durationMs"]);
   const write = (level, message, context = {}) => {
     const safeContext = Object.fromEntries(Object.entries(context).filter(([key]) => safeKeys.has(key)));
     const entry = JSON.stringify({
@@ -60,9 +63,16 @@ function pathWithoutQuery(url) {
 export function createVerificationDeliveryServer({
   config,
   brevoClient,
+  smtpClient,
   speedSmsClient,
+  devPreviewClient,
   logger = createDefaultLogger()
 }) {
+  const emailClient = config.emailDeliveryProvider === "GMAIL_SMTP" ? smtpClient : brevoClient;
+  const phoneClient = config.phoneDeliveryProvider === "DEV_PREVIEW" ? devPreviewClient : speedSmsClient;
+  const emailProvider = config.emailDeliveryProvider;
+  const phoneProvider = config.phoneDeliveryProvider;
+
   const server = createHttpServer(async (request, response) => {
     const path = pathWithoutQuery(request.url);
     const startedAt = process.hrtime.bigint();
@@ -84,6 +94,29 @@ export function createVerificationDeliveryServer({
     if (request.method === "GET" && path === readinessPath) {
       finish(200);
       writeJson(response, 200, { status: "ready", service: "verification-delivery-adapter" });
+      return;
+    }
+
+    if (request.method === "GET" && path === previewPath) {
+      if (!tokenMatches(config.deliveryToken, getTokenHeader(request))) {
+        logger.warn("Verification delivery authentication failed", { reason: "invalid_token" });
+        finish(403);
+        writeJson(response, 403, { error: "Forbidden." });
+        return;
+      }
+      if (!phoneClient?.latestPreview) {
+        finish(404);
+        writeJson(response, 404, { error: "Not found." });
+        return;
+      }
+      const channel = new URL(request.url ?? "/", "http://adapter.local").searchParams.get("channel");
+      if (channel !== null && channel !== "PHONE") {
+        finish(400);
+        writeJson(response, 400, { error: "Invalid verification delivery request." });
+        return;
+      }
+      finish(200);
+      writeJson(response, 200, { data: phoneClient.latestPreview() });
       return;
     }
 
@@ -114,16 +147,25 @@ export function createVerificationDeliveryServer({
     }
 
     try {
-      const deliveryClient = input.channel === "EMAIL" ? brevoClient : speedSmsClient;
+      const deliveryClient = input.channel === "EMAIL" ? emailClient : phoneClient;
+      if (!deliveryClient) throw new Error("Verification delivery provider is unavailable.");
       await deliveryClient.deliver(input);
     } catch (error) {
       const configurationError =
-        error instanceof BrevoConfigurationError || error instanceof SpeedSmsConfigurationError;
+        error instanceof BrevoConfigurationError ||
+        error instanceof SpeedSmsConfigurationError ||
+        error instanceof SmtpConfigurationError ||
+        error instanceof DevPreviewConfigurationError;
       const providerError =
-        error instanceof BrevoProviderError || error instanceof SpeedSmsProviderError ? error : null;
+        error instanceof BrevoProviderError ||
+        error instanceof SpeedSmsProviderError ||
+        error instanceof SmtpProviderError
+          ? error
+          : null;
       const status = providerError?.kind === "rejected" ? 502 : 503;
       logger.error("Verification delivery provider failure", {
         channel: input.channel,
+        provider: input.channel === "EMAIL" ? emailProvider : phoneProvider,
         reason: configurationError ? "configuration" : (providerError?.kind ?? "unexpected"),
         providerStatus: providerError?.statusCode ?? null
       });
@@ -162,9 +204,18 @@ export async function startAdapter() {
   }
 
   const logger = createProcessLogger();
-  const brevoClient = createBrevoClient(config);
-  const speedSmsClient = createSpeedSmsClient(config);
-  const server = createVerificationDeliveryServer({ config, brevoClient, speedSmsClient, logger });
+  const brevoClient = config.emailDeliveryProvider === "BREVO" ? createBrevoClient(config) : null;
+  const smtpClient = config.emailDeliveryProvider === "GMAIL_SMTP" ? createSmtpClient(config) : null;
+  const speedSmsClient = config.phoneDeliveryProvider === "SPEEDSMS" ? createSpeedSmsClient(config) : null;
+  const devPreviewClient = config.phoneDeliveryProvider === "DEV_PREVIEW" ? createDevPreviewClient(config) : null;
+  const server = createVerificationDeliveryServer({
+    config,
+    brevoClient,
+    smtpClient,
+    speedSmsClient,
+    devPreviewClient,
+    logger
+  });
   const shutdown = () => {
     server.close(() => process.exit(0));
   };

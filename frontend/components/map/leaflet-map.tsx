@@ -7,7 +7,8 @@ import markerShadowUrl from "leaflet/dist/images/marker-shadow.png";
 import { useEffect, useRef, useState } from "react";
 import { Circle, MapContainer, Marker, Popup, TileLayer, Tooltip, useMap, useMapEvents } from "react-leaflet";
 import MarkerClusterGroup from "react-leaflet-cluster";
-import type { MapBaseProps, MapMarker, MapViewport } from "./map-base";
+import { Icon as RentMateIcon } from "../ui/icon";
+import type { MapBaseProps, MapMarker, MapPoint, MapViewport } from "./map-base";
 
 function assetUrl(asset: string | { readonly src: string }) {
   return typeof asset === "string" ? asset : asset.src;
@@ -110,13 +111,13 @@ function MarkerElement({
   useEffect(() => {
     const element = markerRef.current?.getElement();
     if (!element) return;
-    if (marker.variant === "price") {
+    if (marker.variant === "price" || marker.hideTooltip) {
       element.removeAttribute("title");
       element.setAttribute("aria-label", marker.label);
       return;
     }
     element.removeAttribute("aria-label");
-  }, [marker.label, marker.selected, marker.variant]);
+  }, [marker.hideTooltip, marker.label, marker.selected, marker.variant]);
 
   return (
     <Marker
@@ -125,7 +126,7 @@ function MarkerElement({
       position={[marker.position.latitude, marker.position.longitude]}
       icon={markerIconFor(marker)}
       draggable={marker.draggable}
-      title={marker.variant === "price" ? undefined : marker.label}
+      title={marker.variant === "price" || marker.hideTooltip ? undefined : marker.label}
       alt={marker.label}
       eventHandlers={{
         click() {
@@ -141,7 +142,7 @@ function MarkerElement({
         }
       }}
     >
-      {marker.variant === "price" ? null : <Tooltip>{marker.label}</Tooltip>}
+      {marker.variant === "price" || marker.hideTooltip ? null : <Tooltip>{marker.label}</Tooltip>}
       {marker.popup ? <Popup>{marker.popup}</Popup> : null}
     </Marker>
   );
@@ -257,6 +258,27 @@ function ViewportBridge({
   return null;
 }
 
+function MapRecenterControl({ center, zoom, label }: Readonly<{ center: MapPoint; zoom: number; label: string }>) {
+  const map = useMap();
+
+  return (
+    <div className="pointer-events-none absolute bottom-3 right-3 z-[500]">
+      <button
+        type="button"
+        className="pointer-events-auto inline-flex min-h-11 max-w-full items-center gap-2 rounded-control border border-border bg-surface/95 px-3 py-2 text-ui-xs font-bold text-primary-hover shadow-surface backdrop-blur-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2"
+        aria-label={label}
+        onClick={(event) => {
+          event.stopPropagation();
+          map.setView([center.latitude, center.longitude], zoom);
+        }}
+      >
+        <RentMateIcon name="target" className="h-4 w-4 shrink-0" />
+        <span>{label}</span>
+      </button>
+    </div>
+  );
+}
+
 export default function LeafletMap({
   ariaLabel,
   center,
@@ -269,6 +291,7 @@ export default function LeafletMap({
   onMapClick,
   onMarkerSelect,
   onMarkerMove,
+  recenterControl,
   className
 }: MapBaseProps) {
   const containerClass =
@@ -293,6 +316,7 @@ export default function LeafletMap({
           onViewportChange={onViewportChange}
           onMapClick={onMapClick}
         />
+        {recenterControl ? <MapRecenterControl center={center} zoom={zoom} label={recenterControl.label} /> : null}
         {radiusCircle ? (
           <Circle
             center={[radiusCircle.center.latitude, radiusCircle.center.longitude]}

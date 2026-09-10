@@ -2,12 +2,14 @@
 
 import { useEffect, useRef, useState } from "react";
 import { Button } from "../../components/ui/button";
-import { api, ApiError } from "../../lib/api/client";
+import { ApiError } from "../../lib/api/client";
 import { useAuth } from "../../lib/auth/auth-provider";
+import { useFavoriteState } from "./favorite-state";
 
 export interface FavoriteRemoveControlProps {
   readonly listingId: number;
   readonly onRemoved: () => Promise<void> | void;
+  readonly autoLoad?: boolean;
 }
 
 function removeErrorMessage(error: ApiError | null): string {
@@ -18,42 +20,30 @@ function removeErrorMessage(error: ApiError | null): string {
   return "Không thể bỏ lưu tin lúc này. Vui lòng thử lại.";
 }
 
-export function FavoriteRemoveControl({ listingId, onRemoved }: FavoriteRemoveControlProps) {
+export function FavoriteRemoveControl({ listingId, onRemoved, autoLoad = true }: FavoriteRemoveControlProps) {
   const { refresh } = useAuth();
-  const [pending, setPending] = useState(false);
+  const { isPending, remove: removeFavorite } = useFavoriteState({ autoLoad });
+  const pending = isPending(listingId);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const pendingRef = useRef(false);
-  const controllerRef = useRef<AbortController | null>(null);
   const authRefreshAttempted = useRef(false);
 
   useEffect(() => {
-    controllerRef.current?.abort();
-    controllerRef.current = null;
     pendingRef.current = false;
     authRefreshAttempted.current = false;
-    setPending(false);
     setErrorMessage(null);
-
-    return () => {
-      controllerRef.current?.abort();
-    };
   }, [listingId]);
 
   const remove = async () => {
-    if (pendingRef.current) return;
+    if (pendingRef.current || pending) return;
 
-    const controller = new AbortController();
-    controllerRef.current = controller;
     pendingRef.current = true;
-    setPending(true);
     setErrorMessage(null);
 
     try {
-      await api.favorites.remove(listingId, controller.signal);
-      if (controller.signal.aborted) return;
+      await removeFavorite(listingId, true);
       await onRemoved();
     } catch (caught: unknown) {
-      if (controller.signal.aborted) return;
       const error = caught instanceof ApiError ? caught : null;
       if (error?.status === 401 && !authRefreshAttempted.current) {
         authRefreshAttempted.current = true;
@@ -63,12 +53,9 @@ export function FavoriteRemoveControl({ listingId, onRemoved }: FavoriteRemoveCo
           // A refresh failure does not replay or reinterpret the DELETE result.
         }
       }
-      if (!controller.signal.aborted) setErrorMessage(removeErrorMessage(error));
+      setErrorMessage(removeErrorMessage(error));
     } finally {
-      if (!controller.signal.aborted && controllerRef.current === controller) {
-        pendingRef.current = false;
-        setPending(false);
-      }
+      pendingRef.current = false;
     }
   };
 

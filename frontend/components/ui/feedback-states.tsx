@@ -57,6 +57,7 @@ export interface ErrorStateProps {
   readonly onRetry?: () => void;
   readonly retryLabel?: string;
   readonly action?: ReactNode;
+  readonly tone?: "danger" | "neutral";
   readonly className?: string;
 }
 
@@ -67,19 +68,24 @@ export function ErrorState({
   onRetry,
   retryLabel = "Thử lại",
   action,
+  tone = "danger",
   className
 }: ErrorStateProps) {
   return (
     <section
       role="alert"
       className={cx(
-        "rounded-card border border-danger/30 bg-danger-subtle p-5 text-left text-foreground shadow-surface",
+        "rounded-card p-5 text-left text-foreground shadow-surface",
+        tone === "neutral" ? "border border-border bg-surface" : "border border-danger/30 bg-danger-subtle",
         className
       )}
     >
       <span
         aria-hidden="true"
-        className="mb-3 grid h-9 w-9 place-items-center rounded-full border border-danger/30 bg-coral font-display text-heading-sm font-bold text-foreground"
+        className={cx(
+          "mb-3 grid h-9 w-9 place-items-center rounded-full font-display text-heading-sm font-bold text-foreground",
+          tone === "neutral" ? "border border-border bg-surface-subtle" : "border border-danger/30 bg-coral"
+        )}
       >
         !
       </span>

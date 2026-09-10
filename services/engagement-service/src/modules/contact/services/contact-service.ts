@@ -2,6 +2,10 @@ import { ApplicationError } from "../../../../../shared/src/runtime/shared/error
 import { forbiddenRoleMessage } from "../../../../../shared/src/runtime/shared/middleware/role.js";
 import type { AuthenticatedPrincipal } from "../../../../../shared/src/runtime/shared/types/authentication.js";
 import type { ListingCatalogClient } from "../../../../../shared/listing-catalog-client.js";
+import {
+  mapPublicInquiryListingSummary,
+  type PublicInquiryListingSummary
+} from "../../../../../shared/public-inquiry-listing-summary.js";
 import type { IdentityAccountClient, IdentityUserProfile } from "../../../../../shared/identity-account-client.js";
 import type { SqlExecutor } from "../../../../../shared/src/runtime/db/sql-executor.js";
 import type { ContactRepository, Inquiry, InquiryMessage, Notification } from "../repositories/contact-repository.js";
@@ -32,6 +36,9 @@ export interface ContactPage<Value> {
 export interface InquiryView extends Inquiry {
   readonly canSendMessage: boolean;
   readonly blockedByCurrentUser: boolean;
+  readonly listingSummary: PublicInquiryListingSummary | null;
+  readonly listingContextState: "AVAILABLE" | "UNAVAILABLE" | "TEMPORARILY_UNAVAILABLE";
+  readonly lastMessage: InquiryMessage | null;
 }
 
 export interface AdminContactReport extends ContactReport {
@@ -129,7 +136,8 @@ async function decorateInquiry(
   executor: SqlExecutor,
   principal: AuthenticatedPrincipal,
   inquiry: Inquiry,
-  safetyRepository: ContactSafetyRepository
+  safetyRepository: ContactSafetyRepository,
+  lastMessage: InquiryMessage | null = null
 ): Promise<InquiryView> {
   const state = await safetyRepository.getBlockState(
     executor,
@@ -139,7 +147,10 @@ async function decorateInquiry(
   return Object.freeze({
     ...inquiry,
     canSendMessage: canSend(inquiry, state),
-    blockedByCurrentUser: state.blockedByCurrentUser
+    blockedByCurrentUser: state.blockedByCurrentUser,
+    listingSummary: null,
+    listingContextState: "TEMPORARILY_UNAVAILABLE",
+    lastMessage
   });
 }
 
@@ -179,6 +190,39 @@ export function createContactService(dependencies: {
       reports.map((report) => Object.freeze({ ...report, reporter: requireReportProfile(report, profiles) }))
     );
   };
+  const enrichListingViews = async (views: readonly InquiryView[]): Promise<readonly InquiryView[]> => {
+    if (views.length === 0) return Object.freeze([]);
+    const listingIds = [...new Set(views.map((view) => view.listingId))];
+    try {
+      const summaries = await listingCatalogClient.loadPublicSummariesByIds(listingIds);
+      const summaryById = new Map(summaries.map((summary) => [summary.id, mapPublicInquiryListingSummary(summary)]));
+      return Object.freeze(
+        views.map((view) => {
+          const listingSummary = summaryById.get(view.listingId) ?? null;
+          return Object.freeze({
+            ...view,
+            listingSummary,
+            listingContextState: listingSummary ? "AVAILABLE" : "UNAVAILABLE"
+          });
+        })
+      );
+    } catch {
+      return Object.freeze(
+        views.map((view) =>
+          Object.freeze({
+            ...view,
+            listingSummary: null,
+            listingContextState: "TEMPORARILY_UNAVAILABLE" as const
+          })
+        )
+      );
+    }
+  };
+  const enrichListingView = async (view: InquiryView): Promise<InquiryView> => {
+    const [enriched] = await enrichListingViews([view]);
+    if (!enriched) throw new Error("Inquiry listing context enrichment returned no view.");
+    return enriched;
+  };
   const service: ContactService = {
     async createInquiry(principal, input) {
       const tenantId = requireRole(principal, "TENANT");
@@ -187,7 +231,7 @@ export function createContactService(dependencies: {
       const profiles = input.contactPhone === null ? await identityAccountClient.loadProfilesByIds([tenantId]) : [];
       const profilePhone = profiles[0]?.phone ?? null;
       try {
-        return await transactionRunner.run(async (executor) => {
+        const created = await transactionRunner.run(async (executor) => {
           const existing = await repository.findOpenInquiry(executor, tenantId, input.listingId);
           if (existing) {
             throw new ApplicationError("CONCURRENT_MODIFICATION", "You already have an open inquiry for this listing.");
@@ -214,8 +258,15 @@ export function createContactService(dependencies: {
             inquiryId: inquiry.id
           });
           const messages = await repository.listMessages(executor, inquiry.id, "TENANT");
-          return decorateInquiry(executor, principal, Object.freeze({ ...inquiry, messages }), safetyRepository);
+          return decorateInquiry(
+            executor,
+            principal,
+            Object.freeze({ ...inquiry, messages }),
+            safetyRepository,
+            messages[messages.length - 1] ?? null
+          );
         });
+        return enrichListingView(created);
       } catch (error) {
         return mapConflict(error);
       }
@@ -223,57 +274,100 @@ export function createContactService(dependencies: {
 
     async listTenantInquiries(principal, query) {
       const tenantId = requireRole(principal, "TENANT");
-      const rows = await transactionRunner.run(async (executor) => {
+      const result = await transactionRunner.run(async (executor) => {
         const inquiries = await repository.listInquiries(executor, {
           actorId: tenantId,
           role: "TENANT",
           pageSize: query.pageSize,
           offset: query.offset
         });
+        const visibleInquiries = inquiries.slice(0, query.pageSize);
+        const latestMessages = await repository.listLatestMessages(
+          executor,
+          visibleInquiries.map((inquiry) => inquiry.id),
+          "TENANT"
+        );
+        const latestMessageByInquiryId = new Map(
+          latestMessages.map((message) => [message.inquiryId, message] as const)
+        );
         const decorated: InquiryView[] = [];
         for (const inquiry of inquiries)
-          decorated.push(await decorateInquiry(executor, principal, inquiry, safetyRepository));
-        return decorated;
+          decorated.push(
+            await decorateInquiry(
+              executor,
+              principal,
+              inquiry,
+              safetyRepository,
+              latestMessageByInquiryId.get(inquiry.id) ?? null
+            )
+          );
+        return { rows: decorated, hasNextPage: inquiries.length > query.pageSize };
       });
+      const rows = await enrichListingViews(result.rows.slice(0, query.pageSize));
       return Object.freeze({
-        data: Object.freeze(rows.slice(0, query.pageSize)),
+        data: Object.freeze(rows),
         page: query.page,
         pageSize: query.pageSize,
-        hasNextPage: rows.length > query.pageSize
+        hasNextPage: result.hasNextPage
       });
     },
 
     async listLandlordInquiries(principal, query) {
       const landlordId = requireRole(principal, "LANDLORD");
-      const rows = await transactionRunner.run(async (executor) => {
+      const result = await transactionRunner.run(async (executor) => {
         const inquiries = await repository.listInquiries(executor, {
           actorId: landlordId,
           role: "LANDLORD",
           pageSize: query.pageSize,
           offset: query.offset
         });
+        const visibleInquiries = inquiries.slice(0, query.pageSize);
+        const latestMessages = await repository.listLatestMessages(
+          executor,
+          visibleInquiries.map((inquiry) => inquiry.id),
+          "LANDLORD"
+        );
+        const latestMessageByInquiryId = new Map(
+          latestMessages.map((message) => [message.inquiryId, message] as const)
+        );
         const decorated: InquiryView[] = [];
         for (const inquiry of inquiries)
-          decorated.push(await decorateInquiry(executor, principal, inquiry, safetyRepository));
-        return decorated;
+          decorated.push(
+            await decorateInquiry(
+              executor,
+              principal,
+              inquiry,
+              safetyRepository,
+              latestMessageByInquiryId.get(inquiry.id) ?? null
+            )
+          );
+        return { rows: decorated, hasNextPage: inquiries.length > query.pageSize };
       });
+      const rows = await enrichListingViews(result.rows.slice(0, query.pageSize));
       return Object.freeze({
-        data: Object.freeze(rows.slice(0, query.pageSize)),
+        data: Object.freeze(rows),
         page: query.page,
         pageSize: query.pageSize,
-        hasNextPage: rows.length > query.pageSize
+        hasNextPage: result.hasNextPage
       });
     },
 
     async getInquiry(principal, inquiryId) {
-      return transactionRunner.run(async (executor) => {
+      const view = await transactionRunner.run(async (executor) => {
         const inquiry = await repository.findInquiryForUpdate(executor, inquiryId);
         if (!inquiry) throw new ApplicationError("RESOURCE_NOT_FOUND", notFoundMessage);
         const viewerRole = requireParticipant(principal, inquiry);
         await repository.markMessagesRead(executor, inquiryId, viewerRole);
         const messages = await repository.listMessages(executor, inquiryId, viewerRole);
-        return decorateInquiry(executor, principal, Object.freeze({ ...inquiry, messages }), safetyRepository);
+        return decorateInquiry(
+          executor,
+          principal,
+          Object.freeze({ ...inquiry, messages }),
+          safetyRepository,
+          messages[messages.length - 1] ?? null
+        );
       });
+      return enrichListingView(view);
     },
 
     async authorizeRealtime(principal, inquiryId) {
@@ -363,7 +457,7 @@ export function createContactService(dependencies: {
 
     async updateStatus(principal, inquiryId, status) {
       const landlordId = requireRole(principal, "LANDLORD");
-      return transactionRunner.run(async (executor) => {
+      const view = await transactionRunner.run(async (executor) => {
         const inquiry = await repository.findInquiryForUpdate(executor, inquiryId);
         if (!inquiry || inquiry.landlordId !== landlordId)
           throw new ApplicationError("RESOURCE_NOT_FOUND", notFoundMessage);
@@ -381,8 +475,15 @@ export function createContactService(dependencies: {
           inquiryId
         });
         const messages = await repository.listMessages(executor, inquiryId, "LANDLORD");
-        return decorateInquiry(executor, principal, Object.freeze({ ...updated, messages }), safetyRepository);
+        return decorateInquiry(
+          executor,
+          principal,
+          Object.freeze({ ...updated, messages }),
+          safetyRepository,
+          messages[messages.length - 1] ?? null
+        );
       });
+      return enrichListingView(view);
     },
 
     async listContactReports(principal, query) {

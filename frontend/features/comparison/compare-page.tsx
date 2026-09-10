@@ -7,22 +7,106 @@ import { EmptyState, ErrorState, LoadingState } from "../../components/ui/feedba
 import { Icon } from "../../components/ui/icon";
 import { MediaImage } from "../../components/ui/media-image";
 import { api, ApiError } from "../../lib/api/client";
+import { formatAreaLabel } from "../../lib/area";
 import { useAuth } from "../../lib/auth/auth-provider";
-import type { ListingNote, PublicListingDetail } from "../../types/api";
-import { formatAreaSqm, formatVnd } from "../listings/format";
+import type { ListingNote } from "../../types/api";
+import { ComparisonEvaluation, ComparisonMatrix } from "./comparison-matrix";
+import { projectComparisonListing, type ComparisonListing } from "./comparison-data";
+import { evaluateComparisonNeeds, type ComparisonCriterionResult } from "./comparison-needs-evaluator";
+import { ComparisonNeedsPanel } from "./comparison-needs-panel";
+import { useComparisonNeeds } from "./comparison-needs-state";
 import { useComparisonSelection } from "./comparison-store";
 import { ListingNoteEditor } from "./listing-note-editor";
-import { ShareListingControl } from "./share-listing-control";
 import styles from "./compare-page.module.css";
 
 interface ComparisonResult {
-  readonly listings: readonly PublicListingDetail[];
+  readonly listings: readonly ComparisonListing[];
   readonly unavailableIds: readonly number[];
+}
+
+function SingleListingPreview({ listing, onRemove }: Readonly<{ listing: ComparisonListing; onRemove: () => void }>) {
+  return (
+    <article className={styles.preparationCard}>
+      {listing.coverImage ? (
+        <MediaImage
+          src={listing.coverImage.url}
+          alt={listing.coverImage.altText ?? `Ảnh của ${listing.title}`}
+          width={112}
+          height={88}
+          className={styles.preparationImage}
+          fallback={
+            <div
+              role="img"
+              aria-label={listing.coverImage.altText ?? `Ảnh của ${listing.title}`}
+              className={styles.preparationImageFallback}
+            >
+              <Icon name="home" className="h-6 w-6" />
+            </div>
+          }
+        />
+      ) : (
+        <div role="img" aria-label={`Chưa có ảnh cho ${listing.title}`} className={styles.preparationImageFallback}>
+          <Icon name="home" className="h-6 w-6" />
+        </div>
+      )}
+      <div className={styles.preparationContent}>
+        <p className={styles.comparisonPrice}>
+          {listing.monthlyRent === null
+            ? "Giá chưa cập nhật"
+            : `${listing.monthlyRent.toLocaleString("vi-VN")} ₫/tháng`}
+        </p>
+        <h2>{listing.title}</h2>
+        <p>{listing.areaName ? formatAreaLabel(listing.areaName) : "Khu vực chưa cập nhật"}</p>
+      </div>
+      <div className={styles.preparationActions}>
+        <Link href={`/listings/${listing.id}`} className={styles.matrixDetailLink}>
+          Xem chi tiết <Icon name="arrow" className="h-4 w-4" />
+        </Link>
+        <Button variant="danger" size="sm" onClick={onRemove}>
+          Bỏ khỏi so sánh
+        </Button>
+      </div>
+    </article>
+  );
+}
+
+function PreparationState({
+  listings,
+  selectedCount,
+  onRemove
+}: Readonly<{
+  listings: readonly ComparisonListing[];
+  selectedCount: number;
+  onRemove: (listingId: number) => void;
+}>) {
+  if (listings.length === 1) {
+    return (
+      <section className={styles.preparationSection} aria-labelledby="comparison-preparation-heading">
+        <div>
+          <p className="rm-eyebrow">ĐÃ CHỌN {selectedCount} TIN</p>
+          <h2 id="comparison-preparation-heading" className={styles.sectionTitle}>
+            Chọn thêm ít nhất 1 tin để bắt đầu so sánh.
+          </h2>
+        </div>
+        <SingleListingPreview listing={listings[0]!} onRemove={() => onRemove(listings[0]!.id)} />
+      </section>
+    );
+  }
+  return (
+    <section className={styles.preparationSection} aria-labelledby="comparison-preparation-heading">
+      <p className="rm-eyebrow">CHƯA ĐỦ DỮ LIỆU</p>
+      <h2 id="comparison-preparation-heading" className={styles.sectionTitle}>
+        Chưa có đủ 2 tin còn khả dụng để so sánh.
+      </h2>
+      <p className={styles.sectionDescription}>Bạn có thể bỏ tin không còn công khai rồi chọn thêm một tin khác.</p>
+    </section>
+  );
 }
 
 export function ComparePage() {
   const { listingIds, remove, clear, maximumSelections } = useComparisonSelection();
   const { status: authStatus, user } = useAuth();
+  const { snapshot: needsSnapshot, applyManual, applySaved, clear: clearNeeds } = useComparisonNeeds();
   const [result, setResult] = useState<ComparisonResult>({ listings: [], unavailableIds: [] });
   const [status, setStatus] = useState<"idle" | "loading" | "success" | "error">("idle");
   const [notes, setNotes] = useState<ReadonlyMap<number, ListingNote>>(new Map());
@@ -40,11 +124,11 @@ export function ComparePage() {
     void Promise.allSettled(listingIds.map((id) => api.listings.getPublicDetail(id, controller.signal))).then(
       (settled) => {
         if (controller.signal.aborted) return;
-        const listings: PublicListingDetail[] = [];
+        const listings: ComparisonListing[] = [];
         const unavailableIds: number[] = [];
         let recoverableFailure = false;
         settled.forEach((item, index) => {
-          if (item.status === "fulfilled") listings.push(item.value);
+          if (item.status === "fulfilled") listings.push(projectComparisonListing(item.value));
           else if (item.reason instanceof ApiError && item.reason.status === 404)
             unavailableIds.push(listingIds[index]!);
           else recoverableFailure = true;
@@ -85,15 +169,28 @@ export function ComparePage() {
     });
   }, [listingIds, result.listings]);
 
+  const evaluations = useMemo(() => {
+    const byId = new Map<number, readonly ComparisonCriterionResult[]>();
+    if (!needsSnapshot) return byId;
+    orderedListings.forEach((listing) =>
+      byId.set(listing.id, evaluateComparisonNeeds(listing, needsSnapshot.criteria))
+    );
+    return byId;
+  }, [needsSnapshot, orderedListings]);
+
+  const focusNeeds = () => {
+    document.getElementById("comparison-needs-heading")?.scrollIntoView({ behavior: "smooth", block: "center" });
+  };
+
   if (listingIds.length === 0) {
     return (
       <section className="rm-workspace" aria-labelledby="compare-heading">
         <EmptyState
-          title="Chưa có tin nào để so sánh"
-          description={`Chọn từ 2 đến ${maximumSelections} tin ở trang tìm phòng hoặc trang chi tiết.`}
+          title="Chưa có tin đăng để so sánh"
+          description={`Chọn ít nhất 2 tin đăng để bắt đầu so sánh, tối đa ${maximumSelections} tin.`}
           action={
             <Link className="font-semibold text-primary-hover underline decoration-2 underline-offset-4" href="/search">
-              Chọn tin đăng
+              Tìm phòng
             </Link>
           }
         />
@@ -103,144 +200,99 @@ export function ComparePage() {
 
   return (
     <section className="rm-workspace space-y-8" aria-labelledby="compare-heading">
-      <header className="rounded-overlay border border-border bg-primary-subtle p-6 shadow-surface sm:p-8">
-        <span className="rm-eyebrow">BỘ SO SÁNH</span>
-        <div className="mt-3 flex flex-col gap-5 sm:flex-row sm:items-end sm:justify-between">
-          <div>
-            <h1
-              id="compare-heading"
-              className="font-display text-heading-lg font-bold tracking-tight sm:text-[2.75rem]"
-            >
-              So sánh tin đăng
-            </h1>
-            <p className="mt-3 max-w-2xl text-ui-base leading-7 text-muted-foreground">
-              Đang chọn {listingIds.length}/{maximumSelections} tin. Ghi chú bên dưới là riêng tư và chỉ tài khoản người
-              thuê của bạn nhìn thấy.
-            </p>
-          </div>
-          <div className="flex flex-wrap gap-3">
-            <Link
-              href="/search"
-              className="inline-flex min-h-11 items-center gap-2 rounded-control border border-border-strong bg-surface px-4 py-2 text-ui-sm font-semibold shadow-surface"
-            >
-              <Icon name="plus" className="h-4 w-4" /> Chọn thêm
-            </Link>
-            <Button variant="danger" onClick={clear}>
-              Xóa danh sách
-            </Button>
-          </div>
+      <header className={styles.compareHeader}>
+        <div>
+          <span className="rm-eyebrow">BỘ SO SÁNH</span>
+          <h1 id="compare-heading" className={styles.pageTitle}>
+            So sánh phòng
+          </h1>
+          <p className={styles.pageSubtitle}>
+            {listingIds.length} tin đang so sánh · Tối đa {maximumSelections} tin. Ghi chú riêng chỉ tài khoản người
+            thuê của bạn nhìn thấy.
+          </p>
+        </div>
+        <div className={styles.headerActions}>
+          <Link href="/search" className={styles.secondaryAction}>
+            <Icon name="plus" className="h-4 w-4" /> Chọn thêm
+          </Link>
+          <Button variant="danger" onClick={clear}>
+            Xóa tất cả
+          </Button>
         </div>
       </header>
 
       {listingIds.length === 1 ? (
-        <p className="rounded-card border border-border bg-info-subtle p-4 text-ui-sm font-semibold text-info-foreground">
-          Chọn thêm ít nhất một tin để thấy sự khác biệt rõ hơn.
-        </p>
+        <PreparationState listings={orderedListings} selectedCount={listingIds.length} onRemove={remove} />
       ) : null}
 
       {status === "loading" ? <LoadingState message="Đang tải các tin để so sánh…" /> : null}
       {status === "error" ? (
         <ErrorState
-          message="Một số tin chưa tải được. Vui lòng kiểm tra kết nối và thử lại."
+          message="Một số tin chưa tải được. Các tin đã tải vẫn được giữ lại; bạn có thể thử lại."
           action={<Button onClick={() => setRetryKey((value) => value + 1)}>Thử lại</Button>}
         />
       ) : null}
 
       {result.unavailableIds.map((id) => (
-        <div
-          key={id}
-          className="flex flex-wrap items-center justify-between gap-3 rounded-card border border-danger/25 bg-danger-subtle p-4"
-        >
-          <p className="text-sm font-bold">Tin #{id} không còn công khai hoặc không còn khả dụng.</p>
-          <Button variant="danger" onClick={() => remove(id)}>
+        <div key={id} className={styles.unavailableNotice}>
+          <p>Tin #{id} không còn công khai hoặc không còn khả dụng.</p>
+          <Button variant="danger" size="sm" onClick={() => remove(id)}>
             Bỏ khỏi so sánh
           </Button>
         </div>
       ))}
 
-      {orderedListings.length > 0 ? (
-        <div className={styles.comparisonGrid} aria-label="Các tin đang so sánh">
-          {orderedListings.map((listing) => {
-            const image = [...listing.images].sort((left, right) => left.displayOrder - right.displayOrder)[0];
-            return (
-              <article key={listing.id} className={styles.comparisonCard}>
-                <div className={styles.comparisonMedia}>
-                  {image ? (
-                    <MediaImage
-                      src={image.url}
-                      alt={image.altText ?? `Ảnh của ${listing.title}`}
-                      fill
-                      sizes="(min-width: 1280px) 25vw, (min-width: 768px) 50vw, 100vw"
-                      className="object-cover"
-                      fallback={
-                        <div
-                          role="img"
-                          aria-label={image.altText ?? "Ảnh của " + listing.title}
-                          className={styles.comparisonMediaFallback}
-                        >
-                          <Icon name="home" className="h-8 w-8" />
-                        </div>
-                      }
-                    />
+      {listingIds.length >= 2 && orderedListings.length < 2 && status !== "loading" ? (
+        <PreparationState listings={orderedListings} selectedCount={listingIds.length} onRemove={remove} />
+      ) : null}
+
+      {listingIds.length >= 2 && orderedListings.length >= 2 ? (
+        <>
+          <ComparisonNeedsPanel
+            snapshot={needsSnapshot}
+            canUseSavedSearch={authStatus === "authenticated" && user?.role === "TENANT"}
+            authResolved={authStatus !== "loading"}
+            onApplyManual={applyManual}
+            onApplySaved={applySaved}
+            onClear={clearNeeds}
+          />
+          <ComparisonMatrix listings={orderedListings} needs={needsSnapshot?.criteria ?? null} onRemove={remove} />
+          <ComparisonEvaluation listings={orderedListings} evaluations={evaluations} onChooseNeeds={focusNeeds} />
+          <section className={styles.notesSection} aria-labelledby="comparison-notes-heading">
+            <div>
+              <p className="rm-eyebrow">RIÊNG TƯ</p>
+              <h2 id="comparison-notes-heading" className={styles.sectionTitle}>
+                Ghi chú riêng
+              </h2>
+              <p className={styles.sectionDescription}>
+                Ghi chú không tham gia đánh giá và chỉ tài khoản người thuê của bạn nhìn thấy.
+              </p>
+            </div>
+            <div className={styles.notesGrid}>
+              {orderedListings.map((listing) => (
+                <article key={listing.id} className={styles.noteCard}>
+                  <p className={styles.noteTitle}>{listing.title}</p>
+                  {authStatus === "authenticated" && user?.role === "TENANT" && !notesReady ? (
+                    <p className="text-ui-sm font-semibold text-muted-foreground">Đang tải ghi chú…</p>
                   ) : (
-                    <div className="grid h-full place-items-center p-4 text-center text-ui-sm font-semibold text-muted-foreground">
-                      Chưa có ảnh
-                    </div>
+                    <ListingNoteEditor
+                      listingId={listing.id}
+                      initialNote={notesReady ? (notes.get(listing.id) ?? null) : undefined}
+                      onChanged={(note) => {
+                        setNotes((current) => {
+                          const next = new Map(current);
+                          if (note) next.set(listing.id, note);
+                          else next.delete(listing.id);
+                          return next;
+                        });
+                      }}
+                    />
                   )}
-                </div>
-                <div className={styles.comparisonBody}>
-                  <div className={styles.comparisonIdentity}>
-                    <p className={styles.comparisonPrice}>{formatVnd(listing.monthlyRent)}</p>
-                    <h2 className={styles.comparisonTitle}>{listing.title}</h2>
-                  </div>
-                  <dl className={styles.comparisonFacts}>
-                    {[
-                      ["Khu vực", listing.areaName],
-                      ["Diện tích", formatAreaSqm(listing.roomAreaSqm)],
-                      ["Loại hình", listing.propertyType.label],
-                      ["Tiện ích", listing.amenities.map((item) => item.label).join(", ") || "Chưa cập nhật"]
-                    ].map(([label, value]) => (
-                      <div key={label} className={styles.comparisonFact}>
-                        <dt>{label}</dt>
-                        <dd>{value}</dd>
-                      </div>
-                    ))}
-                  </dl>
-                  <div className={styles.comparisonActions}>
-                    <Link
-                      href={`/listings/${listing.id}`}
-                      className="inline-flex min-h-10 items-center rounded-control border border-primary bg-primary px-3 text-ui-sm font-semibold text-primary-foreground shadow-surface"
-                    >
-                      Xem chi tiết
-                    </Link>
-                    <ShareListingControl listingId={listing.id} title={listing.title} compact />
-                    <Button variant="danger" onClick={() => remove(listing.id)} className="!min-h-10 !px-3">
-                      Bỏ tin
-                    </Button>
-                  </div>
-                  <div className={styles.noteArea}>
-                    {authStatus === "authenticated" && user?.role === "TENANT" && !notesReady ? (
-                      <p className="text-ui-sm font-semibold text-muted-foreground">Đang tải ghi chú…</p>
-                    ) : (
-                      <ListingNoteEditor
-                        listingId={listing.id}
-                        initialNote={notesReady ? (notes.get(listing.id) ?? null) : undefined}
-                        onChanged={(note) => {
-                          setNotes((current) => {
-                            const next = new Map(current);
-                            if (note) next.set(listing.id, note);
-                            else next.delete(listing.id);
-                            return next;
-                          });
-                        }}
-                      />
-                    )}
-                  </div>
-                </div>
-              </article>
-            );
-          })}
-        </div>
+                </article>
+              ))}
+            </div>
+          </section>
+        </>
       ) : null}
     </section>
   );

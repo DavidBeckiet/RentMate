@@ -46,6 +46,10 @@ export interface Amenity {
   readonly label: string;
 }
 
+export interface PublicAreaSuggestions {
+  readonly areas: readonly string[];
+}
+
 export interface PublicImage {
   readonly url: string;
   readonly altText: string | null;
@@ -88,7 +92,21 @@ export interface PublicListingDetail extends Omit<PublicListingSummary, "coverIm
   readonly description: string;
   readonly images: readonly PublicImage[];
   readonly landlordVerified: boolean;
+  readonly hasReported: boolean;
   readonly landlordContact?: LandlordContact;
+}
+
+export type InquiryListingContextState = "AVAILABLE" | "UNAVAILABLE" | "TEMPORARILY_UNAVAILABLE";
+
+export interface PublicInquiryListingSummary {
+  readonly id: number;
+  readonly title: string;
+  readonly propertyType: PropertyType;
+  readonly monthlyRent: number;
+  readonly roomAreaSqm: number;
+  readonly areaName: string;
+  readonly businessStatus: ListingBusinessStatus;
+  readonly coverImage: PublicImage | null;
 }
 
 export interface OwnerListingSummary {
@@ -227,7 +245,8 @@ export interface PasswordResetRequestBody {
 }
 
 export interface PasswordResetConfirmationBody {
-  readonly token: string;
+  readonly email: string;
+  readonly code: string;
   readonly password: string;
 }
 
@@ -408,6 +427,9 @@ export interface Inquiry {
   readonly canSendMessage: boolean;
   readonly blockedByCurrentUser: boolean;
   readonly messages: readonly InquiryMessage[];
+  readonly listingSummary: PublicInquiryListingSummary | null;
+  readonly listingContextState: InquiryListingContextState;
+  readonly lastMessage: InquiryMessage | null;
 }
 
 export interface CreateInquiryBody {
@@ -694,6 +716,7 @@ export interface PublicListingReview {
   readonly accuracyRating: number;
   readonly responsivenessRating: number;
   readonly comment: string;
+  readonly hasReported: boolean;
   readonly createdAt: string;
   readonly verifiedInteraction: true;
 }
@@ -1081,6 +1104,10 @@ export interface RoommateRequest {
   readonly profile: RoommateProfile | null;
   readonly listing: PublicListingSummary | null;
   readonly compatibility?: RoommateCompatibility | null;
+  readonly reporting?: Readonly<{
+    readonly profileHasReported: boolean;
+    readonly requestHasReported: boolean;
+  }>;
   readonly signals: {
     readonly profileCompleted: boolean;
     readonly requestOpen: boolean;

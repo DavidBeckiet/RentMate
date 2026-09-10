@@ -20,7 +20,7 @@ describe("createUsersApi tenant verification routes", () => {
 
     void api.getTenantContactVerificationStatus();
     void api.requestTenantEmailVerification();
-    void api.confirmTenantEmailVerification("email-token");
+    void api.confirmTenantEmailVerification("123456");
     void api.requestTenantPhoneVerification();
     void api.confirmTenantPhoneVerification("123456");
 
@@ -32,7 +32,7 @@ describe("createUsersApi tenant verification routes", () => {
     });
     expect(mock.object).toHaveBeenNthCalledWith(3, "/api/v1/tenant/verifications/email/confirm", {
       method: "POST",
-      json: { token: "email-token" },
+      json: { code: "123456" },
       signal: undefined
     });
     expect(mock.object).toHaveBeenNthCalledWith(4, "/api/v1/tenant/verifications/phone/request", {

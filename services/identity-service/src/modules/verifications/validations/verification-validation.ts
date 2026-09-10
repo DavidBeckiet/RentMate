@@ -20,7 +20,7 @@ export interface ReviewVerificationInput {
   readonly note: string;
 }
 export interface ConfirmEmailVerificationInput {
-  readonly token: string;
+  readonly code: string;
 }
 export interface ConfirmPhoneVerificationInput {
   readonly code: string;
@@ -64,17 +64,17 @@ export function validateReviewVerificationBody(value: unknown): ReviewVerificati
 }
 
 export function validateConfirmEmailVerificationBody(value: unknown): ConfirmEmailVerificationInput {
-  const body = validateBodyFields(value, ["token"]);
-  if (!("token" in body)) throwValidationIssue("token", "REQUIRED", "token is required.");
-  const token = validateJsonText(body.token, "token", {
-    maximumLength: 128,
+  const body = validateBodyFields(value, ["code"]);
+  if (!("code" in body)) throwValidationIssue("code", "REQUIRED", "code is required.");
+  const code = validateJsonText(body.code, "code", {
+    maximumLength: 6,
     nullable: false,
     nonblank: true
   }) as string;
-  if (!/^[A-Za-z0-9_-]{32,128}$/u.test(token)) {
-    throwValidationIssue("token", "INVALID_VALUE", "token is invalid.");
+  if (!/^\d{6}$/u.test(code)) {
+    throwValidationIssue("code", "INVALID_VALUE", "code is invalid.");
   }
-  return Object.freeze({ token });
+  return Object.freeze({ code });
 }
 
 export function validateConfirmPhoneVerificationBody(value: unknown): ConfirmPhoneVerificationInput {

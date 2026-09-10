@@ -116,7 +116,7 @@ test("rejects unsafe content, invalid windows, unknown fields, and empty patches
 
 test("parses discovery filters with stable pagination defaults", () => {
   assert.deepEqual(validateRoommateDiscoveryQuery({ area: " Quan 1 ", listingMode: "unlinked" }), {
-    area: "Quan 1",
+    area: "quan-1",
     budgetMinPerPerson: null,
     budgetMaxPerPerson: null,
     moveInFrom: null,

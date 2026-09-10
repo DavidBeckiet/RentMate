@@ -9,6 +9,7 @@ import { Icon } from "../../components/ui/icon";
 import { MediaImage } from "../../components/ui/media-image";
 import { BusinessStatusBadge } from "../../components/ui/status-badge";
 import { api, ApiError } from "../../lib/api/client";
+import { formatAreaLabel } from "../../lib/area";
 import { useAuth } from "../../lib/auth/auth-provider";
 import type { PublicListingDetail } from "../../types/api";
 import { InquiryForm } from "../contact/inquiry-form";
@@ -38,6 +39,10 @@ function parseListingId(value: string): number | null {
   if (!/^[0-9]+$/.test(value)) return null;
   const parsed = Number(value);
   return Number.isSafeInteger(parsed) && parsed >= 1 && parsed <= maximumListingId ? parsed : null;
+}
+
+function buildApproximateGoogleMapsUrl(latitude: number, longitude: number): string {
+  return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${latitude},${longitude}`)}`;
 }
 
 function ListingDetailSkeleton() {
@@ -323,7 +328,7 @@ export function ListingDetail({ listingId, actions }: ListingDetailProps) {
             </h1>
             <p className={styles.summaryMeta}>
               <Icon name="pin" className="h-5 w-5 shrink-0" />
-              <span>{detail.areaName}</span>
+              <span>{formatAreaLabel(detail.areaName)}</span>
             </p>
             <p className="text-ui-sm font-semibold text-muted-foreground">
               <ListingFreshnessLabel updatedAt={detail.updatedAt} />
@@ -399,24 +404,35 @@ export function ListingDetail({ listingId, actions }: ListingDetailProps) {
             <div className={styles.sectionHeading}>
               <span className={styles.sectionKicker}>KHU VỰC</span>
               <h2 id="detail-map-heading">Vị trí xấp xỉ</h2>
-              <p>
-                Để bảo vệ quyền riêng tư, vị trí trên bản đồ được làm tròn xấp xỉ; thông tin địa chỉ riêng tư không hiển
-                thị.
-              </p>
+              <p>Để bảo vệ quyền riêng tư, vị trí hiển thị trên bản đồ chỉ mang tính gần đúng.</p>
             </div>
             <div className={styles.mapFrame}>
               <MapBase
                 ariaLabel="Bản đồ vị trí xấp xỉ của tin đăng"
                 center={{ latitude: detail.latitude, longitude: detail.longitude }}
                 zoom={14}
+                recenterControl={{ label: "Đưa bản đồ về vị trí phòng" }}
                 markers={[
                   {
                     id: detail.id,
-                    label: `${detail.title} — vị trí xấp xỉ`,
+                    label: `Vị trí xấp xỉ của ${detail.title}`,
+                    hideTooltip: true,
                     position: { latitude: detail.latitude, longitude: detail.longitude }
                   }
                 ]}
               />
+            </div>
+            <div className={styles.mapActions}>
+              <a
+                className={styles.mapExternalLink}
+                href={buildApproximateGoogleMapsUrl(detail.latitude, detail.longitude)}
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                <Icon name="arrowUpRight" className="h-4 w-4 shrink-0" />
+                <span>Mở khu vực này trên Google Maps</span>
+                <span className="sr-only"> (mở trong tab mới)</span>
+              </a>
             </div>
           </section>
         </div>
@@ -482,7 +498,12 @@ export function ListingDetail({ listingId, actions }: ListingDetailProps) {
               <p className={styles.mutedText}>Thông tin liên hệ không có trong phản hồi hiện tại.</p>
             )}
             <div className={styles.inquiryBlock}>
-              <InquiryForm listingId={detail.id} />
+              <InquiryForm
+                listingId={detail.id}
+                listingTitle={detail.title}
+                monthlyRent={detail.monthlyRent}
+                areaName={detail.areaName}
+              />
             </div>
           </section>
 
@@ -506,7 +527,11 @@ export function ListingDetail({ listingId, actions }: ListingDetailProps) {
               </li>
             </ul>
             <div className={styles.reportBlock}>
-              <ReportListingControl listingId={detail.id} />
+              <ReportListingControl
+                listingId={detail.id}
+                hasReported={detail.hasReported}
+                onReported={() => setDetail((current) => current && { ...current, hasReported: true })}
+              />
             </div>
           </section>
 

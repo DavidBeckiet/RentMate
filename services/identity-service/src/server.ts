@@ -150,7 +150,6 @@ async function startIdentityService(): Promise<void> {
     transactionRunner,
     delivery: passwordResetDelivery,
     secretPepper: config.auth.jwtSecret,
-    frontendOrigin: config.frontendOrigin,
     logger
   });
   const requiredAuthentication = createProtectedAuthenticationMiddleware({

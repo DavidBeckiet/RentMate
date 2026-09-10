@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { AuthContextValue } from "../../lib/auth/auth-provider";
 import { tenantUser, roommateProfile } from "./test-roommate-fixtures";
@@ -101,9 +101,16 @@ describe("RoommateProfilePage", () => {
     fireEvent.change(intro, {
       target: { value: "Mình đã cập nhật phần giới thiệu để phản ánh nhu cầu sinh hoạt hiện tại." }
     });
+    const choices = within(screen.getByRole("group", { name: "Nhịp sinh hoạt" })).getAllByRole("radio");
+    fireEvent.click(choices[0]);
+    expect(choices[0]).toBeChecked();
     fireEvent.click(screen.getByRole("button", { name: "Lưu hồ sơ ở ghép" }));
 
-    await waitFor(() => expect(apiMocks.upsertProfile).toHaveBeenCalledTimes(1));
+    await waitFor(() =>
+      expect(apiMocks.upsertProfile).toHaveBeenCalledWith(
+        expect.objectContaining({ sleepSchedule: choices[0].getAttribute("value") })
+      )
+    );
     expect(await screen.findByText("Hồ sơ ở ghép đã hoàn thành.")).toBeInTheDocument();
   });
 

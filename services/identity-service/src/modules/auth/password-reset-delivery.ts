@@ -1,7 +1,6 @@
 export interface PasswordResetDeliveryInput {
   readonly destination: string;
   readonly secret: string;
-  readonly resetUrl: string;
 }
 
 export interface PasswordResetDeliveryPreview extends PasswordResetDeliveryInput {
@@ -57,8 +56,7 @@ function createWebhookDelivery(options: PasswordResetDeliveryOptions): PasswordR
             eventType: "PASSWORD_RESET",
             channel: "EMAIL",
             destination: input.destination,
-            secret: input.secret,
-            resetUrl: input.resetUrl
+            secret: input.secret
           }),
           signal: controller.signal
         });

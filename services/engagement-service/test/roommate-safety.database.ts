@@ -91,6 +91,7 @@ const identityAccountClient = {
 
 const roommateService = createRoommateService({
   repository: roommateRepository,
+  safetyRepository,
   identityAccountClient,
   listingCatalogClient: {
     async loadPublicSummariesByIds() {
@@ -478,19 +479,31 @@ test("lists only caller-owned roommate blocks with existing request or interest 
   assert.deepEqual(afterUnblockNotifications, beforeUnblockNotifications);
 });
 
-test("dedupes reports, retains minimal evidence, and enforces admin moderation context", async () => {
-  await Promise.all([createProfile(2201), createProfile(2202)]);
+test("dedupes reports, projects caller-owned acknowledgement, retains minimal evidence, and enforces admin moderation context", async () => {
+  await Promise.all([createProfile(2201), createProfile(2202), createProfile(2203)]);
   const requestId = await createRequest(2201);
   const interestId = await createInterest(requestId, 2202);
+  assert.deepEqual((await roommateService.getRequest(principal(2202), requestId)).reporting, {
+    profileHasReported: false,
+    requestHasReported: false
+  });
   const requestReport = await safetyService.createRequestReport(principal(2202), requestId, {
     targetType: "ROOMMATE_REQUEST",
     category: "FRAUD",
     details: "The request contains suspicious claims."
   });
+  assert.deepEqual((await roommateService.getRequest(principal(2202), requestId)).reporting, {
+    profileHasReported: false,
+    requestHasReported: true
+  });
   const profileReport = await safetyService.createInterestReport(principal(2202), interestId, {
     category: "IMPERSONATION",
     details: "The profile may impersonate another person."
   });
+  const callerProjection = await roommateService.getRequest(principal(2202), requestId);
+  assert.deepEqual(callerProjection.reporting, { profileHasReported: true, requestHasReported: true });
+  const differentCallerProjection = await roommateService.getRequest(principal(2203), requestId);
+  assert.deepEqual(differentCallerProjection.reporting, { profileHasReported: false, requestHasReported: false });
   const message = await safetyService.sendMessage(principal(2201), interestId, { body: "Please pay a deposit first." });
   const messageReports = await Promise.all([
     safetyService.createMessageReport(principal(2202), message.id, {

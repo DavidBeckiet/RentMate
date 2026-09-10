@@ -33,6 +33,7 @@ function detail(id: number, title: string): PublicListingDetail {
     amenities: [],
     images: [{ url: `https://res.cloudinary.com/rentmate/image/upload/${id}.webp`, altText: null, displayOrder: 1 }],
     landlordVerified: false,
+    hasReported: false,
     updatedAt: "2026-08-25T00:00:00.000Z",
     businessStatus: "AVAILABLE"
   };
@@ -67,7 +68,9 @@ describe("RecentlyViewed", () => {
     rememberRecentListing(41, undefined, 10);
     rememberRecentListing(42, undefined, 20);
     apiMocks.getPublicDetail
-      .mockRejectedValueOnce(new ApiError({ status: 404, code: "RESOURCE_NOT_FOUND", message: "private", category: "backend" }))
+      .mockRejectedValueOnce(
+        new ApiError({ status: 404, code: "RESOURCE_NOT_FOUND", message: "private", category: "backend" })
+      )
       .mockResolvedValueOnce(detail(41, "Phòng còn công khai"));
 
     render(<RecentlyViewed />);

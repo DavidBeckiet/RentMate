@@ -3,9 +3,12 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useId, useRef, useState, type KeyboardEvent } from "react";
+import { useNotificationUnreadCount } from "../../features/contact/notification-unread-store";
 import type { UserProfile } from "../../types/api";
 import { accountInitials, accountPrimaryIdentity, accountRoleLabels } from "./account-identity";
 import { Icon } from "./icon";
+import { tenantSecondaryItems } from "./navigation-model";
+import { NotificationUnreadBadge, notificationAccessibleLabel } from "./notification-unread-badge";
 
 const menuItemClass =
   "flex min-h-11 w-full items-center gap-3 rounded-control px-3 py-2 text-left text-ui-sm font-semibold text-foreground transition-colors duration-fast hover:bg-surface-subtle focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-focus";
@@ -14,7 +17,8 @@ function linksFor(user: UserProfile) {
   if (user.role === "TENANT")
     return [
       { href: "/profile", label: "Hồ sơ của tôi", icon: "user" as const },
-      { href: "/notifications", label: "Thông báo", icon: "bell" as const }
+      { href: "/notifications", label: "Thông báo", icon: "bell" as const },
+      ...tenantSecondaryItems.map(({ href, label, icon }) => ({ href, label, icon }))
     ];
   if (user.role === "LANDLORD")
     return [
@@ -35,6 +39,7 @@ export function AccountMenu({
   const rootRef = useRef<HTMLDivElement>(null);
   const triggerRef = useRef<HTMLButtonElement>(null);
   const panelId = useId();
+  const unreadCount = useNotificationUnreadCount(user.id);
 
   useEffect(() => setOpen(false), [pathname]);
   useEffect(() => {
@@ -129,9 +134,16 @@ export function AccountMenu({
           </div>
           <div className="py-2">
             {linksFor(user).map((item) => (
-              <Link key={item.href} role="menuitem" href={item.href} className={menuItemClass}>
+              <Link
+                key={item.href}
+                role="menuitem"
+                href={item.href}
+                aria-label={item.href === "/notifications" ? notificationAccessibleLabel(unreadCount) : item.label}
+                className={menuItemClass}
+              >
                 <Icon name={item.icon} className="h-5 w-5" />
-                {item.label}
+                <span className="min-w-0 flex-1">{item.label}</span>
+                {item.href === "/notifications" ? <NotificationUnreadBadge unreadCount={unreadCount} /> : null}
               </Link>
             ))}
             <button role="menuitem" type="button" disabled={logoutPending} onClick={onLogout} className={menuItemClass}>

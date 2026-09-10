@@ -4,6 +4,7 @@ import { Icon } from "../../components/ui/icon";
 import { ListingSaveControl } from "../../components/ui/listing-save-control";
 import { MediaImage } from "../../components/ui/media-image";
 import { Skeleton } from "../../components/ui/skeleton";
+import { formatAreaLabel } from "../../lib/area";
 import { ComparisonToggle } from "../comparison/comparison-toggle";
 import { BusinessStatusBadge } from "../../components/ui/status-badge";
 import type { PublicListingSummary } from "../../types/api";
@@ -20,6 +21,8 @@ export interface ListingCardProps {
   readonly mapSelected?: boolean;
   readonly onMapFocus?: () => void;
   readonly onMapSelect?: () => void;
+  readonly favoriteSaved?: boolean;
+  readonly onFavoriteChange?: (saved: boolean) => void | Promise<void>;
 }
 
 export function ListingCardSkeleton({ variant = "default" }: { readonly variant?: "default" | "search" }) {
@@ -54,7 +57,9 @@ export function ListingCard({
   variant = "default",
   mapSelected = false,
   onMapFocus,
-  onMapSelect
+  onMapSelect,
+  favoriteSaved = false,
+  onFavoriteChange
 }: ListingCardProps) {
   const coverImage = listing.coverImage;
   const searchVariant = variant === "search";
@@ -118,8 +123,8 @@ export function ListingCard({
             </h2>
             <p className={styles.location}>
               <Icon name="pin" className="h-4 w-4 shrink-0" />
-              <span className={styles.locationText} title={listing.areaName}>
-                {listing.areaName}
+              <span className={styles.locationText} title={formatAreaLabel(listing.areaName)}>
+                {formatAreaLabel(listing.areaName)}
               </span>
             </p>
             <div className={styles.verifiedSlot}>
@@ -162,7 +167,14 @@ export function ListingCard({
             <Icon name="map" className="h-4 w-4" />
           </button>
         ) : null}
-        {showFavorite ? <ListingSaveControl listingId={String(listing.id)} compact /> : null}
+        {showFavorite ? (
+          <ListingSaveControl
+            listingId={String(listing.id)}
+            compact
+            initialSaved={favoriteSaved}
+            onSavedChange={onFavoriteChange}
+          />
+        ) : null}
         {showCompare ? <ComparisonToggle listingId={listing.id} compact /> : null}
       </div>
     </article>

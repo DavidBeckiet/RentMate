@@ -33,7 +33,15 @@ function ExistingReview({ review }: Readonly<{ review: ListingReview }>) {
   );
 }
 
-export function TenantReviewPanel({ inquiryId }: Readonly<{ inquiryId: number }>) {
+export interface TenantReviewPanelProps {
+  readonly inquiryId: number;
+  readonly variant?: "page" | "dialog";
+  readonly onCancel?: () => void;
+  readonly onSubmitted?: (review: ListingReview) => void;
+}
+
+export function TenantReviewPanel({ inquiryId, variant = "page", onCancel, onSubmitted }: TenantReviewPanelProps) {
+  const isDialog = variant === "dialog";
   const [eligibility, setEligibility] = useState<ReviewEligibility | null>(null);
   const [loading, setLoading] = useState(true);
   const [pending, setPending] = useState(false);
@@ -76,6 +84,7 @@ export function TenantReviewPanel({ inquiryId }: Readonly<{ inquiryId: number }>
         comment: comment.trim()
       });
       setEligibility({ eligible: false, reason: "ALREADY_REVIEWED", review });
+      onSubmitted?.(review);
     } catch (caught) {
       const apiError = caught instanceof ApiError ? caught : null;
       setError(
@@ -90,20 +99,23 @@ export function TenantReviewPanel({ inquiryId }: Readonly<{ inquiryId: number }>
 
   return (
     <section
-      className="space-y-4 border-2 border-heroDark-950 bg-[#e5eefc] p-5 shadow-glass"
-      aria-labelledby="review-heading"
+      className={isDialog ? "space-y-4" : "space-y-4 border-2 border-heroDark-950 bg-[#e5eefc] p-5 shadow-glass"}
+      aria-labelledby={isDialog ? undefined : "review-heading"}
+      aria-label={isDialog ? "Biểu mẫu đánh giá" : undefined}
     >
-      <header>
-        <span className="rm-eyebrow inline-flex items-center gap-2">
-          <Icon name="star" className="h-4 w-4" /> TƯƠNG TÁC ĐÃ XÁC MINH
-        </span>
-        <h2 id="review-heading" className="mt-3 font-display text-3xl font-bold tracking-tight">
-          Chia sẻ trải nghiệm
-        </h2>
-        <p className="mt-2 max-w-2xl text-sm font-medium leading-6 text-slate-700">
-          Đánh giá sẽ được kiểm duyệt trước khi xuất hiện công khai và không hiển thị danh tính của bạn.
-        </p>
-      </header>
+      {!isDialog ? (
+        <header>
+          <span className="rm-eyebrow inline-flex items-center gap-2">
+            <Icon name="star" className="h-4 w-4" /> TƯƠNG TÁC ĐÃ XÁC MINH
+          </span>
+          <h2 id="review-heading" className="mt-3 font-display text-3xl font-bold tracking-tight">
+            Chia sẻ trải nghiệm
+          </h2>
+          <p className="mt-2 max-w-2xl text-sm font-medium leading-6 text-slate-700">
+            Đánh giá sẽ được kiểm duyệt trước khi xuất hiện công khai và không hiển thị danh tính của bạn.
+          </p>
+        </header>
+      ) : null}
       {loading ? <p className="text-sm font-bold">Đang kiểm tra điều kiện đánh giá…</p> : null}
       {error ? (
         <p role="alert" className="border-l-4 border-red-700 pl-3 text-sm font-bold text-red-800">
@@ -121,7 +133,7 @@ export function TenantReviewPanel({ inquiryId }: Readonly<{ inquiryId: number }>
       {!loading && eligibility?.eligible ? (
         <form
           onSubmit={(event) => void submit(event)}
-          className="grid gap-4 border-2 border-heroDark-950 bg-white p-5 shadow-glass-sm"
+          className={isDialog ? "grid gap-4" : "grid gap-4 border-2 border-heroDark-950 bg-white p-5 shadow-glass-sm"}
         >
           <div className="grid gap-4 sm:grid-cols-3">
             {[
@@ -166,9 +178,16 @@ export function TenantReviewPanel({ inquiryId }: Readonly<{ inquiryId: number }>
             <span className="text-xs font-bold text-slate-600">
               Tối thiểu 20 ký tự · không chia sẻ thông tin cá nhân
             </span>
-            <Button type="submit" pending={pending} pendingLabel="Đang gửi…">
-              Gửi để kiểm duyệt
-            </Button>
+            <div className="flex flex-wrap justify-end gap-3">
+              {onCancel ? (
+                <Button type="button" variant="secondary" disabled={pending} onClick={onCancel}>
+                  Hủy
+                </Button>
+              ) : null}
+              <Button type="submit" pending={pending} pendingLabel="Đang gửi…">
+                {isDialog ? "Gửi đánh giá" : "Gửi để kiểm duyệt"}
+              </Button>
+            </div>
           </div>
         </form>
       ) : null}

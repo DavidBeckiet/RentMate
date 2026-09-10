@@ -224,6 +224,7 @@ async function startEngagementService(): Promise<void> {
   });
   const roommateService = createRoommateService({
     repository: roommateRepository,
+    safetyRepository: roommateSafetyRepository,
     identityAccountClient,
     listingCatalogClient,
     transactionRunner: {
@@ -305,6 +306,7 @@ async function startEngagementService(): Promise<void> {
       });
       registerReviewRoutes(router, {
         authenticationMiddleware: requiredAuthentication,
+        optionalAuthenticationMiddleware: optionalAuthentication,
         tenantRoleMiddleware: tenantRole,
         adminRoleMiddleware: adminRole,
         service: reviewService

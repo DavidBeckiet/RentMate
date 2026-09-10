@@ -9,5 +9,8 @@
   "scripts": {
     "start": "node src/server.mjs",
     "test": "node --test test/*.test.mjs"
+  },
+  "dependencies": {
+    "nodemailer": "^10.0.1"
   }
 }

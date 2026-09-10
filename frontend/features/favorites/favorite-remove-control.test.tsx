@@ -1,6 +1,7 @@
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { AuthContextValue } from "../../lib/auth/auth-provider";
+import type { UserProfile } from "../../types/api";
 
 const apiMocks = vi.hoisted(() => ({ remove: vi.fn() }));
 const useAuthMock = vi.hoisted(() => vi.fn<() => AuthContextValue>());
@@ -13,8 +14,20 @@ vi.mock("../../lib/auth/auth-provider", () => ({ useAuth: useAuthMock }));
 
 import { ApiError } from "../../lib/api/client";
 import { FavoriteRemoveControl } from "./favorite-remove-control";
+import { resetFavoriteStateForTests } from "./favorite-state";
 
 const refresh = vi.fn<() => Promise<void>>();
+
+const tenant: UserProfile = {
+  id: 7,
+  displayName: null,
+  role: "TENANT",
+  email: "tenant@example.com",
+  phone: null,
+  isActive: true,
+  createdAt: "2026-08-01T00:00:00.000Z",
+  updatedAt: "2026-08-01T00:00:00.000Z"
+};
 
 function backendError(status: number): ApiError {
   return new ApiError({ status, code: "SAFE_ERROR", message: "private", category: "backend" });
@@ -22,12 +35,13 @@ function backendError(status: number): ApiError {
 
 describe("FavoriteRemoveControl", () => {
   beforeEach(() => {
+    resetFavoriteStateForTests();
     apiMocks.remove.mockReset();
     refresh.mockReset();
     refresh.mockResolvedValue();
     useAuthMock.mockReturnValue({
       status: "authenticated",
-      user: null,
+      user: tenant,
       error: null,
       refresh,
       logout: vi.fn()
@@ -104,15 +118,20 @@ describe("FavoriteRemoveControl", () => {
     expect(apiMocks.remove).toHaveBeenCalledTimes(2);
   });
 
-  it("aborts an in-flight DELETE on unmount", () => {
+  it("keeps the shared DELETE alive when one control unmounts", async () => {
     let signal: AbortSignal | undefined;
+    let resolveRemove: (() => void) | undefined;
     apiMocks.remove.mockImplementation((_listingId: number, requestSignal: AbortSignal) => {
       signal = requestSignal;
-      return new Promise<void>(() => undefined);
+      return new Promise<void>((resolve) => {
+        resolveRemove = resolve;
+      });
     });
     const view = render(<FavoriteRemoveControl listingId={42} onRemoved={vi.fn()} />);
     fireEvent.click(screen.getByRole("button", { name: "Bỏ lưu" }));
     view.unmount();
-    expect(signal?.aborted).toBe(true);
+    expect(signal?.aborted).toBe(false);
+    resolveRemove?.();
+    await waitFor(() => expect(apiMocks.remove).toHaveBeenCalledOnce());
   });
 });

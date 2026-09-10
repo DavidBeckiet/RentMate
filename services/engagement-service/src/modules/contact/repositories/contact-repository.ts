@@ -39,6 +39,10 @@ export interface InquiryMessage {
   readonly createdAt: string;
 }
 
+export interface InquiryLatestMessage extends InquiryMessage {
+  readonly inquiryId: number;
+}
+
 export interface Inquiry {
   readonly id: number;
   readonly tenantId: number;
@@ -83,6 +87,10 @@ interface MessageRow extends QueryResultRow {
   tenant_read_at: unknown;
   landlord_read_at: unknown;
   created_at: unknown;
+}
+
+interface LatestMessageRow extends MessageRow {
+  inquiry_id: unknown;
 }
 
 interface NotificationRow extends QueryResultRow {
@@ -149,6 +157,11 @@ function mapMessage(row: Readonly<MessageRow>, viewerRole: "TENANT" | "LANDLORD"
     isRead: readAt !== null,
     createdAt: timestamp(row.created_at, "message.created_at")
   });
+}
+
+function mapLatestMessage(row: Readonly<LatestMessageRow>, viewerRole: "TENANT" | "LANDLORD"): InquiryLatestMessage {
+  const message = mapMessage(row, viewerRole);
+  return Object.freeze({ inquiryId: positiveInteger(row.inquiry_id, "message.inquiry_id"), ...message });
 }
 
 function mapNotification(row: Readonly<NotificationRow>): Notification {
@@ -238,6 +251,11 @@ export interface ContactRepository {
     inquiryId: number,
     viewerRole: "TENANT" | "LANDLORD"
   ) => Promise<readonly InquiryMessage[]>;
+  readonly listLatestMessages: (
+    executor: SqlExecutor,
+    inquiryIds: readonly number[],
+    viewerRole: "TENANT" | "LANDLORD"
+  ) => Promise<readonly InquiryLatestMessage[]>;
   readonly appendMessage: (
     executor: SqlExecutor,
     input: {
@@ -368,6 +386,24 @@ export function createContactRepository(): ContactRepository {
           values: [inquiryId]
         },
         (row) => mapMessage(row, viewerRole)
+      );
+    },
+
+    async listLatestMessages(executor, inquiryIds, viewerRole) {
+      if (inquiryIds.length === 0) return Object.freeze([]);
+      return queryMany<LatestMessageRow, InquiryLatestMessage>(
+        executor,
+        {
+          text: `
+            SELECT DISTINCT ON (inquiry_id)
+              inquiry_id, id, sender_role, body, tenant_read_at, landlord_read_at, created_at
+            FROM inquiry_messages
+            WHERE inquiry_id = ANY($1::bigint[])
+            ORDER BY inquiry_id, created_at DESC, id DESC
+          `,
+          values: [inquiryIds]
+        },
+        (row) => mapLatestMessage(row, viewerRole)
       );
     },
 

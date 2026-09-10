@@ -28,6 +28,7 @@ export interface MapMarker {
   readonly label: string;
   readonly displayLabel?: string;
   readonly variant?: "default" | "price" | "center";
+  readonly hideTooltip?: boolean;
   readonly draggable?: boolean;
   readonly selected?: boolean;
   readonly openPopup?: boolean;
@@ -53,6 +54,7 @@ export interface MapBaseProps {
   readonly onMapClick?: (point: MapPoint) => void;
   readonly onMarkerSelect?: (id: MapMarker["id"]) => void;
   readonly onMarkerMove?: (id: MapMarker["id"], point: MapPoint) => void;
+  readonly recenterControl?: { readonly label: string };
   readonly className?: string;
 }
 

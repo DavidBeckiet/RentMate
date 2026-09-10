@@ -130,7 +130,7 @@ describe("roommate safety controls", () => {
         details: "Có yêu cầu chuyển tiền trước."
       })
     );
-    expect(await screen.findByRole("status")).toHaveTextContent("Báo cáo đã được gửi tới đội ngũ an toàn.");
+    expect(await screen.findByRole("status")).toHaveTextContent("✓ Đã gửi báo cáo");
   });
 
   it("keeps an unavailable listing as historical context after a request is matched", () => {

@@ -28,6 +28,7 @@ export interface PublicListingDetailRow extends QueryResultRow {
   readonly property_type_label: unknown;
   readonly amenities: unknown;
   readonly images: unknown;
+  readonly has_reported?: unknown;
   readonly updated_at: unknown;
 }
 
@@ -67,6 +68,7 @@ export interface PublicListingDetail {
   readonly amenities: readonly PublicDetailLookupValue[];
   readonly images: readonly PublicDetailImage[];
   readonly landlordVerified: boolean;
+  readonly hasReported: boolean;
   readonly updatedAt: string;
 }
 
@@ -152,6 +154,12 @@ function nullableMaxOccupants(value: unknown): number | null {
   return value as number;
 }
 
+function hasReported(value: unknown): boolean {
+  if (value === undefined) return false;
+  if (typeof value !== "boolean") invariant();
+  return value;
+}
+
 function mapContact(emailValue: unknown, phoneValue: unknown): LandlordContact {
   const email = nonblank(emailValue, 320);
   const phone = nonblank(phoneValue, 16);
@@ -182,6 +190,7 @@ export function mapPublicListingDetailRow(row: Readonly<PublicListingDetailRow>)
     amenities: mapAmenities(row.amenities),
     images: mapImages(row.images),
     landlordVerified: false,
+    hasReported: hasReported(row.has_reported),
     updatedAt: formatApiTimestamp(mapPgTimestamptz(row.updated_at, "public_listing_detail.updated_at"))
   });
 }
@@ -221,6 +230,7 @@ export function enrichPublicListingDetail(
     amenities: detail.amenities,
     images: detail.images,
     landlordVerified: detail.landlordVerified,
+    hasReported: detail.hasReported,
     updatedAt: detail.updatedAt,
     landlordContact: contact
   });

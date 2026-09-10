@@ -173,13 +173,17 @@ function BlockedListContent() {
               );
             })}
           </div>
-          <Pagination
-            ariaLabel="Phân trang tương tác ở ghép đã chặn"
-            page={result?.pagination.page ?? page}
-            hasNextPage={result?.pagination.hasNextPage ?? false}
-            onPrevious={() => setPage((current) => Math.max(1, current - 1))}
-            onNext={() => setPage((current) => current + 1)}
-          />
+          {result?.pagination.page && (result.pagination.page > 1 || result.pagination.hasNextPage) ? (
+            <Pagination
+              ariaLabel="Phân trang tương tác ở ghép đã chặn"
+              compact
+              className="w-fit max-w-full"
+              page={result.pagination.page}
+              hasNextPage={result.pagination.hasNextPage}
+              onPrevious={() => setPage((current) => Math.max(1, current - 1))}
+              onNext={() => setPage((current) => current + 1)}
+            />
+          ) : null}
         </div>
       )}
     </div>

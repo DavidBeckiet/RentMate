@@ -5,7 +5,9 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { Button } from "../../components/ui/button";
 import { Card } from "../../components/ui/card";
 import { ErrorState, LoadingState } from "../../components/ui/feedback-states";
-import { SelectField, TextareaField } from "../../components/ui/form-controls";
+import { TextareaField } from "../../components/ui/form-controls";
+import { Icon } from "../../components/ui/icon";
+import styles from "./roommate-profile.module.css";
 import { api, ApiError } from "../../lib/api/client";
 import { useAuth } from "../../lib/auth/auth-provider";
 import type { RoommateProfileBody } from "../../types/api";
@@ -17,7 +19,7 @@ import {
   roommateSleepScheduleLabels,
   roommateSmokingLabels
 } from "./roommate-content";
-import { RoommatePageHeader, RoommateSubnav, RoommateTenantBoundary } from "./roommate-shared";
+import { RoommateAvatar, RoommatePageHeader, RoommateSubnav, RoommateTenantBoundary } from "./roommate-shared";
 import { RoommateVerificationPanel } from "./roommate-verification-panel";
 import { RoommateAiPreferencePanel } from "./roommate-ai-preference-panel";
 
@@ -29,6 +31,34 @@ const emptyProfile: RoommateProfileBody = {
   smokingEnvironment: "NO_PREFERENCE",
   petEnvironment: "OK_WITH_PETS"
 };
+
+function LifestyleChoices({
+  name,
+  label,
+  value,
+  options,
+  onChange
+}: Readonly<{
+  name: string;
+  label: string;
+  value: string;
+  options: Readonly<Record<string, string>>;
+  onChange: (value: string) => void;
+}>) {
+  return (
+    <fieldset className={styles.choices}>
+      <legend>{label}</legend>
+      <div className={styles.choiceGrid}>
+        {Object.entries(options).map(([key, text]) => (
+          <label key={key} className={styles.choice}>
+            <input type="radio" name={name} value={key} checked={value === key} onChange={() => onChange(key)} />
+            <span>{text}</span>
+          </label>
+        ))}
+      </div>
+    </fieldset>
+  );
+}
 
 function safeReturnPath(value: string | null): string | null {
   return value?.startsWith("/roommates/") ? value : null;
@@ -130,210 +160,227 @@ function ProfileEditor() {
   }
 
   return (
-    <div className="rm-roommate-page space-y-6">
-      <RoommatePageHeader
-        title="Hồ sơ ở ghép"
-        description="Một hồ sơ rõ ràng giúp cuộc trò chuyện bắt đầu tự nhiên hơn. Chia sẻ nhịp sống và môi trường bạn mong muốn; không đưa thông tin liên hệ, OTP, thông tin tài chính hoặc địa chỉ chính xác vào hồ sơ."
-      />
+    <div className={`rm-roommate-page ${styles.page}`}>
+      <RoommatePageHeader title="Hồ sơ ở ghép" description="Một chút về bạn, để tìm người cùng nhà hợp nhịp sống." />
       <RoommateSubnav />
-      <Card className="rm-roommate-card-static mx-auto max-w-4xl">
-        <form className="space-y-5" onSubmit={(event) => void save(event)} noValidate>
-          <p
-            className="rm-roommate-callout text-ui-sm leading-6 text-muted-foreground"
-            data-tone={profileCompleted ? "accent" : undefined}
-            role="status"
+      <div className={styles.layout}>
+        <Card className={`rm-roommate-card-static ${styles.editor}`}>
+          <form
+            className={styles.form}
+            onSubmit={(event) => void save(event)}
+            onChange={() => setSaved(false)}
+            noValidate
           >
-            {profileCompleted
-              ? "Hồ sơ ở ghép đã hoàn thành."
-              : "Hồ sơ chưa sẵn sàng để dùng cho các tương tác ở ghép. Hãy hoàn thành các trường bắt buộc hoặc kiểm tra lại sau."}
-          </p>
-          <section className="space-y-3" aria-labelledby="roommate-profile-about-heading">
-            <div>
-              <p className="rm-roommate-section-label">Về bạn</p>
-              <h2
-                id="roommate-profile-about-heading"
-                className="mt-1 font-display text-heading-sm font-bold text-foreground"
-              >
-                Bắt đầu bằng một lời giới thiệu ngắn
-              </h2>
-              <p className="mt-1 text-ui-sm text-muted-foreground">
-                Tập trung vào cách bạn muốn sống cùng một người khác.
+            <p className={styles.status} data-tone={profileCompleted ? "accent" : undefined} role="status">
+              {profileCompleted
+                ? "Hồ sơ ở ghép đã hoàn thành."
+                : "Hồ sơ chưa sẵn sàng để dùng cho các tương tác ở ghép. Hãy hoàn thành các trường bắt buộc hoặc kiểm tra lại sau."}
+            </p>
+            <section className={styles.section} aria-labelledby="roommate-profile-about-heading">
+              <div>
+                <p className={styles.step}>01 · Về bạn</p>
+                <h2
+                  id="roommate-profile-about-heading"
+                  className="mt-1 font-display text-heading-sm font-bold text-foreground"
+                >
+                  Bạn là người cùng nhà như thế nào?
+                </h2>
+                <p className="mt-1 text-ui-sm text-muted-foreground">
+                  Chia sẻ thói quen, sở thích và điều bạn coi trọng khi sống chung.
+                </p>
+              </div>
+              <TextareaField
+                id="roommate-intro"
+                name="intro"
+                label="Giới thiệu ngắn"
+                hint="Từ 20 đến 500 ký tự. Không đưa thông tin liên hệ hoặc địa chỉ riêng vào đây."
+                required
+                minLength={20}
+                maxLength={500}
+                error={introError ?? undefined}
+                rows={4}
+                placeholder="Ví dụ: Mình đi làm giờ hành chính, thích nấu ăn và giữ không gian chung gọn gàng…"
+                value={profile.intro}
+                onChange={(event) => {
+                  setProfile((current) => ({ ...current, intro: event.target.value }));
+                  if (introError) setIntroError(null);
+                }}
+              />
+              <p aria-live="polite" className="text-right text-ui-xs font-semibold text-muted-foreground">
+                {Array.from(profile.intro).length}/500 ký tự
               </p>
-            </div>
-            <TextareaField
-              id="roommate-intro"
-              name="intro"
-              label="Giới thiệu ngắn"
-              hint="Từ 20 đến 500 ký tự. Chỉ chia sẻ thông tin sinh hoạt phù hợp với mục đích ở ghép."
-              required
-              minLength={20}
-              maxLength={500}
-              error={introError ?? undefined}
-              rows={6}
-              value={profile.intro}
-              onChange={(event) => {
-                setProfile((current) => ({ ...current, intro: event.target.value }));
-                if (introError) setIntroError(null);
+            </section>
+            <RoommateAiPreferencePanel
+              target="PROFILE"
+              onApply={(values) => {
+                setSaved(false);
+                setProfile((current) => ({ ...current, ...(values as Partial<RoommateProfileBody>) }));
               }}
             />
-            <p aria-live="polite" className="text-right text-ui-xs font-semibold text-muted-foreground">
-              {Array.from(profile.intro).length}/500 ký tự
-            </p>
-          </section>
-          <RoommateAiPreferencePanel
-            target="PROFILE"
-            onApply={(values) => setProfile((current) => ({ ...current, ...(values as Partial<RoommateProfileBody>) }))}
-          />
-          <section className="space-y-3" aria-labelledby="roommate-profile-rhythm-heading">
-            <div>
-              <p className="rm-roommate-section-label">Nhịp sống</p>
-              <h2
-                id="roommate-profile-rhythm-heading"
-                className="mt-1 font-display text-heading-sm font-bold text-foreground"
-              >
-                Những điều bạn muốn giữ ổn định
-              </h2>
-              <p className="mt-1 text-ui-sm text-muted-foreground">
-                Các lựa chọn này là bối cảnh để hai bên trao đổi, không phải điểm số.
+            <section className={styles.section} aria-labelledby="roommate-profile-rhythm-heading">
+              <div>
+                <p className={styles.step}>02 · Nhịp sống</p>
+                <h2
+                  id="roommate-profile-rhythm-heading"
+                  className="mt-1 font-display text-heading-sm font-bold text-foreground"
+                >
+                  Thói quen mỗi ngày
+                </h2>
+                <p className="mt-1 text-ui-sm text-muted-foreground">
+                  Chọn mô tả gần với bạn nhất để dễ trao đổi trước khi sống chung.
+                </p>
+              </div>
+              <div className={styles.preferenceGroups}>
+                <LifestyleChoices
+                  name="sleepSchedule"
+                  label="Nhịp sinh hoạt"
+                  value={profile.sleepSchedule}
+                  options={roommateSleepScheduleLabels}
+                  onChange={(value) => {
+                    setSaved(false);
+                    setProfile((current) => ({
+                      ...current,
+                      sleepSchedule: value as RoommateProfileBody["sleepSchedule"]
+                    }));
+                  }}
+                />
+                <LifestyleChoices
+                  name="cleanlinessLevel"
+                  label="Mức độ gọn gàng"
+                  value={profile.cleanlinessLevel}
+                  options={roommateCleanlinessLabels}
+                  onChange={(value) => {
+                    setSaved(false);
+                    setProfile((current) => ({
+                      ...current,
+                      cleanlinessLevel: value as RoommateProfileBody["cleanlinessLevel"]
+                    }));
+                  }}
+                />
+              </div>
+            </section>
+            <section className={styles.section} aria-labelledby="roommate-profile-environment-heading">
+              <div>
+                <p className={styles.step}>03 · Không gian chung</p>
+                <h2
+                  id="roommate-profile-environment-heading"
+                  className="mt-1 font-display text-heading-sm font-bold text-foreground"
+                >
+                  Bạn muốn sống trong môi trường nào?
+                </h2>
+                <p className="mt-1 text-ui-sm text-muted-foreground">
+                  Nói rõ mong muốn về tiếng ồn, thuốc lá và thú cưng.
+                </p>
+              </div>
+              <div className={styles.preferenceGroups}>
+                <LifestyleChoices
+                  name="noisePreference"
+                  label="Ưu tiên không gian"
+                  value={profile.noisePreference}
+                  options={roommateNoiseLabels}
+                  onChange={(value) => {
+                    setSaved(false);
+                    setProfile((current) => ({
+                      ...current,
+                      noisePreference: value as RoommateProfileBody["noisePreference"]
+                    }));
+                  }}
+                />
+                <LifestyleChoices
+                  name="smokingEnvironment"
+                  label="Môi trường thuốc lá"
+                  value={profile.smokingEnvironment}
+                  options={roommateSmokingLabels}
+                  onChange={(value) => {
+                    setSaved(false);
+                    setProfile((current) => ({
+                      ...current,
+                      smokingEnvironment: value as RoommateProfileBody["smokingEnvironment"]
+                    }));
+                  }}
+                />
+                <LifestyleChoices
+                  name="petEnvironment"
+                  label="Thú cưng"
+                  value={profile.petEnvironment}
+                  options={roommatePetLabels}
+                  onChange={(value) => {
+                    setSaved(false);
+                    setProfile((current) => ({
+                      ...current,
+                      petEnvironment: value as RoommateProfileBody["petEnvironment"]
+                    }));
+                  }}
+                />
+              </div>
+            </section>
+            {submitError ? (
+              <p role="alert" className="rm-roommate-callout text-ui-sm font-semibold text-danger" data-tone="danger">
+                {submitError}
               </p>
-            </div>
-            <div className="grid gap-5 sm:grid-cols-2">
-              <SelectField
-                id="roommate-sleep-schedule"
-                name="sleepSchedule"
-                label="Nhịp sinh hoạt"
-                hint="Mô tả khung giờ sinh hoạt thường thấy; không dùng để chấm điểm mức độ phù hợp."
-                value={profile.sleepSchedule}
-                onChange={(event) =>
-                  setProfile((current) => ({
-                    ...current,
-                    sleepSchedule: event.target.value as RoommateProfileBody["sleepSchedule"]
-                  }))
-                }
+            ) : null}
+            {saved ? (
+              <p
+                role="status"
+                className="rm-roommate-callout text-ui-sm font-bold text-success-foreground"
+                data-tone="accent"
               >
-                {Object.entries(roommateSleepScheduleLabels).map(([value, label]) => (
-                  <option key={value} value={value}>
-                    {label}
-                  </option>
-                ))}
-              </SelectField>
-              <SelectField
-                id="roommate-cleanliness"
-                name="cleanlinessLevel"
-                label="Mức độ gọn gàng"
-                hint="Mô tả mong muốn khi dùng không gian chung, không phải tiêu chí đánh giá con người."
-                value={profile.cleanlinessLevel}
-                onChange={(event) =>
-                  setProfile((current) => ({
-                    ...current,
-                    cleanlinessLevel: event.target.value as RoommateProfileBody["cleanlinessLevel"]
-                  }))
-                }
-              >
-                {Object.entries(roommateCleanlinessLabels).map(([value, label]) => (
-                  <option key={value} value={value}>
-                    {label}
-                  </option>
-                ))}
-              </SelectField>
-            </div>
-          </section>
-          <section className="space-y-3" aria-labelledby="roommate-profile-environment-heading">
-            <div>
-              <p className="rm-roommate-section-label">Môi trường sống</p>
-              <h2
-                id="roommate-profile-environment-heading"
-                className="mt-1 font-display text-heading-sm font-bold text-foreground"
-              >
-                Không gian chung phù hợp với bạn
-              </h2>
-              <p className="mt-1 text-ui-sm text-muted-foreground">
-                Nêu rõ các ưu tiên để tránh hiểu nhầm khi bắt đầu trò chuyện.
+                Hồ sơ ở ghép đã được lưu.
               </p>
+            ) : null}
+            <div className={styles.saveBar}>
+              <p className="text-ui-xs text-muted-foreground">
+                {saved ? "Các thay đổi của bạn đã được lưu." : "Bấm lưu để cập nhật nội dung đã chỉnh."}
+              </p>
+              <Button className="w-full sm:w-auto" type="submit" pending={pending} pendingLabel="Đang lưu hồ sơ…">
+                Lưu hồ sơ ở ghép
+              </Button>
             </div>
-            <div className="grid gap-5 sm:grid-cols-2">
-              <SelectField
-                id="roommate-noise"
-                name="noisePreference"
-                label="Ưu tiên không gian"
-                hint="Mô tả cách bạn muốn sử dụng không gian chung để có thêm ngữ cảnh trao đổi."
-                value={profile.noisePreference}
-                onChange={(event) =>
-                  setProfile((current) => ({
-                    ...current,
-                    noisePreference: event.target.value as RoommateProfileBody["noisePreference"]
-                  }))
-                }
-              >
-                {Object.entries(roommateNoiseLabels).map(([value, label]) => (
-                  <option key={value} value={value}>
-                    {label}
-                  </option>
-                ))}
-              </SelectField>
-              <SelectField
-                id="roommate-smoking"
-                name="smokingEnvironment"
-                label="Môi trường thuốc lá"
-                hint="Mô tả môi trường sinh hoạt bạn mong muốn để trao đổi trước."
-                value={profile.smokingEnvironment}
-                onChange={(event) =>
-                  setProfile((current) => ({
-                    ...current,
-                    smokingEnvironment: event.target.value as RoommateProfileBody["smokingEnvironment"]
-                  }))
-                }
-              >
-                {Object.entries(roommateSmokingLabels).map(([value, label]) => (
-                  <option key={value} value={value}>
-                    {label}
-                  </option>
-                ))}
-              </SelectField>
-              <SelectField
-                id="roommate-pets"
-                name="petEnvironment"
-                label="Thú cưng"
-                hint="Mô tả bối cảnh thú cưng để hai bên trao đổi trước khi gặp."
-                value={profile.petEnvironment}
-                onChange={(event) =>
-                  setProfile((current) => ({
-                    ...current,
-                    petEnvironment: event.target.value as RoommateProfileBody["petEnvironment"]
-                  }))
-                }
-              >
-                {Object.entries(roommatePetLabels).map(([value, label]) => (
-                  <option key={value} value={value}>
-                    {label}
-                  </option>
-                ))}
-              </SelectField>
+          </form>
+        </Card>
+        <aside className={styles.sidebar} aria-label="Xem trước hồ sơ ở ghép">
+          <div className={styles.preview}>
+            <p className={styles.step}>Hồ sơ của bạn</p>
+            <div className={styles.identity}>
+              <RoommateAvatar displayName={user?.displayName ?? null} />
+              <div>
+                <h2>{user?.displayName ?? "Người thuê RentMate"}</h2>
+                <p>{saved ? "Đã lưu hồ sơ" : "Bản xem trước nội dung đang chỉnh"}</p>
+              </div>
             </div>
-          </section>
-          {submitError ? (
-            <p role="alert" className="rm-roommate-callout text-ui-sm font-semibold text-danger" data-tone="danger">
-              {submitError}
-            </p>
-          ) : null}
-          {saved ? (
-            <p
-              role="status"
-              className="rm-roommate-callout text-ui-sm font-bold text-success-foreground"
-              data-tone="accent"
-            >
-              Hồ sơ ở ghép đã được lưu.
-            </p>
-          ) : null}
-          <div className="flex flex-wrap items-center justify-between gap-3 border-t border-border pt-5">
-            <p className="text-ui-xs text-muted-foreground">Bạn vẫn cần bấm lưu để cập nhật hồ sơ.</p>
-            <Button className="w-full sm:w-auto" type="submit" pending={pending} pendingLabel="Đang lưu hồ sơ…">
-              Lưu hồ sơ ở ghép
-            </Button>
+            <p className={styles.intro}>{profile.intro.trim() || "Lời giới thiệu của bạn sẽ xuất hiện tại đây."}</p>
+            <dl className={styles.facts}>
+              {[
+                ["Nhịp sinh hoạt", roommateSleepScheduleLabels[profile.sleepSchedule]],
+                ["Gọn gàng", roommateCleanlinessLabels[profile.cleanlinessLevel]],
+                ["Không gian", roommateNoiseLabels[profile.noisePreference]],
+                ["Thuốc lá", roommateSmokingLabels[profile.smokingEnvironment]],
+                ["Thú cưng", roommatePetLabels[profile.petEnvironment]]
+              ].map(([label, value]) => (
+                <div key={label}>
+                  <dt>{label}</dt>
+                  <dd>{value}</dd>
+                </div>
+              ))}
+            </dl>
           </div>
-        </form>
-      </Card>
-      <RoommateVerificationPanel />
+          <RoommateVerificationPanel
+            presentation="compact"
+            className={styles.verification}
+            onEditProfile={() => router.push("/profile")}
+          />
+          <div className={styles.tip}>
+            <Icon name="shield" className="h-5 w-5" />
+            <div>
+              <h3>Chia sẻ vừa đủ, kết nối an tâm</h3>
+              <p>
+                Giữ riêng số điện thoại, địa chỉ chính xác, OTP và thông tin tài chính. Bạn có thể trao đổi thêm khi đã
+                kết nối.
+              </p>
+            </div>
+          </div>
+        </aside>
+      </div>
     </div>
   );
 }

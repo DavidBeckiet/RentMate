@@ -64,7 +64,7 @@ describe("RoommateInterestsPage", () => {
         "RentMate không giữ chỗ, thu tiền hoặc bảo đảm giao dịch giữa người ở ghép. Không chuyển tiền hoặc đặt cọc chỉ dựa vào yêu cầu ở ghép hay tin nhắn. Hãy kiểm tra phòng, người cho thuê và điều kiện thuê trước khi giao dịch."
       )
     ).toBeInTheDocument();
-    expect(screen.getByText("Xác nhận listing và điều kiện thuê với người cho thuê.")).toBeInTheDocument();
+    expect(screen.getByText("Xác nhận phòng và điều kiện thuê với người cho thuê.")).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "Xác nhận chấp nhận" }));
     expect(await screen.findByRole("alert")).toHaveTextContent(
       "Người này cần đóng yêu cầu tìm người ở ghép của họ trước khi có thể kết nối."

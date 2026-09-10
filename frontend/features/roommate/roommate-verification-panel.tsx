@@ -39,6 +39,10 @@ function channelStatusLabel(channel: "email" | "phone", verified: boolean): stri
   return verified ? "Số điện thoại đã xác minh" : "Số điện thoại chưa xác minh";
 }
 
+function channelName(channel: "email" | "phone"): string {
+  return channel === "email" ? "Email" : "Số điện thoại";
+}
+
 function ChannelStatusCard({
   channel,
   status,
@@ -103,15 +107,15 @@ function ChannelStatusCard({
           {requested ? (
             <div className="space-y-3 border-t border-border pt-4">
               <label className="block text-ui-sm font-bold" htmlFor={`roommate-${channel}-verification-code`}>
-                {isEmail ? "Mã xác minh trong email" : "Mã OTP 6 số"}
+                Mã OTP 6 số
               </label>
               <input
                 id={`roommate-${channel}-verification-code`}
                 value={value}
-                maxLength={isEmail ? 200 : 6}
-                inputMode={isEmail ? "text" : "numeric"}
+                maxLength={6}
+                inputMode="numeric"
                 autoComplete="one-time-code"
-                onChange={(event) => onValueChange(event.target.value)}
+                onChange={(event) => onValueChange(event.target.value.replace(/\D/gu, "").slice(0, 6))}
                 className="min-h-11 w-full rounded-control border border-border bg-surface px-3 text-base outline-none transition focus-visible:border-primary focus-visible:ring-4 focus-visible:ring-primary/20"
                 aria-describedby={`roommate-${channel}-verification-hint`}
               />
@@ -134,7 +138,149 @@ function ChannelStatusCard({
   );
 }
 
-export function RoommateVerificationPanel({ className = "" }: Readonly<{ className?: string }> = {}) {
+function CompactChannelStatusCard({
+  channel,
+  status,
+  requested,
+  value,
+  pendingAction,
+  error,
+  onValueChange,
+  onRequest,
+  onConfirm,
+  onEditProfile
+}: Readonly<{
+  channel: "email" | "phone";
+  status: TenantContactVerificationStatus["email"] | TenantContactVerificationStatus["phone"];
+  requested: boolean;
+  value: string;
+  pendingAction: VerificationAction;
+  error: string | null;
+  onValueChange: (value: string) => void;
+  onRequest: () => void;
+  onConfirm: () => void;
+  onEditProfile?: () => void;
+}>) {
+  const isEmail = channel === "email";
+  const destination = isEmail ? ("address" in status ? status.address : "") : "number" in status ? status.number : null;
+  const destinationMissing = !isEmail && !destination;
+  const requestAction = isEmail ? "email-request" : "phone-request";
+  const confirmAction = isEmail ? "email-confirm" : "phone-confirm";
+  const labelId = `tenant-${channel}-verification-label`;
+
+  return (
+    <article className="rounded-control border border-border bg-surface p-4" data-verification-channel={channel}>
+      <div className="flex flex-col gap-3">
+        <div className="flex min-w-0 items-start justify-between gap-3">
+          <div className="min-w-0">
+            <h3 className="font-display text-ui-base font-bold text-foreground">{channelName(channel)}</h3>
+            <p className="mt-1 break-all text-ui-sm text-muted-foreground">
+              {destinationMissing ? "Chưa cập nhật số điện thoại" : destination}
+            </p>
+          </div>
+          <Icon
+            name={status.verified ? "check" : isEmail ? "mail" : "phone"}
+            className="h-5 w-5 shrink-0 text-primary"
+          />
+        </div>
+        <span
+          className={cx(
+            "inline-flex w-fit items-center gap-1.5 rounded-full border px-2.5 py-1 text-ui-xs font-bold",
+            status.verified
+              ? "border-success/30 bg-success-subtle text-success"
+              : "border-border-strong bg-surface-subtle text-muted-foreground"
+          )}
+          role="status"
+        >
+          <Icon name={status.verified ? "check" : "shield"} className="h-3.5 w-3.5" />
+          {channelStatusLabel(channel, status.verified)}
+        </span>
+      </div>
+
+      {!status.verified && destinationMissing ? (
+        <div className="mt-3 flex flex-wrap items-center justify-between gap-2 border-t border-border pt-3">
+          <p className="text-ui-xs leading-5 text-muted-foreground">Thêm số điện thoại để xác minh.</p>
+          {onEditProfile ? (
+            <Button type="button" variant="ghost" size="sm" onClick={onEditProfile}>
+              Thêm số điện thoại
+            </Button>
+          ) : null}
+        </div>
+      ) : null}
+
+      {!status.verified && !destinationMissing && !status.available ? (
+        <p role="note" className="mt-3 border-t border-border pt-3 text-ui-xs leading-5 text-muted-foreground">
+          Kênh gửi mã hiện chưa khả dụng. Vui lòng thử lại sau.
+        </p>
+      ) : null}
+
+      {!status.verified && !destinationMissing && status.available ? (
+        <div className="mt-3 space-y-3 border-t border-border pt-3">
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            pending={pendingAction === requestAction}
+            pendingLabel="Đang gửi…"
+            onClick={onRequest}
+          >
+            {requested ? "Gửi lại mã" : `Xác minh ${isEmail ? "email" : "số điện thoại"}`}
+          </Button>
+          <p className="text-ui-xs leading-5 text-muted-foreground">
+            {isEmail ? "Mã trong email có hiệu lực trong 30 phút." : "Mã OTP có hiệu lực trong 5 phút."}
+          </p>
+          {requested ? (
+            <div className="space-y-2">
+              <label className="block text-ui-xs font-bold text-foreground" htmlFor={labelId}>
+                Mã OTP 6 số
+              </label>
+              <input
+                id={labelId}
+                value={value}
+                maxLength={6}
+                inputMode="numeric"
+                autoComplete="one-time-code"
+                onChange={(event) => onValueChange(event.target.value.replace(/\D/gu, "").slice(0, 6))}
+                className="min-h-11 w-full rounded-control border border-border bg-surface px-3 text-base outline-none transition focus-visible:border-primary focus-visible:ring-4 focus-visible:ring-primary/20"
+              />
+              <Button
+                type="button"
+                size="sm"
+                pending={pendingAction === confirmAction}
+                pendingLabel="Đang xác nhận…"
+                onClick={onConfirm}
+              >
+                Xác nhận {isEmail ? "email" : "số điện thoại"}
+              </Button>
+            </div>
+          ) : null}
+        </div>
+      ) : null}
+
+      {error ? (
+        <p role="alert" className="mt-3 text-ui-xs font-semibold leading-5 text-danger">
+          {error}
+        </p>
+      ) : null}
+    </article>
+  );
+}
+
+interface RoommateVerificationPanelProps {
+  readonly className?: string;
+  readonly presentation?: "roommate" | "compact";
+  readonly refreshKey?: number;
+  readonly onStatusChange?: (status: TenantContactVerificationStatus) => void;
+  readonly onEditProfile?: () => void;
+}
+
+export function RoommateVerificationPanel({
+  className = "",
+  presentation = "roommate",
+  refreshKey = 0,
+  onStatusChange,
+  onEditProfile
+}: RoommateVerificationPanelProps = {}) {
   const { status: authStatus, user } = useAuth();
   const ready = authStatus === "authenticated" && user?.role === "TENANT" && user.isActive;
   const [verification, setVerification] = useState<TenantContactVerificationStatus | null>(null);
@@ -159,6 +305,7 @@ export function RoommateVerificationPanel({ className = "" }: Readonly<{ classNa
       .then((result) => {
         if (controller.signal.aborted) return;
         setVerification(result);
+        onStatusChange?.(result);
         setLoadState("success");
       })
       .catch((caught: unknown) => {
@@ -167,7 +314,7 @@ export function RoommateVerificationPanel({ className = "" }: Readonly<{ classNa
         setLoadState("error");
       });
     return () => controller.abort();
-  }, [ready, retryKey]);
+  }, [onStatusChange, ready, refreshKey, retryKey]);
 
   if (!ready) return null;
 
@@ -182,6 +329,7 @@ export function RoommateVerificationPanel({ className = "" }: Readonly<{ classNa
     try {
       const result = await operation();
       setVerification(result);
+      onStatusChange?.(result);
       if (channel === "email") {
         setEmailRequested(action === "email-request" && !result.email.verified);
         if (result.email.verified) setEmailToken("");
@@ -200,8 +348,8 @@ export function RoommateVerificationPanel({ className = "" }: Readonly<{ classNa
 
   const requestEmail = () => void runAction("email-request", "email", () => api.users.requestTenantEmailVerification());
   const confirmEmail = () => {
-    if (!emailToken.trim()) {
-      setEmailError("Hãy nhập mã xác minh trong email.");
+    if (!/^\d{6}$/u.test(emailToken)) {
+      setEmailError("Hãy nhập đúng mã OTP email gồm 6 số.");
       return;
     }
     void runAction("email-confirm", "email", () => api.users.confirmTenantEmailVerification(emailToken.trim()));
@@ -214,6 +362,78 @@ export function RoommateVerificationPanel({ className = "" }: Readonly<{ classNa
     }
     void runAction("phone-confirm", "phone", () => api.users.confirmTenantPhoneVerification(phoneCode.trim()));
   };
+
+  if (presentation === "compact") {
+    return (
+      <Card
+        padding="none"
+        aria-labelledby="tenant-verification-heading"
+        className={cx("min-w-0 p-4 sm:p-5", className)}
+      >
+        <header>
+          <p className="rm-workspace-eyebrow">Bảo vệ thông tin liên hệ</p>
+          <h2 id="tenant-verification-heading" className="mt-2 font-display text-heading-sm font-bold text-foreground">
+            Xác minh liên hệ
+          </h2>
+          <p className="mt-2 text-ui-sm leading-6 text-muted-foreground">
+            Xác minh từng kênh để thông tin liên hệ của bạn rõ ràng hơn.
+          </p>
+        </header>
+        {loadState === "loading" || loadState === "idle" ? (
+          <p className="mt-4 rounded-control bg-surface-subtle p-3 text-ui-sm text-muted-foreground" role="status">
+            Đang tải trạng thái xác minh…
+          </p>
+        ) : null}
+        {loadState === "error" ? (
+          <div className="mt-4 space-y-3">
+            <p role="alert" className="rounded-control bg-danger-subtle p-3 text-ui-sm font-semibold text-danger">
+              {loadError ?? "Không thể tải trạng thái xác minh."}
+            </p>
+            <Button type="button" variant="outline" size="sm" onClick={() => setRetryKey((value) => value + 1)}>
+              Thử lại
+            </Button>
+          </div>
+        ) : null}
+        {loadState === "success" && verification ? (
+          <div className="mt-4 grid gap-3">
+            <CompactChannelStatusCard
+              channel="email"
+              status={verification.email}
+              requested={emailRequested}
+              value={emailToken}
+              pendingAction={pendingAction}
+              error={emailError}
+              onValueChange={(value) => {
+                setEmailToken(value);
+                setEmailError(null);
+              }}
+              onRequest={requestEmail}
+              onConfirm={confirmEmail}
+              onEditProfile={onEditProfile}
+            />
+            <CompactChannelStatusCard
+              channel="phone"
+              status={verification.phone}
+              requested={phoneRequested}
+              value={phoneCode}
+              pendingAction={pendingAction}
+              error={phoneError}
+              onValueChange={(value) => {
+                setPhoneCode(value.replace(/\D/gu, "").slice(0, 6));
+                setPhoneError(null);
+              }}
+              onRequest={requestPhone}
+              onConfirm={confirmPhone}
+              onEditProfile={onEditProfile}
+            />
+          </div>
+        ) : null}
+        <p className="mt-4 text-ui-xs leading-5 text-muted-foreground">
+          Xác minh email hoặc số điện thoại chỉ xác nhận kênh liên hệ, không đảm bảo an toàn giao dịch.
+        </p>
+      </Card>
+    );
+  }
 
   return (
     <Card

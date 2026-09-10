@@ -130,7 +130,7 @@ test("tenant contact verification exposes exactly the owner-private factual DTO"
 
 test("tenant verification routes accept only the frozen request shapes and keep role boundaries", async () => {
   assert.equal((await request("/tenant/verifications/email/request", "POST", {})).status, 200);
-  assert.equal((await request("/tenant/verifications/email/confirm", "POST", { token: "x".repeat(32) })).status, 200);
+  assert.equal((await request("/tenant/verifications/email/confirm", "POST", { code: "123456" })).status, 200);
   assert.equal((await request("/tenant/verifications/phone/request", "POST", {})).status, 200);
   assert.equal((await request("/tenant/verifications/phone/confirm", "POST", { code: "123456" })).status, 200);
   assert.deepEqual(calls.slice(1), ["email-request", "email-confirm", "phone-request", "phone-confirm"]);

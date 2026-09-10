@@ -10,12 +10,17 @@ export function ComparisonToggle({ listingId, compact = false }: Readonly<{ list
   const selected = contains(listingId);
   const messageId = useId();
   const [message, setMessage] = useState("");
+  const [showCompactMessage, setShowCompactMessage] = useState(false);
   const compactLabel = selected ? "Bỏ khỏi so sánh" : "Thêm vào so sánh";
 
-  useEffect(() => setMessage(""), [listingId]);
+  useEffect(() => {
+    setMessage("");
+    setShowCompactMessage(false);
+  }, [listingId]);
 
   const activate = () => {
     const outcome = toggle(listingId);
+    setShowCompactMessage(outcome === "limit");
     setMessage(
       outcome === "limit"
         ? "Bạn chỉ có thể so sánh tối đa 4 tin."
@@ -41,7 +46,13 @@ export function ComparisonToggle({ listingId, compact = false }: Readonly<{ list
       </Button>
       <span
         id={messageId}
-        className={compact ? "sr-only" : "mt-2 block text-ui-xs font-semibold text-muted-foreground"}
+        className={
+          compact
+            ? showCompactMessage
+              ? "mt-2 block max-w-40 text-center text-ui-xs font-semibold text-muted-foreground"
+              : "sr-only"
+            : "mt-2 block text-ui-xs font-semibold text-muted-foreground"
+        }
         aria-live="polite"
       >
         {message}

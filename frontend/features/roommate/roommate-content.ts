@@ -16,12 +16,12 @@ export const roommateSafetyCopy = Object.freeze({
   checklist: [
     "Trao đổi qua RentMate trước.",
     "Xem phòng thực tế khi có thể.",
-    "Xác nhận listing và điều kiện thuê với người cho thuê.",
+    "Xác nhận phòng và điều kiện thuê với người cho thuê.",
     "Không chuyển tiền hoặc đặt cọc chỉ dựa vào tin nhắn.",
     "Không chia sẻ OTP, mật khẩu hoặc thông tin tài chính nhạy cảm.",
     "Báo cáo và ngừng tương tác nếu thấy hành vi đáng ngờ."
   ] as const,
-  linkedMeaning: "Tenant đang tìm một người để cân nhắc cùng thuê listing này."
+  linkedMeaning: "Người thuê đang tìm một người để cân nhắc cùng thuê phòng này."
 });
 
 export const roommateSleepScheduleLabels: Record<RoommateSleepSchedule, string> = {
@@ -73,9 +73,9 @@ export const roommateInterestStatusLabels: Record<RoommateInterestStatus, string
 export const roommateReportCategoryLabels: Record<RoommateReportCategory, string> = {
   FRAUD: "Có dấu hiệu lừa đảo",
   PAYMENT_SCAM: "Yêu cầu thanh toán đáng ngờ",
-  SPAM: "Spam",
+  SPAM: "Nội dung rác / spam",
   HARASSMENT: "Quấy rối",
-  IMPERSONATION: "Mạo danh",
+  IMPERSONATION: "Giả mạo danh tính",
   INAPPROPRIATE_CONTENT: "Nội dung không phù hợp",
   OTHER: "Lý do khác"
 };

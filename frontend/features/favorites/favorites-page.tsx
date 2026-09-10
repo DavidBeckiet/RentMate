@@ -3,6 +3,8 @@
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { Icon } from "../../components/ui/icon";
+import workspace from "../auth/tenant-workspace.module.css";
 import { Button } from "../../components/ui/button";
 import { EmptyState, ErrorState, LoadingState } from "../../components/ui/feedback-states";
 import { Pagination } from "../../components/ui/pagination";
@@ -10,6 +12,7 @@ import { api, ApiError } from "../../lib/api/client";
 import { useAuth } from "../../lib/auth/auth-provider";
 import type { ApiPage, PublicListingSummary } from "../../types/api";
 import { ListingCard } from "../listings/listing-card";
+import { useFavoriteState } from "./favorite-state";
 import { FavoriteRemoveControl } from "./favorite-remove-control";
 import styles from "./favorites-page.module.css";
 
@@ -63,10 +66,17 @@ function favoritesErrorMessage(error: ApiError | null): string {
 
 function PageHeader() {
   return (
-    <header className={styles.pageHeader}>
-      <p className={styles.eyebrow}>Bộ sưu tập của bạn</p>
-      <h1 id="favorites-heading">Tin đã lưu</h1>
-      <p>Chỉ các tin đã lưu hiện đang công khai được hiển thị. Tin tạm ngừng công khai có thể không xuất hiện ở đây.</p>
+    <header className={workspace.header}>
+      <div>
+        <p className={`${styles.eyebrow} inline-flex items-center gap-2`}>
+          <Icon name="heart" className="h-4 w-4" /> Bộ sưu tập của bạn
+        </p>
+        <h1 id="favorites-heading">Tin đã lưu</h1>
+        <p>Xem lại những căn phòng bạn yêu thích và tiếp tục tìm nơi phù hợp.</p>
+      </div>
+      <Link href="/search" className={workspace.link}>
+        <Icon name="search" className="h-4 w-4" /> Khám phá thêm
+      </Link>
     </header>
   );
 }
@@ -80,6 +90,7 @@ export function FavoritesPage() {
   const requestedPageSize = parsed.ok ? parsed.pageSize : undefined;
   const queryIdentity = parsed.ok ? `${requestedPage}:${requestedPageSize ?? "default"}` : `invalid:${rawQuery}`;
   const { status: authStatus, user, error: authError, refresh } = useAuth();
+  const { syncFromPage } = useFavoriteState({ autoLoad: false });
   const isTenant = authStatus === "authenticated" && user?.role === "TENANT";
   const [result, setResult] = useState<ApiPage<PublicListingSummary> | null>(null);
   const [status, setStatus] = useState<FavoritesStatus>("idle");
@@ -112,6 +123,10 @@ export function FavoritesPage() {
             replace(favoritesUrl(requestedPage - 1, requestedPageSize));
             return;
           }
+          syncFromPage(
+            page.data.map((listing) => listing.id),
+            requestedPage === 1 && !page.pagination.hasNextPage
+          );
           setResult(page);
           setStatus("success");
         })
@@ -128,7 +143,7 @@ export function FavoritesPage() {
 
       return { controller, promise };
     },
-    [refresh, replace, requestedPage, requestedPageSize]
+    [refresh, replace, requestedPage, requestedPageSize, syncFromPage]
   );
 
   useEffect(() => {
@@ -220,29 +235,41 @@ export function FavoritesPage() {
           <div className={styles.listingGrid} aria-label="Tin đã lưu hiện đang công khai">
             {result.data.map((listing) => (
               <div key={listing.id} className={styles.listingItem}>
-                <ListingCard listing={listing} />
+                <ListingCard
+                  listing={listing}
+                  favoriteSaved
+                  onFavoriteChange={(saved) => (saved ? undefined : reconcileRemoval())}
+                />
                 <div className={styles.removeRow} aria-label={`Thao tác cho ${listing.title}`}>
-                  <FavoriteRemoveControl listingId={listing.id} onRemoved={reconcileRemoval} />
+                  <FavoriteRemoveControl listingId={listing.id} autoLoad={false} onRemoved={reconcileRemoval} />
                 </div>
               </div>
             ))}
           </div>
         )}
 
-        <Pagination
-          ariaLabel="Phân trang tin đã lưu"
-          page={result.pagination.page}
-          hasNextPage={result.pagination.hasNextPage}
-          onPrevious={() => push(favoritesUrl(result.pagination.page - 1, requestedPageSize))}
-          onNext={() => push(favoritesUrl(result.pagination.page + 1, requestedPageSize))}
-        />
+        {result.pagination.page > 1 || result.pagination.hasNextPage ? (
+          <Pagination
+            ariaLabel="Phân trang tin đã lưu"
+            compact
+            className="w-fit max-w-full"
+            page={result.pagination.page}
+            hasNextPage={result.pagination.hasNextPage}
+            onPrevious={() => push(favoritesUrl(result.pagination.page - 1, requestedPageSize))}
+            onNext={() => push(favoritesUrl(result.pagination.page + 1, requestedPageSize))}
+          />
+        ) : null}
       </div>
     );
   }
 
   return (
-    <section aria-labelledby="favorites-heading" className={`${styles.favorites} rm-workspace space-y-8`}>
+    <section aria-labelledby="favorites-heading" className={workspace.page}>
       <PageHeader />
+      <p className="flex items-start gap-2 text-sm leading-6 text-muted-foreground">
+        <Icon name="eye" className="mt-1 h-4 w-4 shrink-0" /> Chỉ các tin đã lưu hiện đang công khai được hiển thị. Tin
+        tạm ngừng công khai có thể không xuất hiện ở đây.
+      </p>
       {content}
     </section>
   );

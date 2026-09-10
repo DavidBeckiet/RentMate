@@ -1,5 +1,9 @@
 # RentMate hướng dẫn triển khai
 
+> Tài liệu này mô tả đường triển khai production của compatibility backend được giữ lại. Với topology microservices
+> dùng cho demo tốt nghiệp hiện tại (Gateway `:4001`, Identity, Listing, Engagement, Verification Delivery và
+> PostgreSQL), hãy dùng [LOCAL_DEMO_RUNBOOK.md](LOCAL_DEMO_RUNBOOK.md). Không dùng tài liệu này để khởi động demo local.
+
 Hướng dẫn này mô tả bản phát hành sản xuất trung lập với nền tảng. Nó không chọn nhà cung cấp dịch vụ lưu trữ, miền, cơ sở dữ liệu,
 tài khoản nhà cung cấp hoặc nhà điều hành dự phòng. Việc diễn tập cấu hình thành công không phải là bằng chứng cho thấy quá trình sản xuất đã được triển khai.
 

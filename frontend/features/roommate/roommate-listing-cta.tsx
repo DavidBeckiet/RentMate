@@ -24,7 +24,7 @@ export function RoommateListingCta({ listingId, eligible }: Readonly<{ listingId
           <Link className="font-bold underline decoration-2 underline-offset-4" href="/login">
             Đăng nhập bằng tài khoản người thuê
           </Link>{" "}
-          để tìm người ở ghép cho listing này.
+          để tìm người ở ghép cho tin đăng này.
         </p>
       </div>
     );
@@ -62,7 +62,7 @@ export function RoommateListingCta({ listingId, eligible }: Readonly<{ listingId
         <p className="mt-1 text-ui-sm leading-6 text-muted-foreground">{roommateSafetyCopy.linkedMeaning}</p>
       </div>
       <Button className="w-full" pending={pending} pendingLabel="Đang kiểm tra hồ sơ…" onClick={() => void begin()}>
-        <Icon name="users" className="h-4 w-4" /> Tìm người ở ghép cho listing này
+        <Icon name="users" className="h-4 w-4" /> Tìm người ở ghép cho tin đăng này
       </Button>
       {error ? (
         <p role="alert" className="rm-roommate-callout text-ui-sm font-semibold text-danger" data-tone="danger">

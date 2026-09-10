@@ -24,10 +24,10 @@ export function createUsersApi(transport: ApiTransport) {
     requestEmailVerification: (signal?: AbortSignal): Promise<ContactVerificationStatus> =>
       transport.object("/api/v1/landlord/verifications/email/request", { method: "POST", json: {}, signal }),
 
-    confirmEmailVerification: (token: string, signal?: AbortSignal): Promise<ContactVerificationStatus> =>
+    confirmEmailVerification: (code: string, signal?: AbortSignal): Promise<ContactVerificationStatus> =>
       transport.object("/api/v1/landlord/verifications/email/confirm", {
         method: "POST",
-        json: { token },
+        json: { code },
         signal
       }),
 
@@ -47,10 +47,10 @@ export function createUsersApi(transport: ApiTransport) {
     requestTenantEmailVerification: (signal?: AbortSignal): Promise<TenantContactVerificationStatus> =>
       transport.object("/api/v1/tenant/verifications/email/request", { method: "POST", json: {}, signal }),
 
-    confirmTenantEmailVerification: (token: string, signal?: AbortSignal): Promise<TenantContactVerificationStatus> =>
+    confirmTenantEmailVerification: (code: string, signal?: AbortSignal): Promise<TenantContactVerificationStatus> =>
       transport.object("/api/v1/tenant/verifications/email/confirm", {
         method: "POST",
-        json: { token },
+        json: { code },
         signal
       }),
 

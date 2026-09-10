@@ -33,6 +33,11 @@ import type {
   RoommateRepository,
   RoommateRequestRecord
 } from "../repositories/roommate-repository.js";
+import { areaMatches } from "@rentmate/service-shared/area-domain";
+import type {
+  RoommateReportAcknowledgement,
+  RoommateSafetyRepository
+} from "../repositories/roommate-safety-repository.js";
 import {
   createRoommateCompatibilityAreaSet,
   createRoommateCompatibilityBudgetInterval,
@@ -81,6 +86,7 @@ export interface RoommateRequestView {
   readonly profile: RoommateProfileView | null;
   readonly listing: PublicListingSummary | null;
   readonly compatibility?: RoommateCompatibilityResult | null;
+  readonly reporting?: RoommateReportAcknowledgement;
   readonly signals: Readonly<{
     readonly profileCompleted: boolean;
     readonly requestOpen: boolean;
@@ -191,6 +197,7 @@ export interface RoommateService {
 
 interface RoommateDependencies {
   readonly repository: RoommateRepository;
+  readonly safetyRepository?: Pick<RoommateSafetyRepository, "findReportAcknowledgement">;
   readonly identityAccountClient: Pick<
     import("../../../../../shared/identity-account-client.js").IdentityAccountClient,
     "loadRoommateTenantProjectionsByIds"
@@ -348,8 +355,7 @@ function matchesLocalDiscoveryFilters(candidate: RoommateDiscoveryCandidate, que
   if (query.moveInFrom !== null && candidate.moveInUntil < query.moveInFrom) return false;
   if (query.moveInUntil !== null && candidate.moveInFrom > query.moveInUntil) return false;
   if (query.area !== null && candidate.listingId === null) {
-    const normalizedArea = query.area.toLocaleLowerCase("vi-VN");
-    if (!candidate.preferredAreaKeys.some((area) => area.toLocaleLowerCase("vi-VN").includes(normalizedArea))) {
+    if (!candidate.preferredAreaKeys.some((area) => areaMatches(area, query.area))) {
       return false;
     }
   }
@@ -480,12 +486,17 @@ function resolveCallerCompatibilityIntent(
 export function createRoommateService(dependencies: RoommateDependencies): RoommateService {
   const {
     repository,
+    safetyRepository,
     identityAccountClient,
     listingCatalogClient,
     transactionRunner,
     maximumPendingOutgoingInterests = defaultRoommatePendingInterestLimit,
     now = () => new Date()
   } = dependencies;
+  const emptyReportAcknowledgement = Object.freeze({
+    profileHasReported: false,
+    requestHasReported: false
+  });
   if (
     !Number.isSafeInteger(maximumPendingOutgoingInterests) ||
     maximumPendingOutgoingInterests < 1 ||
@@ -610,7 +621,8 @@ export function createRoommateService(dependencies: RoommateDependencies): Roomm
     profileByTenant?: ReadonlyMap<number, RoommateProfileRecord>,
     identityProjections?: readonly IdentityRoommateTenantProjection[],
     listingMap?: ReadonlyMap<number, PublicListingSummary>,
-    compatibilityByRequestId?: ReadonlyMap<number, RoommateCompatibilityResult | null>
+    compatibilityByRequestId?: ReadonlyMap<number, RoommateCompatibilityResult | null>,
+    reportingByRequestId?: ReadonlyMap<number, RoommateReportAcknowledgement>
   ): Promise<readonly RoommateRequestView[]> => {
     if (records.length === 0) return Object.freeze([]);
     const profiles = profileByTenant ?? new Map<number, RoommateProfileRecord>();
@@ -648,6 +660,9 @@ export function createRoommateService(dependencies: RoommateDependencies): Roomm
           profile: visibleProfile,
           listing,
           ...(compatibilityByRequestId ? { compatibility: compatibilityByRequestId.get(record.id) ?? null } : {}),
+          ...(reportingByRequestId
+            ? { reporting: reportingByRequestId.get(record.id) ?? emptyReportAcknowledgement }
+            : {}),
           signals: Object.freeze({
             profileCompleted: visibleProfile?.profileCompleted === true,
             requestOpen: record.status === "OPEN" && new Date(record.expiresAt).getTime() > currentTime.getTime(),
@@ -894,14 +909,7 @@ export function createRoommateService(dependencies: RoommateDependencies): Roomm
           if (candidate.listingId !== null) {
             const listing = listings.get(candidate.listingId);
             if (!listing) return false;
-            if (
-              query.area !== null &&
-              !listing.areaName
-                .normalize("NFC")
-                .toLocaleLowerCase("vi-VN")
-                .includes(query.area.toLocaleLowerCase("vi-VN"))
-            )
-              return false;
+            if (query.area !== null && !areaMatches(listing.areaName, query.area)) return false;
           }
           return true;
         });
@@ -969,7 +977,15 @@ export function createRoommateService(dependencies: RoommateDependencies): Roomm
           const profile = await repository.findProfile(executor, request.ownerTenantId);
           if (!profileComplete(profile)) throw new ApplicationError("RESOURCE_NOT_FOUND", notFoundMessage);
         }
-        return { request, owner };
+        const reporting =
+          !owner && safetyRepository
+            ? await safetyRepository.findReportAcknowledgement(executor, {
+                reporterTenantId: tenantId,
+                requestId: request.id,
+                subjectTenantId: request.ownerTenantId
+              })
+            : emptyReportAcknowledgement;
+        return { request, owner, reporting };
       });
       const profile = await transactionRunner.run((executor) =>
         repository.findProfile(executor, result.request.ownerTenantId)
@@ -981,7 +997,8 @@ export function createRoommateService(dependencies: RoommateDependencies): Roomm
           undefined,
           undefined,
           undefined,
-          new Map([[result.request.id, null]])
+          new Map([[result.request.id, null]]),
+          new Map([[result.request.id, result.reporting]])
         );
         return view!;
       }
@@ -1008,7 +1025,8 @@ export function createRoommateService(dependencies: RoommateDependencies): Roomm
         new Map([[result.request.ownerTenantId, profile]]),
         undefined,
         candidateListings,
-        compatibilityByRequestId
+        compatibilityByRequestId,
+        new Map([[result.request.id, result.reporting]])
       );
       if (!view) throw new Error("Roommate request could not be decorated.");
       if (!result.owner && view.profile?.profileCompleted !== true) {

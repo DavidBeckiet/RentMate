@@ -9,7 +9,9 @@ import { Dialog } from "../../components/ui/dialog";
 import { EmptyState, ErrorState, LoadingState } from "../../components/ui/feedback-states";
 import { InputField, TextareaField } from "../../components/ui/form-controls";
 import { Icon } from "../../components/ui/icon";
+import styles from "./roommate-request.module.css";
 import { api, ApiError } from "../../lib/api/client";
+import { formatAreaLabel } from "../../lib/area";
 import { useAuth } from "../../lib/auth/auth-provider";
 import type { PublicListingSummary, RoommateRequest } from "../../types/api";
 import { RoommateAiPreferencePanel } from "./roommate-ai-preference-panel";
@@ -61,8 +63,8 @@ interface RequestFeedback {
 const requestFeedbackMessages: Record<RequestFeedbackKind, string> = {
   created: "Yêu cầu đã được tạo.",
   updated: "Đã lưu thay đổi của yêu cầu.",
-  linked: "Đã liên kết listing đã chọn.",
-  unlinked: "Đã gỡ liên kết listing. Yêu cầu hiện tiếp tục theo bối cảnh cùng tìm listing.",
+  linked: "Đã gắn phòng đã chọn.",
+  unlinked: "Đã gỡ phòng. Bạn có thể tiếp tục cùng tìm phòng phù hợp.",
   cancelled: "Yêu cầu đã được hủy.",
   renewed: "Yêu cầu đã được gia hạn thêm 30 ngày. Các lời quan tâm cũ không được khôi phục."
 };
@@ -81,7 +83,7 @@ function defaultValues(): RequestFormValues {
 
 function valuesFromRequest(request: RoommateRequest): RequestFormValues {
   return {
-    areas: request.preferredAreaKeys.join(", "),
+    areas: request.preferredAreaKeys.map(formatAreaLabel).join(", "),
     budgetMinPerPerson: String(request.budgetMinPerPerson),
     budgetMaxPerPerson: String(request.budgetMaxPerPerson),
     moveInFrom: request.moveInFrom,
@@ -182,11 +184,11 @@ function ListingPicker({
     >
       <div>
         <h3 id="roommate-listing-picker-title" className="font-display text-ui-base font-bold">
-          Chọn listing công khai
+          Chọn phòng đang được đăng
         </h3>
         <p className="mt-1 text-ui-sm leading-6 text-muted-foreground">
-          Chỉ các listing công khai có sức chứa từ 2 người được đưa vào danh sách. Điều kiện luôn được máy chủ kiểm tra
-          lại khi tạo hoặc liên kết yêu cầu.
+          Danh sách gồm các phòng đang được đăng, có sức chứa từ 2 người. Bạn có thể chọn phòng để cùng cân nhắc trước
+          khi liên hệ chủ nhà.
         </p>
       </div>
       {selected ? (
@@ -194,8 +196,8 @@ function ListingPicker({
           <div>
             <p className="font-semibold">{selected.title}</p>
             <p className="mt-1 text-ui-sm text-muted-foreground">
-              {selected.areaName} · {formatRoommateMoney(selected.monthlyRent)} / tháng · tối đa {selected.maxOccupants}{" "}
-              người
+              {formatAreaLabel(selected.areaName)} · {formatRoommateMoney(selected.monthlyRent)} / tháng · tối đa{" "}
+              {selected.maxOccupants} người
             </p>
           </div>
           <Button variant="secondary" size="sm" onClick={() => onSelect(null)}>
@@ -205,7 +207,7 @@ function ListingPicker({
       ) : null}
       <div className="flex flex-col gap-2 sm:flex-row">
         <label className="sr-only" htmlFor="roommate-listing-search">
-          Tìm listing công khai
+          Tìm phòng đang được đăng
         </label>
         <input
           id="roommate-listing-search"
@@ -221,7 +223,7 @@ function ListingPicker({
           className="min-h-12 min-w-0 flex-1 rounded-control border border-border-strong bg-surface px-4 text-ui-sm font-medium text-foreground outline-none focus:border-primary focus:ring-[3px] focus:ring-primary/20"
         />
         <Button pending={state === "loading"} pendingLabel="Đang tìm…" onClick={() => void search()}>
-          <Icon name="search" className="h-4 w-4" /> Tìm listing
+          <Icon name="search" className="h-4 w-4" /> Tìm phòng
         </Button>
       </div>
       {state === "error" && error ? (
@@ -230,14 +232,14 @@ function ListingPicker({
         </p>
       ) : null}
       {state === "success" && items.length === 0 ? (
-        <p className="text-ui-sm text-muted-foreground">Không có listing công khai phù hợp.</p>
+        <p className="text-ui-sm text-muted-foreground">Chưa tìm thấy phòng phù hợp.</p>
       ) : null}
       {items.length > 0 ? (
-        <ul className="grid gap-3 sm:grid-cols-2" aria-label="Kết quả listing công khai">
+        <ul className="grid gap-3 sm:grid-cols-2" aria-label="Kết quả tìm phòng">
           {items.map((listing) => (
             <li key={listing.id} className="rm-roommate-card rm-roommate-card-static p-4">
               <p className="font-semibold">{listing.title}</p>
-              <p className="mt-1 text-ui-xs leading-5 text-muted-foreground">{listing.areaName}</p>
+              <p className="mt-1 text-ui-xs leading-5 text-muted-foreground">{formatAreaLabel(listing.areaName)}</p>
               <p className="mt-2 text-ui-sm font-bold">{formatRoommateMoney(listing.monthlyRent)} / tháng</p>
               <Button
                 className="mt-3 w-full"
@@ -245,7 +247,7 @@ function ListingPicker({
                 size="sm"
                 onClick={() => onSelect(selectedFromSummary(listing))}
               >
-                Chọn listing này
+                Chọn phòng này
               </Button>
             </li>
           ))}
@@ -265,7 +267,7 @@ function RequestFields({
   requireArea: boolean;
 }>) {
   return (
-    <div className="grid gap-5 sm:grid-cols-2">
+    <div className={`grid gap-5 sm:grid-cols-2 ${styles.fields}`}>
       <div className="sm:col-span-2">
         <p className="rm-roommate-section-label">Khu vực</p>
         <p className="mt-1 text-ui-sm text-muted-foreground">Bạn muốn tìm người ở ghép quanh đâu?</p>
@@ -278,10 +280,11 @@ function RequestFields({
           hint={
             requireArea
               ? "Nhập từ 1 đến 5 khu vực, ngăn cách bằng dấu phẩy."
-              : "Tùy chọn khi đã gắn listing, tối đa 5 khu vực."
+              : "Tùy chọn khi đã chọn phòng, tối đa 5 khu vực."
           }
           required={requireArea}
           value={values.areas}
+          placeholder="Ví dụ: Quận 3, Bình Thạnh"
           maxLength={600}
           onChange={(event) => onChange({ ...values, areas: event.target.value })}
         />
@@ -294,7 +297,8 @@ function RequestFields({
         id="roommate-request-budget-min"
         name="budgetMinPerPerson"
         label="Ngân sách tối thiểu mỗi người"
-        hint="Nhập số tiền bằng VND."
+        hint="đ/người/tháng"
+        placeholder="Ví dụ: 3.000.000"
         required
         type="number"
         min="1"
@@ -306,7 +310,8 @@ function RequestFields({
         id="roommate-request-budget-max"
         name="budgetMaxPerPerson"
         label="Ngân sách tối đa mỗi người"
-        hint="Nhập số tiền bằng VND."
+        hint="đ/người/tháng"
+        placeholder="Ví dụ: 5.000.000"
         required
         type="number"
         min="1"
@@ -347,7 +352,8 @@ function RequestFields({
           label="Ghi chú thêm"
           hint="Không bắt buộc, tối đa 500 ký tự. Không chia sẻ thông tin liên hệ hoặc tài chính."
           maxLength={500}
-          rows={4}
+          rows={3}
+          placeholder="Điều bạn mong muốn ở người cùng nhà…"
           value={values.note}
           onChange={(event) => onChange({ ...values, note: event.target.value })}
         />
@@ -381,7 +387,7 @@ function CreateRequestForm({
         if (controller.signal.aborted) return;
         const candidate = selectedFromDetail(listing);
         if (!isEligibleListing(candidate)) {
-          setListingError("Listing này hiện không đủ điều kiện để tạo yêu cầu ở ghép.");
+          setListingError("Phòng này hiện không đủ điều kiện để tạo yêu cầu ở ghép.");
           setListingLoadState("idle");
           return;
         }
@@ -401,11 +407,11 @@ function CreateRequestForm({
     event.preventDefault();
     const areas = parseAreaKeys(values.areas);
     if (mode === "UNLINKED" && areas.length === 0) {
-      setError("Hãy nhập ít nhất một khu vực quan tâm cho yêu cầu chưa gắn listing.");
+      setError("Hãy nhập ít nhất một khu vực quan tâm cho yêu cầu chưa chọn phòng cụ thể.");
       return;
     }
     if (mode === "LINKED" && !selectedListing) {
-      setError("Hãy chọn một listing công khai phù hợp trước khi tạo yêu cầu.");
+      setError("Hãy chọn một phòng đang được đăng phù hợp trước khi tạo yêu cầu.");
       return;
     }
     if (!values.budgetMinPerPerson || !values.budgetMaxPerPerson || !values.moveInFrom || !values.moveInUntil) {
@@ -433,16 +439,15 @@ function CreateRequestForm({
   };
 
   return (
-    <Card className="rm-roommate-card-static space-y-5">
+    <Card className={`rm-roommate-card-static space-y-5 ${styles.create}`}>
       <div>
         <p className="rm-roommate-section-label">Nhu cầu tìm chỗ</p>
         <h2 className="mt-1 font-display text-heading-md font-bold text-foreground">Tạo yêu cầu tìm người ở ghép</h2>
         <p className="mt-2 text-ui-sm leading-6 text-muted-foreground">
-          Chọn một trong hai bối cảnh. Liên kết listing chỉ là ngữ cảnh để cùng cân nhắc thuê, không xác nhận quyền
-          thuê, sự đồng ý của người cho thuê hoặc việc giữ chỗ.
+          Bạn đang cùng tìm phòng hay đã có một phòng muốn cân nhắc? Chọn cách bắt đầu phù hợp.
         </p>
       </div>
-      <fieldset className="grid gap-3 sm:grid-cols-2">
+      <fieldset className={styles.modePicker}>
         <legend className="text-ui-sm font-bold text-foreground sm:col-span-2">Bạn muốn bắt đầu như thế nào?</legend>
         <button
           type="button"
@@ -450,7 +455,7 @@ function CreateRequestForm({
           onClick={() => setMode("UNLINKED")}
           className={`min-h-28 rounded-card border p-4 text-left text-ui-sm transition-[background-color,border-color,transform] duration-fast ${mode === "UNLINKED" ? "border-primary bg-primary-subtle" : "border-border bg-surface hover:-translate-y-0.5 hover:border-primary/40 hover:bg-surface-subtle"}`}
         >
-          <strong className="block">Cùng tìm listing</strong>
+          <strong className="block">Cùng tìm phòng</strong>
           <span className="mt-1 block text-muted-foreground">
             Bắt đầu bằng khu vực, ngân sách và thời gian chuyển vào.
           </span>
@@ -461,14 +466,14 @@ function CreateRequestForm({
           onClick={() => setMode("LINKED")}
           className={`min-h-28 rounded-card border p-4 text-left text-ui-sm transition-[background-color,border-color,transform] duration-fast ${mode === "LINKED" ? "border-primary bg-primary-subtle" : "border-border bg-surface hover:-translate-y-0.5 hover:border-primary/40 hover:bg-surface-subtle"}`}
         >
-          <strong className="block">Cân nhắc một listing</strong>
-          <span className="mt-1 block text-muted-foreground">Chọn một listing công khai có sức chứa từ 2 người.</span>
+          <strong className="block">Đã có phòng muốn cân nhắc</strong>
+          <span className="mt-1 block text-muted-foreground">Chọn phòng đang được đăng, phù hợp từ 2 người.</span>
         </button>
       </fieldset>
       <form className="space-y-5" onSubmit={(event) => void submit(event)} noValidate>
         {mode === "LINKED" ? (
           <>
-            {listingLoadState === "loading" ? <LoadingState message="Đang kiểm tra listing đã chọn…" /> : null}
+            {listingLoadState === "loading" ? <LoadingState message="Đang kiểm tra phòng đã chọn…" /> : null}
             {listingError ? (
               <p role="alert" className="rm-roommate-callout text-ui-sm font-semibold text-danger" data-tone="danger">
                 {listingError}
@@ -531,7 +536,7 @@ function ManagedRequest({
         if (controller.signal.aborted) return;
         const candidate = selectedFromDetail(listing);
         if (!isEligibleListing(candidate)) {
-          setCtaListingError("Listing này hiện không còn đủ điều kiện để liên kết với yêu cầu ở ghép.");
+          setCtaListingError("Phòng này hiện không còn đủ điều kiện để liên kết với yêu cầu ở ghép.");
           setCtaListingState("error");
           return;
         }
@@ -568,7 +573,7 @@ function ManagedRequest({
 
   const link = async () => {
     if (!selectedListing) {
-      setError("Hãy chọn một listing công khai trước khi liên kết.");
+      setError("Hãy chọn một phòng đang được đăng trước khi liên kết.");
       return;
     }
     setPendingAction("link");
@@ -584,7 +589,7 @@ function ManagedRequest({
 
   const unlink = async () => {
     if (request.preferredAreaKeys.length === 0) {
-      setError("Hãy lưu ít nhất một khu vực quan tâm trước khi gỡ liên kết listing.");
+      setError("Hãy lưu ít nhất một khu vực quan tâm trước khi gỡ phòng đã chọn.");
       return;
     }
     setPendingAction("unlink");
@@ -626,8 +631,8 @@ function ManagedRequest({
   const editable = request.status === "OPEN";
   const expiringSoon = request.status === "OPEN" && isRoommateRequestExpiring(request.expiresAt);
   return (
-    <div className="space-y-5">
-      <Card className="rm-roommate-card-static space-y-5">
+    <div className={styles.managed} data-editable={editable}>
+      <Card className={`rm-roommate-card-static space-y-5 ${styles.overview}`}>
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div>
             <p className="rm-roommate-section-label">Yêu cầu của bạn</p>
@@ -681,37 +686,44 @@ function ManagedRequest({
       </Card>
 
       {editable ? (
-        <Card className="rm-roommate-card-static space-y-5">
+        <Card className={`rm-roommate-card-static space-y-5 ${styles.edit}`}>
           <div>
             <p className="rm-roommate-section-label">Chỉnh sửa</p>
             <h2 className="mt-1 font-display text-heading-md font-bold text-foreground">Cập nhật yêu cầu của bạn</h2>
             <p className="mt-2 text-ui-sm leading-6 text-muted-foreground">
-              Chỉ sửa nội dung khi yêu cầu đang mở. Việc gắn hoặc gỡ listing dùng thao tác riêng bên dưới.
+              Cập nhật nhu cầu để người khác biết bạn đang tìm gì. Bấm lưu sau khi chỉnh sửa.
             </p>
           </div>
           <RoommateAiPreferencePanel
             target="REQUEST"
             onApply={(preview) => setValues((current) => applyRequestPreferencePreview(current, preview))}
           />
-          <RequestFields values={values} onChange={setValues} requireArea={request.listingMode === "UNLINKED"} />
-          <Button
-            className="w-full sm:w-auto"
-            pending={pendingAction === "save"}
-            pendingLabel="Đang lưu…"
-            onClick={() => void update()}
+          <form
+            className="space-y-5"
+            noValidate
+            onSubmit={(event) => {
+              event.preventDefault();
+              void update();
+            }}
           >
-            Lưu thay đổi
-          </Button>
-          <section className="space-y-4 border-t border-border pt-5" aria-labelledby="roommate-link-listing-heading">
-            <div>
-              <h3 id="roommate-link-listing-heading" className="font-display text-ui-base font-bold">
-                Liên kết listing
-              </h3>
-              <p className="mt-1 text-ui-sm leading-6 text-muted-foreground">
-                Liên kết listing chỉ là ngữ cảnh để cùng cân nhắc thuê.
-              </p>
-            </div>
-            {ctaListingState === "loading" ? <LoadingState message="Đang kiểm tra listing đã chọn…" /> : null}
+            <RequestFields values={values} onChange={setValues} requireArea={request.listingMode === "UNLINKED"} />
+            <Button
+              className="w-full sm:w-auto"
+              pending={pendingAction === "save"}
+              pendingLabel="Đang lưu…"
+              type="submit"
+            >
+              Lưu thay đổi
+            </Button>
+          </form>
+          <details className={styles.linkOptions} open={initialListingId !== null || undefined}>
+            <summary>
+              Phòng đang cân nhắc <span>Chọn hoặc thay đổi phòng</span>
+            </summary>
+            <p className="mt-3 text-ui-sm text-muted-foreground">
+              Gắn phòng để cùng trao đổi; thao tác này không giữ chỗ hay xác nhận thuê.
+            </p>
+            {ctaListingState === "loading" ? <LoadingState message="Đang kiểm tra phòng đã chọn…" /> : null}
             {ctaListingError ? (
               <p role="alert" className="rm-roommate-callout text-ui-sm font-semibold text-danger" data-tone="danger">
                 {ctaListingError}
@@ -723,14 +735,14 @@ function ManagedRequest({
                 className="rm-roommate-callout text-ui-sm font-semibold text-primary-hover"
                 data-tone="accent"
               >
-                Listing từ trang chi tiết đã được chọn. Hãy kiểm tra lại rồi xác nhận liên kết; listing chỉ là ngữ cảnh
-                để cùng cân nhắc thuê.
+                Phòng từ trang chi tiết đã được chọn. Hãy kiểm tra lại rồi xác nhận liên kết; phòng chỉ là bối cảnh để
+                cùng cân nhắc thuê.
               </p>
             ) : null}
             <ListingPicker selected={selectedListing} onSelect={setSelectedListing} />
             <div className="grid gap-2 sm:flex sm:flex-wrap">
               <Button pending={pendingAction === "link"} pendingLabel="Đang liên kết…" onClick={() => void link()}>
-                Liên kết listing đã chọn
+                Gắn phòng đã chọn
               </Button>
               {request.listingMode === "LINKED" ? (
                 <Button
@@ -739,11 +751,11 @@ function ManagedRequest({
                   pendingLabel="Đang gỡ…"
                   onClick={() => void unlink()}
                 >
-                  Gỡ liên kết listing
+                  Gỡ phòng đã chọn
                 </Button>
               ) : null}
             </div>
-          </section>
+          </details>
           <section className="space-y-3 border-t border-border pt-5" aria-label="Hủy yêu cầu ở ghép">
             <Button variant="outline" onClick={() => setConfirmCancel(true)}>
               Hủy yêu cầu
@@ -757,8 +769,7 @@ function ManagedRequest({
               <div className="space-y-4">
                 <div className="rm-roommate-callout" data-tone="danger">
                   <p className="text-ui-sm font-semibold leading-6 text-foreground">
-                    Nếu muốn tìm tiếp, bạn cần bắt đầu một quy trình Roommate mới hợp lệ. Các lời quan tâm cũ không được
-                    khôi phục.
+                    Nếu muốn tìm tiếp, bạn cần tạo yêu cầu ở ghép mới. Các lời quan tâm cũ không được khôi phục.
                   </p>
                 </div>
                 <div className="flex flex-wrap gap-3">
@@ -872,10 +883,15 @@ function RequestWorkspace() {
   }
 
   return (
-    <div className="rm-roommate-page space-y-6">
+    <div className={`rm-roommate-page space-y-6 ${styles.page}`}>
       <RoommatePageHeader
         title="Yêu cầu ở ghép của tôi"
-        description="Giữ nhu cầu tìm người ở ghép rõ ràng và dễ cập nhật. Mỗi người chỉ có một yêu cầu đang mở tại cùng thời điểm."
+        description="Khu vực, ngân sách, ngày chuyển vào — chia sẻ nhu cầu để tìm người cùng nhà."
+        action={
+          <Link className={styles.profileLink} href="/roommates/profile">
+            <Icon name="users" className="h-4 w-4" /> Hồ sơ ở ghép của tôi
+          </Link>
+        }
       />
       <RoommateSubnav />
       {profileReady === false ? (

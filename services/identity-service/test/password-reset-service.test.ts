@@ -46,7 +46,7 @@ function createHarness() {
         expiresAt: input.expiresAt
       });
     },
-    async findTokenForUpdate() {
+    async findActiveTokenForUserForUpdate() {
       return storedToken;
     },
     async consumeToken() {
@@ -83,9 +83,8 @@ function createHarness() {
       }
     },
     secretPepper: "test-pepper",
-    frontendOrigin: "http://localhost:3000",
     now: () => now,
-    createToken: () => "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ-_0123456789"
+    createCode: () => "012345"
   });
   return {
     service,
@@ -96,31 +95,44 @@ function createHarness() {
   };
 }
 
-test("creates a hashed one-time token and confirms it exactly once", async () => {
+test("creates a hashed six-digit code scoped to the account and confirms it exactly once", async () => {
   const harness = createHarness();
   await harness.service.request({ email: account.email });
   const token = harness.getStoredToken();
   assert.ok(token);
-  assert.notEqual(token.tokenHash, "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ-_0123456789");
+  assert.notEqual(token.tokenHash, "012345");
   assert.equal(harness.deliveries.length, 1);
-  assert.match(harness.deliveries[0]?.resetUrl ?? "", /reset-password\?token=/u);
+  assert.deepEqual(harness.deliveries[0], { destination: account.email, secret: "012345" });
 
   await harness.service.confirm({
-    token: "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ-_0123456789",
+    email: account.email,
+    code: "012345",
     password: "new-password"
   });
   assert.equal(harness.getUpdatedPasswordHash(), "hashed:new-password");
   assert.equal(harness.isConsumed(), true);
 });
 
-test("does not reveal whether an account exists and rejects missing tokens", async () => {
+test("rejects a wrong reset code without changing the password or consuming the active code", async () => {
+  const harness = createHarness();
+  await harness.service.request({ email: account.email });
+
+  await assert.rejects(
+    () => harness.service.confirm({ email: account.email, code: "999999", password: "new-password" }),
+    /không hợp lệ hoặc đã hết hạn/u
+  );
+  assert.equal(harness.getUpdatedPasswordHash(), null);
+  assert.equal(harness.isConsumed(), false);
+});
+
+test("does not reveal whether an account exists and rejects a missing active reset code", async () => {
   const harness = createHarness();
   await harness.service.request({ email: "missing@example.test" });
   assert.equal(harness.deliveries.length, 0);
   const missingRepository: PasswordResetRepository = {
     invalidateActiveTokens: async () => {},
     createToken: async () => {},
-    findTokenForUpdate: async () => null,
+    findActiveTokenForUserForUpdate: async () => null,
     consumeToken: async () => false,
     updatePasswordHash: async () => false
   };
@@ -136,12 +148,10 @@ test("does not reveal whether an account exists and rejects missing tokens", asy
     transactionRunner: (operation) => operation(executor),
     delivery: { deliver: async () => {} },
     secretPepper: "test-pepper",
-    frontendOrigin: "http://localhost:3000",
     now: () => now
   });
   await assert.rejects(
-    () =>
-      missingService.confirm({ token: "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ-_0123456789", password: "new-password" }),
+    () => missingService.confirm({ email: account.email, code: "012345", password: "new-password" }),
     /không hợp lệ hoặc đã hết hạn/u
   );
 });

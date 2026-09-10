@@ -1,10 +1,24 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
+import { useCallback, useEffect, useRef, useState, type FormEvent } from "react";
+import { createPortal } from "react-dom";
 import { Button } from "../../components/ui/button";
+import { ErrorState, LoadingState } from "../../components/ui/feedback-states";
+import { Icon } from "../../components/ui/icon";
+import { IconButton } from "../../components/ui/icon-button";
+import { MediaImage } from "../../components/ui/media-image";
 import { api, ApiError } from "../../lib/api/client";
 import { useAuth } from "../../lib/auth/auth-provider";
+import type { Inquiry } from "../../types/api";
+import { InquiryConversationCore, statusLabel, useInquiryConversation } from "./inquiry-conversation";
+import { InquirySafetyMenu } from "./inquiry-safety-menu";
+import { formatVnd } from "../listings/format";
+
+const inquiryLookupPageSize = 100;
+const maximumInquiryLookupPages = 50;
+
+type LookupState = "idle" | "loading" | "new" | "conversation" | "error";
 
 function inquiryError(error: ApiError | null): string {
   if (error?.status === 401) return "Phiên đăng nhập đã hết. Vui lòng đăng nhập lại.";
@@ -16,15 +30,300 @@ function inquiryError(error: ApiError | null): string {
   return "Không thể gửi yêu cầu lúc này. Vui lòng thử lại.";
 }
 
-export function InquiryForm({ listingId }: Readonly<{ listingId: number }>) {
+function inquiryRecency(inquiry: Inquiry): number {
+  const timestamp = Date.parse(inquiry.updatedAt);
+  return Number.isFinite(timestamp) ? timestamp : 0;
+}
+
+function compareInquiryRecency(left: Inquiry, right: Inquiry): number {
+  return inquiryRecency(right) - inquiryRecency(left) || right.id - left.id;
+}
+
+async function findListingInquiry(listingId: number, signal: AbortSignal): Promise<Inquiry | null> {
+  let latestClosed: Inquiry | null = null;
+
+  for (let page = 1; page <= maximumInquiryLookupPages; page += 1) {
+    const result = await api.contact.listTenantInquiries({ page, pageSize: inquiryLookupPageSize }, signal);
+    const relevant = result.data.filter((item) => item.listingId === listingId);
+    const open = relevant.filter((item) => item.status !== "CLOSED").sort(compareInquiryRecency)[0];
+    if (open) return open;
+
+    const closed = relevant.filter((item) => item.status === "CLOSED").sort(compareInquiryRecency)[0];
+    if (closed && (!latestClosed || compareInquiryRecency(closed, latestClosed) < 0)) latestClosed = closed;
+    if (!result.pagination.hasNextPage) return latestClosed;
+  }
+
+  throw new Error("Inquiry lookup exceeded the safe page limit.");
+}
+
+function listingMetadata(listing: NonNullable<Inquiry["listingSummary"]>): string {
+  return [
+    formatVnd(listing.monthlyRent),
+    listing.roomAreaSqm === null ? null : `${listing.roomAreaSqm} m²`,
+    listing.areaName
+  ]
+    .filter(Boolean)
+    .join(" · ");
+}
+
+function FloatingListingContext({
+  inquiry,
+  listingTitle,
+  monthlyRent,
+  areaName
+}: Readonly<{
+  inquiry: Inquiry | null;
+  listingTitle: string;
+  monthlyRent: number | null;
+  areaName?: string | null;
+}>) {
+  const listing = inquiry?.listingSummary ?? null;
+
+  if (inquiry?.listingContextState === "UNAVAILABLE") {
+    return (
+      <section className="rounded-card border border-border bg-surface-subtle p-3" aria-label="Thông tin tin đăng">
+        <p className="text-xs font-bold uppercase tracking-[0.12em] text-muted-foreground">Tin đăng</p>
+        <p className="mt-1 text-sm font-bold text-foreground">Tin đăng không còn khả dụng</p>
+        <p className="mt-1 text-xs leading-5 text-muted-foreground">Cuộc trò chuyện vẫn được lưu.</p>
+      </section>
+    );
+  }
+
+  if (inquiry?.listingContextState === "TEMPORARILY_UNAVAILABLE") {
+    return (
+      <section className="rounded-card border border-border bg-surface-subtle p-3" aria-label="Thông tin tin đăng">
+        <p className="text-xs font-bold uppercase tracking-[0.12em] text-muted-foreground">Tin đăng</p>
+        <p className="mt-1 text-sm font-bold text-foreground">Thông tin tin đăng tạm thời chưa tải được</p>
+        <p className="mt-1 text-xs leading-5 text-muted-foreground">Bạn vẫn có thể xem lại cuộc trò chuyện.</p>
+      </section>
+    );
+  }
+
+  const title = listing?.title ?? listingTitle;
+  const metadata = listing
+    ? listingMetadata(listing)
+    : [monthlyRent === null ? null : formatVnd(monthlyRent), areaName].filter(Boolean).join(" · ");
+  const canViewListing = listing !== null && listing.businessStatus === "AVAILABLE";
+
+  return (
+    <section
+      className="flex min-w-0 items-start gap-3 rounded-card border border-border bg-surface-subtle p-3"
+      aria-label="Thông tin tin đăng"
+    >
+      {listing?.coverImage ? (
+        <div className="relative h-14 w-16 shrink-0 overflow-hidden rounded-control bg-info-subtle">
+          <MediaImage src={listing.coverImage.url} alt="" fill sizes="4rem" />
+        </div>
+      ) : null}
+      <div className="min-w-0 flex-1">
+        <p className="text-[0.68rem] font-bold uppercase tracking-wider text-muted-foreground">Tin đăng</p>
+        <p className="mt-1 line-clamp-2 font-display text-base font-bold leading-5 text-foreground">{title}</p>
+        {metadata ? <p className="mt-1 truncate text-xs font-semibold text-muted-foreground">{metadata}</p> : null}
+      </div>
+      {canViewListing ? (
+        <Link
+          href={`/listings/${listing.id}`}
+          className="min-h-11 shrink-0 self-center rounded-control px-2 text-xs font-bold text-primary-hover underline underline-offset-4 focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-focus/30"
+        >
+          Xem tin
+        </Link>
+      ) : null}
+    </section>
+  );
+}
+
+export interface InquiryFormProps {
+  readonly listingId?: number;
+  readonly listingTitle?: string;
+  readonly monthlyRent?: number | null;
+  readonly areaName?: string | null;
+  readonly inquiryId?: number;
+  readonly open?: boolean;
+  readonly onOpenChange?: (open: boolean) => void;
+  readonly onCloseFocus?: () => void;
+  readonly showLauncher?: boolean;
+}
+
+export function InquiryForm({
+  listingId,
+  listingTitle = "Thông tin tin đăng",
+  monthlyRent = null,
+  areaName,
+  inquiryId,
+  open: controlledOpen,
+  onOpenChange,
+  onCloseFocus,
+  showLauncher = true
+}: InquiryFormProps) {
+  const knownInquiryMode = inquiryId !== undefined;
+  const domId = listingId ?? inquiryId ?? "inquiry";
   const { status: authStatus, user, refresh } = useAuth();
-  const [open, setOpen] = useState(false);
+  const [uncontrolledOpen, setUncontrolledOpen] = useState(false);
+  const [sessionActive, setSessionActive] = useState(false);
+  const [lookupState, setLookupState] = useState<LookupState>("idle");
+  const [lookupError, setLookupError] = useState<string | null>(null);
+  const [selectedInquiryId, setSelectedInquiryId] = useState<number | null>(null);
   const [message, setMessage] = useState("");
   const [phone, setPhone] = useState(user?.phone ?? "");
-  const [preferredContactAt, setPreferredContactAt] = useState("");
   const [pending, setPending] = useState(false);
   const [feedback, setFeedback] = useState<string | null>(null);
-  const [createdInquiryId, setCreatedInquiryId] = useState<number | null>(null);
+  const [successMessage, setSuccessMessage] = useState<string | null>(null);
+  const triggerRef = useRef<HTMLButtonElement>(null);
+  const launcherRef = useRef<HTMLButtonElement>(null);
+  const panelRef = useRef<HTMLDivElement>(null);
+  const lastTriggerRef = useRef<HTMLButtonElement | null>(null);
+  const lookupAbortRef = useRef<AbortController | null>(null);
+  const lookupTokenRef = useRef(0);
+  const [portalTarget, setPortalTarget] = useState<HTMLElement | null>(null);
+  const open = knownInquiryMode ? Boolean(controlledOpen) : uncontrolledOpen;
+  const activeInquiryId = knownInquiryMode ? inquiryId : selectedInquiryId;
+  const conversation = useInquiryConversation(activeInquiryId, sessionActive);
+
+  const setWidgetOpen = useCallback(
+    (nextOpen: boolean) => {
+      if (!knownInquiryMode) setUncontrolledOpen(nextOpen);
+      onOpenChange?.(nextOpen);
+    },
+    [knownInquiryMode, onOpenChange]
+  );
+
+  useEffect(() => {
+    setPortalTarget(document.body);
+  }, []);
+
+  useEffect(() => {
+    return () => lookupAbortRef.current?.abort();
+  }, []);
+
+  useEffect(() => {
+    if (knownInquiryMode && open && inquiryId !== undefined) setSessionActive(true);
+  }, [inquiryId, knownInquiryMode, open]);
+
+  const focusLauncher = useCallback(() => {
+    launcherRef.current?.focus({ preventScroll: true });
+  }, []);
+
+  const closeWidget = useCallback(() => {
+    lookupAbortRef.current?.abort();
+    lookupAbortRef.current = null;
+    lookupTokenRef.current += 1;
+    setWidgetOpen(false);
+    setSessionActive(false);
+    if (onCloseFocus) onCloseFocus();
+    else (lastTriggerRef.current ?? launcherRef.current)?.focus({ preventScroll: true });
+  }, [onCloseFocus, setWidgetOpen]);
+
+  const minimizeWidget = useCallback(() => {
+    setWidgetOpen(false);
+    if (showLauncher) focusLauncher();
+  }, [focusLauncher, setWidgetOpen, showLauncher]);
+
+  const beginLookup = useCallback(() => {
+    if (knownInquiryMode || listingId === undefined) return;
+    lookupAbortRef.current?.abort();
+    const controller = new AbortController();
+    const token = lookupTokenRef.current + 1;
+    lookupTokenRef.current = token;
+    lookupAbortRef.current = controller;
+    setWidgetOpen(true);
+    setSessionActive(true);
+    setLookupState("loading");
+    setLookupError(null);
+    setSelectedInquiryId(null);
+    setFeedback(null);
+    setSuccessMessage(null);
+
+    void findListingInquiry(listingId, controller.signal)
+      .then((result) => {
+        if (controller.signal.aborted || token !== lookupTokenRef.current) return;
+        lookupAbortRef.current = null;
+        if (result) {
+          setSelectedInquiryId(result.id);
+          setLookupState("conversation");
+        } else {
+          setLookupState("new");
+        }
+      })
+      .catch((caught: unknown) => {
+        if (controller.signal.aborted || token !== lookupTokenRef.current) return;
+        lookupAbortRef.current = null;
+        setLookupState("error");
+        setLookupError(
+          caught instanceof ApiError && caught.status === 401
+            ? "Phiên đăng nhập đã hết. Vui lòng đăng nhập lại."
+            : "Không thể kiểm tra cuộc trò chuyện lúc này. Vui lòng thử lại."
+        );
+      });
+  }, [knownInquiryMode, listingId, setWidgetOpen]);
+
+  const openWidget = useCallback(
+    (trigger: HTMLButtonElement | null) => {
+      lastTriggerRef.current = trigger;
+      setWidgetOpen(true);
+      if (knownInquiryMode) {
+        setSessionActive(true);
+        return;
+      }
+      if (sessionActive) return;
+      if (lookupState === "new" || (lookupState === "conversation" && selectedInquiryId !== null)) {
+        setSessionActive(true);
+        return;
+      }
+      beginLookup();
+    },
+    [beginLookup, knownInquiryMode, lookupState, selectedInquiryId, sessionActive, setWidgetOpen]
+  );
+
+  const startNewInquiry = useCallback(() => {
+    setSelectedInquiryId(null);
+    setLookupState("new");
+    setLookupError(null);
+    setFeedback(null);
+    setSuccessMessage(null);
+    setMessage("");
+  }, []);
+
+  const submit = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    if (pending || !message.trim() || listingId === undefined) return;
+    setPending(true);
+    setFeedback(null);
+    try {
+      const created = await api.contact.createInquiry({
+        listingId,
+        message: message.trim(),
+        contactPhone: phone.trim() || null,
+        preferredContactAt: null
+      });
+      setSelectedInquiryId(created.id);
+      setLookupState("conversation");
+      setSuccessMessage("Yêu cầu đã được gửi. Chủ trọ sẽ nhận được thông báo.");
+      setMessage("");
+    } catch (caught: unknown) {
+      const error = caught instanceof ApiError ? caught : null;
+      if (error?.status === 401) await refresh().catch(() => undefined);
+      setFeedback(inquiryError(error));
+    } finally {
+      setPending(false);
+    }
+  };
+
+  useEffect(() => {
+    if (!open) return;
+
+    panelRef.current?.focus({ preventScroll: true });
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        event.preventDefault();
+        closeWidget();
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [closeWidget, open]);
+
+  const effectiveLookupState: LookupState = knownInquiryMode ? "conversation" : lookupState;
+  const resolvedListingTitle = conversation.inquiry?.listingSummary?.title ?? listingTitle;
 
   if (authStatus === "loading") {
     return <p className="text-sm font-medium text-slate-600">Đang kiểm tra quyền nhắn tin…</p>;
@@ -52,117 +351,223 @@ export function InquiryForm({ listingId }: Readonly<{ listingId: number }>) {
   if (!user || user.role !== "TENANT") {
     return <p className="text-sm text-slate-600">Chức năng nhắn tin dành cho tài khoản người thuê.</p>;
   }
-  if (createdInquiryId !== null) {
-    return (
-      <div className="space-y-3" role="status">
-        <p className="text-sm font-bold text-teal-800">Đã gửi yêu cầu. Chủ trọ sẽ nhận được thông báo.</p>
-        <Link
-          className="inline-flex min-h-11 items-center border-2 border-heroDark-950 bg-rent-accent px-5 py-2.5 font-display text-sm font-bold shadow-glass-sm transition-transform hover:-translate-y-0.5"
-          href={`/inquiries/${createdInquiryId}`}
-        >
-          Mở cuộc trò chuyện
-        </Link>
-      </div>
-    );
-  }
-
-  const submit = async (event: React.FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-    if (pending) return;
-    setPending(true);
-    setFeedback(null);
-    try {
-      const inquiry = await api.contact.createInquiry({
-        listingId,
-        message,
-        contactPhone: phone.trim() || null,
-        preferredContactAt: preferredContactAt ? new Date(preferredContactAt).toISOString() : null
-      });
-      setCreatedInquiryId(inquiry.id);
-      setMessage("");
-    } catch (caught: unknown) {
-      const error = caught instanceof ApiError ? caught : null;
-      if (error?.status === 401) await refresh().catch(() => undefined);
-      setFeedback(inquiryError(error));
-    } finally {
-      setPending(false);
-    }
-  };
 
   return (
-    <div className="space-y-4">
-      <Button
-        onClick={() => {
-          setOpen((value) => !value);
-          setFeedback(null);
-        }}
-        aria-expanded={open}
-      >
-        {open ? "Đóng khung nhắn tin" : "Nhắn tin cho chủ trọ"}
-      </Button>
-      {open ? (
-        <form className="space-y-4 border-t-2 border-heroDark-950 pt-4" onSubmit={(event) => void submit(event)}>
-          <div>
-            <label
-              className="mb-1.5 block text-xs font-bold uppercase tracking-wider text-slate-500"
-              htmlFor="inquiry-message"
-            >
-              Nội dung lời nhắn
-            </label>
-            <textarea
-              id="inquiry-message"
-              required
-              minLength={1}
-              maxLength={4000}
-              rows={5}
-              value={message}
-              onChange={(event) => setMessage(event.target.value)}
-              placeholder="Ví dụ: Mình muốn hỏi phòng còn trống và chi phí đầu vào…"
-              className="w-full border-2 border-heroDark-950 bg-white p-3 text-sm font-medium outline-none transition-shadow focus-visible:shadow-glass-sm"
-            />
-          </div>
-          <div>
-            <label
-              className="mb-1.5 block text-xs font-bold uppercase tracking-wider text-slate-500"
-              htmlFor="inquiry-phone"
-            >
-              Số điện thoại liên hệ
-            </label>
-            <input
-              id="inquiry-phone"
-              type="tel"
-              maxLength={32}
-              value={phone}
-              onChange={(event) => setPhone(event.target.value)}
-              placeholder="Dùng số trong hồ sơ nếu để trống"
-              className="w-full border-2 border-heroDark-950 bg-white p-3 text-sm font-medium outline-none transition-shadow focus-visible:shadow-glass-sm"
-            />
-          </div>
-          <div>
-            <label
-              className="mb-1.5 block text-xs font-bold uppercase tracking-wider text-slate-500"
-              htmlFor="inquiry-time"
-            >
-              Thời gian mong muốn được liên hệ (tùy chọn)
-            </label>
-            <input
-              id="inquiry-time"
-              type="datetime-local"
-              value={preferredContactAt}
-              onChange={(event) => setPreferredContactAt(event.target.value)}
-              className="w-full border-2 border-heroDark-950 bg-white p-3 text-sm font-medium outline-none transition-shadow focus-visible:shadow-glass-sm"
-            />
-          </div>
-          {feedback ? (
-            <p role="alert" className="border-2 border-heroDark-950 bg-rent-coral p-3 text-sm font-bold">
-              {feedback}
-            </p>
-          ) : null}
-          <Button type="submit" pending={pending} pendingLabel="Đang gửi…">
-            Gửi yêu cầu liên hệ
+    <>
+      {!knownInquiryMode ? (
+        <div className="space-y-3">
+          <p className="text-sm leading-6 text-muted-foreground">
+            Gửi yêu cầu liên hệ để bắt đầu cuộc trò chuyện với chủ trọ.
+          </p>
+          <Button
+            ref={triggerRef}
+            onClick={(event) => openWidget(event.currentTarget)}
+            aria-expanded={open}
+            aria-controls={`listing-chat-panel-${domId}`}
+            className="w-full sm:w-auto"
+          >
+            <Icon name="message" className="h-4 w-4" />
+            Nhắn tin cho chủ trọ
           </Button>
-        </form>
+        </div>
       ) : null}
-    </div>
+
+      {portalTarget
+        ? createPortal(
+            <div
+              data-testid="floating-chat-portal"
+              className="fixed bottom-[calc(5rem+env(safe-area-inset-bottom))] left-4 right-4 z-drawer flex w-auto flex-col items-end gap-3 sm:bottom-[calc(5rem+env(safe-area-inset-bottom))] sm:left-auto sm:right-6 sm:w-auto lg:bottom-6"
+            >
+              {open ? (
+                <div
+                  ref={panelRef}
+                  id={`listing-chat-panel-${domId}`}
+                  data-testid="floating-chat-panel"
+                  role="dialog"
+                  aria-modal="false"
+                  aria-labelledby={`listing-chat-title-${domId}`}
+                  tabIndex={-1}
+                  className="rm-floating-chat-panel flex h-[min(76dvh,42rem)] w-full min-w-0 max-w-full flex-col overflow-hidden rounded-overlay border border-border bg-surface shadow-overlay-soft outline-none sm:h-[min(40rem,calc(100dvh-8rem))] sm:w-[min(24rem,calc(100vw-3rem))] lg:w-[25rem]"
+                >
+                  <header className="flex shrink-0 items-start justify-between gap-3 border-b border-border bg-surface px-4 py-3">
+                    <div className="min-w-0">
+                      <p className="text-[0.68rem] font-bold uppercase tracking-[0.12em] text-primary-hover">
+                        Trao đổi về tin đăng
+                      </p>
+                      <h2
+                        id={`listing-chat-title-${domId}`}
+                        className="mt-1 font-display text-lg font-bold text-foreground"
+                      >
+                        Nhắn tin với chủ trọ
+                      </h2>
+                      <p className="mt-1 line-clamp-1 text-xs font-semibold text-muted-foreground">
+                        {resolvedListingTitle}
+                      </p>
+                    </div>
+                    <div className="flex shrink-0 items-center gap-1">
+                      {conversation.inquiry ? (
+                        <InquirySafetyMenu
+                          inquiry={conversation.inquiry}
+                          onInquiryChange={(nextState) =>
+                            conversation.updateInquiry((current) =>
+                              current === null ? current : { ...current, ...nextState }
+                            )
+                          }
+                        />
+                      ) : null}
+                      <IconButton label="Thu gọn nhắn tin" variant="ghost" size="sm" onClick={minimizeWidget}>
+                        <Icon name="minus" className="h-5 w-5" />
+                      </IconButton>
+                      <IconButton label="Đóng nhắn tin" variant="ghost" size="sm" onClick={closeWidget}>
+                        <Icon name="close" className="h-5 w-5" />
+                      </IconButton>
+                    </div>
+                  </header>
+
+                  <div
+                    className={
+                      effectiveLookupState === "conversation" && conversation.inquiry
+                        ? "min-h-0 flex-1 overflow-hidden"
+                        : "min-h-0 flex-1 overflow-y-auto"
+                    }
+                  >
+                    <div
+                      className={
+                        effectiveLookupState === "conversation" && conversation.inquiry
+                          ? "flex h-full min-h-0 min-w-0 flex-col gap-4 p-4"
+                          : "flex min-w-0 flex-col gap-4 p-4"
+                      }
+                    >
+                      <FloatingListingContext
+                        inquiry={conversation.inquiry}
+                        listingTitle={listingTitle}
+                        monthlyRent={monthlyRent}
+                        areaName={areaName}
+                      />
+
+                      {effectiveLookupState === "loading" ? (
+                        <LoadingState className="min-h-32 shadow-none" message="Đang kiểm tra cuộc trò chuyện…" />
+                      ) : effectiveLookupState === "error" ? (
+                        <ErrorState
+                          className="shadow-none"
+                          message={lookupError ?? "Không thể kiểm tra cuộc trò chuyện lúc này."}
+                          action={<Button onClick={beginLookup}>Thử lại</Button>}
+                        />
+                      ) : effectiveLookupState === "new" ? (
+                        <form className="space-y-4" onSubmit={(event) => void submit(event)}>
+                          <div>
+                            <h3 className="font-display text-xl font-bold">Gửi yêu cầu liên hệ</h3>
+                            <p className="mt-1 text-sm leading-6 text-muted-foreground">
+                              Tin nhắn đầu tiên sẽ bắt đầu cuộc trò chuyện với chủ trọ.
+                            </p>
+                          </div>
+                          <label className="block text-sm font-bold" htmlFor={`inquiry-message-${domId}`}>
+                            Nội dung lời nhắn
+                            <textarea
+                              id={`inquiry-message-${domId}`}
+                              required
+                              minLength={1}
+                              maxLength={4000}
+                              rows={4}
+                              value={message}
+                              onChange={(event) => setMessage(event.target.value)}
+                              placeholder="Ví dụ: Mình muốn hỏi phòng còn trống và chi phí đầu vào…"
+                              className="mt-2 min-h-28 w-full resize-y rounded-control border border-border-strong bg-surface p-3 text-sm font-medium outline-none transition focus:border-primary focus:ring-[3px] focus:ring-primary/20"
+                            />
+                          </label>
+                          <label className="block text-sm font-bold" htmlFor={`inquiry-phone-${domId}`}>
+                            Số điện thoại liên hệ
+                            <input
+                              id={`inquiry-phone-${domId}`}
+                              type="tel"
+                              maxLength={32}
+                              value={phone}
+                              onChange={(event) => setPhone(event.target.value)}
+                              placeholder="Dùng số trong hồ sơ nếu để trống"
+                              className="mt-2 min-h-12 w-full rounded-control border border-border-strong bg-surface px-3 text-sm font-medium outline-none transition focus:border-primary focus:ring-[3px] focus:ring-primary/20"
+                            />
+                          </label>
+                          {feedback ? (
+                            <p
+                              role="alert"
+                              className="rounded-control border border-danger/30 bg-danger-subtle p-3 text-sm font-semibold text-danger"
+                            >
+                              {feedback}
+                            </p>
+                          ) : null}
+                          <Button type="submit" pending={pending} pendingLabel="Đang gửi…" className="w-full">
+                            Gửi yêu cầu liên hệ
+                          </Button>
+                        </form>
+                      ) : effectiveLookupState === "conversation" && conversation.state === "error" ? (
+                        <ErrorState
+                          className="shadow-none"
+                          message={
+                            conversation.error?.status === 404
+                              ? "Cuộc trò chuyện không tồn tại hoặc bạn không có quyền xem."
+                              : "Không thể tải cuộc trò chuyện lúc này."
+                          }
+                          action={<Button onClick={conversation.reload}>Thử lại</Button>}
+                        />
+                      ) : effectiveLookupState === "conversation" && conversation.state !== "success" ? (
+                        <LoadingState className="min-h-32 shadow-none" message="Đang mở cuộc trò chuyện…" />
+                      ) : conversation.inquiry ? (
+                        <div className="flex min-h-0 min-w-0 flex-1 flex-col gap-3">
+                          {successMessage ? (
+                            <p
+                              role="status"
+                              className="shrink-0 rounded-control border border-success/30 bg-success-subtle p-3 text-sm font-semibold text-success-foreground"
+                            >
+                              {successMessage}
+                            </p>
+                          ) : null}
+                          <p className="shrink-0 text-sm font-semibold text-muted-foreground">
+                            Trạng thái:{" "}
+                            <span className="text-foreground">
+                              {statusLabel(conversation.inquiry.status, user.role)}
+                            </span>
+                          </p>
+                          <InquiryConversationCore
+                            conversation={conversation}
+                            currentUserRole={user.role}
+                            variant="floating"
+                            textareaId={`inquiry-floating-reply-${domId}`}
+                            showRealtimeStatus
+                            className="min-h-0 flex-1"
+                          />
+                          {!knownInquiryMode && conversation.inquiry.status === "CLOSED" ? (
+                            <Button variant="secondary" onClick={startNewInquiry} className="w-full shrink-0">
+                              Gửi yêu cầu mới
+                            </Button>
+                          ) : null}
+                        </div>
+                      ) : null}
+                    </div>
+                  </div>
+                </div>
+              ) : null}
+
+              {showLauncher ? (
+                <button
+                  ref={launcherRef}
+                  type="button"
+                  data-testid="floating-chat-launcher"
+                  aria-label={open ? "Thu gọn trò chuyện với chủ trọ" : "Mở trò chuyện với chủ trọ"}
+                  aria-expanded={open}
+                  aria-controls={`listing-chat-panel-${domId}`}
+                  onClick={(event) => (open ? minimizeWidget() : openWidget(event.currentTarget))}
+                  className="inline-grid h-14 w-14 shrink-0 place-items-center rounded-full border border-primary-hover/20 bg-primary text-primary-foreground shadow-raised outline-none transition-[background-color,box-shadow,transform] duration-standard ease-standard hover:-translate-y-0.5 hover:bg-primary-hover hover:shadow-overlay-soft focus-visible:ring-[3px] focus-visible:ring-focus motion-reduce:transition-none"
+                >
+                  <Icon name={open ? "minus" : "message"} className="h-6 w-6" />
+                </button>
+              ) : null}
+            </div>,
+            portalTarget
+          )
+        : null}
+    </>
   );
 }
+
+// The listing-detail form and the inbox launcher share one floating chat implementation.
+export const FloatingInquiryChat = InquiryForm;

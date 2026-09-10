@@ -104,7 +104,7 @@ function harness(
     delivery,
     secretPepper: "test-pepper",
     now: () => now,
-    createEmailToken: () => "email-token",
+    createEmailCode: () => "654321",
     createPhoneCode: () => "123456"
   });
   return {
@@ -116,17 +116,17 @@ function harness(
   };
 }
 
-test("requests and confirms email verification without storing the raw token", async () => {
+test("requests and confirms email verification with a hashed six-digit OTP", async () => {
   const subject = harness();
   const requested = await subject.service.requestEmail(landlord);
   assert.equal(requested.email.verifiedAt, null);
   assert.deepEqual(subject.deliveries[0], {
     channel: "EMAIL",
     destination: "owner@example.com",
-    secret: "email-token"
+    secret: "654321"
   });
 
-  const confirmed = await subject.service.confirmEmail(landlord, { token: "email-token" });
+  const confirmed = await subject.service.confirmEmail(landlord, { code: "654321" });
   assert.notEqual(confirmed.email.verifiedAt, null);
   assert.equal(subject.contact.emailVerifiedAt, confirmed.email.verifiedAt);
 });
@@ -155,7 +155,7 @@ test("tenant email and phone verification are independent and provider availabil
   const requested = await subject.service.requestTenantEmail(tenant);
   assert.equal(requested.email.available, true);
   assert.equal(requested.phone.available, false);
-  const confirmed = await subject.service.confirmTenantEmail(tenant, { token: "email-token" });
+  const confirmed = await subject.service.confirmTenantEmail(tenant, { code: "654321" });
   assert.notEqual(confirmed.email.verifiedAt, null);
   await assert.rejects(() => subject.service.requestTenantPhone(tenant), { code: "PROVIDER_UNAVAILABLE" });
   assert.equal((await subject.service.tenantStatus(tenant)).email.verifiedAt, confirmed.email.verifiedAt);

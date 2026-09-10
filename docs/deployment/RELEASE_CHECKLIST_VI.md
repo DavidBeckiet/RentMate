@@ -20,7 +20,7 @@
 
 ## Triển khai trước
 
-- [ ] RM-053/RM-054/release bằng chứng hồi quy có màu xanh cho cam kết này.
+- [ ] E2E kiến trúc hiện tại và bằng chứng hồi quy đóng release đều xanh cho commit này; RM-054 chỉ còn là lịch sử.
 - [ ] Nền tảng mục tiêu, cấu trúc liên kết cùng trang web, quyền sở hữu tên miền, DNS và TLS được ghi lại.
 - [ ] URL giao diện người dùng/API là HTTPS và mối quan hệ giao diện người dùng/API là cùng một trang web.
 - [ ] Cơ sở dữ liệu, nhà cung cấp, tác nhân khói, chủ sở hữu sao lưu và khôi phục đều có sẵn.

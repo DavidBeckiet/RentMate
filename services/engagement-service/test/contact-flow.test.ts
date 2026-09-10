@@ -4,6 +4,7 @@ import { ApplicationError } from "../../shared/src/runtime/shared/errors/applica
 import type { SqlExecutor } from "../../shared/src/runtime/db/sql-executor.js";
 import type { AuthenticatedPrincipal } from "../../shared/src/runtime/shared/types/authentication.js";
 import type { ListingCatalogClient } from "../../shared/listing-catalog-client.js";
+import type { PublicListingSummary } from "../../shared/public-listing-summary.js";
 import type { IdentityAccountClient } from "../../shared/identity-account-client.js";
 import { createContactService, type ContactService } from "../src/modules/contact/services/contact-service.js";
 import type {
@@ -24,6 +25,22 @@ const landlord: AuthenticatedPrincipal = Object.freeze({ userId: 22, role: "LAND
 const unrelatedTenant: AuthenticatedPrincipal = Object.freeze({ userId: 33, role: "TENANT" });
 const listingId = 501;
 const createdAt = "2026-08-23T00:00:00.000Z";
+const listingSummary: PublicListingSummary = Object.freeze({
+  id: listingId,
+  businessStatus: "AVAILABLE",
+  title: "Studio trung tâm",
+  monthlyRent: 5200000,
+  roomAreaSqm: 28,
+  maxOccupants: 2,
+  areaName: "Tân Bình",
+  latitude: 10.801,
+  longitude: 106.7,
+  propertyType: Object.freeze({ code: "STUDIO", label: "Căn studio" }),
+  amenities: Object.freeze([]),
+  coverImage: Object.freeze({ url: "https://example.test/studio.webp", altText: "Studio", displayOrder: 1 }),
+  landlordVerified: true,
+  updatedAt: createdAt
+});
 
 interface StoredMessage extends InquiryMessage {
   readonly senderId: number;
@@ -43,7 +60,7 @@ function cloneInquiry(inquiry: Inquiry): Inquiry {
   return Object.freeze({ ...inquiry, messages: Object.freeze([...inquiry.messages]) });
 }
 
-function createContactHarness(): ContactHarness {
+function createContactHarness(listingClientOverrides: Partial<ListingCatalogClient> = {}): ContactHarness {
   const inquiries = new Map<number, Inquiry>();
   const messages = new Map<number, StoredMessage[]>();
   const notifications: StoredNotification[] = [];
@@ -111,6 +128,25 @@ function createContactHarness(): ContactHarness {
             createdAt: message.createdAt
           })
         )
+      );
+    },
+
+    async listLatestMessages(_executor, inquiryIds, viewerRole) {
+      return Object.freeze(
+        inquiryIds.flatMap((inquiryId) => {
+          const latest = messages.get(inquiryId)?.at(-1);
+          if (!latest) return [];
+          return [
+            Object.freeze({
+              inquiryId,
+              id: latest.id,
+              senderRole: latest.senderRole,
+              body: latest.body,
+              isRead: latest.readBy.has(viewerRole),
+              createdAt: latest.createdAt
+            })
+          ];
+        })
       );
     },
 
@@ -192,9 +228,11 @@ function createContactHarness(): ContactHarness {
   };
 
   const listingCatalogClient: ListingCatalogClient = {
-    loadPublicSummariesByIds: async () => Object.freeze([]),
+    loadPublicSummariesByIds: async (listingIds) =>
+      Object.freeze(listingIds.includes(listingId) ? [listingSummary] : []),
     loadPublicInquiryTarget: async (targetListingId) =>
-      targetListingId === listingId ? Object.freeze({ listingId, landlordId: landlord.userId }) : null
+      targetListingId === listingId ? Object.freeze({ listingId, landlordId: landlord.userId }) : null,
+    ...listingClientOverrides
   };
   const identityAccountClient: Pick<IdentityAccountClient, "loadProfilesByIds"> = {
     loadProfilesByIds: async () =>
@@ -240,6 +278,8 @@ test("completes the tenant-landlord inquiry, message, status and notification fl
   const created = await harness.service.createInquiry(tenant, input);
   assert.equal(created.status, "NEW");
   assert.equal(created.contactPhone, "+84901234567");
+  assert.equal(created.listingContextState, "AVAILABLE");
+  assert.equal(created.listingSummary?.title, "Studio trung tâm");
   assert.deepEqual(
     created.messages.map((message) => message.body),
     [input.message]
@@ -248,10 +288,14 @@ test("completes the tenant-landlord inquiry, message, status and notification fl
   const landlordInbox = await harness.service.listLandlordInquiries(landlord, collectionQuery);
   assert.equal(landlordInbox.data.length, 1);
   assert.equal(landlordInbox.data[0]?.id, created.id);
+  assert.equal(landlordInbox.data[0]?.lastMessage?.body, input.message);
+  assert.equal(landlordInbox.data[0]?.listingSummary?.areaName, "Tân Bình");
   assert.equal(harness.notifications[0]?.eventType, "INQUIRY_CREATED");
   assert.equal(harness.notifications[0]?.recipientId, landlord.userId);
 
   const landlordView = await harness.service.getInquiry(landlord, created.id);
+  assert.equal(landlordView.listingContextState, "AVAILABLE");
+  assert.equal(landlordView.lastMessage?.body, input.message);
   assert.equal(landlordView.messages[0]?.isRead, true);
   await harness.service.authorizeRealtime(tenant, created.id);
   await harness.service.authorizeRealtime(landlord, created.id);
@@ -306,6 +350,58 @@ test("hides inquiry ownership and rejects non-public listing targets", async () 
     () => harness.service.createInquiry(tenant, { ...input, listingId: 999 }),
     (error: unknown) => error instanceof ApplicationError && error.code === "RESOURCE_NOT_FOUND"
   );
+});
+
+test("keeps the conversation readable when public listing enrichment is unavailable", async () => {
+  const harness = createContactHarness({
+    loadPublicSummariesByIds: async () => {
+      throw new Error("listing service unavailable");
+    }
+  });
+  const created = await harness.service.createInquiry(tenant, {
+    listingId,
+    message: "Mình vẫn cần đọc lại cuộc trò chuyện.",
+    contactPhone: null,
+    preferredContactAt: null
+  });
+
+  assert.equal(created.listingSummary, null);
+  assert.equal(created.listingContextState, "TEMPORARILY_UNAVAILABLE");
+  const detail = await harness.service.getInquiry(tenant, created.id);
+  assert.equal(detail.listingSummary, null);
+  assert.equal(detail.listingContextState, "TEMPORARILY_UNAVAILABLE");
+  assert.equal(detail.messages[0]?.body, "Mình vẫn cần đọc lại cuộc trò chuyện.");
+});
+
+test("enriches an inbox page with one deduplicated listing lookup", async () => {
+  const lookups: number[][] = [];
+  const harness = createContactHarness({
+    loadPublicSummariesByIds: async (listingIds) => {
+      lookups.push([...listingIds]);
+      return [listingSummary];
+    }
+  });
+  const first = await harness.service.createInquiry(tenant, {
+    listingId,
+    message: "Tin đầu tiên.",
+    contactPhone: null,
+    preferredContactAt: null
+  });
+  await harness.service.updateStatus(landlord, first.id, "CONTACTED");
+  await harness.service.updateStatus(landlord, first.id, "CLOSED");
+  await harness.service.createInquiry(tenant, {
+    listingId,
+    message: "Tin thứ hai.",
+    contactPhone: null,
+    preferredContactAt: null
+  });
+
+  const page = await harness.service.listTenantInquiries(tenant, collectionQuery);
+
+  assert.equal(page.data.length, 2);
+  assert.deepEqual(lookups.at(-1), [listingId]);
+  assert.equal(page.data[0]?.listingSummary?.id, listingId);
+  assert.equal(page.data[0]?.lastMessage?.body, "Tin đầu tiên.");
 });
 
 test("enforces the allowed status transitions", async () => {

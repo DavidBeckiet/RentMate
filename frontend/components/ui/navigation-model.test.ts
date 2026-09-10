@@ -4,7 +4,8 @@ import {
   consumerNavigationItems,
   isNavigationItemActive,
   landlordNavigationItems,
-  resolveShellKind
+  resolveShellKind,
+  tenantSecondaryItems
 } from "./navigation-model";
 
 describe("actor-aware navigation model", () => {
@@ -52,6 +53,22 @@ describe("actor-aware navigation model", () => {
       expect(consumerNavigationItems(actor).some((item) => item.key === "home")).toBe(true);
       expect(consumerNavigationItems(actor).some((item) => item.key === "notifications")).toBe(false);
     }
+  });
+
+  it("keeps tenant primary navigation focused on the main journeys", () => {
+    expect(consumerNavigationItems("tenant").map((item) => item.key)).toEqual([
+      "home",
+      "search",
+      "near-me",
+      "roommates",
+      "inquiries"
+    ]);
+    expect(tenantSecondaryItems.map((item) => item.key)).toEqual([
+      "favorites",
+      "recently-viewed",
+      "saved-searches",
+      "compare"
+    ]);
   });
 
   it("keeps public help reachable outside the primary discovery navigation", () => {

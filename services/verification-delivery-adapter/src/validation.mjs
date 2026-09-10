@@ -1,6 +1,5 @@
 const maximumBodyBytes = 8_192;
-const maximumSecretLength = 256;
-const maximumResetUrlLength = 2_048;
+const verificationCodePattern = /^\d{6}$/;
 
 export class InvalidDeliveryRequestError extends Error {
   constructor(message = "Invalid verification delivery request.") {
@@ -28,21 +27,6 @@ function isPhone(value) {
   return /^\+?[0-9]{6,15}$/.test(value);
 }
 
-function validateResetUrl(value) {
-  if (typeof value !== "string" || value.length === 0 || value.length > maximumResetUrlLength) return false;
-  try {
-    const parsed = new URL(value);
-    return (
-      (parsed.protocol === "http:" || parsed.protocol === "https:") &&
-      parsed.hostname.length > 0 &&
-      !parsed.username &&
-      !parsed.password
-    );
-  } catch {
-    return false;
-  }
-}
-
 export function parseDeliveryPayload(value) {
   if (!isPlainObject(value)) throw new InvalidDeliveryRequestError();
 
@@ -50,7 +34,7 @@ export function parseDeliveryPayload(value) {
   const eventType = value.eventType;
   const isPasswordReset = eventType === "PASSWORD_RESET";
   const allowedKeys = isPasswordReset
-    ? new Set(["eventType", "channel", "destination", "secret", "resetUrl"])
+    ? new Set(["eventType", "channel", "destination", "secret"])
     : new Set(["channel", "destination", "secret"]);
 
   if ([...keys].some((key) => !allowedKeys.has(key))) throw new InvalidDeliveryRequestError();
@@ -61,19 +45,18 @@ export function parseDeliveryPayload(value) {
   if (typeof value.destination !== "string" || value.destination.length === 0) {
     throw new InvalidDeliveryRequestError();
   }
-  if (typeof value.secret !== "string" || value.secret.length === 0 || value.secret.length > maximumSecretLength) {
+  if (typeof value.secret !== "string" || !verificationCodePattern.test(value.secret)) {
     throw new InvalidDeliveryRequestError();
   }
   if (value.channel === "EMAIL" && !isEmail(value.destination)) throw new InvalidDeliveryRequestError();
   if (value.channel === "PHONE" && !isPhone(value.destination)) throw new InvalidDeliveryRequestError();
   if (isPasswordReset) {
-    if (value.channel !== "EMAIL" || !validateResetUrl(value.resetUrl)) throw new InvalidDeliveryRequestError();
+    if (value.channel !== "EMAIL") throw new InvalidDeliveryRequestError();
     return Object.freeze({
       eventType: "PASSWORD_RESET",
       channel: "EMAIL",
       destination: value.destination,
-      secret: value.secret,
-      resetUrl: value.resetUrl
+      secret: value.secret
     });
   }
 

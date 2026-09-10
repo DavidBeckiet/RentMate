@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { MediaImage } from "../../components/ui/media-image";
 import { BusinessStatusBadge } from "../../components/ui/status-badge";
+import { formatAreaLabel } from "../../lib/area";
 import type { PublicListingSummary } from "../../types/api";
 import { formatAreaSqm, formatVnd } from "./format";
 
@@ -32,7 +33,7 @@ export function SearchMapListingPopup({ listing }: { readonly listing: PublicLis
         </div>
       </div>
       <div className="flex flex-wrap items-center gap-2 text-ui-xs font-semibold text-muted-foreground">
-        <span>{listing.areaName}</span>
+        <span>{formatAreaLabel(listing.areaName)}</span>
         <span aria-hidden="true">·</span>
         <span>{formatAreaSqm(listing.roomAreaSqm)}</span>
         {listing.maxOccupants !== null ? (
@@ -46,7 +47,7 @@ export function SearchMapListingPopup({ listing }: { readonly listing: PublicLis
         <BusinessStatusBadge status={listing.businessStatus} />
         <Link
           href={"/listings/" + listing.id}
-          className="inline-flex min-h-10 items-center rounded-control border border-primary bg-primary px-3 text-ui-xs font-extrabold text-primary-foreground shadow-surface transition-transform hover:-translate-y-0.5 hover:bg-primary-hover focus-visible:outline-none"
+          className="inline-flex min-h-11 items-center rounded-control border border-primary bg-primary px-3 text-ui-xs font-extrabold text-primary-foreground shadow-surface transition-colors hover:bg-primary-hover focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary motion-reduce:transition-none"
         >
           Xem chi tiết
         </Link>

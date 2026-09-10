@@ -6,7 +6,7 @@ import { roommateOwnedBlock, tenantUser } from "./test-roommate-fixtures";
 const apiMocks = vi.hoisted(() => ({ listOwnedBlocks: vi.fn(), unblockRequest: vi.fn(), unblockInterest: vi.fn() }));
 const useAuthMock = vi.hoisted(() => vi.fn<() => AuthContextValue>());
 
-vi.mock("next/navigation", () => ({ usePathname: () => "/roommates/blocks" }));
+vi.mock("next/navigation", () => ({ usePathname: () => "/roommates/blocked" }));
 vi.mock("../../lib/api/client", async () => {
   const actual = await vi.importActual<typeof import("../../lib/api/client")>("../../lib/api/client");
   return { ...actual, api: { roommates: apiMocks } };
@@ -74,6 +74,13 @@ describe("RoommateBlockedPage", () => {
     await waitFor(() => expect(apiMocks.unblockInterest).toHaveBeenCalledWith(91));
   });
 
+  it("hides pagination when the blocked list fits on one page", async () => {
+    render(<RoommateBlockedPage />);
+
+    expect(await screen.findByRole("heading", { name: "Minh" })).toBeInTheDocument();
+    expect(screen.queryByRole("navigation", { name: "Phân trang tương tác ở ghép đã chặn" })).not.toBeInTheDocument();
+  });
+
   it("loads subsequent pages and shows a safe retry state", async () => {
     apiMocks.listOwnedBlocks
       .mockResolvedValueOnce({
@@ -87,7 +94,7 @@ describe("RoommateBlockedPage", () => {
     render(<RoommateBlockedPage />);
 
     expect(await screen.findByRole("heading", { name: "Trang một" })).toBeInTheDocument();
-    fireEvent.click(screen.getByRole("button", { name: "Trang sau" }));
+    fireEvent.click(screen.getByRole("button", { name: "Sau" }));
     await waitFor(() =>
       expect(apiMocks.listOwnedBlocks).toHaveBeenLastCalledWith({ page: 2, pageSize: 20 }, expect.any(AbortSignal))
     );
@@ -96,7 +103,7 @@ describe("RoommateBlockedPage", () => {
     apiMocks.listOwnedBlocks.mockRejectedValue(
       new ApiError({ status: 503, code: "DEPENDENCY_UNAVAILABLE", message: "private", category: "backend" })
     );
-    fireEvent.click(screen.getByRole("button", { name: "Trang trước" }));
+    fireEvent.click(screen.getByRole("button", { name: "Trước" }));
     expect(await screen.findByRole("button", { name: "Thử lại" })).toBeInTheDocument();
   });
 });

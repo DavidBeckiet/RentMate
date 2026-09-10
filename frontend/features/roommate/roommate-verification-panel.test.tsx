@@ -64,9 +64,9 @@ describe("RoommateVerificationPanel", () => {
     expect(await screen.findByText("Email chưa xác minh")).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "Gửi mã email" }));
     await waitFor(() => expect(apiMocks.requestTenantEmailVerification).toHaveBeenCalledOnce());
-    fireEvent.change(screen.getByLabelText("Mã xác minh trong email"), { target: { value: "email-secret" } });
+    fireEvent.change(screen.getByLabelText("Mã OTP 6 số"), { target: { value: "654321" } });
     fireEvent.click(screen.getByRole("button", { name: "Xác nhận email" }));
-    await waitFor(() => expect(apiMocks.confirmTenantEmailVerification).toHaveBeenCalledWith("email-secret"));
+    await waitFor(() => expect(apiMocks.confirmTenantEmailVerification).toHaveBeenCalledWith("654321"));
     expect(await screen.findByText("Email đã xác minh")).toBeInTheDocument();
     expect(screen.queryByText("private")).not.toBeInTheDocument();
 

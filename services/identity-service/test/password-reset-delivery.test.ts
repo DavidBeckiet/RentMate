@@ -7,8 +7,7 @@ import {
 
 const input: PasswordResetDeliveryInput = Object.freeze({
   destination: "tenant@example.test",
-  secret: "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ-_0123456789",
-  resetUrl: "http://localhost:3000/reset-password?token=0123456789"
+  secret: "012345"
 });
 
 test("sends password reset webhook payload without exposing it through the API", async () => {
@@ -42,10 +41,7 @@ test("keeps a development preview and rejects a missing production provider", as
   });
   await previewDelivery.deliver(input);
   const preview = previewDelivery.latestPreview?.();
-  assert.deepEqual(
-    preview && { destination: preview.destination, secret: preview.secret, resetUrl: preview.resetUrl },
-    input
-  );
+  assert.deepEqual(preview && { destination: preview.destination, secret: preview.secret }, input);
   assert.throws(
     () => createPasswordResetDelivery({ nodeEnvironment: "production", deliveryUrl: "", deliveryToken: "" }),
     /required in production/

@@ -359,101 +359,122 @@
   animation: mapDialogIn 240ms var(--rm-ease-out) both;
 }
 
+.mapDialog > div {
+  padding: 0;
+}
+.mapDialog > header {
+  padding: 1rem 1.25rem;
+}
+.mapDialog > header h2 {
+  font-size: 1.25rem;
+}
 .mapDialogContent {
-  display: flex;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 20rem;
+  grid-template-rows: auto minmax(0, 1fr);
   min-height: 0;
   height: 100%;
-  flex-direction: column;
-  gap: 0.75rem;
 }
-
 .mapDialogMeta {
+  grid-column: 1/-1;
   display: flex;
   flex-wrap: wrap;
   align-items: center;
   justify-content: space-between;
-  gap: 0.75rem;
-  border: 1px solid rgb(var(--color-border));
-  border-radius: var(--radius-card);
-  padding: 0.75rem 1rem;
+  gap: 0.5rem;
+  padding: 0.65rem 1.25rem;
+  border-bottom: 1px solid rgb(var(--color-border));
   background: rgb(var(--color-surface-subtle));
 }
-
+.mapDialogMeta > div {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 0.65rem;
+}
 .mapDialogKicker {
   display: inline-flex;
   align-items: center;
   gap: 0.4rem;
   color: rgb(var(--color-primary));
-  font-size: var(--font-size-xs);
+  font-size: 0.75rem;
   font-weight: 800;
-  letter-spacing: 0.07em;
-  text-transform: uppercase;
 }
-
 .mapDialogMeta strong {
-  display: block;
   overflow: hidden;
-  margin-top: 0.25rem;
-  color: rgb(var(--color-foreground));
-  font-family: var(--font-manrope), sans-serif;
-  font-size: 1rem;
-  font-weight: 800;
-  line-height: 1.35;
   text-overflow: ellipsis;
   white-space: nowrap;
+  font-size: 0.8125rem;
+  color: rgb(var(--color-foreground));
 }
-
 .mapDialogCount {
-  border: 1px solid rgb(var(--color-primary) / 0.22);
-  border-radius: 999px;
-  padding: 0.35rem 0.65rem;
-  background: rgb(var(--color-primary-subtle));
-  color: rgb(var(--color-primary-hover));
-  font-size: var(--font-size-xs);
-  font-weight: 800;
+  color: rgb(var(--color-muted-foreground));
+  font-size: 0.75rem;
   white-space: nowrap;
 }
-
-.mapDialogControls {
-  min-width: 0;
-  flex: 0 0 auto;
-}
-
-.mapDialogControls > :global(section) {
-  border: 1px solid rgb(var(--color-border));
-  border-radius: var(--radius-card);
-  padding: 1rem;
-  background: rgb(var(--color-surface));
-  box-shadow: none;
-}
-
 .mapDialogMap {
-  min-height: 22rem;
-  flex: 1 1 0%;
+  min-width: 0;
+  min-height: 0;
   overflow: hidden;
 }
-
-.mapDialogMap > :global(section) {
-  display: flex;
-  min-height: 100%;
-  height: 100%;
-  flex-direction: column;
-  padding: 1rem;
-}
-
-.mapDialogMap > :global(section) > :global([role="region"]) {
-  min-height: 0;
-  height: auto !important;
-  flex: 1 1 0%;
-}
-
-.mapDialogMap > :global(section) > :global([role="region"]) :global(.leaflet-container) {
-  min-height: 0;
-  height: 100%;
-}
-
-.mapDialogMap :global(.leaflet-container) {
+.mapDialogControls {
   min-width: 0;
+  min-height: 0;
+  overflow-y: auto;
+  border-left: 1px solid rgb(var(--color-border));
+  background: rgb(var(--color-surface));
+}
+.mapPreview {
+  padding: 1.25rem;
+  display: grid;
+  gap: 0.875rem;
+}
+.mapPreview article {
+  width: 100%;
+  max-width: 100%;
+}
+.mapPreview article > div:first-child {
+  flex-direction: column;
+}
+.mapPreview article img {
+  width: 100%;
+  height: 8rem;
+  object-fit: cover;
+}
+.mapPreview article a {
+  min-height: 2.75rem;
+}
+@media (max-width: 899px) {
+  .mapDialogContent {
+    display: flex;
+    height: auto;
+    min-height: 100%;
+    flex-direction: column;
+  }
+  .mapDialogMap {
+    flex: none;
+    height: clamp(24rem, 60dvh, 36rem);
+  }
+  .mapDialogControls {
+    overflow: visible;
+    border-left: 0;
+    border-top: 1px solid rgb(var(--color-border));
+  }
+  .mapDialogMeta {
+    flex: none;
+  }
+  .mapPreview article > div:first-child {
+    flex-direction: row;
+  }
+  .mapPreview article img {
+    width: 5.5rem;
+    height: 4.125rem;
+  }
+}
+@media (min-width: 1200px) {
+  .mapDialogContent {
+    grid-template-columns: minmax(0, 1fr) 22rem;
+  }
 }
 
 .invalidPage {

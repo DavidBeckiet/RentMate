@@ -342,6 +342,41 @@ describe("LeafletMap", () => {
     expect(screen.getByText(centerMarker.label)).toBeInTheDocument();
   });
 
+  it("can suppress a marker hover tooltip while keeping the marker label out of the map", () => {
+    const marker = {
+      id: "listing-42",
+      label: "Vị trí xấp xỉ của phòng",
+      hideTooltip: true,
+      position: initialViewport.center
+    };
+
+    render(
+      <LeafletMap
+        ariaLabel="Bản đồ vị trí xấp xỉ"
+        center={initialViewport.center}
+        zoom={initialViewport.zoom}
+        markers={[marker]}
+      />
+    );
+
+    expect(screen.queryByText(marker.label)).not.toBeInTheDocument();
+    expect(leafletMocks.state.markerIconList[0]?.title).toBeUndefined();
+  });
+
+  it("recenters to the supplied public map center through the Leaflet API", () => {
+    render(
+      <LeafletMap
+        ariaLabel="Bản đồ vị trí xấp xỉ"
+        center={initialViewport.center}
+        zoom={initialViewport.zoom}
+        recenterControl={{ label: "Đưa bản đồ về vị trí phòng" }}
+      />
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Đưa bản đồ về vị trí phòng" }));
+    expect(leafletMocks.state.setView).toHaveBeenCalledWith([10.77, 106.7], 13);
+  });
+
   it("renders an optional marker popup without changing markers that have no popup", () => {
     render(
       <LeafletMap

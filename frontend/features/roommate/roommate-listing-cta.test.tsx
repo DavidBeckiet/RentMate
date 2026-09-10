@@ -35,8 +35,8 @@ describe("RoommateListingCta", () => {
 
     apiMocks.getProfile.mockResolvedValue(roommateProfile());
     render(<RoommateListingCta listingId={42} eligible />);
-    expect(screen.getByText("Tenant đang tìm một người để cân nhắc cùng thuê listing này.")).toBeInTheDocument();
-    fireEvent.click(screen.getByRole("button", { name: "Tìm người ở ghép cho listing này" }));
+    expect(screen.getByText("Người thuê đang tìm một người để cân nhắc cùng thuê phòng này.")).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Tìm người ở ghép cho tin đăng này" }));
     await waitFor(() => expect(routerMocks.push).toHaveBeenCalledWith("/roommates/my-request?listingId=42"));
   });
 
@@ -45,7 +45,7 @@ describe("RoommateListingCta", () => {
       new ApiError({ status: 404, code: "RESOURCE_NOT_FOUND", message: "private", category: "backend" })
     );
     render(<RoommateListingCta listingId={42} eligible />);
-    fireEvent.click(screen.getByRole("button", { name: "Tìm người ở ghép cho listing này" }));
+    fireEvent.click(screen.getByRole("button", { name: "Tìm người ở ghép cho tin đăng này" }));
     await waitFor(() =>
       expect(routerMocks.push).toHaveBeenCalledWith("/roommates/profile?next=/roommates/my-request?listingId=42")
     );
@@ -53,7 +53,7 @@ describe("RoommateListingCta", () => {
     apiMocks.getProfile.mockRejectedValueOnce(
       new ApiError({ status: 503, code: "DEPENDENCY_UNAVAILABLE", message: "private", category: "backend" })
     );
-    fireEvent.click(screen.getByRole("button", { name: "Tìm người ở ghép cho listing này" }));
+    fireEvent.click(screen.getByRole("button", { name: "Tìm người ở ghép cho tin đăng này" }));
     expect(await screen.findByRole("alert")).not.toHaveTextContent("private");
   });
 });

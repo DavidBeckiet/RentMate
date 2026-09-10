@@ -17,6 +17,7 @@ import { RadiusControls } from "./radius-controls";
 import { amenityLabel, propertyTypeLabel } from "./room-type-label";
 import { SearchFilters, type LookupResource } from "./search-filters";
 import { SearchMap } from "./search-map";
+import { SearchMapListingPopup } from "./search-map-listing-popup";
 import {
   activeFilterCount,
   applySearchFilters,
@@ -170,8 +171,10 @@ export function SearchPage() {
   const [searchRetryKey, setSearchRetryKey] = useState(0);
   const [propertyTypes, setPropertyTypes] = useState<LookupResource<PropertyType>>(initialLookup);
   const [amenities, setAmenities] = useState<LookupResource<Amenity>>(initialLookup);
+  const [areas, setAreas] = useState<LookupResource<string>>(initialLookup);
   const [propertyRetryKey, setPropertyRetryKey] = useState(0);
   const [amenityRetryKey, setAmenityRetryKey] = useState(0);
+  const [areaRetryKey, setAreaRetryKey] = useState(0);
   const [pendingViewport, setPendingViewport] = useState<MapViewport | null>(null);
   const [proposedRadiusCenter, setProposedRadiusCenter] = useState<MapPoint | null>(null);
   const [selectingRadiusCenter, setSelectingRadiusCenter] = useState(false);
@@ -218,6 +221,24 @@ export function SearchPage() {
   }, [amenityRetryKey]);
 
   useEffect(() => {
+    const controller = new AbortController();
+    let active = true;
+    setAreas({ status: "loading", data: [] });
+    void api.lookups
+      .listPublicAreas(controller.signal)
+      .then((data) => {
+        if (active && !controller.signal.aborted) setAreas({ status: "success", data });
+      })
+      .catch(() => {
+        if (active && !controller.signal.aborted) setAreas({ status: "error", data: [] });
+      });
+    return () => {
+      active = false;
+      controller.abort();
+    };
+  }, [areaRetryKey]);
+
+  useEffect(() => {
     setPendingViewport(null);
     setSelectingRadiusCenter(false);
     if (parsed.ok && parsed.state.mode === "radius") {
@@ -256,7 +277,7 @@ export function SearchPage() {
     setSearchStatus("loading");
 
     void api.listings
-      .searchPublic({ ...toPublicListingSearchQuery(parsed.state), pageSize: 20 }, controller.signal)
+      .searchPublic(toPublicListingSearchQuery(parsed.state), controller.signal)
       .then((page) => {
         if (!active || controller.signal.aborted || identity !== searchRequestIdentity.current) return;
         setItems(page.data);
@@ -287,11 +308,6 @@ export function SearchPage() {
 
   const handleListingSelect = useCallback((listingId: number) => {
     setActiveListingId(listingId);
-    const card = document.getElementById("listing-card-" + listingId);
-    if (card && typeof card.scrollIntoView === "function") {
-      const prefersReducedMotion = window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
-      card.scrollIntoView({ behavior: prefersReducedMotion ? "auto" : "smooth", block: "nearest" });
-    }
   }, []);
 
   const handleViewportChange = useCallback((viewport: MapViewport) => {
@@ -334,6 +350,7 @@ export function SearchPage() {
   const filterCount = activeFilterCount(committed);
   const chips = activeFilterChips(committed, propertyTypes, amenities);
   const contextLabel = searchContextLabel(committed);
+  const activeMapListing = items.find((item) => item.id === activeListingId);
   const applyFilters = (values: SearchFilterValues, sort: PublicListingSort) => {
     navigate(applySearchFilters(committed, values, sort));
   };
@@ -358,9 +375,11 @@ export function SearchPage() {
       committed={committed}
       propertyTypes={propertyTypes}
       amenities={amenities}
+      areas={areas}
       idPrefix={idPrefix}
       onRetryPropertyTypes={() => setPropertyRetryKey((key) => key + 1)}
       onRetryAmenities={() => setAmenityRetryKey((key) => key + 1)}
+      onRetryAreas={() => setAreaRetryKey((key) => key + 1)}
       onApply={(values, sort) => {
         setMobileFiltersOpen(false);
         applyFilters(values, sort);
@@ -589,7 +608,20 @@ export function SearchPage() {
                 </div>
 
                 <div className={styles.mapDialogControls}>
+                  <div className={styles.mapPreview}>
+                    <p className={styles.mapDialogKicker}>
+                      <Icon name="home" className="h-4 w-4" /> Phòng đang xem
+                    </p>
+                    {activeMapListing ? (
+                      <SearchMapListingPopup listing={activeMapListing} />
+                    ) : (
+                      <p className="text-sm leading-6 text-muted-foreground">
+                        Chọn một giá trên bản đồ để xem nhanh thông tin phòng.
+                      </p>
+                    )}
+                  </div>
                   <RadiusControls
+                    compact
                     proposedCenter={proposedRadiusCenter}
                     selectingCenter={selectingRadiusCenter}
                     initialRadiusKm={committed.mode === "radius" ? committed.radiusKm : undefined}

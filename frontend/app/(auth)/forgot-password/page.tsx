@@ -6,7 +6,7 @@ export default function ForgotPasswordPage() {
   return (
     <AuthPageShell
       title="Quên mật khẩu"
-      description="Nhập email tài khoản để nhận hướng dẫn đặt lại mật khẩu."
+      description="Nhập email tài khoản để nhận mã đặt lại mật khẩu gồm 6 số."
       footer={
         <p>
           Nhớ mật khẩu rồi?{" "}

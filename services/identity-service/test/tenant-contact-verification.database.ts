@@ -101,7 +101,7 @@ function harness(options: { readonly deliveryFails?: boolean } = {}) {
       }
     },
     secretPepper: "database-test-pepper",
-    createEmailToken: () => `${String(++emailSequence).padStart(31, "a")}b`,
+    createEmailCode: () => String(++emailSequence).padStart(6, "0"),
     createPhoneCode: () => String(++phoneSequence).padStart(6, "0")
   });
   return { service, deliveries };
@@ -138,8 +138,8 @@ test("serializes concurrent confirmation to one factual email-verification trans
   if (!secret) throw new Error("Verification delivery fixture is missing.");
 
   await Promise.all([
-    subject.service.confirmTenantEmail(tenant(userId), { token: secret }),
-    subject.service.confirmTenantEmail(tenant(userId), { token: secret })
+    subject.service.confirmTenantEmail(tenant(userId), { code: secret }),
+    subject.service.confirmTenantEmail(tenant(userId), { code: secret })
   ]);
 
   const result = await pool.query<{ readonly email_verified_at: Date | null }>(
@@ -163,7 +163,7 @@ test("serializes resend before confirm so the old secret cannot revalidate", asy
     await blocker.query("SELECT id FROM users WHERE id = $1 FOR UPDATE", [userId]);
     const resend = subject.service.requestTenantEmail(tenant(userId));
     await new Promise((resolve) => setTimeout(resolve, 25));
-    const confirm = subject.service.confirmTenantEmail(tenant(userId), { token: oldSecret });
+    const confirm = subject.service.confirmTenantEmail(tenant(userId), { code: oldSecret });
     await blocker.query("COMMIT");
     const [resendResult, confirmResult] = await Promise.allSettled([resend, confirm]);
     assert.equal(resendResult.status, "fulfilled");
@@ -189,12 +189,9 @@ test("a replaced challenge and a changed phone destination cannot verify stale s
   await subject.service.requestTenantEmail(tenant(userId));
   const oldEmailSecret = subject.deliveries[0]?.secret;
   await subject.service.requestTenantEmail(tenant(userId));
-  await assert.rejects(
-    () => subject.service.confirmTenantEmail(tenant(userId), { token: oldEmailSecret ?? "x".repeat(32) }),
-    {
-      code: "VALIDATION_FAILED"
-    }
-  );
+  await assert.rejects(() => subject.service.confirmTenantEmail(tenant(userId), { code: oldEmailSecret ?? "000000" }), {
+    code: "VALIDATION_FAILED"
+  });
 
   await subject.service.requestTenantPhone(tenant(userId));
   const oldPhoneSecret = subject.deliveries.at(-1)?.secret;

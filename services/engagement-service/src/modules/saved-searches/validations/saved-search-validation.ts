@@ -1,6 +1,12 @@
 import { throwValidationIssue } from "../../../../../shared/src/runtime/shared/validation/issues.js";
 import { parsePagination, parsePathId } from "../../../../../shared/src/runtime/shared/validation/parsing.js";
 import {
+  savedSearchAmenityCodes,
+  savedSearchPropertyTypeCodes,
+  savedSearchTextMaximumLengths
+} from "../../../../../shared/saved-search-criteria.js";
+import { formatAreaLabel } from "@rentmate/service-shared/area-domain";
+import {
   validateJsonText,
   validateLatitude,
   validateLongitude,
@@ -119,10 +125,18 @@ function code(value: unknown, field: string): string | null {
   return normalized;
 }
 
+function controlledCode(value: unknown, field: string, allowed: readonly string[]): string | null {
+  const normalized = code(value, field);
+  if (normalized !== null && !allowed.includes(normalized)) {
+    throwValidationIssue(field, "INVALID_VALUE", `${field} does not reference an available lookup value.`);
+  }
+  return normalized;
+}
+
 function amenities(value: unknown): readonly string[] {
   if (value === undefined) return Object.freeze([]);
   if (!Array.isArray(value)) throwValidationIssue("amenities", "INVALID_TYPE", "amenities must be an array.");
-  const normalized = value.map((item) => code(item, "amenities"));
+  const normalized = value.map((item) => controlledCode(item, "amenities", savedSearchAmenityCodes));
   if (normalized.some((item) => item === null)) {
     throwValidationIssue("amenities", "INVALID_VALUE", "amenities must contain only valid codes.");
   }
@@ -147,14 +161,17 @@ function validateQuery(value: unknown): SavedSearchQuery {
   }
 
   const common = {
-    q: optionalText(input.q, "q", 160),
-    areaName: optionalText(input.areaName, "areaName", 120),
+    q: optionalText(input.q, "q", savedSearchTextMaximumLengths.q),
+    areaName: (() => {
+      const areaName = optionalText(input.areaName, "areaName", savedSearchTextMaximumLengths.areaName);
+      return areaName === null ? null : formatAreaLabel(areaName);
+    })(),
     minMonthlyRent,
     maxMonthlyRent,
     minRoomAreaSqm,
     maxRoomAreaSqm,
     minOccupants,
-    propertyType: code(input.propertyType, "propertyType"),
+    propertyType: controlledCode(input.propertyType, "propertyType", savedSearchPropertyTypeCodes),
     amenities: amenities(input.amenities)
   } as const;
   const nullBounds = { north: null, south: null, east: null, west: null } as const;
@@ -235,7 +252,7 @@ export function validateCreateSavedSearchBody(value: unknown): CreateSavedSearch
   const body = validateBodyFields(value, ["name", "isActive", "query"]);
   if (!("query" in body)) throwValidationIssue("query", "REQUIRED", "query is required.");
   return Object.freeze({
-    name: optionalText(body.name, "name", 120),
+    name: optionalText(body.name, "name", savedSearchTextMaximumLengths.name),
     isActive: booleanValue(body.isActive, "isActive", true),
     query: validateQuery(body.query)
   });
@@ -245,7 +262,7 @@ export function validateUpdateSavedSearchBody(value: unknown): UpdateSavedSearch
   const body = validateBodyFields(value, ["name", "isActive", "query"]);
   if (Object.keys(body).length === 0) throwValidationIssue("body", "REQUIRED", "body must contain a field to update.");
   return Object.freeze({
-    ...("name" in body ? { name: optionalText(body.name, "name", 120) } : {}),
+    ...("name" in body ? { name: optionalText(body.name, "name", savedSearchTextMaximumLengths.name) } : {}),
     ...("isActive" in body ? { isActive: booleanValue(body.isActive, "isActive") } : {}),
     ...("query" in body ? { query: validateQuery(body.query) } : {})
   });

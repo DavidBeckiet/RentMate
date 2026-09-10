@@ -51,6 +51,7 @@ function detail(id: number): PublicListingDetail {
     amenities: [{ code: "WIFI", label: "Wi-Fi" }],
     images: [],
     landlordVerified: false,
+    hasReported: false,
     businessStatus: "AVAILABLE",
     updatedAt: "2026-08-24T00:00:00.000Z"
   };
@@ -87,7 +88,7 @@ describe("ComparePage", () => {
 
     expect(await screen.findByRole("heading", { name: "Studio số 42" })).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "Studio số 41" })).toBeInTheDocument();
-    expect(screen.getAllByText("Studio")).toHaveLength(2);
+    expect(screen.getAllByText("Căn studio")).toHaveLength(2);
     expect(apiMocks.listNotes).toHaveBeenCalledWith([42, 41], expect.any(AbortSignal));
     expect(await screen.findByText("ghi-chú:42")).toBeInTheDocument();
     expect(screen.getByText("ghi-chú:41")).toBeInTheDocument();
@@ -97,12 +98,13 @@ describe("ComparePage", () => {
     selectListings([42, 41]);
     render(<ComparePage />);
     await screen.findByRole("heading", { name: "Studio số 42" });
-    fireEvent.click(screen.getAllByRole("button", { name: "Bỏ tin" })[0]!);
+    fireEvent.click(screen.getAllByRole("button", { name: "Bỏ khỏi so sánh" })[0]!);
 
     await waitFor(() =>
       expect(
         screen.getByText(
-          (_content, element) => element?.tagName === "P" && element.textContent?.includes("1/4 tin") === true
+          (_content, element) =>
+            element?.tagName === "P" && element.textContent?.includes("1 tin đang so sánh") === true
         )
       ).toBeInTheDocument()
     );
@@ -111,7 +113,7 @@ describe("ComparePage", () => {
 
   it("shows a useful empty state without making requests", () => {
     render(<ComparePage />);
-    expect(screen.getByText("Chưa có tin nào để so sánh")).toBeInTheDocument();
+    expect(screen.getByText("Chưa có tin đăng để so sánh")).toBeInTheDocument();
     expect(apiMocks.getPublicDetail).not.toHaveBeenCalled();
   });
 });

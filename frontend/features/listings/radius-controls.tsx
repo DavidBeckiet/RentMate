@@ -4,8 +4,10 @@ import { useEffect, useState } from "react";
 import type { MapPoint } from "../../components/map/map-base";
 import { Button } from "../../components/ui/button";
 import { InputField } from "../../components/ui/form-controls";
+import styles from "./radius-controls.module.css";
 
 export interface RadiusControlsProps {
+  readonly compact?: boolean;
   readonly proposedCenter: MapPoint | null;
   readonly selectingCenter: boolean;
   readonly initialRadiusKm?: number;
@@ -23,6 +25,7 @@ function geolocationMessage(code: number): string {
 }
 
 export function RadiusControls({
+  compact = false,
   proposedCenter,
   selectingCenter,
   initialRadiusKm,
@@ -94,7 +97,7 @@ export function RadiusControls({
   return (
     <section
       aria-labelledby="radius-heading"
-      className="border-2 border-heroDark-950 bg-rent-surface p-5 shadow-glass-sm sm:p-6"
+      className={compact ? styles.compact : "border-2 border-heroDark-950 bg-rent-surface p-5 shadow-glass-sm sm:p-6"}
     >
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>

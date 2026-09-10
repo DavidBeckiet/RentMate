@@ -18,6 +18,8 @@
     "backfill": "tsx backfill.ts"
   },
   "dependencies": {
+    "@rentmate/service-shared": "file:../shared",
+    "rentmate": "file:../..",
     "tsx": "4.19.4"
   }
 }

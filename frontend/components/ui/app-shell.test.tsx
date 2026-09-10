@@ -82,6 +82,14 @@ describe("AppShell", () => {
     expect(screen.getByRole("link", { name: "Trung tâm trợ giúp" })).toHaveAttribute("href", "/help");
   });
 
+  it("uses compact top spacing for listing detail pages", () => {
+    navigationMocks.pathname.mockReturnValue("/listings/243");
+    render(<AppShell>Chi tiết tin đăng</AppShell>);
+
+    expect(screen.getByRole("main")).toHaveClass("py-4", "sm:py-6");
+    expect(screen.getByRole("main")).not.toHaveClass("sm:py-12");
+  });
+
   it("keeps every anonymous route and auth action accessible in the mobile drawer", () => {
     render(<AppShell>Nội dung trang</AppShell>);
     fireEvent.click(screen.getByRole("button", { name: "Mở menu điều hướng" }));
@@ -96,14 +104,19 @@ describe("AppShell", () => {
   });
 
   it("shows tenant priorities and marks the current consumer route", () => {
-    navigationMocks.pathname.mockReturnValue("/favorites");
+    navigationMocks.pathname.mockReturnValue("/near-me");
     authenticate("TENANT");
     render(<AppShell>Nội dung trang</AppShell>);
 
     const navigation = screen.getByRole("navigation", { name: "Điều hướng marketplace" });
-    expect(within(navigation).getByRole("link", { name: "Yêu thích" })).toHaveAttribute("aria-current", "page");
-    expect(within(navigation).getByRole("link", { name: "Tin nhắn" })).toHaveAttribute("href", "/inquiries");
+    expect(within(navigation).getByRole("link", { name: "Trang chủ" })).toHaveAttribute("href", "/");
+    expect(within(navigation).getByRole("link", { name: "Tìm phòng" })).toHaveAttribute("href", "/search");
+    expect(within(navigation).getByRole("link", { name: "Gần tôi" })).toHaveAttribute("aria-current", "page");
     expect(within(navigation).getByRole("link", { name: "Ở ghép" })).toHaveAttribute("href", "/roommates");
+    expect(within(navigation).getByRole("link", { name: "Tin nhắn" })).toHaveAttribute("href", "/inquiries");
+    expect(within(navigation).queryByRole("link", { name: "Yêu thích" })).not.toBeInTheDocument();
+    expect(within(navigation).queryByRole("link", { name: "Đã xem gần đây" })).not.toBeInTheDocument();
+    expect(within(navigation).queryByRole("link", { name: "Tìm kiếm đã lưu" })).not.toBeInTheDocument();
     expect(within(navigation).queryByRole("link", { name: "Thông báo" })).not.toBeInTheDocument();
     expect(within(screen.getByRole("banner")).getByRole("link", { name: "Thông báo" })).toHaveAttribute(
       "href",
@@ -114,7 +127,7 @@ describe("AppShell", () => {
   });
 
   it("provides a five-item tenant mobile navigation using existing routes", async () => {
-    navigationMocks.pathname.mockReturnValue("/favorites");
+    navigationMocks.pathname.mockReturnValue("/inquiries");
     authenticate("TENANT");
     render(<AppShell>Ná»™i dung trang</AppShell>);
 
@@ -126,18 +139,20 @@ describe("AppShell", () => {
       "href",
       "/search"
     );
+    expect(within(mobileNavigation).getByRole("link", { name: "Gần tôi trên di động" })).toHaveAttribute(
+      "href",
+      "/near-me"
+    );
     expect(within(mobileNavigation).getByRole("link", { name: "Ở ghép trên di động" })).toHaveAttribute(
       "href",
       "/roommates"
     );
-    expect(within(mobileNavigation).getByRole("link", { name: "Đã lưu trên di động" })).toHaveAttribute(
+    expect(within(mobileNavigation).getByRole("link", { name: "Tin nhắn trên di động" })).toHaveAttribute(
       "aria-current",
       "page"
     );
-    expect(within(mobileNavigation).getByRole("link", { name: "Tài khoản trên di động" })).toHaveAttribute(
-      "href",
-      "/profile"
-    );
+    expect(within(mobileNavigation).queryByRole("link", { name: "Đã lưu trên di động" })).not.toBeInTheDocument();
+    expect(within(mobileNavigation).queryByRole("link", { name: "Tài khoản trên di động" })).not.toBeInTheDocument();
   });
 
   it("does not cover a tenant conversation detail with the fixed mobile navigation", async () => {
@@ -158,6 +173,9 @@ describe("AppShell", () => {
     const menu = await screen.findByRole("menu", { name: "Tài khoản" });
     expect(within(menu).getByRole("menuitem", { name: "Hồ sơ của tôi" })).toHaveAttribute("href", "/profile");
     expect(within(menu).getByRole("menuitem", { name: "Thông báo" })).toHaveAttribute("href", "/notifications");
+    expect(within(menu).getByRole("menuitem", { name: "Yêu thích" })).toHaveAttribute("href", "/favorites");
+    expect(within(menu).getByRole("menuitem", { name: "Đã xem gần đây" })).toHaveAttribute("href", "/recently-viewed");
+    expect(within(menu).getByRole("menuitem", { name: "Tìm kiếm đã lưu" })).toHaveAttribute("href", "/saved-searches");
     await waitFor(() => expect(within(menu).getByRole("menuitem", { name: "Hồ sơ của tôi" })).toHaveFocus());
     fireEvent.keyDown(menu, { key: "Escape" });
     expect(screen.queryByRole("menu", { name: "Tài khoản" })).not.toBeInTheDocument();
@@ -310,7 +328,7 @@ describe("AppShell", () => {
     const dialog = screen.getByRole("dialog", { name: "Điều hướng RentMate" });
     expect(trigger).toHaveAttribute("aria-expanded", "true");
     expect(within(dialog).getByRole("navigation", { name: "Điều hướng marketplace trên di động" })).toBeInTheDocument();
-    expect(within(dialog).getByRole("link", { name: "Bộ lọc đã lưu" })).toHaveAttribute("href", "/saved-searches");
+    expect(within(dialog).getByRole("link", { name: "Tìm kiếm đã lưu" })).toHaveAttribute("href", "/saved-searches");
     expect(within(dialog).getByRole("button", { name: "Đóng điều hướng rentmate" })).toHaveFocus();
 
     fireEvent.keyDown(window, { key: "Escape" });

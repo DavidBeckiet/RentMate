@@ -1,8 +1,9 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
+import { useCallback, useEffect, useId, useState } from "react";
 import { Button } from "../../components/ui/button";
+import { Dialog } from "../../components/ui/dialog";
 import { Icon } from "../../components/ui/icon";
 import { api, ApiError } from "../../lib/api/client";
 import { useAuth } from "../../lib/auth/auth-provider";
@@ -17,14 +18,59 @@ const categories: readonly { readonly value: ReportCategory; readonly label: str
   { value: "INAPPROPRIATE", label: "Nội dung không phù hợp" }
 ];
 
-export function ReportListingControl({ listingId }: { readonly listingId: number }) {
+interface ReportListingControlProps {
+  readonly listingId: number;
+  readonly hasReported?: boolean;
+  readonly onReported?: () => void;
+}
+
+export function ReportListingControl({ listingId, hasReported = false, onReported }: ReportListingControlProps) {
   const { status, user } = useAuth();
+  const formId = useId();
   const [open, setOpen] = useState(false);
   const [category, setCategory] = useState<ReportCategory>("ALREADY_RENTED");
   const [details, setDetails] = useState("");
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [submitted, setSubmitted] = useState(false);
+  const [reported, setReported] = useState(hasReported);
+
+  useEffect(() => {
+    if (hasReported) setReported(true);
+  }, [hasReported]);
+
+  const resetForm = useCallback(() => {
+    setCategory("ALREADY_RENTED");
+    setDetails("");
+    setError(null);
+  }, []);
+  const close = useCallback(() => {
+    if (pending) return;
+    setOpen(false);
+    resetForm();
+  }, [pending, resetForm]);
+  const acknowledgeReport = useCallback(() => {
+    setReported(true);
+    setOpen(false);
+    resetForm();
+    onReported?.();
+  }, [onReported, resetForm]);
+  const submit = async () => {
+    setPending(true);
+    setError(null);
+    try {
+      await api.listings.report(listingId, { category, details: details.trim() || null });
+      acknowledgeReport();
+    } catch (caught) {
+      const apiError = caught instanceof ApiError ? caught : null;
+      if (apiError?.status === 409) acknowledgeReport();
+      else if (apiError?.status === 422) setError("Vui lòng kiểm tra lại thông tin báo cáo.");
+      else if (apiError?.status === 429) setError("Bạn đã gửi quá nhiều báo cáo. Vui lòng thử lại sau.");
+      else if (apiError?.status === 404) setError("Tin không còn ở trạng thái có thể báo cáo.");
+      else setError("Chưa thể gửi báo cáo. Vui lòng thử lại.");
+    } finally {
+      setPending(false);
+    }
+  };
 
   if (status === "authenticated" && user?.role !== "TENANT") return null;
   if (status === "anonymous") {
@@ -39,107 +85,86 @@ export function ReportListingControl({ listingId }: { readonly listingId: number
     );
   }
   if (status !== "authenticated") return null;
-  if (submitted) {
+  if (reported) {
     return (
-      <div role="status" className="border-2 border-heroDark-950 bg-rent-accent p-3 text-xs font-bold shadow-glass-sm">
-        <span className="inline-flex items-center gap-2">
-          <Icon name="check" className="h-4 w-4" /> Báo cáo đã được gửi tới đội ngũ an toàn.
-        </span>
-      </div>
+      <p role="status" className="inline-flex items-center gap-2 text-xs font-semibold text-success-foreground">
+        <Icon name="check" className="h-4 w-4" /> Bạn đã gửi báo cáo về tin này.
+      </p>
     );
   }
-  if (!open) {
-    return (
+
+  return (
+    <>
       <button
         type="button"
         onClick={() => setOpen(true)}
-        className="inline-flex min-h-10 w-full cursor-pointer items-center justify-center gap-2 border-2 border-heroDark-950 bg-white px-3 text-xs font-extrabold shadow-glass-sm transition-colors duration-200 hover:bg-rent-coral focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-brandBlue-500/40"
+        className="inline-flex min-h-10 w-full cursor-pointer items-center justify-center gap-2 rounded-control border border-border-strong bg-surface px-3 text-xs font-bold text-foreground transition-colors duration-200 hover:border-danger/40 hover:bg-danger-subtle hover:text-danger focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-focus/25"
       >
-        <Icon name="shield" className="h-4 w-4" /> Báo cáo tin này
+        <Icon name="flag" className="h-4 w-4" /> Báo cáo tin đăng
       </button>
-    );
-  }
-
-  const submit = async () => {
-    setPending(true);
-    setError(null);
-    try {
-      await api.listings.report(listingId, { category, details: details.trim() || null });
-      setSubmitted(true);
-      setOpen(false);
-    } catch (caught) {
-      const apiError = caught instanceof ApiError ? caught : null;
-      if (apiError?.status === 409) setError("Bạn đã có một báo cáo đang được xử lý cho tin này.");
-      else if (apiError?.status === 429) setError("Bạn đã gửi quá nhiều báo cáo. Vui lòng thử lại sau.");
-      else if (apiError?.status === 404) setError("Tin không còn ở trạng thái có thể báo cáo.");
-      else setError("Chưa thể gửi báo cáo. Vui lòng thử lại.");
-    } finally {
-      setPending(false);
-    }
-  };
-
-  return (
-    <div className="space-y-3 border-2 border-heroDark-950 bg-[#fff6ef] p-3 shadow-glass-sm">
-      <div>
-        <h3 className="font-display text-sm font-extrabold">Báo cáo tin đăng</h3>
-        <p className="mt-1 text-xs leading-5 text-rent-secondary">
-          Chỉ gửi thông tin bạn tin là chính xác. Admin sẽ kiểm tra trước khi xử lý.
-        </p>
-      </div>
-      <label className="block text-xs font-extrabold" htmlFor={`report-category-${listingId}`}>
-        Lý do
-      </label>
-      <select
-        id={`report-category-${listingId}`}
-        value={category}
-        onChange={(event) => setCategory(event.target.value as ReportCategory)}
-        className="min-h-11 w-full cursor-pointer border-2 border-heroDark-950 bg-white px-3 text-xs font-bold outline-none focus:ring-4 focus:ring-brandBlue-500/30"
+      <Dialog
+        open={open}
+        title="Báo cáo tin đăng"
+        description="Chỉ báo cáo khi bạn tin rằng nội dung tin đăng không chính xác, không còn phù hợp hoặc có dấu hiệu vi phạm."
+        onClose={close}
+        closeLabel="Đóng biểu mẫu báo cáo"
+        actions={
+          <>
+            <Button type="submit" form={formId} pending={pending} pendingLabel="Đang gửi…">
+              Gửi báo cáo
+            </Button>
+            <Button variant="secondary" disabled={pending} onClick={close}>
+              Hủy
+            </Button>
+          </>
+        }
       >
-        {categories.map((item) => (
-          <option key={item.value} value={item.value}>
-            {item.label}
-          </option>
-        ))}
-      </select>
-      <label className="block text-xs font-extrabold" htmlFor={`report-details-${listingId}`}>
-        Chi tiết <span className="font-semibold text-rent-secondary">(không bắt buộc)</span>
-      </label>
-      <textarea
-        id={`report-details-${listingId}`}
-        value={details}
-        maxLength={2000}
-        rows={4}
-        onChange={(event) => setDetails(event.target.value)}
-        className="w-full resize-y border-2 border-heroDark-950 bg-white p-3 text-xs font-semibold outline-none focus:ring-4 focus:ring-brandBlue-500/30"
-        placeholder="Mô tả ngắn điều bạn phát hiện"
-      />
-      <p className="text-right text-[10px] font-bold text-rent-secondary">{details.length}/2000</p>
-      {error ? (
-        <p role="alert" className="border-l-4 border-red-800 pl-2 text-xs font-bold text-red-800">
-          {error}
-        </p>
-      ) : null}
-      <div className="flex flex-wrap gap-2">
-        <Button
-          pending={pending}
-          pendingLabel="Đang gửi…"
-          className="flex-1 px-3 text-xs"
-          onClick={() => void submit()}
-        >
-          Gửi báo cáo
-        </Button>
-        <Button
-          variant="secondary"
-          disabled={pending}
-          className="px-3 text-xs"
-          onClick={() => {
-            setOpen(false);
-            setError(null);
+        <form
+          id={formId}
+          className="space-y-4"
+          onSubmit={(event) => {
+            event.preventDefault();
+            void submit();
           }}
         >
-          Hủy
-        </Button>
-      </div>
-    </div>
+          <label className="grid gap-2 text-sm font-semibold" htmlFor={`report-category-${listingId}`}>
+            Lý do
+            <select
+              id={`report-category-${listingId}`}
+              value={category}
+              onChange={(event) => setCategory(event.target.value as ReportCategory)}
+              className="min-h-11 rounded-control border border-border-strong bg-surface px-3 text-sm font-medium outline-none focus:ring-4 focus:ring-focus/25"
+            >
+              {categories.map((item) => (
+                <option key={item.value} value={item.value}>
+                  {item.label}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label className="grid gap-2 text-sm font-semibold" htmlFor={`report-details-${listingId}`}>
+            Chi tiết <span className="font-normal text-muted-foreground">(không bắt buộc)</span>
+            <textarea
+              id={`report-details-${listingId}`}
+              value={details}
+              maxLength={2000}
+              rows={4}
+              onChange={(event) => setDetails(event.target.value)}
+              className="w-full resize-y rounded-control border border-border-strong bg-surface p-3 text-sm font-normal outline-none focus:ring-4 focus:ring-focus/25"
+              placeholder="Mô tả ngắn điều bạn phát hiện"
+            />
+          </label>
+          <p className="text-right text-ui-xs text-muted-foreground">{details.length}/2000</p>
+          {error ? (
+            <p
+              role="alert"
+              className="rounded-control border border-danger/30 bg-danger-subtle p-3 text-sm font-medium text-danger"
+            >
+              {error}
+            </p>
+          ) : null}
+        </form>
+      </Dialog>
+    </>
   );
 }

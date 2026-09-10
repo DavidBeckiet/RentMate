@@ -1,3 +1,5 @@
+import { createEmailContent } from "./email-content.mjs";
+
 const emailPath = "/v3/smtp/email";
 
 export class BrevoProviderError extends Error {
@@ -27,37 +29,6 @@ function assertBrevoConfiguration(config) {
   }
 }
 
-function escapeHtml(value) {
-  return value.replace(/[&<>'"]/g, (character) => {
-    const entities = {
-      "&": "&amp;",
-      "<": "&lt;",
-      ">": "&gt;",
-      "'": "&#39;",
-      '"': "&quot;"
-    };
-    return entities[character];
-  });
-}
-
-function createEmailContent(input) {
-  if (input.eventType === "PASSWORD_RESET") {
-    const safeResetUrl = escapeHtml(input.resetUrl);
-    return {
-      subject: "Đặt lại mật khẩu RentMate",
-      textContent: `Bạn có thể đặt lại mật khẩu RentMate tại liên kết sau:\n${input.resetUrl}\n\nNếu bạn không yêu cầu thao tác này, hãy bỏ qua email.`,
-      htmlContent: `<p>Bạn có thể đặt lại mật khẩu RentMate tại liên kết sau:</p><p><a href="${safeResetUrl}">Đặt lại mật khẩu RentMate</a></p><p>Nếu bạn không yêu cầu thao tác này, hãy bỏ qua email.</p>`
-    };
-  }
-
-  const safeSecret = escapeHtml(input.secret);
-  return {
-    subject: "Mã xác minh RentMate",
-    textContent: `Mã xác minh RentMate của bạn là: ${input.secret}\n\nNếu bạn không yêu cầu mã này, hãy bỏ qua email.`,
-    htmlContent: `<p>Mã xác minh RentMate của bạn là:</p><p><strong>${safeSecret}</strong></p><p>Nếu bạn không yêu cầu mã này, hãy bỏ qua email.</p>`
-  };
-}
-
 function createEmailPayload(input, config) {
   const content = createEmailContent(input);
   return {
@@ -67,8 +38,8 @@ function createEmailPayload(input, config) {
     },
     to: [{ email: input.destination }],
     subject: content.subject,
-    textContent: content.textContent,
-    htmlContent: content.htmlContent
+    textContent: content.text,
+    htmlContent: content.html
   };
 }
 

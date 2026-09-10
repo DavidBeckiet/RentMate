@@ -1,13 +1,8 @@
 # RentMate
 
-RentMate is a responsive, map-based monthly room-rental MVP for Ho Chi Minh City. It ships as a Next.js App Router
-frontend, one Express/TypeScript modular monolith, and PostgreSQL accessed through parameterized `pg` queries. The four
-backend business modules are `auth`, `users`, `listings`, and `favorites`; Cloudinary and Nominatim remain backend
-integration clients.
-
-The repository also contains the first post-MVP microservices migration foundation: an independent API Gateway and
-Identity, Listing, and Engagement service entrypoints. The gateway keeps the monolith as the compatibility upstream
-until a boundary has completed its database and contract extraction. See
+RentMate is a responsive, map-based room-rental and roommate platform for Ho Chi Minh City. The current local/demo
+architecture uses a Next.js App Router frontend, API Gateway, Identity, Listing, Engagement, Verification Delivery,
+PostgreSQL, and the retained Express/TypeScript compatibility backend. See
 [MICROSERVICES_MIGRATION.md](docs/architecture/MICROSERVICES_MIGRATION.md).
 
 Public users can search/filter approved listings in list/map/radius views and open privacy-safe detail. Tenants can
@@ -19,32 +14,39 @@ four frozen moderation actions, and activate/deactivate tenant or landlord accou
 
 - Node.js 22.15.1 (`.nvmrc`)
 - npm 10.9.2
-- Docker Desktop with Docker Compose for local PostgreSQL
+- Docker Desktop with Docker Compose
 
 Run from the repository root:
 
 ```powershell
 npm.cmd ci
-npm.cmd --prefix backend ci
 npm.cmd --prefix frontend ci
+npm.cmd --prefix backend ci
+npm.cmd --prefix services/identity-service ci
+npm.cmd --prefix services/listing-service ci
+npm.cmd --prefix services/engagement-service ci
 Copy-Item .env.example .env
-docker compose up -d postgres
-npm.cmd run dev
+docker compose -f docker-compose.microservices.yml up -d --build
+npm.cmd run seed:dev
+npm.cmd --prefix frontend run dev
 ```
 
-The frontend is available at `http://localhost:3000` and the local API at `http://localhost:4000`.
+The frontend is available at `http://localhost:3000`. Browser API traffic goes through the Gateway at
+`http://localhost:4001`; port `4000` is the retained compatibility backend and is not the browser API.
 
-To run the migration foundation with the frontend calling the gateway instead:
+The Compose stack already owns port `4001`, so do not run `npm.cmd run dev` at the same time. To use the all-local-node
+route instead, stop the Compose stack first and then run:
 
 ```powershell
 npm.cmd run dev:microservices
 ```
 
-The gateway listens on `http://localhost:4001` and forwards to the existing backend on port `4000`.
+See [LOCAL_DEMO_RUNBOOK.md](docs/deployment/LOCAL_DEMO_RUNBOOK.md) for the reproducible demo setup, accounts, health
+checks, optional AI positioning, and safe shutdown procedure.
 
 ## Session and API usage
 
-All 31 product endpoints use `/api/v1`; health remains `GET /api/health`. Browser requests use
+Product endpoints use `/api/v1`; health remains `GET /api/health`. Browser requests use
 `credentials: "include"`. Authentication is the two-hour host-only HttpOnly `rentmate_session` cookie—frontend
 JavaScript never reads/stores the JWT and does not use a Bearer token. Unsafe methods require the exact configured
 `Origin`. Public, tenant, landlord, and admin routes retain the roles/privacy documented in
@@ -70,20 +72,22 @@ npm.cmd --prefix backend run test:database
 Focused release verification:
 
 ```powershell
-npm.cmd run test:rm053
-npm.cmd run test:rm053:database
-npm.cmd run test:rm054
-npm.cmd run test:rm054:e2e
-npm.cmd run test:rm055
+npm.cmd --prefix services/identity-service test
+npm.cmd --prefix services/listing-service test
+npm.cmd --prefix services/engagement-service test
+npm.cmd --prefix services/api-gateway test
+npm.cmd --prefix services/verification-delivery-adapter test
+npm.cmd run test:e2e:final
 ```
 
-RM-054 Playwright uses its dedicated disposable test database and local provider mocks. Normal unit tests and builds do
-not call live Cloudinary, Nominatim, or production smoke targets.
+`test:e2e:final` is the current-architecture Playwright acceptance suite. It uses frontend port `3000`, Gateway port
+`4001`, current services, and PostgreSQL. The legacy RM-054 fixture remains historical and is excluded from release
+acceptance. Normal unit tests and builds do not call live Cloudinary, Nominatim, Gemini, or production smoke targets.
 
 ## Database release commands
 
-Migrations are immutable ordered SQL files `0001`–`0012`. Startup does not run them, and no migration bookkeeping table
-exists.
+The retained compatibility backend uses immutable ordered migrations. Startup does not run them, and no migration
+bookkeeping table exists. Current microservices keep their own ordered migrations under each service package.
 
 ```powershell
 # Empty target: preview, then bootstrap migrations/seeds/admin and verify
@@ -136,7 +140,6 @@ npm.cmd run smoke:production
 The provider command performs Cloudinary ping and one bounded Nominatim forward-geocode. Smoke checks frontend, health,
 public privacy, role reads, secure cookie/CORS, login, and logout without mutating product data.
 
-Production topology, complete environment ownership, migration/backup/restore/rollback instructions, and operational
-limits are in [DEPLOYMENT.md](docs/deployment/DEPLOYMENT.md). Record each real release in
-[RELEASE_CHECKLIST.md](docs/deployment/RELEASE_CHECKLIST.md). The MVP uses process-local in-memory rate limits, so the
-documented production shape runs one backend process unless a future architecture change adds shared state.
+The existing [DEPLOYMENT.md](docs/deployment/DEPLOYMENT.md) and
+[RELEASE_CHECKLIST.md](docs/deployment/RELEASE_CHECKLIST.md) describe the retained compatibility-backend production
+path. They are not the local graduation-demo startup instructions; use the local demo runbook for that purpose.

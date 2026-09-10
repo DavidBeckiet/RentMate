@@ -3,17 +3,18 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { AuthContextValue } from "../../lib/auth/auth-provider";
 import type { UserProfile, UserRole } from "../../types/api";
 
-const apiMocks = vi.hoisted(() => ({ add: vi.fn() }));
+const apiMocks = vi.hoisted(() => ({ add: vi.fn(), remove: vi.fn() }));
 const useAuthMock = vi.hoisted(() => vi.fn<() => AuthContextValue>());
 
 vi.mock("../../lib/api/client", async () => {
   const actual = await vi.importActual<typeof import("../../lib/api/client")>("../../lib/api/client");
-  return { ...actual, api: { favorites: { add: apiMocks.add } } };
+  return { ...actual, api: { favorites: { add: apiMocks.add, remove: apiMocks.remove } } };
 });
 vi.mock("../../lib/auth/auth-provider", () => ({ useAuth: useAuthMock }));
 
 import { ApiError } from "../../lib/api/client";
 import { FavoriteSaveControl } from "./favorite-save-control";
+import { resetFavoriteStateForTests } from "./favorite-state";
 
 const refresh = vi.fn<() => Promise<void>>();
 
@@ -40,7 +41,9 @@ function backendError(status: number): ApiError {
 
 describe("FavoriteSaveControl", () => {
   beforeEach(() => {
+    resetFavoriteStateForTests();
     apiMocks.add.mockReset();
+    apiMocks.remove.mockReset();
     refresh.mockReset();
     refresh.mockResolvedValue();
     useAuthMock.mockReturnValue(authValue());
@@ -60,6 +63,7 @@ describe("FavoriteSaveControl", () => {
     fireEvent.click(screen.getByRole("button", { name: "Thử lại" }));
     expect(refresh).toHaveBeenCalledOnce();
     expect(apiMocks.add).not.toHaveBeenCalled();
+    expect(apiMocks.remove).not.toHaveBeenCalled();
   });
 
   it.each(["LANDLORD", "ADMIN"] as const)("shows tenant-only guidance to %s without a PUT", (role) => {
@@ -67,9 +71,10 @@ describe("FavoriteSaveControl", () => {
     render(<FavoriteSaveControl listingId="42" />);
     expect(screen.getByText("Chức năng lưu tin dành cho tài khoản người thuê.")).toBeInTheDocument();
     expect(apiMocks.add).not.toHaveBeenCalled();
+    expect(apiMocks.remove).not.toHaveBeenCalled();
   });
 
-  it("blocks duplicate clicks while pending and confirms a successful ensure-present request", async () => {
+  it("blocks duplicate clicks, then supports save and remove with selected-state feedback", async () => {
     let resolveAdd: (() => void) | undefined;
     apiMocks.add.mockReturnValue(
       new Promise<void>((resolve) => {
@@ -78,7 +83,7 @@ describe("FavoriteSaveControl", () => {
     );
     render(<FavoriteSaveControl listingId="42" />);
 
-    const saveButton = screen.getByRole("button", { name: "Lưu tin" });
+    const saveButton = screen.getByRole("button", { name: "Thêm vào yêu thích" });
     fireEvent.click(saveButton);
     fireEvent.click(saveButton);
     expect(apiMocks.add).toHaveBeenCalledWith(42, expect.any(AbortSignal));
@@ -86,8 +91,27 @@ describe("FavoriteSaveControl", () => {
     expect(screen.getByRole("button", { name: "Đang lưu…" })).toBeDisabled();
 
     resolveAdd?.();
-    expect(await screen.findByRole("button", { name: "Đã lưu" })).toBeDisabled();
-    expect(screen.getByText(/bảo đảm có trong danh sách đã lưu/i)).toBeInTheDocument();
+    const savedButton = await screen.findByRole("button", { name: "Bỏ khỏi yêu thích" });
+    expect(savedButton).not.toBeDisabled();
+    expect(savedButton).toHaveAttribute("aria-pressed", "true");
+    expect(screen.getByRole("status")).toHaveTextContent("Đã thêm vào danh sách yêu thích");
+
+    apiMocks.remove.mockResolvedValue(undefined);
+    fireEvent.click(savedButton);
+    expect(apiMocks.remove).toHaveBeenCalledWith(42, expect.any(AbortSignal));
+    expect(screen.getByRole("button", { name: "Đang bỏ lưu…" })).toBeDisabled();
+    const unsavedButton = await screen.findByRole("button", { name: "Thêm vào yêu thích" });
+    expect(unsavedButton).toHaveAttribute("aria-pressed", "false");
+    expect(screen.getByRole("status")).toHaveTextContent("Đã bỏ khỏi danh sách yêu thích");
+  });
+
+  it("starts selected when the parent supplies an existing favorite", () => {
+    render(<FavoriteSaveControl listingId="42" initialSaved />);
+
+    const button = screen.getByRole("button", { name: "Bỏ khỏi yêu thích" });
+    expect(button).toHaveAttribute("aria-pressed", "true");
+    expect(apiMocks.add).not.toHaveBeenCalled();
+    expect(apiMocks.remove).not.toHaveBeenCalled();
   });
 
   it.each([
@@ -97,7 +121,7 @@ describe("FavoriteSaveControl", () => {
   ])("maps %s to safe feedback", async (status, message) => {
     apiMocks.add.mockRejectedValue(backendError(status as number));
     render(<FavoriteSaveControl listingId="42" />);
-    fireEvent.click(screen.getByRole("button", { name: "Lưu tin" }));
+    fireEvent.click(screen.getByRole("button", { name: "Thêm vào yêu thích" }));
     expect(await screen.findByRole("alert")).toHaveTextContent(message as string);
     expect(screen.getByRole("alert")).not.toHaveTextContent("private");
   });
@@ -106,12 +130,12 @@ describe("FavoriteSaveControl", () => {
     apiMocks.add.mockRejectedValue(backendError(401));
     render(<FavoriteSaveControl listingId="42" />);
 
-    fireEvent.click(screen.getByRole("button", { name: "Lưu tin" }));
+    fireEvent.click(screen.getByRole("button", { name: "Thêm vào yêu thích" }));
     expect(await screen.findByRole("alert")).toHaveTextContent("Phiên đăng nhập không còn hợp lệ");
     expect(apiMocks.add).toHaveBeenCalledTimes(1);
     expect(refresh).toHaveBeenCalledTimes(1);
 
-    fireEvent.click(screen.getByRole("button", { name: "Lưu tin" }));
+    fireEvent.click(screen.getByRole("button", { name: "Thêm vào yêu thích" }));
     await waitFor(() => expect(apiMocks.add).toHaveBeenCalledTimes(2));
     expect(refresh).toHaveBeenCalledTimes(1);
   });
@@ -124,25 +148,29 @@ describe("FavoriteSaveControl", () => {
       .mockResolvedValueOnce(undefined);
     render(<FavoriteSaveControl listingId="42" />);
 
-    fireEvent.click(screen.getByRole("button", { name: "Lưu tin" }));
+    fireEvent.click(screen.getByRole("button", { name: "Thêm vào yêu thích" }));
     expect(await screen.findByRole("alert")).toHaveTextContent("Không thể xác nhận trạng thái lưu");
     expect(apiMocks.add).toHaveBeenCalledTimes(1);
 
-    fireEvent.click(screen.getByRole("button", { name: "Lưu tin" }));
-    expect(await screen.findByRole("button", { name: "Đã lưu" })).toBeDisabled();
+    fireEvent.click(screen.getByRole("button", { name: "Thêm vào yêu thích" }));
+    expect(await screen.findByRole("button", { name: "Bỏ khỏi yêu thích" })).toHaveAttribute("aria-pressed", "true");
     expect(apiMocks.add).toHaveBeenCalledTimes(2);
   });
 
-  it("aborts an in-flight PUT on unmount without rendering an error", () => {
+  it("keeps the shared PUT alive when one control unmounts", async () => {
     let signal: AbortSignal | undefined;
+    let resolveAdd: (() => void) | undefined;
     apiMocks.add.mockImplementation((_listingId: number, requestSignal: AbortSignal) => {
       signal = requestSignal;
-      return new Promise<void>(() => undefined);
+      return new Promise<void>((resolve) => {
+        resolveAdd = resolve;
+      });
     });
     const view = render(<FavoriteSaveControl listingId="42" />);
-    fireEvent.click(screen.getByRole("button", { name: "Lưu tin" }));
+    fireEvent.click(screen.getByRole("button", { name: "Thêm vào yêu thích" }));
     view.unmount();
-    expect(signal?.aborted).toBe(true);
-    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+    expect(signal?.aborted).toBe(false);
+    resolveAdd?.();
+    await waitFor(() => expect(apiMocks.add).toHaveBeenCalledOnce());
   });
 });

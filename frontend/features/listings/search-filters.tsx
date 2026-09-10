@@ -1,7 +1,8 @@
 "use client";
 
-import { useEffect, useMemo, useState, type FormEvent } from "react";
+import { useEffect, useMemo, useRef, useState, type FormEvent, type KeyboardEvent } from "react";
 import { Icon } from "../../components/ui/icon";
+import { areaSuggestionMatches, formatAreaLabel } from "../../lib/area";
 import type { Amenity, PropertyType, PublicListingSort } from "../../types/api";
 import { activeFilterCount, searchFilterValues, type SearchFilterValues, type SearchQueryState } from "./search-query";
 import { amenityLabel, propertyTypeLabel } from "./room-type-label";
@@ -16,8 +17,10 @@ export interface SearchFiltersProps {
   readonly committed: SearchQueryState;
   readonly propertyTypes: LookupResource<PropertyType>;
   readonly amenities: LookupResource<Amenity>;
+  readonly areas: LookupResource<string>;
   readonly onRetryPropertyTypes: () => void;
   readonly onRetryAmenities: () => void;
+  readonly onRetryAreas: () => void;
   readonly onApply: (values: SearchFilterValues, sort: PublicListingSort) => void;
   readonly onClear: () => void;
   readonly onOpenMap?: () => void;
@@ -38,12 +41,12 @@ interface FilterDraft {
 }
 
 type FieldErrors = Partial<Record<keyof FilterDraft, string>>;
-type AreaPreset = "all" | "under20" | "20to30" | "30to50" | "over50" | "custom";
+type AreaPreset = "all" | "under20" | "20to30" | "30to40" | "40to60" | "from60" | "custom";
 
 const BUDGET_MIN = 0;
 const BUDGET_MAX = 15_000_000;
 const BUDGET_STEP = 500_000;
-const BUDGET_MIN_GAP = 1_000_000;
+const MAX_MONTHLY_RENT = 999_999_999_999;
 
 const emptySearchState: SearchQueryState = {
   mode: "ordinary",
@@ -60,8 +63,7 @@ function draftFromState(state: SearchQueryState): FilterDraft {
     areaName: values.areaName ?? "",
     minMonthlyRent:
       values.minMonthlyRent === undefined || values.minMonthlyRent <= BUDGET_MIN ? "" : String(values.minMonthlyRent),
-    maxMonthlyRent:
-      values.maxMonthlyRent === undefined || values.maxMonthlyRent >= BUDGET_MAX ? "" : String(values.maxMonthlyRent),
+    maxMonthlyRent: values.maxMonthlyRent === undefined ? "" : String(values.maxMonthlyRent),
     minRoomAreaSqm: values.minRoomAreaSqm === undefined ? "" : String(values.minRoomAreaSqm),
     maxRoomAreaSqm: values.maxRoomAreaSqm === undefined ? "" : String(values.maxRoomAreaSqm),
     minOccupants: values.minOccupants === undefined ? "" : String(values.minOccupants),
@@ -101,8 +103,8 @@ function parseArea(value: string, field: keyof FilterDraft, errors: FieldErrors)
 
 function validateDraft(draft: FilterDraft): { values?: SearchFilterValues; errors: FieldErrors } {
   const errors: FieldErrors = {};
-  const minMonthlyRent = parseWhole(draft.minMonthlyRent, "minMonthlyRent", errors);
-  const maxMonthlyRent = parseWhole(draft.maxMonthlyRent, "maxMonthlyRent", errors);
+  const minMonthlyRent = parseWhole(draft.minMonthlyRent, "minMonthlyRent", errors, MAX_MONTHLY_RENT);
+  const maxMonthlyRent = parseWhole(draft.maxMonthlyRent, "maxMonthlyRent", errors, MAX_MONTHLY_RENT);
   const minRoomAreaSqm = parseArea(draft.minRoomAreaSqm, "minRoomAreaSqm", errors);
   const maxRoomAreaSqm = parseArea(draft.maxRoomAreaSqm, "maxRoomAreaSqm", errors);
   const minOccupants = parseWhole(draft.minOccupants, "minOccupants", errors, 20);
@@ -119,7 +121,7 @@ function validateDraft(draft: FilterDraft): { values?: SearchFilterValues; error
     errors,
     values: {
       ...(draft.q.trim() ? { q: draft.q.trim() } : {}),
-      ...(draft.areaName.trim() ? { areaName: draft.areaName.trim() } : {}),
+      ...(draft.areaName.trim() ? { areaName: formatAreaLabel(draft.areaName) } : {}),
       ...(minMonthlyRent === undefined ? {} : { minMonthlyRent }),
       ...(maxMonthlyRent === undefined ? {} : { maxMonthlyRent }),
       ...(minRoomAreaSqm === undefined ? {} : { minRoomAreaSqm }),
@@ -134,18 +136,20 @@ function validateDraft(draft: FilterDraft): { values?: SearchFilterValues; error
 function areaPresetFor(draft: FilterDraft): AreaPreset {
   const { minRoomAreaSqm: min, maxRoomAreaSqm: max } = draft;
   if (!min && !max) return "all";
-  if (!min && max === "20") return "under20";
-  if (min === "20" && max === "30") return "20to30";
-  if (min === "30" && max === "50") return "30to50";
-  if (min === "50" && !max) return "over50";
+  if (!min && max === "19.99") return "under20";
+  if (min === "20" && max === "29.99") return "20to30";
+  if (min === "30" && max === "39.99") return "30to40";
+  if (min === "40" && max === "59.99") return "40to60";
+  if (min === "60" && !max) return "from60";
   return "custom";
 }
 
 function areaValuesFor(preset: AreaPreset): Pick<FilterDraft, "minRoomAreaSqm" | "maxRoomAreaSqm"> {
-  if (preset === "under20") return { minRoomAreaSqm: "", maxRoomAreaSqm: "20" };
-  if (preset === "20to30") return { minRoomAreaSqm: "20", maxRoomAreaSqm: "30" };
-  if (preset === "30to50") return { minRoomAreaSqm: "30", maxRoomAreaSqm: "50" };
-  if (preset === "over50") return { minRoomAreaSqm: "50", maxRoomAreaSqm: "" };
+  if (preset === "under20") return { minRoomAreaSqm: "", maxRoomAreaSqm: "19.99" };
+  if (preset === "20to30") return { minRoomAreaSqm: "20", maxRoomAreaSqm: "29.99" };
+  if (preset === "30to40") return { minRoomAreaSqm: "30", maxRoomAreaSqm: "39.99" };
+  if (preset === "40to60") return { minRoomAreaSqm: "40", maxRoomAreaSqm: "59.99" };
+  if (preset === "from60") return { minRoomAreaSqm: "60", maxRoomAreaSqm: "" };
   return { minRoomAreaSqm: "", maxRoomAreaSqm: "" };
 }
 
@@ -154,6 +158,16 @@ function budgetSliderValue(monthlyRent: string, fallback: number): number {
   const value = Number(monthlyRent);
   if (!Number.isFinite(value)) return fallback;
   return Math.min(BUDGET_MAX, Math.max(BUDGET_MIN, value));
+}
+
+function advancedFilterIsActive(state: SearchQueryState): boolean {
+  return Boolean(
+    state.q ||
+      state.minRoomAreaSqm !== undefined ||
+      state.maxRoomAreaSqm !== undefined ||
+      state.minOccupants !== undefined ||
+      state.amenities.length > 0
+  );
 }
 
 function formatBudget(value: number): string {
@@ -176,8 +190,10 @@ export function SearchFilters({
   committed,
   propertyTypes,
   amenities,
+  areas,
   onRetryPropertyTypes,
   onRetryAmenities,
+  onRetryAreas,
   onApply,
   onClear,
   onOpenMap,
@@ -189,13 +205,29 @@ export function SearchFilters({
   const [errors, setErrors] = useState<FieldErrors>({});
   const [amenitiesOpen, setAmenitiesOpen] = useState(() => committed.amenities.length > 0);
   const [customAreaOpen, setCustomAreaOpen] = useState(() => areaPresetFor(draftFromState(committed)) === "custom");
+  const [advancedOpen, setAdvancedOpen] = useState(() => advancedFilterIsActive(committed));
+  const [areaSuggestionsOpen, setAreaSuggestionsOpen] = useState(false);
+  const [activeAreaSuggestion, setActiveAreaSuggestion] = useState(-1);
+  const areaComboboxRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     setDraft(draftFromState(committed));
     setErrors({});
     setCustomAreaOpen(areaPresetFor(draftFromState(committed)) === "custom");
+    setAdvancedOpen(advancedFilterIsActive(committed));
+    setAreaSuggestionsOpen(false);
+    setActiveAreaSuggestion(-1);
     if (committed.amenities.length > 0) setAmenitiesOpen(true);
   }, [committed]);
+
+  useEffect(() => {
+    if (!areaSuggestionsOpen) return;
+    const handlePointerDown = (event: PointerEvent) => {
+      if (!areaComboboxRef.current?.contains(event.target as Node)) setAreaSuggestionsOpen(false);
+    };
+    document.addEventListener("pointerdown", handlePointerDown);
+    return () => document.removeEventListener("pointerdown", handlePointerDown);
+  }, [areaSuggestionsOpen]);
 
   const propertyOptions = useMemo(() => {
     const options = [...propertyTypes.data];
@@ -215,6 +247,43 @@ export function SearchFilters({
     return options;
   }, [amenities.data, draft.amenities]);
 
+  const areaSuggestions = useMemo(() => {
+    const query = draft.areaName.trim();
+    if (!query) return [];
+    return [...new Set(areas.data.map((area) => formatAreaLabel(area)))]
+      .filter((area) => areaSuggestionMatches(area, query))
+      .slice(0, 8);
+  }, [areas.data, draft.areaName]);
+
+  const areaListVisible = areaSuggestionsOpen && (areaSuggestions.length > 0 || areas.status === "error");
+
+  const selectAreaSuggestion = (area: string) => {
+    setDraft((current) => ({ ...current, areaName: formatAreaLabel(area) }));
+    setAreaSuggestionsOpen(false);
+    setActiveAreaSuggestion(-1);
+  };
+
+  const handleAreaKeyDown = (event: KeyboardEvent<HTMLInputElement>) => {
+    if (!areaListVisible || areaSuggestions.length === 0) {
+      if (event.key === "Escape") setAreaSuggestionsOpen(false);
+      return;
+    }
+    if (event.key === "ArrowDown") {
+      event.preventDefault();
+      setActiveAreaSuggestion((current) => (current + 1) % areaSuggestions.length);
+    } else if (event.key === "ArrowUp") {
+      event.preventDefault();
+      setActiveAreaSuggestion((current) => (current <= 0 ? areaSuggestions.length - 1 : current - 1));
+    } else if (event.key === "Enter" && activeAreaSuggestion >= 0) {
+      event.preventDefault();
+      selectAreaSuggestion(areaSuggestions[activeAreaSuggestion]!);
+    } else if (event.key === "Escape") {
+      event.preventDefault();
+      setAreaSuggestionsOpen(false);
+      setActiveAreaSuggestion(-1);
+    }
+  };
+
   const submit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     const result = validateDraft(draft);
@@ -227,18 +296,20 @@ export function SearchFilters({
     setErrors({});
     setAmenitiesOpen(false);
     setCustomAreaOpen(false);
+    setAdvancedOpen(false);
+    setAreaSuggestionsOpen(false);
+    setActiveAreaSuggestion(-1);
     onClear();
   };
 
   const count = activeFilterCount(committed);
   const selectedAreaPreset = customAreaOpen ? "custom" : areaPresetFor(draft);
-  const selectedMaxBudget = Math.max(BUDGET_MIN_GAP, budgetSliderValue(draft.maxMonthlyRent, BUDGET_MAX));
-  const selectedMinBudget = Math.min(
-    budgetSliderValue(draft.minMonthlyRent, BUDGET_MIN),
-    selectedMaxBudget - BUDGET_MIN_GAP
-  );
-  const minBudgetProgress = ((selectedMinBudget - BUDGET_MIN) / (BUDGET_MAX - BUDGET_MIN)) * 100;
-  const maxBudgetProgress = ((selectedMaxBudget - BUDGET_MIN) / (BUDGET_MAX - BUDGET_MIN)) * 100;
+  const selectedMaxBudget = budgetSliderValue(draft.maxMonthlyRent, BUDGET_MAX);
+  const selectedMinBudget = budgetSliderValue(draft.minMonthlyRent, BUDGET_MIN);
+  const visualMinBudget = Math.min(selectedMinBudget, selectedMaxBudget);
+  const visualMaxBudget = Math.max(selectedMinBudget, selectedMaxBudget);
+  const minBudgetProgress = ((visualMinBudget - BUDGET_MIN) / (BUDGET_MAX - BUDGET_MIN)) * 100;
+  const maxBudgetProgress = ((visualMaxBudget - BUDGET_MIN) / (BUDGET_MAX - BUDGET_MIN)) * 100;
 
   return (
     <form aria-label="Bộ lọc tìm phòng" onSubmit={submit} className={styles.filters} noValidate>
@@ -274,301 +345,402 @@ export function SearchFilters({
       ) : null}
 
       <div className={styles.scrollArea}>
-        <section className={styles.section}>
-          <label className={styles.sectionLabel} htmlFor={`${fieldIdPrefix}listing-search-q`}>
-            Từ khóa
-          </label>
-          <div className={styles.inputWithIcon}>
-            <Icon name="search" className="h-4 w-4" />
-            <input
-              id={`${fieldIdPrefix}listing-search-q`}
-              name="q"
-              type="search"
-              placeholder="Địa chỉ, tên phòng…"
-              value={draft.q}
-              onChange={(event) => setDraft((current) => ({ ...current, q: event.target.value }))}
-            />
-          </div>
-        </section>
-
-        <section className={styles.section}>
-          <label className={styles.sectionLabel} htmlFor={`${fieldIdPrefix}listing-area-name`}>
-            Khu vực
-          </label>
-          <div className={styles.inputWithIcon}>
-            <Icon name="pin" className="h-4 w-4" />
-            <input
-              id={`${fieldIdPrefix}listing-area-name`}
-              name="areaName"
-              placeholder="Ví dụ: Quận 1"
-              value={draft.areaName}
-              onChange={(event) => setDraft((current) => ({ ...current, areaName: event.target.value }))}
-            />
-          </div>
-        </section>
-
-        <fieldset className={styles.section}>
-          <legend className={styles.sectionLabel}>Loại phòng</legend>
-          {propertyTypes.status === "loading" ? (
-            <p role="status" className={styles.helpText}>
-              Đang tải loại phòng…
-            </p>
-          ) : propertyTypes.status === "error" ? (
-            <div role="alert" className={styles.lookupError}>
-              <span>Chưa tải được danh mục.</span>
-              <button type="button" onClick={onRetryPropertyTypes}>
-                Thử lại
-              </button>
-            </div>
-          ) : (
-            <div className={styles.choiceList}>
-              <label className={styles.choice}>
+        <div className={styles.primaryGroup} aria-label="Bộ lọc chính">
+          <section className={styles.section}>
+            <label className={styles.sectionLabel} htmlFor={`${fieldIdPrefix}listing-area-name`}>
+              Khu vực
+            </label>
+            <div className={styles.areaCombobox} ref={areaComboboxRef}>
+              <div className={styles.inputWithIcon}>
+                <Icon name="pin" className="h-4 w-4" />
                 <input
-                  type="radio"
-                  name={`${fieldNamePrefix}propertyType`}
-                  value=""
-                  checked={draft.propertyType === ""}
-                  onChange={() => setDraft((current) => ({ ...current, propertyType: "" }))}
+                  id={`${fieldIdPrefix}listing-area-name`}
+                  name="areaName"
+                  role="combobox"
+                  aria-autocomplete="list"
+                  aria-controls={`${fieldIdPrefix}area-suggestions`}
+                  aria-expanded={areaListVisible}
+                  aria-activedescendant={
+                    activeAreaSuggestion >= 0 ? `${fieldIdPrefix}area-suggestion-${activeAreaSuggestion}` : undefined
+                  }
+                  autoComplete="off"
+                  placeholder="Nhập khu vực…"
+                  value={draft.areaName}
+                  onFocus={() => {
+                    if (draft.areaName.trim()) setAreaSuggestionsOpen(true);
+                  }}
+                  onKeyDown={handleAreaKeyDown}
+                  onChange={(event) => {
+                    setDraft((current) => ({ ...current, areaName: event.target.value }));
+                    setAreaSuggestionsOpen(true);
+                    setActiveAreaSuggestion(-1);
+                  }}
                 />
-                <span>Tất cả loại phòng</span>
+              </div>
+              {areaListVisible ? (
+                <div id={`${fieldIdPrefix}area-suggestions`} role="listbox" className={styles.areaSuggestions}>
+                  {areaSuggestions.map((area, index) => (
+                    <button
+                      key={area}
+                      id={`${fieldIdPrefix}area-suggestion-${index}`}
+                      type="button"
+                      role="option"
+                      aria-selected={activeAreaSuggestion === index}
+                      className={styles.areaSuggestion}
+                      onMouseDown={(event) => event.preventDefault()}
+                      onClick={() => selectAreaSuggestion(area)}
+                    >
+                      <Icon name="pin" className="h-4 w-4" />
+                      <span>{area}</span>
+                    </button>
+                  ))}
+                  {areas.status === "error" ? (
+                    <div className={styles.areaSuggestionStatus} role="status">
+                      <span>Gợi ý tạm thời không khả dụng. Bạn vẫn có thể nhập tự do.</span>
+                      <button type="button" onMouseDown={(event) => event.preventDefault()} onClick={onRetryAreas}>
+                        Thử lại
+                      </button>
+                    </div>
+                  ) : null}
+                </div>
+              ) : null}
+            </div>
+            <p className={styles.helpText}>Chọn gợi ý hoặc nhập tên khu vực bạn muốn tìm.</p>
+          </section>
+
+          <section className={styles.section}>
+            <div className={styles.budgetHeader}>
+              <span className={styles.sectionLabel}>Khoảng giá</span>
+              <div className={styles.budgetValues}>
+                <output className={styles.budgetValue}>{formatBudget(selectedMinBudget)}</output>
+                <span aria-hidden="true">→</span>
+                <output className={styles.budgetValue}>{formatBudget(selectedMaxBudget)}</output>
+              </div>
+            </div>
+            <div className={styles.budgetInputs}>
+              <label>
+                <span>Giá từ</span>
+                <input
+                  aria-label="Giá tối thiểu chính xác"
+                  name="minMonthlyRent"
+                  type="number"
+                  inputMode="numeric"
+                  min="1"
+                  step="1"
+                  placeholder="Không giới hạn"
+                  value={draft.minMonthlyRent}
+                  onChange={(event) => {
+                    setDraft((current) => ({ ...current, minMonthlyRent: event.target.value }));
+                    setErrors((current) => ({ ...current, minMonthlyRent: undefined, maxMonthlyRent: undefined }));
+                  }}
+                />
               </label>
-              {propertyOptions.map((option) => (
-                <label key={option.code} className={styles.choice}>
+              <label>
+                <span>Giá đến</span>
+                <input
+                  aria-label="Giá tối đa chính xác"
+                  name="maxMonthlyRent"
+                  type="number"
+                  inputMode="numeric"
+                  min="1"
+                  step="1"
+                  placeholder="Không giới hạn"
+                  value={draft.maxMonthlyRent}
+                  onChange={(event) => {
+                    setDraft((current) => ({ ...current, maxMonthlyRent: event.target.value }));
+                    setErrors((current) => ({ ...current, minMonthlyRent: undefined, maxMonthlyRent: undefined }));
+                  }}
+                />
+              </label>
+            </div>
+            <div className={styles.budgetSliderWrap}>
+              <div className={styles.budgetTrack}>
+                <span
+                  className={styles.budgetTrackFill}
+                  aria-hidden="true"
+                  style={{
+                    left: `${minBudgetProgress}%`,
+                    right: `${100 - maxBudgetProgress}%`
+                  }}
+                />
+                <input
+                  aria-label="Giá tối thiểu"
+                  aria-valuetext={
+                    selectedMinBudget <= BUDGET_MIN ? "Không đặt giá tối thiểu" : formatBudget(selectedMinBudget)
+                  }
+                  className={`${styles.budgetSlider} ${styles.budgetSliderMin}`}
+                  type="range"
+                  min={BUDGET_MIN}
+                  max={BUDGET_MAX}
+                  step={BUDGET_STEP}
+                  value={selectedMinBudget}
+                  onChange={(event) => {
+                    const value = Number(event.target.value);
+                    setDraft((current) => ({
+                      ...current,
+                      minMonthlyRent: value <= BUDGET_MIN ? "" : String(value)
+                    }));
+                    setErrors((current) => ({ ...current, minMonthlyRent: undefined, maxMonthlyRent: undefined }));
+                  }}
+                />
+                <input
+                  aria-label="Giá tối đa"
+                  aria-valuetext={
+                    selectedMaxBudget >= BUDGET_MAX ? "15 triệu trở lên" : formatBudget(selectedMaxBudget)
+                  }
+                  className={`${styles.budgetSlider} ${styles.budgetSliderMax}`}
+                  type="range"
+                  min={BUDGET_MIN}
+                  max={BUDGET_MAX}
+                  step={BUDGET_STEP}
+                  value={selectedMaxBudget}
+                  onChange={(event) => {
+                    const value = Number(event.target.value);
+                    setDraft((current) => ({
+                      ...current,
+                      maxMonthlyRent: value >= BUDGET_MAX ? "" : String(value)
+                    }));
+                    setErrors((current) => ({ ...current, minMonthlyRent: undefined, maxMonthlyRent: undefined }));
+                  }}
+                />
+              </div>
+              <div className={styles.budgetScale} aria-hidden="true">
+                <span>0đ</span>
+                <span>15 triệu+</span>
+              </div>
+            </div>
+            <p className={styles.helpText}>Nhập giá chính xác để tìm cả các khoảng hẹp hoặc mức trên 15 triệu.</p>
+            <FieldError message={errors.minMonthlyRent} />
+            <FieldError message={errors.maxMonthlyRent} />
+          </section>
+
+          <fieldset className={styles.section}>
+            <legend className={styles.sectionLabel}>Loại phòng</legend>
+            {propertyTypes.status === "loading" ? (
+              <p role="status" className={styles.helpText}>
+                Đang tải loại phòng…
+              </p>
+            ) : propertyTypes.status === "error" ? (
+              <div role="alert" className={styles.lookupError}>
+                <span>Chưa tải được danh mục.</span>
+                <button type="button" onClick={onRetryPropertyTypes}>
+                  Thử lại
+                </button>
+              </div>
+            ) : (
+              <div className={styles.choiceList}>
+                <label className={styles.choice}>
                   <input
                     type="radio"
                     name={`${fieldNamePrefix}propertyType`}
-                    value={option.code}
-                    checked={draft.propertyType === option.code}
-                    onChange={() => setDraft((current) => ({ ...current, propertyType: option.code }))}
+                    value=""
+                    checked={draft.propertyType === ""}
+                    onChange={() => setDraft((current) => ({ ...current, propertyType: "" }))}
                   />
-                  <span>{propertyTypeLabel(option)}</span>
+                  <span>Tất cả loại phòng</span>
                 </label>
-              ))}
-            </div>
-          )}
-        </fieldset>
+                {propertyOptions.map((option) => (
+                  <label key={option.code} className={styles.choice}>
+                    <input
+                      type="radio"
+                      name={`${fieldNamePrefix}propertyType`}
+                      value={option.code}
+                      checked={draft.propertyType === option.code}
+                      onChange={() => setDraft((current) => ({ ...current, propertyType: option.code }))}
+                    />
+                    <span>{propertyTypeLabel(option)}</span>
+                  </label>
+                ))}
+              </div>
+            )}
+          </fieldset>
+        </div>
 
-        <section className={styles.section}>
-          <label className={styles.sectionLabel} htmlFor={`${fieldIdPrefix}listing-min-occupants`}>
-            Số người sẽ ở
-          </label>
-          <div className={styles.inputWithIcon}>
-            <Icon name="users" className="h-4 w-4" />
-            <input
-              id={`${fieldIdPrefix}listing-min-occupants`}
-              name="minOccupants"
-              type="number"
-              inputMode="numeric"
-              min="1"
-              max="20"
-              step="1"
-              placeholder="Không giới hạn"
-              value={draft.minOccupants}
-              onChange={(event) => setDraft((current) => ({ ...current, minOccupants: event.target.value }))}
-            />
-          </div>
-          <p className={styles.helpText}>Chỉ hiển thị phòng có sức chứa đủ cho số người này.</p>
-          <FieldError message={errors.minOccupants} />
-        </section>
-
-        <section className={styles.section}>
-          <div className={styles.budgetHeader}>
-            <span className={styles.sectionLabel}>Khoảng giá</span>
-            <div className={styles.budgetValues}>
-              <output htmlFor={`${fieldIdPrefix}listing-min-budget`} className={styles.budgetValue}>
-                {formatBudget(selectedMinBudget)}
-              </output>
-              <span aria-hidden="true">→</span>
-              <output htmlFor={`${fieldIdPrefix}listing-max-budget`} className={styles.budgetValue}>
-                {formatBudget(selectedMaxBudget)}
-              </output>
-            </div>
-          </div>
-          <div className={styles.budgetSliderWrap}>
-            <div className={styles.budgetTrack}>
-              <span
-                className={styles.budgetTrackFill}
-                aria-hidden="true"
-                style={{
-                  left: `${minBudgetProgress}%`,
-                  right: `${100 - maxBudgetProgress}%`
-                }}
-              />
-              <input
-                id={`${fieldIdPrefix}listing-min-budget`}
-                aria-label="Giá tối thiểu"
-                aria-valuetext={
-                  selectedMinBudget <= BUDGET_MIN ? "Không đặt giá tối thiểu" : formatBudget(selectedMinBudget)
-                }
-                className={`${styles.budgetSlider} ${styles.budgetSliderMin}`}
-                name="minMonthlyRent"
-                type="range"
-                min={BUDGET_MIN}
-                max={BUDGET_MAX}
-                step={BUDGET_STEP}
-                value={selectedMinBudget}
-                aria-valuemax={selectedMaxBudget - BUDGET_MIN_GAP}
-                onChange={(event) => {
-                  const value = Math.min(Number(event.target.value), selectedMaxBudget - BUDGET_MIN_GAP);
-                  setDraft((current) => ({
-                    ...current,
-                    minMonthlyRent: value <= BUDGET_MIN ? "" : String(value)
-                  }));
-                  setErrors((current) => ({ ...current, minMonthlyRent: undefined, maxMonthlyRent: undefined }));
-                }}
-              />
-              <input
-                id={`${fieldIdPrefix}listing-max-budget`}
-                aria-label="Giá tối đa"
-                aria-valuetext={
-                  selectedMaxBudget >= BUDGET_MAX ? "15 triệu trở lên, không giới hạn" : formatBudget(selectedMaxBudget)
-                }
-                className={`${styles.budgetSlider} ${styles.budgetSliderMax}`}
-                name="maxMonthlyRent"
-                type="range"
-                min={BUDGET_MIN}
-                max={BUDGET_MAX}
-                step={BUDGET_STEP}
-                value={selectedMaxBudget}
-                aria-valuemin={selectedMinBudget + BUDGET_MIN_GAP}
-                onChange={(event) => {
-                  const value = Math.max(Number(event.target.value), selectedMinBudget + BUDGET_MIN_GAP);
-                  setDraft((current) => ({
-                    ...current,
-                    maxMonthlyRent: value >= BUDGET_MAX ? "" : String(value)
-                  }));
-                  setErrors((current) => ({ ...current, minMonthlyRent: undefined, maxMonthlyRent: undefined }));
-                }}
-              />
-            </div>
-            <div className={styles.budgetScale} aria-hidden="true">
-              <span>0đ</span>
-              <span>15 triệu+</span>
-            </div>
-          </div>
-          <FieldError message={errors.minMonthlyRent} />
-          <FieldError message={errors.maxMonthlyRent} />
-        </section>
-
-        <fieldset className={styles.section}>
-          <legend className={styles.sectionLabel}>Diện tích</legend>
-          <div className={styles.choiceList}>
-            {[
-              ["all", "Tất cả diện tích"],
-              ["under20", "Dưới 20 m²"],
-              ["20to30", "20 – 30 m²"],
-              ["30to50", "30 – 50 m²"],
-              ["over50", "Trên 50 m²"],
-              ["custom", "Tùy chỉnh"]
-            ].map(([value, label]) => (
-              <label key={value} className={styles.choice}>
-                <input
-                  type="radio"
-                  name={`${fieldNamePrefix}areaPreset`}
-                  value={value}
-                  checked={selectedAreaPreset === value}
-                  onChange={() => {
-                    const preset = value as AreaPreset;
-                    setCustomAreaOpen(preset === "custom");
-                    setDraft((current) => ({
-                      ...current,
-                      ...(preset === "custom"
-                        ? { minRoomAreaSqm: current.minRoomAreaSqm, maxRoomAreaSqm: current.maxRoomAreaSqm }
-                        : areaValuesFor(preset))
-                    }));
-                  }}
-                />
-                <span>{label}</span>
-              </label>
-            ))}
-          </div>
-          {selectedAreaPreset === "custom" ? (
-            <div className={styles.customArea}>
-              <label>
-                <span>Từ m²</span>
-                <input
-                  aria-label="Diện tích từ (m²)"
-                  name="minRoomAreaSqm"
-                  type="number"
-                  inputMode="decimal"
-                  min="0.01"
-                  step="0.01"
-                  value={draft.minRoomAreaSqm}
-                  onChange={(event) => setDraft((current) => ({ ...current, minRoomAreaSqm: event.target.value }))}
-                />
-              </label>
-              <label>
-                <span>Đến m²</span>
-                <input
-                  aria-label="Diện tích đến (m²)"
-                  name="maxRoomAreaSqm"
-                  type="number"
-                  inputMode="decimal"
-                  min="0.01"
-                  step="0.01"
-                  value={draft.maxRoomAreaSqm}
-                  onChange={(event) => setDraft((current) => ({ ...current, maxRoomAreaSqm: event.target.value }))}
-                />
-              </label>
-            </div>
-          ) : null}
-          <FieldError message={errors.minRoomAreaSqm} />
-          <FieldError message={errors.maxRoomAreaSqm} />
-        </fieldset>
-
-        <section className={styles.section}>
+        <section className={styles.advancedSection}>
           <button
             type="button"
-            className={styles.amenityToggle}
-            aria-expanded={amenitiesOpen}
-            aria-controls={`${fieldIdPrefix}listing-amenities`}
-            onClick={() => setAmenitiesOpen((open) => !open)}
+            className={styles.advancedToggle}
+            aria-expanded={advancedOpen}
+            aria-controls={`${fieldIdPrefix}advanced-filters`}
+            onClick={() => setAdvancedOpen((open) => !open)}
           >
             <span>
-              <strong>Tiện ích</strong>
-              <small>{draft.amenities.length > 0 ? `${draft.amenities.length} đã chọn` : "Không bắt buộc"}</small>
+              <strong>Bộ lọc nâng cao</strong>
+              <small>Nhập tên tin, diện tích, sức chứa và tiện ích</small>
             </span>
-            <Icon name="chevronDown" className={amenitiesOpen ? styles.chevronOpen : styles.chevron} />
+            <Icon name="chevronDown" className={advancedOpen ? styles.chevronOpen : styles.chevron} />
           </button>
-          {amenitiesOpen ? (
-            <div id={`${fieldIdPrefix}listing-amenities`} className={styles.amenityPanel}>
-              <p className={styles.helpText}>Phòng phải có tất cả tiện ích đã chọn.</p>
-              {amenities.status === "loading" ? (
-                <p role="status" className={styles.helpText}>
-                  Đang tải tiện ích…
-                </p>
-              ) : amenities.status === "error" ? (
-                <div role="alert" className={styles.lookupError}>
-                  <span>Chưa tải được tiện ích.</span>
-                  <button type="button" onClick={onRetryAmenities}>
-                    Thử lại
-                  </button>
+
+          {advancedOpen ? (
+            <div id={`${fieldIdPrefix}advanced-filters`} className={styles.advancedPanel}>
+              <section className={styles.section}>
+                <label className={styles.sectionLabel} htmlFor={`${fieldIdPrefix}listing-search-q`}>
+                  Tên tin đăng hoặc khu vực
+                </label>
+                <div className={styles.inputWithIcon}>
+                  <Icon name="search" className="h-4 w-4" />
+                  <input
+                    id={`${fieldIdPrefix}listing-search-q`}
+                    name="q"
+                    type="search"
+                    placeholder="Ví dụ: studio có gác, Quận 3"
+                    value={draft.q}
+                    onChange={(event) => setDraft((current) => ({ ...current, q: event.target.value }))}
+                  />
                 </div>
-              ) : amenityOptions.length === 0 ? (
-                <p className={styles.helpText}>Chưa có tiện ích đang hoạt động.</p>
-              ) : (
-                <div className={styles.amenityList}>
-                  {amenityOptions.map((amenity) => (
-                    <label key={amenity.code} className={styles.choice}>
+                <p className={styles.helpText}>Tìm trong tên tin đăng hoặc khu vực công khai.</p>
+              </section>
+
+              <section className={styles.section}>
+                <label className={styles.sectionLabel} htmlFor={`${fieldIdPrefix}listing-min-occupants`}>
+                  Số người sẽ ở
+                </label>
+                <div className={styles.inputWithIcon}>
+                  <Icon name="users" className="h-4 w-4" />
+                  <input
+                    id={`${fieldIdPrefix}listing-min-occupants`}
+                    name="minOccupants"
+                    type="number"
+                    inputMode="numeric"
+                    min="1"
+                    max="20"
+                    step="1"
+                    placeholder="Không giới hạn"
+                    value={draft.minOccupants}
+                    onChange={(event) => setDraft((current) => ({ ...current, minOccupants: event.target.value }))}
+                  />
+                </div>
+                <p className={styles.helpText}>Chỉ hiển thị phòng có sức chứa đủ cho số người này.</p>
+                <FieldError message={errors.minOccupants} />
+              </section>
+
+              <fieldset className={styles.section}>
+                <legend className={styles.sectionLabel}>Diện tích phòng</legend>
+                <div className={styles.choiceList}>
+                  {[
+                    ["all", "Tất cả diện tích"],
+                    ["under20", "Dưới 20 m²"],
+                    ["20to30", "20 – 30 m²"],
+                    ["30to40", "30 – 40 m²"],
+                    ["40to60", "40 – 60 m²"],
+                    ["from60", "Từ 60 m²"],
+                    ["custom", "Tùy chỉnh"]
+                  ].map(([value, label]) => (
+                    <label key={value} className={styles.choice}>
                       <input
-                        type="checkbox"
-                        name={`${fieldNamePrefix}amenities`}
-                        value={amenity.code}
-                        checked={draft.amenities.includes(amenity.code)}
-                        onChange={(event) =>
+                        type="radio"
+                        name={`${fieldNamePrefix}areaPreset`}
+                        value={value}
+                        checked={selectedAreaPreset === value}
+                        onChange={() => {
+                          const preset = value as AreaPreset;
+                          setCustomAreaOpen(preset === "custom");
                           setDraft((current) => ({
                             ...current,
-                            amenities: event.target.checked
-                              ? [...current.amenities, amenity.code]
-                              : current.amenities.filter((code) => code !== amenity.code)
-                          }))
-                        }
+                            ...(preset === "custom"
+                              ? { minRoomAreaSqm: current.minRoomAreaSqm, maxRoomAreaSqm: current.maxRoomAreaSqm }
+                              : areaValuesFor(preset))
+                          }));
+                        }}
                       />
-                      <span>{amenityLabel(amenity)}</span>
+                      <span>{label}</span>
                     </label>
                   ))}
                 </div>
-              )}
+                {selectedAreaPreset === "custom" ? (
+                  <div className={styles.customArea}>
+                    <label>
+                      <span>Từ m²</span>
+                      <input
+                        aria-label="Diện tích từ (m²)"
+                        name="minRoomAreaSqm"
+                        type="number"
+                        inputMode="decimal"
+                        min="0.01"
+                        step="0.01"
+                        value={draft.minRoomAreaSqm}
+                        onChange={(event) =>
+                          setDraft((current) => ({ ...current, minRoomAreaSqm: event.target.value }))
+                        }
+                      />
+                    </label>
+                    <label>
+                      <span>Đến m²</span>
+                      <input
+                        aria-label="Diện tích đến (m²)"
+                        name="maxRoomAreaSqm"
+                        type="number"
+                        inputMode="decimal"
+                        min="0.01"
+                        step="0.01"
+                        value={draft.maxRoomAreaSqm}
+                        onChange={(event) =>
+                          setDraft((current) => ({ ...current, maxRoomAreaSqm: event.target.value }))
+                        }
+                      />
+                    </label>
+                  </div>
+                ) : null}
+                <FieldError message={errors.minRoomAreaSqm} />
+                <FieldError message={errors.maxRoomAreaSqm} />
+              </fieldset>
+
+              <section className={styles.section}>
+                <button
+                  type="button"
+                  className={styles.amenityToggle}
+                  aria-expanded={amenitiesOpen}
+                  aria-controls={`${fieldIdPrefix}listing-amenities`}
+                  onClick={() => setAmenitiesOpen((open) => !open)}
+                >
+                  <span>
+                    <strong>Tiện ích</strong>
+                    <small>{draft.amenities.length > 0 ? `${draft.amenities.length} đã chọn` : "Không bắt buộc"}</small>
+                  </span>
+                  <Icon name="chevronDown" className={amenitiesOpen ? styles.chevronOpen : styles.chevron} />
+                </button>
+                {amenitiesOpen ? (
+                  <div id={`${fieldIdPrefix}listing-amenities`} className={styles.amenityPanel}>
+                    <p className={styles.helpText}>Phòng phải có tất cả tiện ích đã chọn.</p>
+                    {amenities.status === "loading" ? (
+                      <p role="status" className={styles.helpText}>
+                        Đang tải tiện ích…
+                      </p>
+                    ) : amenities.status === "error" ? (
+                      <div role="alert" className={styles.lookupError}>
+                        <span>Chưa tải được tiện ích.</span>
+                        <button type="button" onClick={onRetryAmenities}>
+                          Thử lại
+                        </button>
+                      </div>
+                    ) : amenityOptions.length === 0 ? (
+                      <p className={styles.helpText}>Chưa có tiện ích đang hoạt động.</p>
+                    ) : (
+                      <div className={styles.amenityList}>
+                        {amenityOptions.map((amenity) => (
+                          <label key={amenity.code} className={styles.choice}>
+                            <input
+                              type="checkbox"
+                              name={`${fieldNamePrefix}amenities`}
+                              value={amenity.code}
+                              checked={draft.amenities.includes(amenity.code)}
+                              onChange={(event) =>
+                                setDraft((current) => ({
+                                  ...current,
+                                  amenities: event.target.checked
+                                    ? [...current.amenities, amenity.code]
+                                    : current.amenities.filter((code) => code !== amenity.code)
+                                }))
+                              }
+                            />
+                            <span>{amenityLabel(amenity)}</span>
+                          </label>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                ) : null}
+              </section>
             </div>
           ) : null}
         </section>
