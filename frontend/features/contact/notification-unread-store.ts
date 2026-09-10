@@ -14,6 +14,44 @@ const listeners = new Set<() => void>();
 let inFlight: { readonly userId: number; readonly promise: Promise<void> } | null = null;
 let mutationVersion = 0;
 let optimisticDelta = 0;
+let pollingUserId: number | null = null;
+let pollingConsumers = 0;
+let pollingIntervalId: number | null = null;
+
+function stopUnreadPolling(): void {
+  if (pollingIntervalId !== null) {
+    window.clearInterval(pollingIntervalId);
+    pollingIntervalId = null;
+  }
+  window.removeEventListener("focus", refreshActiveUnreadCount);
+  document.removeEventListener("visibilitychange", refreshActiveUnreadCount);
+  pollingUserId = null;
+  pollingConsumers = 0;
+}
+
+function refreshActiveUnreadCount(): void {
+  if (pollingUserId !== null && document.visibilityState === "visible") {
+    void refreshNotificationUnreadCount(pollingUserId);
+  }
+}
+
+function startUnreadPolling(userId: number): () => void {
+  if (pollingUserId !== userId) {
+    if (pollingUserId !== null) stopUnreadPolling();
+    pollingUserId = userId;
+  }
+  pollingConsumers += 1;
+  if (pollingConsumers === 1) {
+    pollingIntervalId = window.setInterval(refreshActiveUnreadCount, 20_000);
+    window.addEventListener("focus", refreshActiveUnreadCount);
+    document.addEventListener("visibilitychange", refreshActiveUnreadCount);
+  }
+
+  return () => {
+    pollingConsumers = Math.max(0, pollingConsumers - 1);
+    if (pollingConsumers === 0) stopUnreadPolling();
+  };
+}
 
 function emit(next: NotificationUnreadSnapshot): void {
   snapshot = next;
@@ -110,6 +148,8 @@ export function useNotificationUnreadCount(userId: number | null, hydrationKey?:
       return;
     }
     void hydrateNotificationUnreadCount(userId);
+
+    return startUnreadPolling(userId);
   }, [hydrationKey, userId]);
 
   return current.userId === userId ? current.unreadCount : null;

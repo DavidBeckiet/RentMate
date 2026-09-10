@@ -69,8 +69,11 @@
 }
 
 .card:hover {
-  border-color: rgb(var(--color-border-strong));
-  box-shadow: var(--shadow-raised);
+  border-color: rgb(var(--color-primary) / 0.4);
+  box-shadow:
+    0 10px 25px -5px rgb(0 0 0 / 0.08),
+    0 8px 10px -6px rgb(0 0 0 / 0.04);
+  transform: translateY(-2px);
 }
 
 .cardTop {
@@ -155,7 +158,8 @@
   flex-wrap: wrap;
   gap: 0.55rem;
   margin-top: auto;
-  padding-top: 1rem;
+  padding-top: 1.1rem;
+  border-top: 1px solid rgb(var(--color-border) / 0.6);
 }
 
 .actions button,
@@ -164,10 +168,10 @@
   min-height: 2.75rem;
   align-items: center;
   justify-content: center;
-  gap: 0.4rem;
+  gap: 0.45rem;
   border: 1px solid rgb(var(--color-border-strong));
   border-radius: var(--radius-control);
-  padding: 0.55rem 0.75rem;
+  padding: 0.55rem 0.85rem;
   background: rgb(var(--color-surface));
   color: rgb(var(--color-foreground));
   font-size: var(--font-size-xs);
@@ -176,7 +180,8 @@
     background-color var(--motion-fast) ease,
     border-color var(--motion-fast) ease,
     color var(--motion-fast) ease,
-    transform var(--motion-fast) var(--rm-ease-out);
+    transform var(--motion-fast) var(--rm-ease-out),
+    box-shadow var(--motion-fast) ease;
 }
 
 .actions button:hover,
@@ -193,15 +198,19 @@
 
 .runLink {
   width: 100%;
-  margin-bottom: 0.25rem;
-  border-color: rgb(var(--color-primary));
-  background: rgb(var(--color-primary));
+  margin-bottom: 0.35rem;
+  border-radius: 999px;
+  border-color: transparent;
+  background: linear-gradient(135deg, rgb(var(--color-primary)) 0%, rgb(var(--color-primary-hover)) 100%);
   color: rgb(var(--color-primary-foreground));
+  box-shadow: 0 4px 14px rgb(var(--color-primary) / 0.28);
 }
 
 .runLink:hover {
-  background: rgb(var(--color-primary-hover));
+  background: linear-gradient(135deg, rgb(var(--color-primary-hover)) 0%, rgb(var(--color-primary)) 100%);
   color: rgb(var(--color-primary-foreground));
+  transform: translateY(-1px);
+  box-shadow: 0 6px 18px rgb(var(--color-primary) / 0.38);
 }
 
 .actions .danger {

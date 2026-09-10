@@ -64,13 +64,16 @@ function favoritesErrorMessage(error: ApiError | null): string {
   return "Không thể tải tin đã lưu lúc này. Vui lòng thử lại.";
 }
 
-function PageHeader() {
+function PageHeader({ count }: { count?: number }) {
   return (
-    <header className={workspace.header}>
-      <div>
-        <p className={`${styles.eyebrow} inline-flex items-center gap-2`}>
-          <Icon name="heart" className="h-4 w-4" /> Bộ sưu tập của bạn
-        </p>
+    <header className={styles.moodboardHeader}>
+      <div className={styles.headerContent}>
+        <div className="flex flex-wrap items-center gap-2">
+          <p className={`${styles.eyebrow} inline-flex items-center gap-1.5`}>
+            <Icon name="heart" className="h-4 w-4" /> Bộ sưu tập của bạn
+          </p>
+          {typeof count === "number" ? <span className={styles.countBadge}>{count} phòng trên trang này</span> : null}
+        </div>
         <h1 id="favorites-heading">Tin đã lưu</h1>
         <p>Xem lại những căn phòng bạn yêu thích và tiếp tục tìm nơi phù hợp.</p>
       </div>
@@ -265,7 +268,7 @@ export function FavoritesPage() {
 
   return (
     <section aria-labelledby="favorites-heading" className={workspace.page}>
-      <PageHeader />
+      <PageHeader count={result?.data.length} />
       <p className="flex items-start gap-2 text-sm leading-6 text-muted-foreground">
         <Icon name="eye" className="mt-1 h-4 w-4 shrink-0" /> Chỉ các tin đã lưu hiện đang công khai được hiển thị. Tin
         tạm ngừng công khai có thể không xuất hiện ở đây.

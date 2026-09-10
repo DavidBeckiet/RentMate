@@ -17,6 +17,7 @@ import { ComparisonNeedsPanel } from "./comparison-needs-panel";
 import { useComparisonNeeds } from "./comparison-needs-state";
 import { useComparisonSelection } from "./comparison-store";
 import { ListingNoteEditor } from "./listing-note-editor";
+import { SimilarListings } from "../listings/similar-listings";
 import styles from "./compare-page.module.css";
 
 interface ComparisonResult {
@@ -89,6 +90,9 @@ function PreparationState({
           </h2>
         </div>
         <SingleListingPreview listing={listings[0]!} onRemove={() => onRemove(listings[0]!.id)} />
+        <div className="mt-8 border-t border-border pt-6">
+          <SimilarListings listingId={listings[0]!.id} />
+        </div>
       </section>
     );
   }

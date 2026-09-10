@@ -646,6 +646,19 @@ export function SearchPage() {
       >
         {renderFilterSurface("mobile")}
       </Drawer>
+
+      <aside className={styles.floatingMapToggleWrapper} aria-label="Chuyển đổi hiển thị bản đồ hoặc danh sách">
+        <button
+          type="button"
+          className={styles.floatingMapToggle}
+          onClick={mapModeActive ? closeMapMode : openMapMode}
+          aria-pressed={mapModeActive}
+          aria-label={mapModeActive ? "Chuyển sang xem danh sách phòng" : "Mở bản đồ khám phá phòng"}
+        >
+          <Icon name={mapModeActive ? "menu" : "map"} className="h-4 w-4" />
+          <span>{mapModeActive ? "Danh sách" : "Bản đồ"}</span>
+        </button>
+      </aside>
     </div>
   );
 }

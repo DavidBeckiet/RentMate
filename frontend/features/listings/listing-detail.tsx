@@ -1,7 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useMemo, useRef, useState, type KeyboardEvent, type ReactNode } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type KeyboardEvent, type ReactNode } from "react";
+import { createPortal } from "react-dom";
 import { MapBase } from "../../components/map/map-base";
 import { Button } from "../../components/ui/button";
 import { ErrorState } from "../../components/ui/feedback-states";
@@ -84,12 +85,72 @@ function ListingGallery({
   const currentImage = orderedImages[selectedIndex] ?? orderedImages[0];
   const thumbnailImages = orderedImages.slice(0, 5);
 
-  function moveImage(direction: -1 | 1) {
-    if (orderedImages.length < 2) return;
-    const nextIndex = (selectedIndex + direction + orderedImages.length) % orderedImages.length;
-    const nextImage = orderedImages[nextIndex];
-    if (nextImage) onSelect(nextImage.displayOrder);
-  }
+  const [isLightboxOpen, setIsLightboxOpen] = useState(false);
+  const lightboxRef = useRef<HTMLDivElement>(null);
+  const lightboxCloseRef = useRef<HTMLButtonElement>(null);
+
+  const moveImage = useCallback(
+    (direction: -1 | 1) => {
+      if (orderedImages.length < 2) return;
+      const nextIndex = (selectedIndex + direction + orderedImages.length) % orderedImages.length;
+      const nextImage = orderedImages[nextIndex];
+      if (nextImage) onSelect(nextImage.displayOrder);
+    },
+    [onSelect, orderedImages, selectedIndex]
+  );
+  const moveImageRef = useRef(moveImage);
+
+  useEffect(() => {
+    moveImageRef.current = moveImage;
+  }, [moveImage]);
+
+  useEffect(() => {
+    if (!isLightboxOpen) return;
+    const previousActiveElement = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    const previousBodyOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    const focusFrame = window.requestAnimationFrame(() => lightboxCloseRef.current?.focus());
+
+    const getFocusableElements = () =>
+      Array.from(
+        lightboxRef.current?.querySelectorAll<HTMLElement>(
+          "button:not([disabled]), a[href], input:not([disabled]), select:not([disabled]), textarea:not([disabled])"
+        ) ?? []
+      );
+
+    const handleLightboxKey = (event: globalThis.KeyboardEvent) => {
+      if (event.key === "Escape") {
+        event.preventDefault();
+        setIsLightboxOpen(false);
+      } else if (event.key === "ArrowRight") {
+        event.preventDefault();
+        moveImageRef.current(1);
+      } else if (event.key === "ArrowLeft") {
+        event.preventDefault();
+        moveImageRef.current(-1);
+      } else if (event.key === "Tab") {
+        const focusableElements = getFocusableElements();
+        const first = focusableElements[0];
+        const last = focusableElements[focusableElements.length - 1];
+        if (!first || !last) {
+          event.preventDefault();
+        } else if (event.shiftKey && document.activeElement === first) {
+          event.preventDefault();
+          last.focus();
+        } else if (!event.shiftKey && document.activeElement === last) {
+          event.preventDefault();
+          first.focus();
+        }
+      }
+    };
+    window.addEventListener("keydown", handleLightboxKey);
+    return () => {
+      window.cancelAnimationFrame(focusFrame);
+      window.removeEventListener("keydown", handleLightboxKey);
+      document.body.style.overflow = previousBodyOverflow;
+      window.requestAnimationFrame(() => previousActiveElement?.focus());
+    };
+  }, [isLightboxOpen]);
 
   function handleGalleryKeyDown(event: KeyboardEvent<HTMLDivElement>) {
     if (event.key === "ArrowRight" || event.key === "ArrowDown") {
@@ -141,6 +202,15 @@ function ListingGallery({
             </div>
           }
         />
+        <button
+          type="button"
+          className={styles.galleryZoomButton}
+          aria-label="Phóng to ảnh"
+          onClick={() => setIsLightboxOpen(true)}
+        >
+          <Icon name="eye" className="h-4 w-4" />
+          <span>Xem ảnh lớn</span>
+        </button>
         {orderedImages.length > 1 ? (
           <>
             <button
@@ -165,6 +235,107 @@ function ListingGallery({
           </>
         ) : null}
       </div>
+
+      {isLightboxOpen && typeof document !== "undefined"
+        ? createPortal(
+            <div
+              ref={lightboxRef}
+              className={styles.lightboxOverlay}
+              role="dialog"
+              aria-modal="true"
+              aria-label="Xem ảnh phóng to toàn màn hình"
+              onClick={() => setIsLightboxOpen(false)}
+            >
+              <div className={styles.lightboxHeader} onClick={(e) => e.stopPropagation()}>
+                <div className={styles.lightboxTitleInfo}>
+                  <span className={styles.lightboxCounter}>
+                    Ảnh {selectedIndex + 1} / {orderedImages.length}
+                  </span>
+                  <span className={styles.lightboxTitle}>{title}</span>
+                </div>
+                <button
+                  type="button"
+                  ref={lightboxCloseRef}
+                  className={styles.lightboxCloseButton}
+                  aria-label="Đóng xem ảnh phóng to"
+                  onClick={() => setIsLightboxOpen(false)}
+                >
+                  <Icon name="close" className="h-6 w-6" />
+                </button>
+              </div>
+
+              <div
+                className={styles.lightboxBody}
+                onClick={(event) => {
+                  if (event.target === event.currentTarget) {
+                    setIsLightboxOpen(false);
+                    return;
+                  }
+
+                  event.stopPropagation();
+                }}
+              >
+                <div className={styles.lightboxMainImage}>
+                  <MediaImage
+                    key={currentImage.url}
+                    src={currentImage.url}
+                    alt={currentImage.altText ?? `Ảnh phóng to ${selectedIndex + 1} của ${title}`}
+                    width={1600}
+                    height={1000}
+                    priority
+                    unoptimized
+                    sizes="100vw"
+                    className={styles.lightboxImage}
+                    fallback={
+                      <div className={styles.lightboxImageFallback} role="img" aria-label="Không thể tải hình ảnh">
+                        <Icon name="home" className="h-8 w-8" />
+                        <span>Không thể tải hình ảnh</span>
+                      </div>
+                    }
+                  />
+                </div>
+
+                {orderedImages.length > 1 ? (
+                  <>
+                    <button
+                      type="button"
+                      className={`${styles.lightboxNav} ${styles.lightboxNavPrev}`}
+                      aria-label="Ảnh trước đó"
+                      onClick={() => moveImage(-1)}
+                    >
+                      <Icon name="arrow" className="h-6 w-6 rotate-180" />
+                    </button>
+                    <button
+                      type="button"
+                      className={`${styles.lightboxNav} ${styles.lightboxNavNext}`}
+                      aria-label="Ảnh phóng to tiếp theo"
+                      onClick={() => moveImage(1)}
+                    >
+                      <Icon name="arrow" className="h-6 w-6" />
+                    </button>
+                  </>
+                ) : null}
+              </div>
+
+              {orderedImages.length > 1 ? (
+                <div className={styles.lightboxThumbStrip} onClick={(e) => e.stopPropagation()}>
+                  {orderedImages.map((image, index) => (
+                    <button
+                      type="button"
+                      key={image.url}
+                      className={`${styles.lightboxThumb} ${image.displayOrder === currentImage.displayOrder ? styles.lightboxThumbActive : ""}`}
+                      aria-label={`Xem ảnh phóng to ${index + 1}`}
+                      onClick={() => onSelect(image.displayOrder)}
+                    >
+                      <MediaImage src={image.url} alt="" fill sizes="72px" />
+                    </button>
+                  ))}
+                </div>
+              ) : null}
+            </div>,
+            document.body
+          )
+        : null}
 
       {thumbnailImages.length > 0 ? (
         <div className={styles.thumbnails} aria-label="Chọn ảnh xem trước">

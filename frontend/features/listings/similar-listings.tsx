@@ -23,6 +23,12 @@ export function SimilarListings({ listingId }: SimilarListingsProps) {
     setStatus("loading");
     setError(null);
 
+    if (typeof api.listings?.listSimilar !== "function") {
+      setStatus("success");
+      setItems([]);
+      return;
+    }
+
     void api.listings
       .listSimilar(listingId, controller.signal)
       .then((page) => {

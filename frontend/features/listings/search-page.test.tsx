@@ -355,4 +355,22 @@ describe("SearchPage", () => {
     expect(screen.getByRole("alert")).toHaveTextContent("chưa có đủ bốn cạnh");
     expect(apiMocks.searchPublic).not.toHaveBeenCalled();
   });
+
+  it("toggles the map modal using the mobile floating map toggle button", async () => {
+    navigation.query = "sort=newest";
+    apiMocks.searchPublic.mockResolvedValue(page([listing(1, "Phòng A")]));
+    render(<SearchPage />);
+    await screen.findByText("card:Phòng A");
+
+    const mapToggle = screen.getByRole("button", { name: "Mở bản đồ khám phá phòng" });
+    expect(mapToggle).toBeInTheDocument();
+    expect(screen.queryByRole("dialog", { name: "Bản đồ khám phá" })).not.toBeInTheDocument();
+
+    fireEvent.click(mapToggle);
+    expect(screen.getByRole("dialog", { name: "Bản đồ khám phá" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Chuyển sang xem danh sách phòng" })).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "Chuyển sang xem danh sách phòng" }));
+    expect(screen.queryByRole("dialog", { name: "Bản đồ khám phá" })).not.toBeInTheDocument();
+  });
 });

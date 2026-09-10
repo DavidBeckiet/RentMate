@@ -312,4 +312,34 @@ describe("ListingDetail", () => {
     resolveOld?.(detail({ title: "Stale detail" }));
     await waitFor(() => expect(screen.queryByText("Stale detail")).not.toBeInTheDocument());
   });
+
+  it("opens and closes the photo lightbox on button click and Escape key", async () => {
+    apiMocks.getPublicDetail.mockResolvedValue(detail());
+    render(<ListingDetail listingId="42" />);
+
+    await screen.findByRole("heading", { level: 1, name: "Studio sáng gần trung tâm" });
+    const zoomButton = screen.getByRole("button", { name: "Phóng to ảnh" });
+    expect(screen.queryByRole("dialog", { name: "Xem ảnh phóng to toàn màn hình" })).not.toBeInTheDocument();
+
+    fireEvent.click(zoomButton);
+    const lightbox = screen.getByRole("dialog", { name: "Xem ảnh phóng to toàn màn hình" });
+    expect(lightbox).toBeInTheDocument();
+    expect(lightbox.parentElement).toBe(document.body);
+    expect(screen.getByRole("button", { name: "Đóng xem ảnh phóng to" })).toBeInTheDocument();
+
+    const lightboxBody = lightbox.querySelector('[class*="lightboxBody"]');
+    expect(lightboxBody).not.toBeNull();
+    fireEvent.click(lightboxBody as HTMLElement);
+    expect(screen.queryByRole("dialog", { name: "Xem ảnh phóng to toàn màn hình" })).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "Phóng to ảnh" }));
+    expect(screen.getByRole("dialog", { name: "Xem ảnh phóng to toàn màn hình" })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Đóng xem ảnh phóng to" }));
+    expect(screen.queryByRole("dialog", { name: "Xem ảnh phóng to toàn màn hình" })).not.toBeInTheDocument();
+
+    fireEvent.click(zoomButton);
+    expect(screen.getByRole("dialog", { name: "Xem ảnh phóng to toàn màn hình" })).toBeInTheDocument();
+    fireEvent.keyDown(window, { key: "Escape" });
+    expect(screen.queryByRole("dialog", { name: "Xem ảnh phóng to toàn màn hình" })).not.toBeInTheDocument();
+  });
 });

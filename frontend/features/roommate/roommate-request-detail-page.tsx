@@ -38,11 +38,30 @@ function parseId(value: string): number | null {
   return Number.isSafeInteger(parsed) && parsed <= maximumId ? parsed : null;
 }
 
+const ICEBREAKER_TEMPLATES = [
+  {
+    label: "Hỏi về độ phù hợp",
+    text: "Chào bạn, mình thấy nhịp sinh hoạt và ngân sách của tụi mình khá hợp nhau, muốn kết nối cùng tìm phòng."
+  },
+  {
+    label: "Hỏi về phòng",
+    text: "Chào bạn, bạn đã tìm được căn phòng ưng ý ở khu vực này chưa?"
+  },
+  {
+    label: "Tìm bạn cùng thuê",
+    text: "Chào bạn, mình cũng đang tìm phòng khu vực này và muốn tìm bạn cùng thuê."
+  }
+] as const;
+
 function InterestComposer({ requestId }: Readonly<{ requestId: number }>) {
   const router = useRouter();
   const [message, setMessage] = useState("");
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  const applyIcebreaker = (text: string) => {
+    setMessage((prev) => (prev.trim() ? `${prev.trim()}\n${text}` : text));
+  };
 
   const submit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -73,6 +92,26 @@ function InterestComposer({ requestId }: Readonly<{ requestId: number }>) {
           Lời nhắn mở đầu sẽ tạo một cuộc trò chuyện trong RentMate.
         </p>
       </div>
+
+      <div className={styles.icebreakerContainer}>
+        <p className="text-ui-xs font-semibold text-muted-foreground flex items-center gap-1.5">
+          <Icon name="sparkles" className="h-3.5 w-3.5 text-primary" />
+          Gợi ý lời chào nhanh:
+        </p>
+        <div className={styles.icebreakers}>
+          {ICEBREAKER_TEMPLATES.map((tmpl) => (
+            <button
+              key={tmpl.label}
+              type="button"
+              onClick={() => applyIcebreaker(tmpl.text)}
+              className={styles.icebreakerChip}
+            >
+              {tmpl.label}
+            </button>
+          ))}
+        </div>
+      </div>
+
       <form className="space-y-4" onSubmit={(event) => void submit(event)} noValidate>
         <TextareaField
           id={`roommate-interest-message-${requestId}`}
@@ -93,7 +132,7 @@ function InterestComposer({ requestId }: Readonly<{ requestId: number }>) {
             {error}
           </p>
         ) : null}
-        <Button className="w-full" type="submit" pending={pending} pendingLabel="Đang gửi…">
+        <Button className="w-full shadow-sm" type="submit" pending={pending} pendingLabel="Đang gửi…">
           <Icon name="userPlus" className="h-4 w-4" /> Gửi lời quan tâm
         </Button>
       </form>

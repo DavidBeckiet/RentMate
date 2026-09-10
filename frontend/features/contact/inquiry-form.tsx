@@ -18,6 +18,12 @@ import { formatVnd } from "../listings/format";
 const inquiryLookupPageSize = 100;
 const maximumInquiryLookupPages = 50;
 
+const INQUIRY_QUICK_QUESTIONS = [
+  "Phòng này hiện tại còn trống không ạ?",
+  "Chi phí dịch vụ, điện nước của phòng tính thế nào ạ?",
+  "Em có thể hẹn qua xem phòng trực tiếp được không ạ?"
+] as const;
+
 type LookupState = "idle" | "loading" | "new" | "conversation" | "error";
 
 function inquiryError(error: ApiError | null): string {
@@ -460,6 +466,23 @@ export function InquiryForm({
                             <p className="mt-1 text-sm leading-6 text-muted-foreground">
                               Tin nhắn đầu tiên sẽ bắt đầu cuộc trò chuyện với chủ trọ.
                             </p>
+                          </div>
+                          <div>
+                            <p className="text-xs font-semibold text-muted-foreground mb-1.5">Gợi ý câu hỏi nhanh:</p>
+                            <div className="flex flex-wrap gap-1.5">
+                              {INQUIRY_QUICK_QUESTIONS.map((question) => (
+                                <button
+                                  key={question}
+                                  type="button"
+                                  onClick={() =>
+                                    setMessage((prev) => (prev.trim() ? `${prev.trim()}\n${question}` : question))
+                                  }
+                                  className="rounded-full border border-border bg-surface-subtle px-2.5 py-1 text-left text-xs font-semibold text-foreground transition hover:border-primary/40 hover:bg-primary-subtle hover:text-primary-hover active:scale-95"
+                                >
+                                  &ldquo;{question}&rdquo;
+                                </button>
+                              ))}
+                            </div>
                           </div>
                           <label className="block text-sm font-bold" htmlFor={`inquiry-message-${domId}`}>
                             Nội dung lời nhắn

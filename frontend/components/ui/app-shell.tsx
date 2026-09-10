@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
 import { useComparisonSelection } from "../../features/comparison/comparison-store";
+import { NotificationPopover } from "../../features/contact/notification-popover";
 import { useNotificationUnreadCount } from "../../features/contact/notification-unread-store";
 import { useAuth } from "../../lib/auth/auth-provider";
 import type { UserProfile } from "../../types/api";
@@ -132,23 +133,7 @@ function AccountSummary({ user, inverse = false }: Readonly<{ user: UserProfile;
 }
 
 function NotificationLink({ pathname }: Readonly<{ pathname: string }>) {
-  const { user } = useAuth();
-  const unreadCount = useNotificationUnreadCount(user?.id ?? null, pathname);
-
-  return (
-    <Link
-      href="/notifications"
-      aria-label={notificationAccessibleLabel(unreadCount)}
-      aria-current={pathname === "/notifications" ? "page" : undefined}
-      className={cx(
-        buttonClassName("ghost", "sm"),
-        "w-11 px-0 aria-[current=page]:bg-primary-subtle aria-[current=page]:text-primary-hover"
-      )}
-    >
-      <Icon name="bell" />
-      <NotificationUnreadBadge unreadCount={unreadCount} className="absolute right-0 -top-1" />
-    </Link>
-  );
+  return <NotificationPopover pathname={pathname} />;
 }
 
 function MobileNotificationLink({ userId, onNavigate }: Readonly<{ userId: number; onNavigate: () => void }>) {
@@ -254,7 +239,7 @@ function TenantMobileNav({ pathname }: Readonly<{ pathname: string }>) {
   return (
     <nav
       aria-label="Điều hướng nhanh trên di động"
-      className="rm-mobile-nav fixed inset-x-0 bottom-0 z-sticky border-t border-border bg-surface px-2 pt-2 shadow-raised lg:hidden"
+      className="rm-mobile-nav fixed inset-x-0 bottom-0 z-sticky border-t border-border/80 bg-surface/95 px-2 pt-1.5 pb-[max(0.5rem,env(safe-area-inset-bottom,0px))] shadow-raised backdrop-blur-md lg:hidden"
     >
       <div className="mx-auto flex max-w-lg items-stretch justify-between gap-1">
         {tenantMobileNavigationItems.map((item) => {
@@ -265,7 +250,7 @@ function TenantMobileNav({ pathname }: Readonly<{ pathname: string }>) {
               href={item.href}
               aria-label={`${item.label} trên di động`}
               aria-current={current}
-              className="flex min-h-11 min-w-0 flex-1 flex-col items-center justify-center gap-1 rounded-control px-1 py-1 text-[11px] font-semibold leading-4 text-muted-foreground transition-colors duration-fast hover:bg-surface-subtle hover:text-primary-hover aria-[current=page]:bg-primary-subtle aria-[current=page]:text-primary-hover"
+              className="flex min-h-12 min-w-0 flex-1 flex-col items-center justify-center gap-1 rounded-xl px-1 py-1 text-[11px] font-semibold leading-4 text-muted-foreground transition-all duration-fast hover:bg-surface-subtle hover:text-primary-hover active:scale-95 motion-reduce:transition-none aria-[current=page]:bg-primary-subtle aria-[current=page]:text-primary-hover"
             >
               <Icon name={item.icon} className="h-5 w-5 shrink-0" />
               <span className="max-w-full truncate">{item.label}</span>

@@ -134,6 +134,241 @@
   font-weight: 800;
 }
 
+.galleryZoomButton {
+  position: absolute;
+  top: 1rem;
+  right: 1rem;
+  z-index: 2;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  min-height: 2.75rem;
+  padding: 0.45rem 0.85rem;
+  border-radius: 999px;
+  background: rgb(var(--color-surface) / 0.9);
+  backdrop-filter: blur(8px);
+  border: 1px solid rgb(var(--color-border) / 0.8);
+  color: rgb(var(--color-foreground));
+  font-size: var(--font-size-xs);
+  font-weight: 700;
+  cursor: pointer;
+  box-shadow: 0 4px 12px rgb(0 0 0 / 0.12);
+  transition:
+    transform var(--motion-fast) ease,
+    background-color var(--motion-fast) ease;
+}
+
+.galleryZoomButton:hover {
+  background: rgb(var(--color-surface));
+  transform: scale(1.05);
+}
+
+.galleryZoomButton:active {
+  transform: scale(0.96);
+}
+
+.lightboxOverlay {
+  position: fixed;
+  inset: 0;
+  /* Leaflet panes/controls can reach z-index 1000; the lightbox must cover them. */
+  z-index: 2000;
+  display: flex;
+  flex-direction: column;
+  box-sizing: border-box;
+  background: rgb(0 0 0 / 0.94);
+  backdrop-filter: blur(16px);
+  padding: 1rem;
+  overflow: hidden;
+  animation: lightboxFadeIn 0.2s ease-out;
+}
+
+@keyframes lightboxFadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.lightboxHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  max-width: 72rem;
+  margin: 0 auto;
+  padding: 0.5rem 1rem;
+  color: white;
+}
+
+.lightboxTitleInfo {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  overflow: hidden;
+}
+
+.lightboxCounter {
+  display: inline-flex;
+  padding: 0.25rem 0.65rem;
+  border-radius: 999px;
+  background: rgb(255 255 255 / 0.18);
+  font-size: var(--font-size-xs);
+  font-weight: 700;
+  color: white;
+  white-space: nowrap;
+}
+
+.lightboxTitle {
+  font-size: var(--font-size-sm);
+  font-weight: 600;
+  color: rgb(255 255 255 / 0.85);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.lightboxCloseButton {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.75rem;
+  height: 2.75rem;
+  border-radius: 50%;
+  background: rgb(255 255 255 / 0.15);
+  color: white;
+  border: none;
+  cursor: pointer;
+  transition:
+    background-color var(--motion-fast) ease,
+    transform var(--motion-fast) ease;
+}
+
+.lightboxCloseButton:hover {
+  background: rgb(255 255 255 / 0.3);
+  transform: scale(1.08);
+}
+
+.lightboxBody {
+  position: relative;
+  flex: 1 1 0;
+  min-height: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  max-width: 72rem;
+  padding: 0 3.5rem;
+  box-sizing: border-box;
+  margin: 0 auto;
+  overflow: hidden;
+}
+
+.lightboxMainImage {
+  position: relative;
+  display: flex;
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+  align-items: center;
+  justify-content: center;
+  flex: 1 1 auto;
+  overflow: hidden;
+}
+
+.lightboxImage {
+  display: block;
+  width: auto !important;
+  height: auto !important;
+  max-width: 100% !important;
+  max-height: 100% !important;
+  object-fit: contain !important;
+}
+
+.lightboxImageFallback {
+  display: flex;
+  width: 100%;
+  height: 100%;
+  align-items: center;
+  justify-content: center;
+  gap: 0.65rem;
+  color: rgb(255 255 255 / 0.8);
+  font-size: var(--font-size-sm);
+  font-weight: 700;
+}
+
+.lightboxNav {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 3.25rem;
+  height: 3.25rem;
+  border-radius: 50%;
+  background: rgb(255 255 255 / 0.2);
+  backdrop-filter: blur(8px);
+  border: 1px solid rgb(255 255 255 / 0.25);
+  color: white;
+  cursor: pointer;
+  transition:
+    background-color var(--motion-fast) ease,
+    transform var(--motion-fast) ease;
+}
+
+.lightboxNav:hover {
+  background: rgb(255 255 255 / 0.38);
+  transform: translateY(-50%) scale(1.1);
+}
+
+.lightboxNavPrev {
+  left: 1rem;
+}
+
+.lightboxNavNext {
+  right: 1rem;
+}
+
+.lightboxThumbStrip {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  padding: 0.75rem 0 0.25rem;
+  overflow-x: auto;
+  max-width: 100%;
+}
+
+.lightboxThumb {
+  position: relative;
+  width: 4.5rem;
+  height: 3rem;
+  border-radius: 0.5rem;
+  overflow: hidden;
+  opacity: 0.5;
+  border: 2px solid transparent;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition:
+    opacity var(--motion-fast) ease,
+    border-color var(--motion-fast) ease,
+    transform var(--motion-fast) ease;
+}
+
+.lightboxThumb:hover {
+  opacity: 0.85;
+  transform: scale(1.05);
+}
+
+.lightboxThumbActive {
+  opacity: 1;
+  border-color: rgb(var(--color-primary));
+  box-shadow: 0 0 10px rgb(var(--color-primary) / 0.5);
+}
+
 .thumbnails {
   display: grid;
   grid-template-columns: repeat(5, minmax(0, 1fr));
@@ -748,29 +983,56 @@
   }
 
   .mobileContactBar {
-    position: sticky;
-    z-index: 5;
-    bottom: 0.75rem;
+    position: fixed;
+    z-index: 40;
+    bottom: calc(4.75rem + env(safe-area-inset-bottom, 0px));
+    left: 1rem;
+    right: 1rem;
+    max-width: 32rem;
+    margin: 0 auto;
     display: flex;
     align-items: center;
     justify-content: space-between;
     gap: 1rem;
-    padding: 0.65rem 0.85rem 0.65rem 1rem;
+    padding: 0.65rem 0.85rem 0.65rem 1.15rem;
     border: 1px solid rgb(var(--color-border));
-    border-radius: var(--radius-overlay);
-    background: rgb(var(--color-surface) / 0.97);
-    box-shadow: var(--shadow-overlay);
-    backdrop-filter: blur(10px);
+    border-radius: 9999px;
+    background: rgb(var(--color-surface) / 0.96);
+    box-shadow: 0 10px 30px -4px rgb(0 0 0 / 0.18);
+    backdrop-filter: blur(14px);
+    -webkit-backdrop-filter: blur(14px);
+  }
+
+  .lightboxMainImage {
+    width: 100%;
+  }
+
+  .lightboxBody {
+    padding: 0 0.5rem;
   }
 
   .mobileContactBar a {
     display: inline-flex;
-    min-height: 2.75rem;
+    min-height: 2.5rem;
     align-items: center;
     gap: 0.45rem;
-    color: rgb(var(--color-primary-hover));
+    padding: 0.5rem 1rem;
+    border-radius: 9999px;
+    background: rgb(var(--color-primary));
+    color: rgb(var(--color-primary-foreground));
     font-size: var(--font-size-sm);
-    font-weight: 800;
+    font-weight: 700;
+    box-shadow: 0 2px 8px -1px rgb(var(--color-primary) / 0.35);
+    transition: all 160ms ease;
+  }
+
+  .mobileContactBar a:hover {
+    background: rgb(var(--color-primary-hover));
+    box-shadow: 0 4px 12px -1px rgb(var(--color-primary) / 0.45);
+  }
+
+  .mobileContactBar a:active {
+    transform: scale(0.96);
   }
 
   .mobileContactBar :global(.text-brandBlue-600) {

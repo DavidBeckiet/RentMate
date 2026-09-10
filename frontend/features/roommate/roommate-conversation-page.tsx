@@ -4,7 +4,6 @@ import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent } from "react";
 import { Button } from "../../components/ui/button";
 import { ErrorState, LoadingState } from "../../components/ui/feedback-states";
-import { TextareaField } from "../../components/ui/form-controls";
 import { Icon } from "../../components/ui/icon";
 import { Pagination } from "../../components/ui/pagination";
 import { api, ApiError } from "../../lib/api/client";
@@ -132,8 +131,45 @@ function ConversationContent({ interestId }: Readonly<{ interestId: number }>) {
   const [pending, setPending] = useState(false);
   const [sendError, setSendError] = useState<string | null>(null);
   const [newMessageIds, setNewMessageIds] = useState<ReadonlySet<number>>(() => new Set());
+  const [showNewMessageIndicator, setShowNewMessageIndicator] = useState(false);
   const knownMessageIds = useRef<ReadonlySet<number>>(new Set());
   const pollInFlight = useRef(false);
+  const messageListRef = useRef<HTMLDivElement>(null);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const formRef = useRef<HTMLFormElement>(null);
+  const nearBottomRef = useRef(true);
+  const previousLatestMessageIdRef = useRef<number | null>(null);
+
+  const scrollToLatest = useCallback((behavior: ScrollBehavior = "smooth") => {
+    const list = messageListRef.current;
+    if (!list) return;
+    const reducedMotion =
+      typeof window !== "undefined" &&
+      typeof window.matchMedia === "function" &&
+      window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    const resolvedBehavior = reducedMotion ? "auto" : behavior;
+
+    if (typeof list.scrollTo === "function") {
+      try {
+        list.scrollTo({ top: list.scrollHeight, behavior: resolvedBehavior });
+      } catch {
+        list.scrollTop = list.scrollHeight;
+      }
+    } else {
+      list.scrollTop = list.scrollHeight;
+    }
+    nearBottomRef.current = true;
+    setShowNewMessageIndicator(false);
+  }, []);
+
+  const handleMessageListScroll = useCallback(() => {
+    const list = messageListRef.current;
+    if (!list) return;
+    const distanceFromBottom = Math.max(0, list.scrollHeight - list.scrollTop - list.clientHeight);
+    const nearBottom = distanceFromBottom <= 100;
+    nearBottomRef.current = nearBottom;
+    if (nearBottom) setShowNewMessageIndicator(false);
+  }, []);
 
   const replaceMessages = useCallback((next: readonly RoommateMessage[], animateNew: boolean) => {
     const nextIds = new Set(next.map((message) => message.id));
@@ -172,6 +208,28 @@ function ConversationContent({ interestId }: Readonly<{ interestId: number }>) {
       });
     return () => controller.abort();
   }, [interestId, messagePage, replaceMessages, retryKey, tenantReady]);
+
+  // Auto-scroll when messages update
+  useEffect(() => {
+    if (!messageListRef.current || messages.length === 0) return;
+    const latestMessage = messages[messages.length - 1];
+    if (!latestMessage) return;
+
+    if (previousLatestMessageIdRef.current === null) {
+      previousLatestMessageIdRef.current = latestMessage.id;
+      scrollToLatest("auto");
+      return;
+    }
+
+    if (latestMessage.id === previousLatestMessageIdRef.current) return;
+    previousLatestMessageIdRef.current = latestMessage.id;
+
+    if (latestMessage.sender === "SELF" || nearBottomRef.current) {
+      scrollToLatest("smooth");
+    } else {
+      setShowNewMessageIndicator(true);
+    }
+  }, [messages, scrollToLatest]);
 
   const pollingEligible =
     tenantReady &&
@@ -264,6 +322,22 @@ function ConversationContent({ interestId }: Readonly<{ interestId: number }>) {
   const highCaution = messages.some(
     (message) => message.sender === "COUNTERPART" && message.safetyWarning?.outcome === "HIGH_CAUTION"
   );
+
+  const handleTextareaChange = (event: React.ChangeEvent<HTMLTextAreaElement>) => {
+    setBody(event.target.value);
+    const textarea = event.target;
+    textarea.style.height = "auto";
+    textarea.style.height = `${Math.min(textarea.scrollHeight, 96)}px`;
+  };
+
+  const handleKeyDown = (event: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    if (event.nativeEvent.isComposing) return;
+    if (event.key === "Enter" && !event.shiftKey) {
+      event.preventDefault();
+      formRef.current?.requestSubmit();
+    }
+  };
+
   const submit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     if (!body.trim()) {
@@ -280,6 +354,10 @@ function ConversationContent({ interestId }: Readonly<{ interestId: number }>) {
         setMessages((current) => [...current, message]);
       }
       setBody("");
+      if (textareaRef.current) {
+        textareaRef.current.style.height = "auto";
+      }
+      scrollToLatest("smooth");
     } catch (caught) {
       setSendError(roommateErrorMessage(caught));
     } finally {
@@ -332,8 +410,8 @@ function ConversationContent({ interestId }: Readonly<{ interestId: number }>) {
           <RoommateProfileSummary profile={interest.counterpart} heading="Hồ sơ người còn lại" />
           <RoommateListingContext request={interest.request} />
         </aside>
-        <main className="rm-roommate-chat-panel order-1 min-w-0 overflow-hidden lg:order-2">
-          <div className="flex flex-wrap items-start justify-between gap-3 border-b border-border p-4 sm:p-5">
+        <main className="rm-roommate-chat-panel order-1 flex min-w-0 flex-col overflow-hidden lg:order-2">
+          <div className="flex flex-wrap items-start justify-between gap-3 border-b border-border bg-surface/50 p-4 backdrop-blur-xs sm:p-5">
             <div>
               <p className="rm-roommate-section-label">Cuộc trò chuyện</p>
               <h2 className="mt-1 font-display text-heading-sm font-bold">
@@ -352,10 +430,27 @@ function ConversationContent({ interestId }: Readonly<{ interestId: number }>) {
               ) : null}
             </div>
           </div>
-          <div className="min-h-[18rem] space-y-3 p-4 sm:p-5" aria-live="polite" aria-label="Tin nhắn ở ghép">
-            {messages.map((message) => (
-              <MessageBubble key={message.id} message={message} animate={newMessageIds.has(message.id)} />
-            ))}
+          <div className="relative min-h-[20rem] flex-1">
+            <div
+              ref={messageListRef}
+              onScroll={handleMessageListScroll}
+              className="max-h-[min(38rem,60vh)] space-y-3 overflow-y-auto p-4 sm:p-5"
+              aria-live="polite"
+              aria-label="Tin nhắn ở ghép"
+            >
+              {messages.map((message) => (
+                <MessageBubble key={message.id} message={message} animate={newMessageIds.has(message.id)} />
+              ))}
+            </div>
+            {showNewMessageIndicator ? (
+              <button
+                type="button"
+                onClick={() => scrollToLatest("smooth")}
+                className="absolute bottom-3 left-1/2 z-10 min-h-10 -translate-x-1/2 whitespace-nowrap rounded-full border border-primary/20 bg-surface px-4 py-1.5 text-xs font-bold text-primary-hover shadow-raised outline-none transition hover:bg-primary-subtle focus-visible:ring-[3px] focus-visible:ring-focus/30 active:scale-95"
+              >
+                Tin nhắn mới ↓
+              </button>
+            ) : null}
           </div>
           {messagePagination.hasNextPage || messagePage > 1 ? (
             <div className="border-t border-border px-4 py-3 sm:px-5">
@@ -369,22 +464,49 @@ function ConversationContent({ interestId }: Readonly<{ interestId: number }>) {
             </div>
           ) : null}
           {writable ? (
-            <div className="rm-roommate-composer p-4 sm:p-5">
-              <form className="space-y-4" onSubmit={(event) => void submit(event)} noValidate>
-                <TextareaField
-                  id={`roommate-message-${interest.id}`}
-                  name="message"
-                  label="Tin nhắn"
-                  hint="Tin nhắn là văn bản tự do. Không chia sẻ OTP, mật khẩu hoặc thông tin tài chính."
-                  required
-                  maxLength={2000}
-                  rows={5}
-                  value={body}
-                  onChange={(event) => setBody(event.target.value)}
-                />
-                <p aria-live="polite" className="text-right text-ui-xs font-semibold text-rent-secondary">
-                  {Array.from(body).length}/2000 ký tự
-                </p>
+            <div className="rm-roommate-composer border-t border-border bg-surface/95 p-3.5 backdrop-blur-md sm:p-4">
+              <form ref={formRef} className="space-y-2.5" onSubmit={(event) => void submit(event)} noValidate>
+                <label htmlFor={`roommate-message-${interest.id}`} className="sr-only">
+                  Tin nhắn (bắt buộc)
+                </label>
+                <div className="flex items-end gap-2">
+                  <textarea
+                    ref={textareaRef}
+                    id={`roommate-message-${interest.id}`}
+                    name="message"
+                    required
+                    maxLength={2000}
+                    rows={1}
+                    aria-describedby={`roommate-message-${interest.id}-hint`}
+                    value={body}
+                    onChange={handleTextareaChange}
+                    onKeyDown={handleKeyDown}
+                    placeholder="Nhập tin nhắn… (Nhấn Enter để gửi)"
+                    className="min-h-12 max-h-24 flex-1 resize-none overflow-y-auto rounded-xl border border-border-strong bg-surface px-3.5 py-2.5 text-ui-sm font-medium leading-6 text-foreground outline-none transition-all placeholder:text-muted-foreground focus:border-primary focus:ring-[3px] focus:ring-primary/20"
+                  />
+                  <Button
+                    type="submit"
+                    aria-label="Gửi tin nhắn"
+                    disabled={pending || !body.trim()}
+                    pending={pending}
+                    pendingLabel="Đang gửi…"
+                    className="h-12 shrink-0 rounded-xl px-4 py-2 text-sm font-semibold shadow-xs transition hover:shadow-sm"
+                  >
+                    <Icon name="send" className="h-4 w-4" />
+                    <span className="hidden sm:inline">Gửi tin nhắn</span>
+                  </Button>
+                </div>
+                <div className="flex items-center justify-between gap-2 px-1 text-ui-xs font-semibold text-rent-secondary">
+                  <span id={`roommate-message-${interest.id}-hint`} className="sr-only">
+                    Không chia sẻ OTP, mật khẩu hoặc thông tin tài chính.
+                  </span>
+                  <span className="hidden text-[11px] text-muted-foreground sm:inline">
+                    Nhấn Enter để gửi, Shift+Enter để xuống dòng
+                  </span>
+                  <p aria-live="polite" className="ml-auto">
+                    {Array.from(body).length}/2000 ký tự
+                  </p>
+                </div>
                 {paymentOrContactHint(body) ? (
                   <p
                     role="note"
@@ -405,9 +527,6 @@ function ConversationContent({ interestId }: Readonly<{ interestId: number }>) {
                     {sendError}
                   </p>
                 ) : null}
-                <Button className="w-full sm:w-auto" type="submit" pending={pending} pendingLabel="Đang gửi…">
-                  <Icon name="message" className="h-4 w-4" /> Gửi tin nhắn
-                </Button>
               </form>
             </div>
           ) : (
