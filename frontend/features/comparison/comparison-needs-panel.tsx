@@ -246,7 +246,6 @@ export function ComparisonNeedsPanel({
     <section className={styles.needsPanel} aria-labelledby="comparison-needs-heading">
       <div className={styles.needsPanelHeader}>
         <div>
-          <p className="rm-eyebrow">HỖ TRỢ QUYẾT ĐỊNH</p>
           <h2 id="comparison-needs-heading" className={styles.sectionTitle}>
             So sánh theo nhu cầu
           </h2>
@@ -319,7 +318,7 @@ export function ComparisonNeedsPanel({
           ) : null}
           {savedSelectionMissing ? (
             <p className={styles.needsWarning} role="status">
-              Nhu cầu đã chọn không còn khả dụng. Snapshot hiện tại vẫn được giữ; hãy chọn nguồn khác nếu cần.
+              Bộ lọc đã chọn không còn khả dụng. Các tiêu chí đã áp dụng vẫn được giữ; bạn có thể chọn bộ lọc khác.
             </p>
           ) : null}
           {selectedSavedSearch ? (

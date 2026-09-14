@@ -16,7 +16,7 @@ beforeEach(() => {
 });
 
 describe("MarketplaceHome", () => {
-  it("uses a Vietnamese-first marketplace hierarchy with real-data empty states", () => {
+  it("uses a Vietnamese-first product homepage with clear paths and real-data empty states", () => {
     render(
       <MarketplaceHome
         propertyTypes={[{ code: "ROOM", label: "Phòng trọ" }]}
@@ -29,12 +29,12 @@ describe("MarketplaceHome", () => {
       />
     );
 
-    expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent("Tìm phòng.Tìm bạn.Sống đúng nhịp.");
+    expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent("Tìm nơi ở hợp với nhịp sống của bạn.");
     expect(screen.getByRole("heading", { name: "Tin đăng mới nhất" })).toBeInTheDocument();
     expect(screen.getByText("Chưa có tin đăng công khai mới")).toBeInTheDocument();
     expect(screen.queryByText("Preview")).not.toBeInTheDocument();
-    expect(screen.getByRole("link", { name: /Xem phòng/ })).toHaveAttribute("href", "/search");
-    expect(screen.getByRole("heading", { name: "Bạn đang tìm gì?" })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: /^Khám phá phòng$/ })).toHaveAttribute("href", "/search");
+    expect(screen.getByRole("heading", { name: "Bạn muốn làm gì hôm nay?" })).toBeInTheDocument();
     expect(
       screen
         .getAllByRole("link")
@@ -43,6 +43,16 @@ describe("MarketplaceHome", () => {
             link.getAttribute("href") === "/search" &&
             link.textContent?.includes("Tôi đang tìm chỗ ở") &&
             link.textContent?.includes("Khám phá phòng")
+        )
+    ).toBe(true);
+    expect(
+      screen
+        .getAllByRole("link")
+        .some(
+          (link) =>
+            link.getAttribute("href") === "/register/landlord" &&
+            link.textContent?.includes("Tôi có phòng cho thuê") &&
+            link.textContent.includes("Quản lý tin đăng")
         )
     ).toBe(true);
     expect(
@@ -60,7 +70,7 @@ describe("MarketplaceHome", () => {
         .getAllByRole("link", { name: /Tìm người ở ghép/ })
         .some((link) => link.getAttribute("href") === "/roommates")
     ).toBe(true);
-    expect(screen.getByRole("link", { name: /Xem tất cả phòng/ })).toHaveAttribute("href", "/search");
+    expect(screen.getAllByRole("link", { name: /Xem tất cả phòng/ })[0]).toHaveAttribute("href", "/search");
     expect(screen.getByRole("link", { name: /Đăng phòng trên RentMate/ })).toHaveAttribute(
       "href",
       "/register/landlord"
@@ -97,7 +107,7 @@ describe("MarketplaceHome", () => {
       pagination: { page: 1, pageSize: 4, hasNextPage: false }
     };
 
-    render(
+    const { container } = render(
       <MarketplaceHome
         propertyTypes={[]}
         propertyTypesLoading={false}
@@ -109,13 +119,13 @@ describe("MarketplaceHome", () => {
       />
     );
 
+    expect(container.querySelector('svg[viewBox="0 0 640 540"]')).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: `Xem tin ${title}` })).toHaveAttribute("href", "/listings/42");
     expect(screen.getByRole("heading", { name: title })).toHaveAttribute("title", title);
     expect(screen.getByTitle(areaName)).toHaveTextContent(areaName);
-    const areaLink = screen
-      .getAllByRole("link")
-      .find((link) => link.getAttribute("href") === "/search?areaName=" + encodeURIComponent(areaName));
-    expect(areaLink).toBeDefined();
-    expect(screen.getByText(/4\.800\.000/)).toBeInTheDocument();
+    const areaLink = screen.getByRole("link", { name: areaName });
+    expect(areaLink).toHaveAttribute("href", expect.stringMatching(/^\/search\?areaName=/));
+    expect(screen.getAllByText(/4\.800\.000/)).toHaveLength(2);
     expect(screen.getByText("28 m²")).toBeInTheDocument();
     expect(screen.queryByText("Căn hộ")).not.toBeInTheDocument();
     expect(screen.queryByText("Wi-Fi")).not.toBeInTheDocument();

@@ -8,16 +8,12 @@ export default function TenantRegistrationPage() {
       variant="tenant"
       title="Đăng ký tìm phòng"
       description="Tạo tài khoản để tìm, lưu và liên hệ với chủ trọ."
-      footer={
-        <div className="space-y-2">
-          <p>
-            Bạn muốn cho thuê? <Link href="/register/landlord">Đăng ký tài khoản chủ trọ</Link>
-          </p>
-          <p>
-            Đã có tài khoản? <Link href="/login">Đăng nhập</Link>
-          </p>
-        </div>
+      contextAction={
+        <Link href="/register" aria-label="Chọn lại loại tài khoản">
+          ← Chọn lại loại tài khoản
+        </Link>
       }
+      footer={null}
     >
       <RegistrationForm mode="tenant" />
     </AuthPageShell>

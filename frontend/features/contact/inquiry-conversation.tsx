@@ -361,7 +361,7 @@ export function InquiryConversationCore({
       </div>
       {inquiry.status === "CLOSED" ? (
         <p className="rounded-control border-l-4 border-muted-foreground bg-surface-subtle p-4 text-sm font-semibold text-muted-foreground">
-          Yêu cầu đã đóng, không thể gửi thêm tin nhắn.
+          Cuộc trò chuyện đã đóng, không thể gửi thêm tin nhắn.
         </p>
       ) : !inquiry.canSendMessage ? (
         <p className="rounded-control border-l-4 border-muted-foreground bg-surface-subtle p-4 text-sm font-semibold text-muted-foreground">

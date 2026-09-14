@@ -64,7 +64,6 @@ export interface ErrorStateProps {
 export function ErrorState({
   message,
   title = "Không thể hoàn tất yêu cầu",
-  requestId,
   onRetry,
   retryLabel = "Thử lại",
   action,
@@ -91,7 +90,6 @@ export function ErrorState({
       </span>
       <h2 className="font-display text-ui-base font-semibold">{title}</h2>
       <p className="mt-1 text-ui-sm text-muted-foreground">{message}</p>
-      {requestId ? <p className="mt-2 text-ui-xs font-semibold text-danger">Mã yêu cầu: {requestId}</p> : null}
       {onRetry || action ? (
         <div className="mt-4 flex flex-wrap items-center gap-3">
           {onRetry ? (

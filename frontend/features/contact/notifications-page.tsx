@@ -17,6 +17,7 @@ import {
   incrementNotificationUnreadCount,
   refreshNotificationUnreadCount,
   setNotificationUnreadCount,
+  useLatestNotification,
   useNotificationUnreadCount
 } from "./notification-unread-store";
 import {
@@ -36,6 +37,7 @@ export function NotificationsPage() {
   const { status: authStatus, user } = useAuth();
   const userId = user?.id ?? null;
   const unreadCount = useNotificationUnreadCount(userId, `${pathname}?${rawQuery}`);
+  const latestNotification = useLatestNotification(userId);
   const [items, setItems] = useState<readonly Notification[]>([]);
   const [pagination, setPagination] = useState<ApiPage<Notification>["pagination"] | null>(null);
   const [loadedUserId, setLoadedUserId] = useState<number | null>(null);
@@ -50,6 +52,23 @@ export function NotificationsPage() {
   useEffect(() => {
     setRelativeNow(Date.now());
   }, []);
+
+  useEffect(() => {
+    if (
+      parsedQuery.page !== 1 ||
+      latestNotification === null ||
+      loadedUserId !== userId ||
+      loadedPage !== 1 ||
+      state !== "success"
+    ) {
+      return;
+    }
+    setItems((current) => {
+      const next = [latestNotification, ...current.filter((item) => item.id !== latestNotification.id)];
+      return next.slice(0, NOTIFICATION_PAGE_SIZE);
+    });
+    setRelativeNow(Date.now());
+  }, [latestNotification, loadedPage, loadedUserId, parsedQuery.page, state, userId]);
 
   useEffect(() => {
     if (authStatus !== "authenticated" || userId === null) return;

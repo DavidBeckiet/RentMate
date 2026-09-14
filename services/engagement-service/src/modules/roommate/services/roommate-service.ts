@@ -120,6 +120,8 @@ export interface RoommateInterestView {
   readonly request: RoommateRequestView;
   readonly counterpart: RoommateProfileView | null;
   readonly initialMessage: RoommateInterestMessageView | null;
+  readonly lastMessage: (RoommateInterestMessageView & { readonly sender: "SELF" | "COUNTERPART" }) | null;
+  readonly unreadCount: number;
 }
 
 export interface RoommateConnectionView {
@@ -733,7 +735,23 @@ export function createRoommateService(dependencies: RoommateDependencies): Roomm
           updatedAt: record.updatedAt,
           request,
           counterpart,
-          initialMessage
+          initialMessage,
+          lastMessage: record.lastMessage
+            ? Object.freeze({
+                id: record.lastMessage.id,
+                body:
+                  record.lastMessage.moderationState === "VISIBLE"
+                    ? record.lastMessage.body
+                    : "This message is no longer available.",
+                createdAt: record.lastMessage.createdAt,
+                isRead: record.lastMessage.readAt !== null,
+                sender:
+                  record.lastMessage.senderTenantId === callerTenantId ? ("SELF" as const) : ("COUNTERPART" as const)
+              })
+            : null,
+          unreadCount:
+            (record.requestOwnerTenantId === callerTenantId ? record.ownerUnreadCount : record.candidateUnreadCount) ??
+            0
         });
       })
     );

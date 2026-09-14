@@ -1,3 +1,23 @@
+.comparePage {
+  display: grid;
+  min-width: 0;
+  gap: 1.5rem;
+}
+
+.comparePage > * {
+  min-width: 0;
+}
+
+.backLink {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  min-height: 2.75rem;
+  color: rgb(var(--color-primary-hover));
+  font-size: var(--font-size-sm);
+  font-weight: 650;
+}
+
 .compareHeader,
 .needsPanel,
 .matrixSection,
@@ -8,23 +28,23 @@
   border: 1px solid rgb(var(--color-border));
   border-radius: var(--radius-overlay);
   background: rgb(var(--color-surface));
-  box-shadow: var(--shadow-surface);
+  box-shadow: 0 3px 16px rgb(var(--color-foreground) / 0.03);
 }
 
 .compareHeader {
   display: flex;
-  align-items: flex-end;
+  align-items: center;
   justify-content: space-between;
   gap: 1.5rem;
   padding: 1.5rem;
-  background: rgb(var(--color-primary-subtle));
+  background: linear-gradient(120deg, rgb(var(--color-primary-subtle)), rgb(var(--color-surface)) 75%);
 }
 
 .pageTitle {
   margin-top: 0.55rem;
   color: rgb(var(--color-foreground));
   font-family: var(--font-manrope), sans-serif;
-  font-size: clamp(2rem, 4vw, 3rem);
+  font-size: clamp(1.75rem, 3vw, 2.5rem);
   font-weight: 800;
   letter-spacing: -0.055em;
   line-height: 1.05;
@@ -129,6 +149,14 @@
   justify-content: space-between;
 }
 
+.needsPanel {
+  background: rgb(var(--color-primary-subtle) / 0.3);
+}
+
+.needsPanel > .needsSelect {
+  max-width: 36rem;
+}
+
 .needsSourceLabel,
 .manualField label,
 .manualFieldset legend {
@@ -231,6 +259,7 @@
 
 .manualField {
   display: grid;
+  min-width: 0;
   gap: 0.4rem;
 }
 
@@ -321,11 +350,13 @@
   border: 1px solid rgb(var(--color-border));
   border-radius: var(--radius-card);
   background: rgb(var(--color-surface));
+  scrollbar-width: thin;
+  scrollbar-color: rgb(var(--color-primary)) rgb(var(--color-primary-subtle));
 }
 
 .matrixTable {
-  width: max-content;
-  min-width: 100%;
+  width: 100%;
+  min-width: calc(6.5rem + var(--listing-count) * 12rem);
   border-collapse: separate;
   border-spacing: 0;
   table-layout: fixed;
@@ -333,11 +364,15 @@
 
 .matrixTable th,
 .matrixTable td {
-  min-width: 12rem;
   border-bottom: 1px solid rgb(var(--color-border));
-  padding: 0.9rem;
+  padding: 0.85rem;
   text-align: left;
   vertical-align: top;
+}
+
+.matrixTable td + td,
+.matrixTable th + th {
+  border-left: 1px solid rgb(var(--color-border) / 0.65);
 }
 
 .matrixTable tr:last-child th,
@@ -350,9 +385,8 @@
   position: sticky;
   left: 0;
   z-index: 2;
-  min-width: 7rem !important;
-  width: 7rem;
-  background: rgb(var(--color-surface));
+  width: 6.5rem;
+  background: rgb(var(--color-surface-subtle));
   box-shadow: 5px 0 10px -10px rgb(var(--color-foreground) / 0.8);
 }
 
@@ -371,21 +405,41 @@
 }
 
 .listingColumnHeader {
-  width: 12rem;
-  background: rgb(var(--color-primary-subtle));
+  background: rgb(var(--color-surface));
 }
 
 .matrixListingIdentity {
-  display: flex;
+  position: relative;
+  display: grid;
   min-width: 0;
   gap: 0.7rem;
 }
 
+.removeListing {
+  position: absolute;
+  top: 0.4rem;
+  right: 0.4rem;
+  z-index: 1;
+  display: grid;
+  place-items: center;
+  width: 2.75rem;
+  height: 2.75rem;
+  border: 1px solid rgb(var(--color-border));
+  border-radius: 50%;
+  background: rgb(var(--color-surface));
+  color: rgb(var(--color-foreground));
+  cursor: pointer;
+}
+
+.removeListing:hover {
+  background: rgb(var(--color-danger-subtle));
+  color: rgb(var(--color-danger));
+}
+
 .matrixImage,
 .matrixImageFallback {
-  width: 4.8rem;
-  height: 4.5rem;
-  flex: 0 0 4.8rem;
+  width: 100%;
+  height: clamp(5rem, 10vw, 9rem);
   border-radius: 0.8rem;
   background: rgb(var(--color-decorative-blue));
   object-fit: cover;
@@ -398,7 +452,10 @@
 }
 
 .matrixListingText {
+  display: flex;
+  flex-direction: column;
   min-width: 0;
+  min-height: 7.25rem;
 }
 
 .matrixListingText h3 {
@@ -408,14 +465,16 @@
   font-size: var(--font-size-sm);
   font-weight: 850;
   line-height: 1.3;
+  min-height: 2.6em;
   -webkit-box-orient: vertical;
   -webkit-line-clamp: 2;
 }
 
 .matrixListingText p {
-  margin-top: 0.25rem;
+  order: -1;
+  margin-bottom: 0.4rem;
   color: rgb(var(--color-primary-hover));
-  font-size: var(--font-size-sm);
+  font-size: clamp(1rem, 1.5vw, 1.25rem);
   font-weight: 850;
 }
 
@@ -445,15 +504,16 @@
 }
 
 .matrixHeaderActions :global(button) {
-  min-height: 2.4rem;
+  min-height: 2.75rem;
   padding-inline: 0.65rem;
   font-size: var(--font-size-xs);
 }
 
 .matrixDetailLink {
-  min-height: 2.4rem;
+  min-height: 2.75rem;
   padding: 0.45rem 0.65rem;
   font-size: var(--font-size-xs);
+  flex: 1;
 }
 
 .matrixValueCell {
@@ -464,7 +524,7 @@
 }
 
 .matrixTable tr[data-different="true"] .matrixValueCell {
-  background: rgb(var(--color-coral) / 0.08);
+  background: rgb(var(--color-primary-subtle) / 0.45);
 }
 
 .differenceLabel {
@@ -472,8 +532,7 @@
   margin-top: 0.2rem;
   color: rgb(var(--color-muted-foreground));
   font-size: 0.68rem;
-  font-weight: 800;
-  text-transform: uppercase;
+  font-weight: 600;
 }
 
 .matrixFootnote {
@@ -507,8 +566,9 @@
   color: rgb(var(--color-foreground));
   font-size: var(--font-size-sm);
   font-weight: 850;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
 }
 
 .evaluationCard ul {
@@ -555,6 +615,8 @@
 }
 
 .evaluationEmpty {
+  display: flex;
+  flex-wrap: wrap;
   align-items: center;
   justify-content: space-between;
 }
@@ -648,32 +710,30 @@
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
-  .matrixTable th,
-  .matrixTable td {
-    min-width: 15rem;
+  .matrixTable {
+    min-width: calc(9rem + var(--listing-count) * 13.5rem);
   }
 
   .matrixCriterionHeader,
   .matrixCriterionCell {
-    min-width: 9.5rem !important;
-    width: 9.5rem;
+    width: 9rem;
+  }
+
+  .manualNeedsForm {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    align-items: start;
+  }
+
+  .manualFieldset,
+  .manualActions,
+  .manualNeedsForm > .needsInlineError {
+    grid-column: 1 / -1;
   }
 }
 
 @media (min-width: 1200px) {
   .evaluationGrid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-
-  .matrixTable th,
-  .matrixTable td {
-    min-width: 17rem;
-  }
-
-  .matrixCriterionHeader,
-  .matrixCriterionCell {
-    min-width: 10rem !important;
-    width: 10rem;
   }
 }
 

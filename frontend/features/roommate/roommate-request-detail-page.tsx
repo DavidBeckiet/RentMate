@@ -2,13 +2,14 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useEffect, useMemo, useState, type FormEvent } from "react";
+import { useEffect, useMemo, useRef, useState, type FormEvent } from "react";
 import { Button } from "../../components/ui/button";
 import { Card } from "../../components/ui/card";
 import { EmptyState, ErrorState, LoadingState } from "../../components/ui/feedback-states";
-import { TextareaField } from "../../components/ui/form-controls";
+import { IconButton } from "../../components/ui/icon-button";
 import { Icon } from "../../components/ui/icon";
 import styles from "./roommate-request-detail.module.css";
+import { findExistingRoommateChat, openRoommateChat } from "./roommate-chat-link";
 import { Skeleton } from "../../components/ui/skeleton";
 import { api, ApiError } from "../../lib/api/client";
 import { useAuth } from "../../lib/auth/auth-provider";
@@ -58,25 +59,80 @@ function InterestComposer({ requestId }: Readonly<{ requestId: number }>) {
   const [message, setMessage] = useState("");
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const sendingRef = useRef(false);
+  const [existingId, setExistingId] = useState<number | null>(null);
+  const [lookup, setLookup] = useState<"loading" | "ready" | "error">("loading");
+  const [lookupRetry, setLookupRetry] = useState(0);
+  useEffect(() => {
+    const controller = new AbortController();
+    setLookup("loading");
+    setExistingId(null);
+    void findExistingRoommateChat(requestId, controller.signal)
+      .then((interest) => {
+        if (controller.signal.aborted) return;
+        setExistingId(interest?.id ?? null);
+        setLookup("ready");
+      })
+      .catch(() => {
+        if (!controller.signal.aborted) setLookup("error");
+      });
+    return () => controller.abort();
+  }, [requestId, lookupRetry]);
+
+  useEffect(() => {
+    const textarea = textareaRef.current;
+    if (!textarea) return;
+    const resize = () => {
+      textarea.style.height = "auto";
+      textarea.style.height = `${Math.min(textarea.scrollHeight, 144)}px`;
+      textarea.style.overflowY = textarea.scrollHeight > 144 ? "auto" : "hidden";
+    };
+    resize();
+    window.addEventListener("resize", resize);
+    return () => window.removeEventListener("resize", resize);
+  }, [message]);
 
   const applyIcebreaker = (text: string) => {
-    setMessage((prev) => (prev.trim() ? `${prev.trim()}\n${text}` : text));
+    setMessage(text);
+    setError(null);
+    textareaRef.current?.focus({ preventScroll: true });
   };
 
   const submit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
+    if (sendingRef.current || lookup !== "ready") return;
+    if (existingId) {
+      openRoommateChat(existingId, router.push);
+      return;
+    }
     if (!message.trim()) {
       setError("Hãy viết lời nhắn mở đầu trước khi gửi lời quan tâm.");
       return;
     }
+    sendingRef.current = true;
     setPending(true);
     setError(null);
     try {
       const interest = await api.roommates.createInterest(requestId, message.trim());
-      router.push(`/roommates/conversations/${interest.id}`);
+      setExistingId(interest.id);
+      openRoommateChat(interest.id, router.push);
     } catch (caught) {
+      if (caught instanceof ApiError && caught.status === 409) {
+        try {
+          const existing = await findExistingRoommateChat(requestId);
+          if (existing) {
+            setExistingId(existing.id);
+            setError(null);
+            return;
+          }
+        } catch {
+          /* Preserve the original error and draft if lookup fails. */
+        }
+      }
       setError(roommateErrorMessage(caught));
     } finally {
+      sendingRef.current = false;
       setPending(false);
     }
   };
@@ -84,58 +140,119 @@ function InterestComposer({ requestId }: Readonly<{ requestId: number }>) {
   return (
     <Card className={styles.composer} aria-labelledby="roommate-interest-heading">
       <div>
-        <p className="rm-roommate-section-label">Kết nối bắt đầu từ đây</p>
-        <h2 id="roommate-interest-heading" className="mt-1 font-display text-heading-md font-bold text-foreground">
-          Gửi lời quan tâm
+        <h2 id="roommate-interest-heading" className="flex items-center gap-2 font-display font-bold text-foreground">
+          <Icon name="message" className="h-5 w-5 text-primary" /> Bắt đầu trò chuyện
         </h2>
-        <p className="mt-2 text-ui-sm leading-6 text-muted-foreground">
-          Lời nhắn mở đầu sẽ tạo một cuộc trò chuyện trong RentMate.
-        </p>
+        <p className="mt-2 text-ui-sm leading-6 text-muted-foreground">Gửi lời chào để kết nối với người đăng.</p>
       </div>
 
-      <div className={styles.icebreakerContainer}>
-        <p className="text-ui-xs font-semibold text-muted-foreground flex items-center gap-1.5">
-          <Icon name="sparkles" className="h-3.5 w-3.5 text-primary" />
-          Gợi ý lời chào nhanh:
+      {lookup === "loading" ? (
+        <p role="status" className="text-ui-sm text-muted-foreground">
+          Đang tìm cuộc trò chuyện…
         </p>
-        <div className={styles.icebreakers}>
-          {ICEBREAKER_TEMPLATES.map((tmpl) => (
-            <button
-              key={tmpl.label}
-              type="button"
-              onClick={() => applyIcebreaker(tmpl.text)}
-              className={styles.icebreakerChip}
-            >
-              {tmpl.label}
-            </button>
-          ))}
+      ) : lookup === "error" ? (
+        <div className="space-y-2">
+          <p role="alert">Chưa thể kiểm tra cuộc trò chuyện hiện có.</p>
+          <Button onClick={() => setLookupRetry((v) => v + 1)}>Thử lại</Button>
         </div>
-      </div>
-
-      <form className="space-y-4" onSubmit={(event) => void submit(event)} noValidate>
-        <TextareaField
-          id={`roommate-interest-message-${requestId}`}
-          name="message"
-          label="Lời nhắn mở đầu"
-          hint="Không chia sẻ thông tin liên hệ, OTP hoặc thông tin tài chính."
-          required
-          maxLength={2000}
-          rows={3}
-          value={message}
-          onChange={(event) => setMessage(event.target.value)}
-        />
-        <p aria-live="polite" className="text-right text-ui-xs font-semibold text-muted-foreground">
-          {Array.from(message).length}/2000 ký tự
-        </p>
-        {error ? (
-          <p role="alert" className="rm-roommate-callout text-ui-sm font-semibold text-danger" data-tone="danger">
-            {error}
+      ) : existingId ? (
+        <div className="space-y-3">
+          <p className="text-ui-sm text-muted-foreground">
+            Bạn đã kết nối qua yêu cầu này. Tiếp tục nhắn trong cuộc trò chuyện hiện có.
           </p>
-        ) : null}
-        <Button className="w-full shadow-sm" type="submit" pending={pending} pendingLabel="Đang gửi…">
-          <Icon name="userPlus" className="h-4 w-4" /> Gửi lời quan tâm
-        </Button>
-      </form>
+          <Button onClick={() => openRoommateChat(existingId, router.push)}>
+            <Icon name="message" className="h-4 w-4" /> Tiếp tục trò chuyện
+          </Button>
+        </div>
+      ) : (
+        <>
+          <div className={styles.icebreakerContainer}>
+            <p className="text-ui-xs font-semibold text-muted-foreground flex items-center gap-1.5">
+              <Icon name="sparkles" className="h-3.5 w-3.5 text-primary" />
+              Gợi ý lời chào nhanh:
+            </p>
+            <div className={styles.icebreakers}>
+              {ICEBREAKER_TEMPLATES.map((tmpl) => (
+                <button
+                  key={tmpl.label}
+                  type="button"
+                  onClick={() => applyIcebreaker(tmpl.text)}
+                  disabled={pending}
+                  aria-pressed={message === tmpl.text}
+                  className={styles.icebreakerChip}
+                >
+                  {tmpl.label}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <form className="space-y-3" onSubmit={(event) => void submit(event)} noValidate>
+            <label className="sr-only" htmlFor={`roommate-interest-message-${requestId}`}>
+              Lời nhắn mở đầu (bắt buộc)
+            </label>
+            <div className={styles.messageComposer}>
+              <textarea
+                ref={textareaRef}
+                id={`roommate-interest-message-${requestId}`}
+                name="message"
+                aria-describedby={`roommate-interest-hint-${requestId}${error ? ` roommate-interest-error-${requestId}` : ""}`}
+                aria-invalid={error ? true : undefined}
+                required
+                maxLength={2000}
+                rows={1}
+                readOnly={pending}
+                placeholder="Nhắn gì đó để làm quen…"
+                value={message}
+                onChange={(event) => {
+                  setMessage(event.target.value);
+                  setError(null);
+                }}
+                onKeyDown={(event) => {
+                  if (
+                    event.key === "Enter" &&
+                    !event.shiftKey &&
+                    !event.nativeEvent.isComposing &&
+                    event.keyCode !== 229
+                  ) {
+                    event.preventDefault();
+                    if (message.trim() && !pending) event.currentTarget.form?.requestSubmit();
+                  }
+                }}
+              />
+              <IconButton
+                type="submit"
+                label="Gửi tin nhắn"
+                title="Gửi tin nhắn"
+                variant="primary"
+                size="sm"
+                disabled={!message.trim()}
+                pending={pending}
+                pendingLabel="Đang gửi…"
+                className={styles.sendButton}
+              >
+                <Icon name="send" className="h-4 w-4" />
+              </IconButton>
+            </div>
+            <p className={message.length >= 1800 ? "text-right text-ui-xs text-muted-foreground" : "sr-only"}>
+              {Array.from(message).length}/2000 ký tự
+            </p>
+            {error ? (
+              <p
+                id={`roommate-interest-error-${requestId}`}
+                role="alert"
+                className="rm-roommate-callout text-ui-sm font-semibold text-danger"
+                data-tone="danger"
+              >
+                {error}
+              </p>
+            ) : null}
+            <p id={`roommate-interest-hint-${requestId}`} className="text-ui-xs leading-5 text-muted-foreground">
+              Không chia sẻ thông tin liên hệ, OTP hoặc thông tin tài chính.
+            </p>
+          </form>
+        </>
+      )}
     </Card>
   );
 }

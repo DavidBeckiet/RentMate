@@ -8,8 +8,14 @@ describe("RegistrationChooser", () => {
 
     const chooser = screen.getByRole("navigation", { name: "Chọn mục đích tạo tài khoản" });
     expect(chooser).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: /Tôi muốn tìm phòng/ })).toHaveAttribute("href", "/register/tenant");
-    expect(screen.getByRole("link", { name: /Tôi muốn cho thuê/ })).toHaveAttribute("href", "/register/landlord");
-    expect(screen.getByRole("link", { name: "Đăng nhập" })).toHaveAttribute("href", "/login");
+    expect(screen.getByRole("link", { name: /Tôi muốn tìm phòng.*Tạo tài khoản người thuê/ })).toHaveAttribute(
+      "href",
+      "/register/tenant"
+    );
+    expect(screen.getByRole("link", { name: /Tôi muốn cho thuê.*Tạo tài khoản chủ nhà/ })).toHaveAttribute(
+      "href",
+      "/register/landlord"
+    );
+    expect(screen.queryByRole("link", { name: "Đăng nhập" })).not.toBeInTheDocument();
   });
 });

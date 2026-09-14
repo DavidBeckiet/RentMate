@@ -10,7 +10,7 @@ import { api, ApiError } from "../../lib/api/client";
 import { useAuth } from "../../lib/auth/auth-provider";
 import type { ApiPage, RoommateOwnedBlock } from "../../types/api";
 import { formatMemberSince, formatRoommateDateTime, roommateErrorMessage } from "./roommate-content";
-import { RoommateAvatar, RoommatePageHeader, RoommateSubnav, RoommateTenantBoundary } from "./roommate-shared";
+import { RoommateAvatar, RoommatePageHeader, RoommateTenantBoundary } from "./roommate-shared";
 
 function actionKey(action: RoommateOwnedBlock["unblockAction"]): string {
   return `${action.kind}:${action.id}`;
@@ -77,17 +77,6 @@ function BlockedListContent() {
     }
   };
 
-  if (state === "loading") return <LoadingState message="Đang tải danh sách đã chặn…" />;
-  if (state === "error") {
-    return (
-      <ErrorState
-        message={roommateErrorMessage(error)}
-        requestId={error?.requestId}
-        action={<Button onClick={() => setRetryKey((current) => current + 1)}>Thử lại</Button>}
-      />
-    );
-  }
-
   const blocks = result?.data ?? [];
   return (
     <div className="rm-roommate-page space-y-6">
@@ -95,35 +84,45 @@ function BlockedListContent() {
         title="Đã chặn"
         description="Quản lý các tương tác ở ghép bạn đã chặn. Bỏ chặn không khôi phục lời quan tâm, kết nối hoặc yêu cầu cũ."
       />
-      <RoommateSubnav />
-      {success ? (
+      {state === "loading" ? <LoadingState message="Đang tải danh sách đã chặn…" /> : null}
+      {state === "error" ? (
+        <ErrorState
+          message={roommateErrorMessage(error)}
+          requestId={error?.requestId}
+          action={<Button onClick={() => setRetryKey((current) => current + 1)}>Thử lại</Button>}
+        />
+      ) : null}
+      {state === "success" && success ? (
         <p role="status" className="rm-roommate-callout text-ui-sm font-semibold" data-tone="accent">
           {success}
         </p>
       ) : null}
-      {actionError ? (
+      {state === "success" && actionError ? (
         <p role="alert" className="rm-roommate-callout text-ui-sm font-semibold text-danger" data-tone="danger">
           {actionError}
         </p>
       ) : null}
-      {blocks.length === 0 ? (
+      {state === "success" && blocks.length === 0 ? (
         <EmptyState
           title="Bạn chưa chặn người dùng nào trong Roommate"
           description="Người bạn chủ động chặn sẽ xuất hiện ở đây để bạn có thể xem lại và bỏ chặn khi cần."
         />
-      ) : (
+      ) : null}
+      {state === "success" && blocks.length > 0 ? (
         <div className="space-y-5">
           <div className="grid gap-4 md:grid-cols-2">
             {blocks.map((block) => {
               const key = actionKey(block.unblockAction);
               const memberSince = formatMemberSince(block.counterpart.memberSince);
               const displayName = block.counterpart.displayName ?? "Tài khoản đã chặn";
+              const sourceLabel =
+                block.unblockAction.kind === "REQUEST" ? "Chặn từ yêu cầu ở ghép" : "Chặn từ lời quan tâm";
               return (
                 <Card key={key} className="rm-roommate-card-static space-y-4">
                   <div className="flex items-start gap-3">
                     <RoommateAvatar displayName={displayName} />
                     <div className="min-w-0">
-                      <p className="rm-roommate-section-label">Tương tác đã chặn</p>
+                      <p className="rm-roommate-section-label">{sourceLabel}</p>
                       <h2 className="mt-1 font-display text-heading-sm font-bold">{displayName}</h2>
                       {memberSince ? (
                         <p className="mt-1 text-ui-xs font-semibold text-muted-foreground">
@@ -185,7 +184,7 @@ function BlockedListContent() {
             />
           ) : null}
         </div>
-      )}
+      ) : null}
     </div>
   );
 }

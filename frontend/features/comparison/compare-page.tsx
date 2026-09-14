@@ -18,6 +18,8 @@ import { useComparisonNeeds } from "./comparison-needs-state";
 import { useComparisonSelection } from "./comparison-store";
 import { ListingNoteEditor } from "./listing-note-editor";
 import { SimilarListings } from "../listings/similar-listings";
+import { RoommateListingCta } from "../roommate/roommate-listing-cta";
+import { isRoommateListingEligible } from "../roommate/roommate-listing-selection";
 import styles from "./compare-page.module.css";
 
 interface ComparisonResult {
@@ -63,6 +65,12 @@ function SingleListingPreview({ listing, onRemove }: Readonly<{ listing: Compari
         <Link href={`/listings/${listing.id}`} className={styles.matrixDetailLink}>
           Xem chi tiết <Icon name="arrow" className="h-4 w-4" />
         </Link>
+        <RoommateListingCta
+          listingId={listing.id}
+          eligible={isRoommateListingEligible(listing)}
+          compact
+          label="Cân nhắc ở ghép"
+        />
         <Button variant="danger" size="sm" onClick={onRemove}>
           Bỏ khỏi so sánh
         </Button>
@@ -183,7 +191,10 @@ export function ComparePage() {
   }, [needsSnapshot, orderedListings]);
 
   const focusNeeds = () => {
-    document.getElementById("comparison-needs-heading")?.scrollIntoView({ behavior: "smooth", block: "center" });
+    document.getElementById("comparison-needs-heading")?.scrollIntoView({
+      behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth",
+      block: "center"
+    });
   };
 
   if (listingIds.length === 0) {
@@ -203,23 +214,25 @@ export function ComparePage() {
   }
 
   return (
-    <section className="rm-workspace space-y-8" aria-labelledby="compare-heading">
+    <section className={`rm-workspace ${styles.comparePage}`} aria-labelledby="compare-heading">
       <header className={styles.compareHeader}>
         <div>
-          <span className="rm-eyebrow">BỘ SO SÁNH</span>
+          <Link href="/search" className={styles.backLink}>
+            <Icon name="arrow" className="h-4 w-4 rotate-180" /> Quay lại tìm phòng
+          </Link>
           <h1 id="compare-heading" className={styles.pageTitle}>
             So sánh phòng
           </h1>
           <p className={styles.pageSubtitle}>
-            {listingIds.length} tin đang so sánh · Tối đa {maximumSelections} tin. Ghi chú riêng chỉ tài khoản người
-            thuê của bạn nhìn thấy.
+            {listingIds.length} tin đang so sánh · Tối đa {maximumSelections} tin. Đặt cạnh nhau để chọn phòng phù hợp
+            với bạn.
           </p>
         </div>
         <div className={styles.headerActions}>
           <Link href="/search" className={styles.secondaryAction}>
             <Icon name="plus" className="h-4 w-4" /> Chọn thêm
           </Link>
-          <Button variant="danger" onClick={clear}>
+          <Button variant="outline" onClick={clear}>
             Xóa tất cả
           </Button>
         </div>
@@ -252,6 +265,7 @@ export function ComparePage() {
 
       {listingIds.length >= 2 && orderedListings.length >= 2 ? (
         <>
+          <ComparisonMatrix listings={orderedListings} needs={needsSnapshot?.criteria ?? null} onRemove={remove} />
           <ComparisonNeedsPanel
             snapshot={needsSnapshot}
             canUseSavedSearch={authStatus === "authenticated" && user?.role === "TENANT"}
@@ -260,7 +274,6 @@ export function ComparePage() {
             onApplySaved={applySaved}
             onClear={clearNeeds}
           />
-          <ComparisonMatrix listings={orderedListings} needs={needsSnapshot?.criteria ?? null} onRemove={remove} />
           <ComparisonEvaluation listings={orderedListings} evaluations={evaluations} onChooseNeeds={focusNeeds} />
           <section className={styles.notesSection} aria-labelledby="comparison-notes-heading">
             <div>

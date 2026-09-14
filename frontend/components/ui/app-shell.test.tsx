@@ -201,41 +201,27 @@ describe("AppShell", () => {
     expect(within(navigation).queryByRole("link", { name: "Tin nhắn" })).not.toBeInTheDocument();
   });
 
-  it("uses a compact public auth header without authenticated-only navigation", () => {
+  it("uses a focused auth header without marketplace navigation", () => {
     navigationMocks.pathname.mockReturnValue("/login");
     render(<AppShell>Biểu mẫu đăng nhập</AppShell>);
 
     const header = screen.getByRole("banner");
-    const navigation = within(header).getByRole("navigation", { name: "Điều hướng công khai" });
     expect(screen.getByRole("main")).toHaveTextContent("Biểu mẫu đăng nhập");
     expect(within(header).getByRole("link", { name: "RentMate — về trang chủ" })).toHaveAttribute("href", "/");
-    expect(within(navigation).getByRole("link", { name: "Trang chủ" })).toHaveAttribute("href", "/");
-    expect(within(navigation).getByRole("link", { name: "Tìm phòng" })).toHaveAttribute("href", "/search");
-    expect(within(navigation).getByRole("link", { name: "Gần tôi" })).toHaveAttribute("href", "/near-me");
-    const login = within(header).getByRole("link", { name: "Đăng nhập" });
-    const register = within(header).getByRole("link", { name: "Đăng ký" });
-    expect(login).toHaveAttribute("href", "/login");
-    expect(login).toHaveAttribute("aria-current", "page");
-    expect(login.querySelector("svg")).toHaveAttribute("aria-hidden", "true");
-    expect(register).toHaveAttribute("href", "/register");
-    expect(register.querySelector("svg")).toHaveAttribute("aria-hidden", "true");
-    expect(within(header).queryByText(/Yêu thích|Tin nhắn|Thông báo/)).not.toBeInTheDocument();
+    expect(within(header).getByRole("link", { name: "Tạo tài khoản" })).toHaveAttribute("href", "/register");
+    expect(within(header).queryByRole("navigation")).not.toBeInTheDocument();
+    expect(within(header).queryByRole("button", { name: "Mở menu điều hướng" })).not.toBeInTheDocument();
+    expect(within(header).queryByText(/Tìm phòng|Gần tôi|Yêu thích|Tin nhắn|Thông báo/)).not.toBeInTheDocument();
     expect(screen.queryByRole("contentinfo")).not.toBeInTheDocument();
   });
 
-  it("keeps the anonymous auth routes and actions accessible in the mobile drawer", () => {
+  it("keeps a single account switch action on mobile auth routes", () => {
     navigationMocks.pathname.mockReturnValue("/register/tenant");
     render(<AppShell>Biểu mẫu đăng ký</AppShell>);
-    fireEvent.click(screen.getByRole("button", { name: "Mở menu điều hướng" }));
-
-    const dialog = screen.getByRole("dialog", { name: "Điều hướng RentMate" });
-    const navigation = within(dialog).getByRole("navigation", { name: "Điều hướng công khai trên di động" });
-    expect(within(navigation).getByRole("link", { name: "Trang chủ" })).toHaveAttribute("href", "/");
-    expect(within(navigation).getByRole("link", { name: "Tìm phòng" })).toHaveAttribute("href", "/search");
-    expect(within(navigation).getByRole("link", { name: "Gần tôi" })).toHaveAttribute("href", "/near-me");
-    expect(within(dialog).getByRole("link", { name: "Đăng nhập" })).toHaveAttribute("href", "/login");
-    expect(within(dialog).getByRole("link", { name: "Đăng ký" })).toHaveAttribute("aria-current", "page");
-    expect(within(dialog).queryByText(/Yêu thích|Tin nhắn|Thông báo/)).not.toBeInTheDocument();
+    const header = screen.getByRole("banner");
+    expect(within(header).getByRole("link", { name: "Đăng nhập" })).toHaveAttribute("href", "/login");
+    expect(within(header).queryByRole("button", { name: "Mở menu điều hướng" })).not.toBeInTheDocument();
+    expect(within(header).queryByRole("navigation")).not.toBeInTheDocument();
   });
 
   it.each([

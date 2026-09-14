@@ -1,9 +1,16 @@
 import { fireEvent, render, screen } from "@testing-library/react";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { AuthContextValue } from "../../lib/auth/auth-provider";
-import { roommateProfile, roommateRequest, tenantUser } from "./test-roommate-fixtures";
+import { roommateInterest, roommateProfile, roommateRequest, tenantUser } from "./test-roommate-fixtures";
 
-const apiMocks = vi.hoisted(() => ({ discover: vi.fn(), getAiCapabilities: vi.fn(), getAiRecommendations: vi.fn() }));
+const apiMocks = vi.hoisted(() => ({
+  discover: vi.fn(),
+  getAiCapabilities: vi.fn(),
+  getAiRecommendations: vi.fn(),
+  getProfile: vi.fn(),
+  listMine: vi.fn(),
+  listInterests: vi.fn()
+}));
 const useAuthMock = vi.hoisted(() => vi.fn<() => AuthContextValue>());
 const navigationMocks = vi.hoisted(() => ({ push: vi.fn(), search: "" }));
 
@@ -27,6 +34,10 @@ function auth(overrides: Partial<AuthContextValue> = {}): AuthContextValue {
 describe("RoommateDiscoveryPage", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    vi.stubGlobal(
+      "matchMedia",
+      vi.fn(() => ({ matches: false, addEventListener: vi.fn(), removeEventListener: vi.fn() }))
+    );
     navigationMocks.search = "";
     useAuthMock.mockReturnValue(auth());
     apiMocks.discover.mockResolvedValue({
@@ -39,13 +50,86 @@ describe("RoommateDiscoveryPage", () => {
       compatibilityExplanations: false,
       safetyWarnings: false
     });
+    apiMocks.getProfile.mockResolvedValue(roommateProfile());
+    apiMocks.listMine.mockResolvedValue({ data: [], pagination: { page: 1, pageSize: 1, hasNextPage: false } });
+    apiMocks.listInterests.mockResolvedValue({ data: [], pagination: { page: 1, pageSize: 1, hasNextPage: false } });
+  });
+
+  afterEach(() => vi.unstubAllGlobals());
+
+  it("shows one contextual next step and prioritizes a pending incoming interest", async () => {
+    apiMocks.listMine.mockResolvedValue({
+      data: [roommateRequest()],
+      pagination: { page: 1, pageSize: 1, hasNextPage: false }
+    });
+    apiMocks.listInterests.mockResolvedValue({
+      data: [roommateInterest()],
+      pagination: { page: 1, pageSize: 1, hasNextPage: true }
+    });
+    render(<RoommateDiscoveryPage />);
+
+    expect(await screen.findByRole("heading", { name: "Xem lời quan tâm đang chờ" })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Xem lời quan tâm" })).toHaveAttribute("href", "/roommates/interests");
+    expect(screen.queryByRole("link", { name: "Cập nhật yêu cầu" })).not.toBeInTheDocument();
+    expect(apiMocks.listInterests).toHaveBeenCalledWith(
+      { direction: "INCOMING", status: "PENDING", page: 1, pageSize: 1 },
+      expect.any(AbortSignal)
+    );
+  });
+
+  it("directs tenants with an incomplete profile to profile setup", async () => {
+    apiMocks.getProfile.mockResolvedValue(roommateProfile({ profileCompleted: false }));
+    apiMocks.listInterests.mockResolvedValue({
+      data: [roommateInterest()],
+      pagination: { page: 1, pageSize: 1, hasNextPage: false }
+    });
+    render(<RoommateDiscoveryPage />);
+
+    expect(await screen.findByRole("heading", { name: "Hoàn thiện hồ sơ ở ghép" })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Hoàn thiện hồ sơ" })).toHaveAttribute("href", "/roommates/profile");
+    expect(screen.queryByRole("link", { name: "Xem lời quan tâm" })).not.toBeInTheDocument();
+  });
+
+  it("offers request creation when there is no pending next step", async () => {
+    render(<RoommateDiscoveryPage />);
+
+    expect(await screen.findByRole("heading", { name: "Bạn đã sẵn sàng tìm người ở ghép" })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Tạo yêu cầu" })).toHaveAttribute("href", "/roommates/my-request");
+  });
+
+  it("removes only the selected applied filter and returns to page one", async () => {
+    navigationMocks.search = "area=Q3&budgetMinPerPerson=2000000&listingMode=UNLINKED&page=3";
+    render(<RoommateDiscoveryPage />);
+    await screen.findByRole("heading", { name: "Bạn cùng phòng" });
+    fireEvent.click(screen.getByRole("button", { name: "Bỏ lọc: Quận 3" }));
+    expect(navigationMocks.push).toHaveBeenLastCalledWith("/roommates?budgetMinPerPerson=2000000&listingMode=UNLINKED");
+    expect(screen.getByLabelText("Khu vực")).toHaveValue("");
+  });
+
+  it("keeps applied chips separate from drafts and restores filters on browser navigation", async () => {
+    navigationMocks.search = "area=Q3";
+    const view = render(<RoommateDiscoveryPage />);
+    await screen.findByRole("heading", { name: "Bạn cùng phòng" });
+    fireEvent.change(screen.getByLabelText("Khu vực"), { target: { value: "Bình Thạnh" } });
+    expect(screen.getByRole("button", { name: "Bỏ lọc: Quận 3" })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Bỏ lọc: Bình Thạnh" })).not.toBeInTheDocument();
+    navigationMocks.search = "budgetMaxPerPerson=5000000";
+    view.rerender(<RoommateDiscoveryPage />);
+    expect(screen.getByLabelText("Khu vực")).toHaveValue("");
+    expect(screen.getByLabelText("Đến", { exact: true })).toHaveValue(5000000);
   });
 
   it("keeps public-safe discovery cards compact and free of technical listing wording", async () => {
     render(<RoommateDiscoveryPage />);
     expect(await screen.findByRole("heading", { name: "Bạn cùng phòng" })).toBeInTheDocument();
+    expect(apiMocks.discover).toHaveBeenCalledWith(
+      expect.objectContaining({ pageSize: 6, page: 1 }),
+      expect.any(AbortSignal)
+    );
     expect(screen.getAllByText("Cùng tìm phòng phù hợp")).toHaveLength(2);
-    expect(screen.getByText("Chưa chọn phòng cụ thể")).toBeInTheDocument();
+    expect(screen.queryByText("Chưa chọn phòng cụ thể")).not.toBeInTheDocument();
+    expect(screen.queryByText("Chuyển vào")).not.toBeInTheDocument();
+    expect(screen.queryByText(/Thành viên từ|Mở từ|Lời nhắn từ người đăng/)).not.toBeInTheDocument();
     expect(screen.queryByText("tenant@example.com")).not.toBeInTheDocument();
     expect(screen.queryByText(/106\.682|10\.782/)).not.toBeInTheDocument();
     expect(screen.queryByText(/V1 \+ V2/)).not.toBeInTheDocument();
@@ -60,6 +144,38 @@ describe("RoommateDiscoveryPage", () => {
     fireEvent.click(screen.getByRole("button", { name: "Lọc yêu cầu" }));
     expect(navigationMocks.push).toHaveBeenLastCalledWith(
       "/roommates?area=B%C3%ACnh+Th%E1%BA%A1nh&listingMode=UNLINKED"
+    );
+  });
+
+  it("keeps optional filters collapsed and resets draft filters", async () => {
+    render(<RoommateDiscoveryPage />);
+    await screen.findByRole("heading", { name: "Bạn cùng phòng" });
+    expect(screen.queryByRole("button", { name: "Xóa bộ lọc" })).not.toBeInTheDocument();
+    const budget = screen.getByLabelText("Nhập ngân sách chính xác").closest("details");
+    const dates = screen.getByText("Bộ lọc thêm").closest("details");
+    expect(budget).not.toHaveAttribute("open");
+    expect(dates).not.toHaveAttribute("open");
+    fireEvent.change(screen.getByLabelText("Ngân sách tối thiểu"), { target: { value: "2000000" } });
+    fireEvent.click(screen.getByRole("button", { name: "Lọc yêu cầu" }));
+    expect(navigationMocks.push).toHaveBeenLastCalledWith("/roommates?budgetMinPerPerson=2000000");
+    fireEvent.click(screen.getByRole("button", { name: "Xóa bộ lọc" }));
+    expect(navigationMocks.push).toHaveBeenLastCalledWith("/roommates");
+    expect(screen.getByLabelText("Ngân sách tối thiểu")).toHaveValue("0");
+    expect(screen.queryByRole("button", { name: "Xóa bộ lọc" })).not.toBeInTheDocument();
+  });
+
+  it("shows date filters applied from the URL and preserves exact budget entry", async () => {
+    navigationMocks.search = "moveInFrom=2026-10-01";
+    render(<RoommateDiscoveryPage />);
+    await screen.findByRole("heading", { name: "Bạn cùng phòng" });
+    expect(screen.getByText("Bộ lọc thêm · Có lọc ngày").closest("details")).toHaveAttribute("open");
+    expect(screen.getByLabelText("Từ ngày")).toHaveValue("2026-10-01");
+    fireEvent.click(screen.getByLabelText("Nhập ngân sách chính xác"));
+    expect(screen.getByLabelText("Nhập ngân sách chính xác").closest("details")).toHaveAttribute("open");
+    fireEvent.change(screen.getByLabelText("Từ", { exact: true }), { target: { value: "2350000" } });
+    fireEvent.click(screen.getByRole("button", { name: "Lọc yêu cầu" }));
+    expect(navigationMocks.push).toHaveBeenLastCalledWith(
+      "/roommates?budgetMinPerPerson=2350000&moveInFrom=2026-10-01"
     );
   });
 

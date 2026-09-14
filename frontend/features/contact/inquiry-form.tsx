@@ -28,12 +28,12 @@ type LookupState = "idle" | "loading" | "new" | "conversation" | "error";
 
 function inquiryError(error: ApiError | null): string {
   if (error?.status === 401) return "Phiên đăng nhập đã hết. Vui lòng đăng nhập lại.";
-  if (error?.status === 403) return "Chỉ tài khoản người thuê mới có thể gửi yêu cầu.";
+  if (error?.status === 403) return "Chỉ tài khoản người thuê mới có thể nhắn tin.";
   if (error?.status === 404) return "Tin đăng không còn công khai hoặc chủ trọ đã ngừng hoạt động.";
-  if (error?.status === 409) return "Bạn đã có một yêu cầu đang mở cho tin này.";
-  if (error?.status === 429) return "Bạn đang gửi hơi nhiều yêu cầu. Vui lòng thử lại sau ít phút.";
-  if (error?.status === 422) return "Vui lòng kiểm tra lại nội dung và số điện thoại.";
-  return "Không thể gửi yêu cầu lúc này. Vui lòng thử lại.";
+  if (error?.status === 409) return "Bạn đã có một cuộc trò chuyện đang mở cho tin này.";
+  if (error?.status === 429) return "Bạn đang gửi hơi nhiều tin nhắn. Vui lòng thử lại sau ít phút.";
+  if (error?.status === 422) return "Vui lòng kiểm tra lại nội dung tin nhắn.";
+  return "Không thể gửi tin nhắn lúc này. Vui lòng thử lại.";
 }
 
 function inquiryRecency(inquiry: Inquiry): number {
@@ -170,7 +170,6 @@ export function InquiryForm({
   const [lookupError, setLookupError] = useState<string | null>(null);
   const [selectedInquiryId, setSelectedInquiryId] = useState<number | null>(null);
   const [message, setMessage] = useState("");
-  const [phone, setPhone] = useState(user?.phone ?? "");
   const [pending, setPending] = useState(false);
   const [feedback, setFeedback] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
@@ -180,6 +179,7 @@ export function InquiryForm({
   const lastTriggerRef = useRef<HTMLButtonElement | null>(null);
   const lookupAbortRef = useRef<AbortController | null>(null);
   const lookupTokenRef = useRef(0);
+  const newMessageTextareaRef = useRef<HTMLTextAreaElement>(null);
   const [portalTarget, setPortalTarget] = useState<HTMLElement | null>(null);
   const open = knownInquiryMode ? Boolean(controlledOpen) : uncontrolledOpen;
   const activeInquiryId = knownInquiryMode ? inquiryId : selectedInquiryId;
@@ -298,12 +298,12 @@ export function InquiryForm({
       const created = await api.contact.createInquiry({
         listingId,
         message: message.trim(),
-        contactPhone: phone.trim() || null,
+        contactPhone: null,
         preferredContactAt: null
       });
       setSelectedInquiryId(created.id);
       setLookupState("conversation");
-      setSuccessMessage("Yêu cầu đã được gửi. Chủ trọ sẽ nhận được thông báo.");
+      setSuccessMessage("Tin nhắn đã được gửi. Chủ trọ sẽ nhận được thông báo.");
       setMessage("");
     } catch (caught: unknown) {
       const error = caught instanceof ApiError ? caught : null;
@@ -330,6 +330,26 @@ export function InquiryForm({
 
   const effectiveLookupState: LookupState = knownInquiryMode ? "conversation" : lookupState;
   const resolvedListingTitle = conversation.inquiry?.listingSummary?.title ?? listingTitle;
+  const conversationView = effectiveLookupState === "conversation" && conversation.inquiry !== null;
+  const chatPanelSizeClass = conversationView
+    ? "h-[min(76dvh,42rem)] sm:h-[min(40rem,calc(100dvh-8rem))]"
+    : "h-auto max-h-[min(76dvh,42rem)] sm:max-h-[min(40rem,calc(100dvh-8rem))]";
+
+  const resizeNewMessageTextarea = useCallback(() => {
+    const textarea = newMessageTextareaRef.current;
+    if (!textarea) return;
+
+    const minHeight = 48;
+    const maxHeight = 144;
+    textarea.style.height = "auto";
+    const nextHeight = Math.min(Math.max(textarea.scrollHeight, minHeight), maxHeight);
+    textarea.style.height = `${nextHeight}px`;
+    textarea.style.overflowY = textarea.scrollHeight > maxHeight ? "auto" : "hidden";
+  }, []);
+
+  useEffect(() => {
+    if (effectiveLookupState === "new") resizeNewMessageTextarea();
+  }, [effectiveLookupState, message, resizeNewMessageTextarea]);
 
   if (authStatus === "loading") {
     return <p className="text-sm font-medium text-slate-600">Đang kiểm tra quyền nhắn tin…</p>;
@@ -363,7 +383,7 @@ export function InquiryForm({
       {!knownInquiryMode ? (
         <div className="space-y-3">
           <p className="text-sm leading-6 text-muted-foreground">
-            Gửi yêu cầu liên hệ để bắt đầu cuộc trò chuyện với chủ trọ.
+            Mở cuộc trò chuyện để trao đổi trực tiếp với chủ trọ.
           </p>
           <Button
             ref={triggerRef}
@@ -393,7 +413,7 @@ export function InquiryForm({
                   aria-modal="false"
                   aria-labelledby={`listing-chat-title-${domId}`}
                   tabIndex={-1}
-                  className="rm-floating-chat-panel flex h-[min(76dvh,42rem)] w-full min-w-0 max-w-full flex-col overflow-hidden rounded-overlay border border-border bg-surface shadow-overlay-soft outline-none sm:h-[min(40rem,calc(100dvh-8rem))] sm:w-[min(24rem,calc(100vw-3rem))] lg:w-[25rem]"
+                  className={`rm-floating-chat-panel flex w-full min-w-0 max-w-[25rem] flex-col overflow-hidden rounded-overlay border border-border bg-surface shadow-overlay-soft outline-none ${chatPanelSizeClass} sm:w-[min(24rem,calc(100vw-3rem))] lg:w-[25rem]`}
                 >
                   <header className="flex shrink-0 items-start justify-between gap-3 border-b border-border bg-surface px-4 py-3">
                     <div className="min-w-0">
@@ -430,16 +450,10 @@ export function InquiryForm({
                     </div>
                   </header>
 
-                  <div
-                    className={
-                      effectiveLookupState === "conversation" && conversation.inquiry
-                        ? "min-h-0 flex-1 overflow-hidden"
-                        : "min-h-0 flex-1 overflow-y-auto"
-                    }
-                  >
+                  <div className={conversationView ? "min-h-0 flex-1 overflow-hidden" : "min-h-0 overflow-y-auto"}>
                     <div
                       className={
-                        effectiveLookupState === "conversation" && conversation.inquiry
+                        conversationView
                           ? "flex h-full min-h-0 min-w-0 flex-col gap-4 p-4"
                           : "flex min-w-0 flex-col gap-4 p-4"
                       }
@@ -462,9 +476,9 @@ export function InquiryForm({
                       ) : effectiveLookupState === "new" ? (
                         <form className="space-y-4" onSubmit={(event) => void submit(event)}>
                           <div>
-                            <h3 className="font-display text-xl font-bold">Gửi yêu cầu liên hệ</h3>
+                            <h3 className="font-display text-xl font-bold">Bắt đầu cuộc trò chuyện</h3>
                             <p className="mt-1 text-sm leading-6 text-muted-foreground">
-                              Tin nhắn đầu tiên sẽ bắt đầu cuộc trò chuyện với chủ trọ.
+                              Tin nhắn đầu tiên sẽ được gửi đến chủ trọ.
                             </p>
                           </div>
                           <div>
@@ -474,42 +488,50 @@ export function InquiryForm({
                                 <button
                                   key={question}
                                   type="button"
-                                  onClick={() =>
-                                    setMessage((prev) => (prev.trim() ? `${prev.trim()}\n${question}` : question))
-                                  }
-                                  className="rounded-full border border-border bg-surface-subtle px-2.5 py-1 text-left text-xs font-semibold text-foreground transition hover:border-primary/40 hover:bg-primary-subtle hover:text-primary-hover active:scale-95"
+                                  onClick={() => setMessage(question)}
+                                  aria-pressed={message === question}
+                                  className={`rounded-full border px-2.5 py-1 text-left text-xs font-semibold transition hover:border-primary/40 hover:bg-primary-subtle hover:text-primary-hover active:scale-95 ${
+                                    message === question
+                                      ? "border-primary/60 bg-primary-subtle text-primary-hover"
+                                      : "border-border bg-surface-subtle text-foreground"
+                                  }`}
                                 >
                                   &ldquo;{question}&rdquo;
                                 </button>
                               ))}
                             </div>
                           </div>
-                          <label className="block text-sm font-bold" htmlFor={`inquiry-message-${domId}`}>
-                            Nội dung lời nhắn
-                            <textarea
-                              id={`inquiry-message-${domId}`}
-                              required
-                              minLength={1}
-                              maxLength={4000}
-                              rows={4}
-                              value={message}
-                              onChange={(event) => setMessage(event.target.value)}
-                              placeholder="Ví dụ: Mình muốn hỏi phòng còn trống và chi phí đầu vào…"
-                              className="mt-2 min-h-28 w-full resize-y rounded-control border border-border-strong bg-surface p-3 text-sm font-medium outline-none transition focus:border-primary focus:ring-[3px] focus:ring-primary/20"
-                            />
-                          </label>
-                          <label className="block text-sm font-bold" htmlFor={`inquiry-phone-${domId}`}>
-                            Số điện thoại liên hệ
-                            <input
-                              id={`inquiry-phone-${domId}`}
-                              type="tel"
-                              maxLength={32}
-                              value={phone}
-                              onChange={(event) => setPhone(event.target.value)}
-                              placeholder="Dùng số trong hồ sơ nếu để trống"
-                              className="mt-2 min-h-12 w-full rounded-control border border-border-strong bg-surface px-3 text-sm font-medium outline-none transition focus:border-primary focus:ring-[3px] focus:ring-primary/20"
-                            />
-                          </label>
+                          <div>
+                            <label className="block text-sm font-bold" htmlFor={`inquiry-message-${domId}`}>
+                              Nội dung lời nhắn
+                            </label>
+                            <div className="mt-2 flex min-w-0 items-end gap-2">
+                              <textarea
+                                id={`inquiry-message-${domId}`}
+                                required
+                                minLength={1}
+                                maxLength={4000}
+                                rows={1}
+                                ref={newMessageTextareaRef}
+                                value={message}
+                                onChange={(event) => setMessage(event.target.value)}
+                                onInput={resizeNewMessageTextarea}
+                                placeholder="Nhập tin nhắn…"
+                                className="min-h-12 min-w-0 max-h-36 flex-1 resize-none overflow-hidden rounded-control border border-border-strong bg-surface px-3 py-2.5 text-sm font-medium leading-6 outline-none transition focus:border-primary focus:ring-[3px] focus:ring-primary/20"
+                              />
+                              <IconButton
+                                type="submit"
+                                label="Gửi tin nhắn"
+                                variant="primary"
+                                size="sm"
+                                pending={pending}
+                                pendingLabel="Đang gửi…"
+                                className="rounded-full"
+                              >
+                                <Icon name="send" className="h-4 w-4" />
+                              </IconButton>
+                            </div>
+                          </div>
                           {feedback ? (
                             <p
                               role="alert"
@@ -518,9 +540,6 @@ export function InquiryForm({
                               {feedback}
                             </p>
                           ) : null}
-                          <Button type="submit" pending={pending} pendingLabel="Đang gửi…" className="w-full">
-                            Gửi yêu cầu liên hệ
-                          </Button>
                         </form>
                       ) : effectiveLookupState === "conversation" && conversation.state === "error" ? (
                         <ErrorState
@@ -560,7 +579,7 @@ export function InquiryForm({
                           />
                           {!knownInquiryMode && conversation.inquiry.status === "CLOSED" ? (
                             <Button variant="secondary" onClick={startNewInquiry} className="w-full shrink-0">
-                              Gửi yêu cầu mới
+                              Bắt đầu cuộc trò chuyện mới
                             </Button>
                           ) : null}
                         </div>

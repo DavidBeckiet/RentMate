@@ -50,19 +50,40 @@ describe("AuthPageShell", () => {
     navigationMocks.replace.mockReset();
   });
 
-  it("renders one semantic single-column auth purpose with secondary navigation for anonymous users", () => {
+  it("renders the auth form with its matching editorial visual and secondary navigation for anonymous users", () => {
     useAuthMock.mockReturnValue(authValue({ status: "anonymous" }));
     renderShell();
 
     const heading = screen.getByRole("heading", { level: 1, name: "Đăng nhập" });
     expect(heading).toBeInTheDocument();
     expect(heading.closest("section")).toHaveAttribute("data-auth-variant", "login");
-    expect(heading.closest("section")?.querySelector("[data-auth-brand]")).toHaveTextContent("RentMate");
+    expect(heading.closest("section")?.querySelector('aside[data-auth-visual="login"]')).toBeInTheDocument();
+    expect(heading.closest("section")?.querySelector("[data-auth-brand]")).toBeNull();
+    expect(heading.closest("section")?.querySelector('svg[viewBox="0 0 560 540"]')).toBeNull();
+    expect(heading.closest("section")?.querySelector("img")).toHaveAttribute("alt", "");
     expect(screen.queryByRole("heading", { level: 2 })).not.toBeInTheDocument();
     expect(screen.getByRole("form", { name: "Biểu mẫu đăng nhập" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Đăng nhập" })).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Đăng ký tìm phòng" })).toHaveAttribute("href", "/register/tenant");
     expect(navigationMocks.replace).not.toHaveBeenCalled();
+  });
+
+  it("places role correction beside the registration heading when supplied", () => {
+    useAuthMock.mockReturnValue(authValue({ status: "anonymous" }));
+    render(
+      <AuthPageShell
+        variant="tenant"
+        title="Đăng ký tìm phòng"
+        description="Tạo tài khoản người thuê."
+        contextAction={<Link href="/register">Chọn lại loại tài khoản</Link>}
+        footer={null}
+      >
+        <form aria-label="Đăng ký người thuê" />
+      </AuthPageShell>
+    );
+
+    expect(screen.getByRole("link", { name: "Chọn lại loại tài khoản" })).toHaveAttribute("href", "/register");
+    expect(screen.getByRole("heading", { level: 1, name: "Đăng ký tìm phòng" })).toBeInTheDocument();
   });
 
   it("shows loading state without form flicker during auth bootstrap", () => {

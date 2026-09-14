@@ -17,10 +17,18 @@ export function Reveal({ children, className = "", delay = 0 }: RevealProps) {
     const element = elementRef.current;
     if (!element) return;
 
-    if (
-      (typeof window !== "undefined" && window.matchMedia?.("(prefers-reduced-motion: reduce)")?.matches) ||
-      typeof IntersectionObserver === "undefined"
-    ) {
+    const prefersReducedMotion =
+      typeof window !== "undefined" && window.matchMedia?.("(prefers-reduced-motion: reduce)")?.matches;
+
+    if (prefersReducedMotion || typeof IntersectionObserver === "undefined") {
+      setVisible(true);
+      setReady(true);
+      return;
+    }
+
+    const viewportHeight = window.innerHeight || document.documentElement.clientHeight;
+    const bounds = element.getBoundingClientRect();
+    if (bounds.top < viewportHeight * 0.88 && bounds.bottom > 0) {
       setVisible(true);
       setReady(true);
       return;
@@ -30,13 +38,13 @@ export function Reveal({ children, className = "", delay = 0 }: RevealProps) {
       ([entry]) => {
         if (!entry?.isIntersecting) return;
         setVisible(true);
-        setReady(true);
         observer.disconnect();
       },
-      { rootMargin: "0px 0px -8%", threshold: 0.12 }
+      { rootMargin: "0px 0px -12% 0px", threshold: 0.08 }
     );
 
     observer.observe(element);
+    setReady(true);
     return () => observer.disconnect();
   }, []);
 

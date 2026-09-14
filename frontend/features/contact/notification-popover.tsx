@@ -12,10 +12,16 @@ import { useAuth } from "../../lib/auth/auth-provider";
 import type { Notification } from "../../types/api";
 import { formatNotificationRelativeTime, presentNotification } from "./notification-presentation";
 import {
+  getNotificationSoundEnabled,
+  setNotificationSoundEnabled,
+  unlockNotificationSound
+} from "./notification-sound";
+import {
   decrementNotificationUnreadCount,
   incrementNotificationUnreadCount,
   refreshNotificationUnreadCount,
   setNotificationUnreadCount,
+  useLatestNotification,
   useNotificationUnreadCount
 } from "./notification-unread-store";
 
@@ -24,14 +30,35 @@ export function NotificationPopover({ pathname }: Readonly<{ pathname: string }>
   const userId = user?.id ?? null;
   const router = useRouter();
   const unreadCount = useNotificationUnreadCount(userId, pathname);
+  const latestNotification = useLatestNotification(userId);
   const [isOpen, setIsOpen] = useState(false);
   const [items, setItems] = useState<readonly Notification[]>([]);
   const [loading, setLoading] = useState(false);
   const [loadError, setLoadError] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
+  const [soundEnabled, setSoundEnabled] = useState(true);
   const containerRef = useRef<HTMLDivElement>(null);
   const fetchControllerRef = useRef<AbortController | null>(null);
   const [relativeNow, setRelativeNow] = useState<number | null>(null);
+
+  useEffect(() => {
+    setSoundEnabled(getNotificationSoundEnabled());
+  }, []);
+
+  useEffect(() => {
+    setItems([]);
+    setLoadError(false);
+    setActionError(null);
+  }, [userId]);
+
+  useEffect(() => {
+    if (!latestNotification) return;
+    setItems((current) => {
+      const next = [latestNotification, ...current.filter((item) => item.id !== latestNotification.id)];
+      return next.slice(0, 5);
+    });
+    setRelativeNow(Date.now());
+  }, [latestNotification]);
 
   const fetchRecent = useCallback(() => {
     if (!userId) return;
@@ -121,6 +148,13 @@ export function NotificationPopover({ pathname }: Readonly<{ pathname: string }>
     }
   };
 
+  const toggleSound = () => {
+    const nextEnabled = !soundEnabled;
+    setSoundEnabled(nextEnabled);
+    setNotificationSoundEnabled(nextEnabled);
+    if (nextEnabled) unlockNotificationSound();
+  };
+
   const handleItemClick = (item: Notification, destination: string) => {
     if (!item.isRead && userId) {
       decrementNotificationUnreadCount(userId);
@@ -173,15 +207,26 @@ export function NotificationPopover({ pathname }: Readonly<{ pathname: string }>
                 </span>
               ) : null}
             </div>
-            {unreadCount && unreadCount > 0 ? (
+            <div className="flex items-center gap-1">
               <button
                 type="button"
-                onClick={() => void handleMarkAllRead()}
-                className="text-ui-xs font-bold text-primary transition-colors hover:text-primary-hover"
+                onClick={toggleSound}
+                aria-label={soundEnabled ? "Tắt âm thanh thông báo" : "Bật âm thanh thông báo"}
+                title={soundEnabled ? "Tắt âm thanh thông báo" : "Bật âm thanh thông báo"}
+                className="grid h-8 w-8 place-items-center rounded-lg text-muted-foreground transition-colors hover:bg-surface-subtle hover:text-foreground focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-focus/30"
               >
-                Đã đọc tất cả
+                <Icon name={soundEnabled ? "volume" : "volumeOff"} className="h-4 w-4" />
               </button>
-            ) : null}
+              {unreadCount && unreadCount > 0 ? (
+                <button
+                  type="button"
+                  onClick={() => void handleMarkAllRead()}
+                  className="text-ui-xs font-bold text-primary transition-colors hover:text-primary-hover"
+                >
+                  Đã đọc tất cả
+                </button>
+              ) : null}
+            </div>
           </header>
 
           {actionError ? (

@@ -256,7 +256,7 @@ export function createGatewayServer(environment = process.env) {
 
     const upstream = resolveUpstream(pathname, routes);
     const isServiceUpstream = upstream !== routes.backend;
-    const streamingResponse = /^\/api\/v1\/inquiries\/[1-9][0-9]*\/events$/.test(pathname);
+    const streamingResponse = /^\/api\/v1\/(?:inquiries\/[1-9][0-9]*|notifications)\/events$/.test(pathname);
     proxyRequest(
       request,
       response,

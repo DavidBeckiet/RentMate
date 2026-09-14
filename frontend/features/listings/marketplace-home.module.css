@@ -3,32 +3,64 @@
   background: rgb(var(--color-background));
 }
 
+.home :global(.rm-reveal) {
+  --motion-slow: 620ms;
+}
+
 .hero {
-  border-bottom: 1px solid rgb(var(--color-border));
-  background: linear-gradient(
-    135deg,
-    rgb(var(--color-surface-subtle)),
-    rgb(var(--color-background)) 58%,
-    rgb(var(--color-accent-subtle) / 0.4)
-  );
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  color: rgb(var(--color-surface));
+  background:
+    radial-gradient(ellipse at 75% 28%, rgb(var(--color-primary) / 0.7), transparent 34rem),
+    radial-gradient(ellipse at 7% 100%, rgb(var(--color-accent) / 0.12), transparent 28rem),
+    rgb(var(--color-foreground));
+}
+
+.hero::before,
+.hero::after {
+  position: absolute;
+  z-index: -1;
+  border: 1px solid rgb(var(--color-surface) / 0.08);
+  border-radius: 50%;
+  content: "";
+  pointer-events: none;
+}
+
+.hero::before {
+  top: -24rem;
+  right: -12rem;
+  width: 52rem;
+  height: 52rem;
+}
+
+.hero::after {
+  right: 38%;
+  bottom: -37rem;
+  width: 44rem;
+  height: 44rem;
 }
 
 .heroGrid {
-  padding-block: clamp(1.25rem, 2.5vw, 2.5rem) clamp(2rem, 3.5vw, 3.25rem);
+  position: relative;
+  padding-block: clamp(1.4rem, 2.4vw, 2rem) 1.45rem;
 }
 
 .heroLayout {
   display: grid;
-  gap: clamp(1.5rem, 3vw, 3rem);
-  align-items: start;
+  grid-template-columns: minmax(0, 0.91fr) minmax(0, 1.09fr);
+  gap: clamp(1.5rem, 3vw, 3.25rem);
+  align-items: center;
+  min-height: clamp(34rem, 64vh, 42rem);
 }
 
 .heroCopy {
-  display: flex;
-  min-width: 0;
-  flex-direction: column;
-  justify-content: center;
-  padding-block: 0.5rem;
+  position: relative;
+  z-index: 2;
+  max-width: 39rem;
+  padding-block: 1.25rem 2rem;
+  animation: home-arrive 620ms both cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 .heroKicker,
@@ -36,80 +68,87 @@
   display: inline-flex;
   width: fit-content;
   align-items: center;
-  gap: 0.5rem;
-  color: rgb(var(--color-primary));
-  font-size: var(--font-size-xs);
+  gap: 0.55rem;
+  color: rgb(var(--color-primary-hover));
+  font-size: 0.7rem;
   font-weight: 800;
-  letter-spacing: 0.08em;
-  line-height: 1.4;
-  text-transform: uppercase;
+  letter-spacing: 0.11em;
+  line-height: 1.45;
+}
+
+.heroKicker {
+  color: rgb(var(--color-accent));
+}
+
+.heroKickerMark {
+  display: grid;
+  width: 2rem;
+  height: 2rem;
+  place-items: center;
+  border: 1px solid rgb(var(--color-surface) / 0.2);
+  border-radius: 50%;
+  background: rgb(var(--color-surface) / 0.08);
+  color: rgb(var(--color-accent));
 }
 
 .heroTitle {
-  max-width: 48rem;
-  margin: 1rem 0 0;
-  color: rgb(var(--color-foreground));
+  max-width: 40rem;
+  margin: 1.35rem 0 0;
+  color: rgb(var(--color-surface));
   font-family: var(--font-manrope), sans-serif;
-  font-size: clamp(2.45rem, 5.5vw, 4.8rem);
+  font-size: clamp(3rem, 4.85vw, 5.25rem);
   font-weight: 800;
-  letter-spacing: -0.075em;
-  line-height: 0.98;
-}
-
-.heroTitle span,
-.heroTitle em {
-  display: block;
+  letter-spacing: -0.078em;
+  line-height: 0.99;
 }
 
 .heroTitle span {
-  color: rgb(var(--color-primary));
-}
-
-.heroTitle em {
-  width: fit-content;
-  margin-top: 0.1em;
-  padding-inline: 0.12em;
-  border-radius: 0.24em;
-  background: rgb(var(--color-accent-subtle));
-  color: rgb(var(--color-foreground));
-  font-style: normal;
+  display: block;
+  color: rgb(var(--color-accent));
 }
 
 .heroDescription {
-  max-width: 38rem;
-  margin-top: 1.1rem;
-  color: rgb(var(--color-muted-foreground));
-  font-size: clamp(1rem, 1.5vw, 1.15rem);
-  line-height: 1.6;
+  max-width: 34rem;
+  margin-top: 1.2rem;
+  color: rgb(var(--color-surface) / 0.72);
+  font-size: clamp(1rem, 1.3vw, 1.125rem);
+  line-height: 1.7;
 }
 
 .heroLinks {
   display: flex;
   flex-wrap: wrap;
-  gap: 0.75rem;
-  margin-top: 1.25rem;
+  gap: 0.7rem;
+  margin-top: 1.45rem;
 }
 
 .heroPrimaryLink,
 .heroSecondaryLink,
 .sectionAction,
 .emptyAction,
-.landlordAction {
+.landlordAction,
+.roommateAction,
+.finalPrimaryAction,
+.finalSecondaryAction {
   display: inline-flex;
   min-height: 3rem;
   align-items: center;
   justify-content: center;
   gap: 0.55rem;
   border-radius: var(--radius-control);
+  padding: 0.7rem 1rem;
   font-weight: 800;
   transition:
     transform var(--motion-standard) var(--rm-ease-out),
     box-shadow var(--motion-standard) ease,
-    background-color var(--motion-fast) ease;
+    background-color var(--motion-fast) ease,
+    color var(--motion-fast) ease,
+    border-color var(--motion-fast) ease;
 }
 
-.heroPrimaryLink {
-  padding: 0.75rem 1.1rem;
+.heroPrimaryLink,
+.landlordAction,
+.roommateAction {
   background: rgb(var(--color-primary));
   color: rgb(var(--color-primary-foreground));
   box-shadow: var(--shadow-surface);
@@ -117,108 +156,409 @@
 
 .heroPrimaryLink:hover,
 .landlordAction:hover,
-.sectionAction:hover,
-.emptyAction:hover {
-  transform: translateY(-2px);
-  box-shadow: var(--shadow-raised);
-}
-
-.heroPrimaryLink:hover {
+.roommateAction:hover {
   background: rgb(var(--color-primary-hover));
+  box-shadow: var(--shadow-raised);
+  transform: translateY(-2px);
 }
 
-.heroSecondaryLink {
-  padding: 0.75rem 1rem;
+.heroSecondaryLink,
+.sectionAction,
+.emptyAction {
   border: 1px solid rgb(var(--color-border-strong));
-  background: rgb(var(--color-surface) / 0.72);
+  background: rgb(var(--color-surface));
   color: rgb(var(--color-foreground));
 }
 
-.heroSecondaryLink:hover {
+.heroSecondaryLink:hover,
+.sectionAction:hover,
+.emptyAction:hover {
   border-color: rgb(var(--color-primary));
-  background: rgb(var(--color-surface));
   color: rgb(var(--color-primary-hover));
+  box-shadow: var(--shadow-surface);
   transform: translateY(-2px);
+}
+
+.heroPrimaryLink {
+  background: rgb(var(--color-accent));
+  color: rgb(var(--color-foreground));
+  box-shadow: 0 10px 28px rgb(0 0 0 / 0.2);
+}
+
+.heroPrimaryLink:hover {
+  background: rgb(var(--color-accent-hover));
+  color: rgb(var(--color-foreground));
+}
+
+.heroSecondaryLink {
+  border-color: rgb(var(--color-surface) / 0.24);
+  background: rgb(var(--color-surface) / 0.08);
+  color: rgb(var(--color-surface));
+}
+
+.heroSecondaryLink:hover {
+  border-color: rgb(var(--color-surface) / 0.5);
+  background: rgb(var(--color-surface) / 0.14);
+  color: rgb(var(--color-surface));
+}
+
+.heroLandlordNote {
+  margin-top: 1.05rem;
+  color: rgb(var(--color-surface) / 0.7);
+  font-size: var(--font-size-xs);
+}
+
+.heroLandlordNote a {
+  color: rgb(var(--color-accent));
+  font-weight: 800;
+  text-decoration: underline;
+  text-decoration-color: rgb(var(--color-accent) / 0.35);
+  text-underline-offset: 0.22em;
+}
+
+.heroVisualFrame {
+  position: relative;
+  height: clamp(29rem, 58vh, 35rem);
+  min-width: 0;
+  animation: home-arrive 680ms 70ms both cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 .heroVisual {
   position: relative;
-  min-height: 0;
-  aspect-ratio: 16 / 9;
-  overflow: hidden;
-  border: 1px solid rgb(var(--color-border-strong));
-  border-radius: var(--radius-overlay);
-  background: rgb(var(--color-primary));
-  box-shadow: var(--shadow-raised);
-}
-
-.heroImage {
-  object-position: 60% center;
-  transition: transform 700ms var(--rm-ease-out);
-}
-
-.heroVisual:hover .heroImage {
-  transform: scale(1.025);
-}
-
-.heroImageFallback {
-  display: flex;
+  width: 100%;
   height: 100%;
-  min-height: 0;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 1rem;
-  padding: 2rem;
-  color: rgb(var(--color-primary-foreground));
-  text-align: center;
+  isolation: isolate;
 }
 
-.heroVisualShade {
+.heroVisual::before {
   position: absolute;
-  inset: 0;
-  background: linear-gradient(
-    90deg,
-    rgb(var(--color-foreground) / 0.34),
-    transparent 58%,
-    rgb(var(--color-foreground) / 0.1)
-  );
-  pointer-events: none;
+  z-index: -1;
+  top: 5%;
+  right: 7%;
+  width: 76%;
+  aspect-ratio: 1;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgb(var(--color-accent) / 0.22), transparent 68%);
+  content: "";
+  filter: blur(0.2rem);
 }
 
-.heroVisualNote {
+.heroRoomStage {
   position: absolute;
-  right: 1rem;
-  bottom: 1rem;
-  left: 1rem;
+  inset: 0.4rem 1.75rem 1rem 0.2rem;
+  overflow: hidden;
+  border: 1px solid rgb(var(--color-surface) / 0.18);
+  border-radius: 14rem 1.8rem 1.8rem 1.8rem;
+  background: #eadcc3;
+  box-shadow: 0 32px 80px rgb(0 0 0 / 0.24);
+}
+
+.heroRoomIllustration {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.heroMapCue {
+  position: absolute;
+  z-index: 3;
+  top: 2.1rem;
+  right: 0;
   display: flex;
-  align-items: flex-end;
-  justify-content: space-between;
-  gap: 1rem;
-  color: white;
+  width: min(15rem, 49%);
+  align-items: center;
+  gap: 0.7rem;
+  border: 1px solid rgb(var(--color-foreground) / 0.08);
+  border-radius: 1rem;
+  padding: 0.5rem 0.7rem 0.5rem 0.5rem;
+  background: rgb(var(--color-surface));
+  color: rgb(var(--color-foreground));
+  box-shadow: 0 14px 34px rgb(var(--color-foreground) / 0.16);
+  animation: layer-arrive 620ms 220ms both cubic-bezier(0.16, 1, 0.3, 1);
 }
 
-.heroVisualNote p {
-  max-width: 13rem;
-  font-size: var(--font-size-xs);
+.heroMapArt {
+  display: grid;
+  width: 3.6rem;
+  height: 2.8rem;
+  flex: 0 0 auto;
+  place-items: center;
+  overflow: hidden;
+  border-radius: 0.65rem;
+  background: rgb(var(--color-primary-subtle));
+  color: rgb(var(--color-primary-hover));
+}
+
+.heroMapArt svg {
+  width: 100%;
+  height: 100%;
+}
+
+.heroMapCue strong,
+.heroMapCue small {
+  display: block;
+}
+
+.heroMapCue strong {
+  overflow: hidden;
+  font-size: 0.76rem;
+  font-weight: 800;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.heroMapCue small {
+  margin-top: 0.2rem;
+  color: rgb(var(--color-muted-foreground));
+  font-size: 0.61rem;
+  line-height: 1.35;
+}
+
+.heroRoommateCue {
+  position: absolute;
+  z-index: 2;
+  top: 45%;
+  left: 0;
+  display: flex;
+  width: min(14rem, 44%);
+  flex-direction: column;
+  align-items: flex-start;
+  border: 1px solid rgb(var(--color-accent) / 0.48);
+  border-radius: 1rem 1rem 1rem 0.25rem;
+  padding: 0.85rem 0.95rem;
+  background: rgb(var(--color-foreground));
+  color: rgb(var(--color-surface));
+  box-shadow: 0 18px 42px rgb(0 0 0 / 0.23);
+  animation:
+    layer-arrive 650ms 340ms both cubic-bezier(0.16, 1, 0.3, 1),
+    hero-float 7s 1.4s ease-in-out infinite;
+}
+
+.heroRoommateIcon {
+  display: grid;
+  width: 2rem;
+  height: 2rem;
+  place-items: center;
+  border-radius: 50%;
+  background: rgb(var(--color-accent));
+  color: rgb(var(--color-foreground));
+}
+
+.heroRoommateEyebrow {
+  margin-top: 0.65rem;
+  color: rgb(var(--color-accent));
+  font-size: 0.62rem;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+}
+
+.heroRoommateCue strong {
+  max-width: 12rem;
+  margin-top: 0.3rem;
+  font-family: var(--font-manrope), sans-serif;
+  font-size: 0.98rem;
+  font-weight: 800;
+  letter-spacing: -0.035em;
+  line-height: 1.25;
+}
+
+.heroRoommateTopics {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  margin-top: 0.7rem;
+  color: rgb(var(--color-surface) / 0.72);
+  font-size: 0.61rem;
   font-weight: 700;
-  line-height: 1.4;
-  text-align: right;
-  text-shadow: 0 1px 8px rgb(var(--color-foreground) / 0.55);
+}
+
+.heroRoommateTopics i {
+  width: 0.2rem;
+  height: 0.2rem;
+  border-radius: 50%;
+  background: rgb(var(--color-accent));
+}
+
+.heroListingCard {
+  position: absolute;
+  z-index: 4;
+  right: 0;
+  bottom: 0.95rem;
+  display: grid;
+  width: min(21rem, 70%);
+  min-height: 9.2rem;
+  grid-template-columns: 6.5rem minmax(0, 1fr);
+  overflow: hidden;
+  border: 1px solid rgb(var(--color-foreground) / 0.1);
+  border-radius: 1.1rem;
+  background: rgb(var(--color-surface));
+  color: rgb(var(--color-foreground));
+  box-shadow: 0 22px 50px rgb(var(--color-foreground) / 0.24);
+  text-decoration: none;
+  transition:
+    box-shadow var(--motion-standard) ease,
+    transform var(--motion-standard) var(--rm-ease-out);
+  animation:
+    layer-arrive 680ms 440ms both cubic-bezier(0.16, 1, 0.3, 1),
+    hero-float 6.5s 1.8s ease-in-out infinite;
+}
+
+.heroListingCard:hover {
+  box-shadow: 0 26px 58px rgb(var(--color-foreground) / 0.3);
+  transform: translateY(-0.3rem) scale(1.01);
+  animation-play-state: paused;
+}
+
+.heroListingCard:focus-visible {
+  outline: 3px solid rgb(var(--color-accent));
+  outline-offset: 4px;
+}
+
+.heroListingPhoto {
+  position: relative;
+  min-height: 100%;
+  overflow: hidden;
+  background: rgb(var(--color-primary-subtle));
+}
+
+.heroListingImage {
+  object-fit: cover;
+  transition: transform 500ms var(--rm-ease-out);
+}
+
+.heroListingCard:hover .heroListingImage {
+  transform: scale(1.04);
+}
+
+.heroListingImageFallback {
+  display: grid;
+  width: 100%;
+  height: 100%;
+  min-height: 9.2rem;
+  place-items: center;
+  color: rgb(var(--color-primary-hover));
+}
+
+.heroListingCopy {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  justify-content: center;
+  padding: 0.75rem 0.85rem;
+}
+
+.heroListingEyebrow {
+  color: rgb(var(--color-primary-hover));
+  font-size: 0.57rem;
+  font-weight: 800;
+  letter-spacing: 0.11em;
+}
+
+.heroListingCopy > strong {
+  display: -webkit-box;
+  overflow: hidden;
+  margin-top: 0.25rem;
+  font-family: var(--font-manrope), sans-serif;
+  font-size: 0.78rem;
+  font-weight: 800;
+  line-height: 1.3;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+
+.heroListingArea {
+  display: flex;
+  overflow: hidden;
+  align-items: center;
+  gap: 0.2rem;
+  margin-top: 0.25rem;
+  color: rgb(var(--color-muted-foreground));
+  font-size: 0.61rem;
+  font-weight: 700;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.heroListingArea svg {
+  flex: 0 0 auto;
+}
+
+.heroListingPrice {
+  margin-top: 0.4rem;
+  color: rgb(var(--color-primary-hover));
+  font-size: 0.78rem;
+  font-weight: 900;
+}
+
+.heroListingVerified {
+  display: inline-flex;
+  width: fit-content;
+  align-items: center;
+  gap: 0.2rem;
+  margin-top: 0.25rem;
+  color: rgb(var(--color-primary-hover));
+  font-size: 0.58rem;
+  font-weight: 800;
+}
+
+.heroListingFallback {
+  position: absolute;
+  z-index: 4;
+  right: 0;
+  bottom: 1rem;
+  display: flex;
+  width: min(19rem, 72%);
+  min-height: 4.4rem;
+  align-items: center;
+  gap: 0.65rem;
+  border: 1px solid rgb(var(--color-foreground) / 0.1);
+  border-radius: 1rem;
+  padding: 0.65rem 0.8rem;
+  background: rgb(var(--color-surface));
+  color: rgb(var(--color-foreground));
+  box-shadow: 0 16px 38px rgb(var(--color-foreground) / 0.22);
+}
+
+.heroListingFallback > svg {
+  width: 2.4rem;
+  height: 2.4rem;
+  flex: 0 0 auto;
+  border-radius: 0.75rem;
+  padding: 0.55rem;
+  background: rgb(var(--color-accent));
+  color: rgb(var(--color-foreground));
+}
+
+.heroListingFallback strong,
+.heroListingFallback small {
+  display: block;
+}
+
+.heroListingFallback strong {
+  font-size: 0.78rem;
+  font-weight: 800;
+}
+
+.heroListingFallback small {
+  margin-top: 0.2rem;
+  color: rgb(var(--color-muted-foreground));
+  font-size: 0.65rem;
 }
 
 .heroSearchBand {
   position: relative;
-  z-index: 2;
-  margin-top: 1.25rem;
+  z-index: 5;
+  margin-top: -3.55rem;
+  animation: home-arrive 580ms 180ms both cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 .heroTrustRow {
   display: flex;
   flex-wrap: wrap;
-  gap: 0.75rem 1.5rem;
-  margin-top: 0.75rem;
-  color: rgb(var(--color-muted-foreground));
+  gap: 0.65rem 1.5rem;
+  margin-top: 1rem;
+  color: rgb(var(--color-surface) / 0.72);
   font-size: var(--font-size-xs);
   font-weight: 700;
 }
@@ -229,37 +569,189 @@
   gap: 0.45rem;
 }
 
+.heroTrustRow svg {
+  color: rgb(var(--color-accent));
+}
+.journeySection {
+  padding-block: clamp(3rem, 7vw, 6rem);
+  background: rgb(var(--color-background));
+  color: rgb(var(--color-foreground));
+}
+
+.journeyLayout {
+  display: grid;
+  gap: 2rem;
+}
+
+.journeyIntro {
+  max-width: 42rem;
+}
+
+.journeyIntro .sectionKicker {
+  color: rgb(var(--color-primary-hover));
+}
+
+.journeyIntro h2,
+.trustIntro h2,
+.landlordLayout h2,
+.roommateCopy h2,
+.finalInner h2 {
+  max-width: 42rem;
+  margin-top: 0.7rem;
+  font-family: var(--font-manrope), sans-serif;
+  font-size: clamp(2rem, 4vw, 3.5rem);
+  font-weight: 800;
+  letter-spacing: -0.065em;
+  line-height: 1.04;
+}
+
+.journeyIntro p:last-child {
+  max-width: 34rem;
+  margin-top: 0.8rem;
+  color: rgb(var(--color-muted-foreground));
+  line-height: 1.65;
+}
+
+.journeyCards {
+  display: grid;
+  gap: 0.85rem;
+}
+
+.journeyCard {
+  position: relative;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  gap: 0.9rem;
+  align-items: start;
+  min-height: 11rem;
+  border: 1px solid rgb(var(--color-foreground) / 0.08);
+  border-radius: 1rem;
+  padding: 1.1rem;
+  box-shadow: 0 8px 22px rgb(0 0 0 / 0.13);
+  transition:
+    transform var(--motion-standard) var(--rm-ease-out),
+    box-shadow var(--motion-standard) ease;
+}
+
+.journeyCard:hover {
+  box-shadow: 0 18px 34px rgb(0 0 0 / 0.2);
+  transform: translateY(-3px);
+}
+
+.journeyCardPrimary {
+  overflow: hidden;
+  isolation: isolate;
+  background: rgb(var(--color-accent));
+  color: rgb(var(--color-foreground));
+}
+
+.journeyCardPrimary::before,
+.journeyCardPrimary::after {
+  position: absolute;
+  z-index: -1;
+  right: -2.5rem;
+  bottom: -5rem;
+  width: 15rem;
+  aspect-ratio: 1;
+  border: 1px solid rgb(var(--color-foreground) / 0.12);
+  border-radius: 50%;
+  content: "";
+  pointer-events: none;
+}
+
+.journeyCardPrimary::after {
+  right: -1rem;
+  bottom: -3.5rem;
+  width: 10rem;
+}
+
+.journeyCardAccent {
+  background: rgb(var(--color-decorative-coral));
+  color: rgb(var(--color-foreground));
+}
+
+.journeyCardNeutral {
+  background: rgb(var(--color-surface));
+  color: rgb(var(--color-foreground));
+}
+
+.journeyIcon {
+  display: grid;
+  width: 2.65rem;
+  height: 2.65rem;
+  flex: 0 0 auto;
+  place-items: center;
+  border-radius: 50%;
+  background: rgb(var(--color-foreground) / 0.09);
+}
+
+.journeyContent {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.journeyEyebrow {
+  font-size: 0.62rem;
+  font-weight: 800;
+  letter-spacing: 0.075em;
+  line-height: 1.4;
+  text-transform: uppercase;
+  opacity: 0.7;
+}
+
+.journeyContent strong {
+  font-family: var(--font-manrope), sans-serif;
+  font-size: 1.2rem;
+  font-weight: 800;
+  letter-spacing: -0.04em;
+  line-height: 1.2;
+}
+
+.journeyDescription {
+  max-width: 24rem;
+  font-size: var(--font-size-xs);
+  line-height: 1.55;
+  opacity: 0.8;
+}
+
+.journeyCta {
+  display: inline-flex;
+  width: fit-content;
+  align-items: center;
+  gap: 0.35rem;
+  margin-top: 0.4rem;
+  font-size: var(--font-size-xs);
+  font-weight: 800;
+}
+
+.journeyArrow {
+  width: 1rem;
+  height: 1rem;
+  transition: transform var(--motion-standard) var(--rm-ease-out);
+}
+
+.journeyCard:hover .journeyArrow {
+  transform: translate(0.15rem, -0.15rem);
+}
+
 .featuredSection,
 .exploreSection,
 .trustSection {
-  padding-block: clamp(2.75rem, 6vw, 5.5rem);
+  padding-block: clamp(3rem, 6.5vw, 5.5rem);
+}
+
+.featuredSection {
+  background: rgb(var(--color-surface));
 }
 
 .sectionAction,
 .emptyAction {
-  padding-inline: 0.8rem;
-  border: 1px solid rgb(var(--color-border-strong));
-  background: rgb(var(--color-surface));
+  min-height: 2.75rem;
+  padding-inline: 0.85rem;
   color: rgb(var(--color-primary-hover));
-}
-
-.listingStatusRow {
-  display: flex;
-  min-height: 2rem;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 0.5rem 0.75rem;
-  margin-top: 1.5rem;
-  color: rgb(var(--color-muted-foreground));
   font-size: var(--font-size-xs);
-  font-weight: 600;
-}
-
-.listingStatusRow button {
-  color: rgb(var(--color-primary-hover));
-  font-weight: 800;
-  text-decoration: underline;
-  text-underline-offset: 0.2em;
 }
 
 .featuredState {
@@ -276,159 +768,56 @@
   margin-top: 1.5rem;
 }
 
-.areaLink:focus-visible,
-.journeyCard:focus-visible,
-.heroPrimaryLink:focus-visible,
-.heroSecondaryLink:focus-visible,
-.sectionAction:focus-visible,
-.emptyAction:focus-visible,
-.landlordAction:focus-visible {
-  outline: 3px solid rgb(var(--color-focus-ring));
-  outline-offset: 3px;
+.listingGrid > article {
+  overflow: visible;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
 }
 
-.journeySection {
-  border-block: 1px solid rgb(var(--color-border));
-  background: rgb(var(--color-foreground));
-  color: rgb(var(--color-surface));
-  padding-block: clamp(2.75rem, 6vw, 5rem);
-}
-
-.journeyLayout {
-  display: grid;
-  gap: 2rem;
-  align-items: end;
-}
-
-.journeyIntro h2,
-.trustLayout h2,
-.landlordLayout h2 {
-  max-width: 38rem;
-  margin-top: 0.75rem;
-  color: inherit;
-  font-family: var(--font-manrope), sans-serif;
-  font-size: clamp(2rem, 4vw, 3.6rem);
-  font-weight: 800;
-  letter-spacing: -0.065em;
-  line-height: 1;
-}
-
-.journeyIntro p:last-child {
-  max-width: 34rem;
-  margin-top: 1rem;
-  color: rgb(var(--color-surface) / 0.72);
-  line-height: 1.7;
-}
-
-.journeyCards {
-  display: grid;
-  gap: 0.85rem;
-}
-
-.journeyCard {
-  position: relative;
-  display: grid;
-  grid-template-columns: auto minmax(0, 1fr) auto;
-  gap: 1rem;
-  align-items: start;
-  min-height: 9.5rem;
-  padding: 1.25rem;
-  border: 1px solid rgb(255 255 255 / 0.2);
-  border-radius: var(--radius-card);
-  color: rgb(var(--color-foreground));
-  box-shadow: var(--shadow-raised);
-  transition:
-    transform var(--motion-standard) var(--rm-ease-out),
-    box-shadow var(--motion-standard) ease;
-}
-
-.journeyCard:hover {
-  box-shadow: 0 18px 36px rgb(0 0 0 / 0.22);
+.listingGrid > article:hover {
+  box-shadow: none;
   transform: translateY(-3px);
 }
 
-.journeyCardPrimary {
-  background: rgb(var(--color-accent-subtle));
+.listingGrid > article > a > div:first-child {
+  border-radius: 1.15rem 1.15rem 1.15rem 0.25rem;
+  box-shadow: var(--shadow-surface);
 }
 
-.journeyCardAccent {
-  background: rgb(var(--color-decorative-coral));
+.listingGrid > article > a > div:last-child {
+  gap: 0.85rem;
+  padding: 0.9rem 0.1rem 0.1rem;
 }
 
-.journeyIcon {
-  display: grid;
-  width: 2.75rem;
-  height: 2.75rem;
-  place-items: center;
-  border-radius: 50%;
-  background: rgb(var(--color-foreground) / 0.1);
+.listingGrid > article > a > div:last-child > div:last-child {
+  min-height: 3.9rem;
+  border-top-color: rgb(var(--color-border-strong) / 0.72);
 }
 
-.journeyContent {
-  display: flex;
-  min-width: 0;
-  flex-direction: column;
-  gap: 0.35rem;
-}
-
-.journeyEyebrow {
-  font-size: var(--font-size-xs);
-  font-weight: 800;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-  opacity: 0.68;
-}
-
-.journeyContent strong {
-  font-family: var(--font-manrope), sans-serif;
-  font-size: 1.35rem;
-  letter-spacing: -0.035em;
-}
-
-.journeyDescription {
-  max-width: 24rem;
-  font-size: var(--font-size-sm);
-  line-height: 1.5;
-  opacity: 0.78;
-}
-
-.journeyCta {
-  display: inline-flex;
-  width: fit-content;
-  align-items: center;
-  gap: 0.4rem;
-  margin-top: 0.35rem;
-  font-size: var(--font-size-xs);
-  font-weight: 800;
-}
-
-.journeyArrow {
-  margin-top: 0.2rem;
-  transition: transform var(--motion-standard) var(--rm-ease-out);
-}
-
-.journeyCard:hover .journeyArrow {
-  transform: translate(0.15rem, -0.15rem);
+.exploreSection {
+  border-block: 1px solid rgb(var(--color-border));
+  background: rgb(var(--color-primary-50));
 }
 
 .areaGrid {
   display: grid;
-  gap: 0.75rem;
-  margin-top: 1.5rem;
+  gap: 0 1.25rem;
+  margin-top: 1rem;
 }
 
 .areaLink {
   display: grid;
-  grid-template-columns: auto 1fr auto;
+  grid-template-columns: auto minmax(0, 1fr) auto;
   min-width: 0;
-  min-height: 4.5rem;
-  gap: 1rem;
+  min-height: 4rem;
+  gap: 0.7rem;
   align-items: center;
-  padding-block: 0.75rem;
   border-bottom: 1px solid rgb(var(--color-border));
   color: rgb(var(--color-foreground));
   font-family: var(--font-manrope), sans-serif;
-  font-size: 1.2rem;
+  font-size: 1rem;
   font-weight: 800;
   transition:
     color var(--motion-fast) ease,
@@ -436,19 +825,22 @@
 }
 
 .areaLink:hover {
-  padding-inline: 0.5rem;
+  padding-inline: 0.4rem;
   color: rgb(var(--color-primary-hover));
 }
 
-.areaNumber {
-  color: rgb(var(--color-muted-foreground));
-  font-family: var(--font-be-vietnam-pro), sans-serif;
-  font-size: var(--font-size-xs);
-  font-weight: 700;
+.areaIcon {
+  display: grid;
+  width: 2rem;
+  height: 2rem;
+  place-items: center;
+  border-radius: 50%;
+  background: rgb(var(--color-primary-subtle));
+  color: rgb(var(--color-primary-hover));
 }
 
 .areaEmpty {
-  margin-top: 1.5rem;
+  margin-top: 1.25rem;
   color: rgb(var(--color-muted-foreground));
   font-size: var(--font-size-sm);
   font-weight: 700;
@@ -460,27 +852,206 @@
   margin-top: 1.25rem;
 }
 
+.roommateSection {
+  overflow: hidden;
+  background:
+    radial-gradient(ellipse at 5% 100%, rgb(var(--color-accent) / 0.35), transparent 32rem),
+    rgb(var(--color-primary-subtle));
+  padding-block: clamp(3.25rem, 7vw, 6.5rem);
+}
+
+.roommateLayout {
+  display: grid;
+  gap: clamp(2rem, 6vw, 5rem);
+  align-items: center;
+}
+
+.roommateVisual {
+  position: relative;
+  display: grid;
+  min-height: 21rem;
+  place-items: center;
+  overflow: hidden;
+  border-radius: 1.3rem 5rem 1.3rem 1.3rem;
+  background: rgb(var(--color-foreground));
+  color: rgb(var(--color-surface));
+}
+
+.roommateVisualOrb {
+  position: absolute;
+  top: -5.5rem;
+  right: -3rem;
+  width: 17rem;
+  height: 17rem;
+  border: 1px solid rgb(var(--color-accent) / 0.3);
+  border-radius: 50%;
+  box-shadow:
+    0 0 0 2rem rgb(var(--color-accent) / 0.035),
+    0 0 0 4rem rgb(var(--color-accent) / 0.025);
+}
+
+.roommateVisualCard {
+  position: relative;
+  z-index: 1;
+  width: min(86%, 27rem);
+  border: 1px solid rgb(255 255 255 / 0.17);
+  border-radius: 1rem;
+  padding: 1.2rem;
+  background: rgb(var(--color-surface));
+  color: rgb(var(--color-foreground));
+  box-shadow: 0 22px 48px rgb(0 0 0 / 0.23);
+  transform: rotate(-2deg);
+}
+
+.roommateVisualHeader {
+  display: flex;
+  align-items: center;
+  gap: 0.8rem;
+}
+
+.roommateVisualHeader > span:last-child {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.roommateVisualHeader small {
+  color: rgb(var(--color-primary-hover));
+  font-size: 0.62rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+}
+
+.roommateVisualHeader strong {
+  font-family: var(--font-manrope), sans-serif;
+  font-size: 1rem;
+  letter-spacing: -0.035em;
+  line-height: 1.3;
+}
+
+.roommateVisualIcon {
+  display: grid;
+  width: 2.75rem;
+  height: 2.75rem;
+  flex: 0 0 auto;
+  place-items: center;
+  border-radius: 0.85rem;
+  background: rgb(var(--color-accent));
+  color: rgb(var(--color-foreground));
+}
+
+.roommateSignalList {
+  display: grid;
+  gap: 0.6rem;
+  margin-top: 1.2rem;
+  border-top: 1px solid rgb(var(--color-border));
+  padding-top: 0.9rem;
+}
+
+.roommateSignalList span {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.55rem;
+  color: rgb(var(--color-muted-foreground));
+  font-size: var(--font-size-xs);
+  font-weight: 700;
+}
+
+.roommateSignalList svg {
+  color: rgb(var(--color-primary));
+}
+
+.roommateVisualFootnote {
+  position: absolute;
+  right: 1.25rem;
+  bottom: 1rem;
+  color: rgb(var(--color-surface) / 0.72);
+  font-size: var(--font-size-xs);
+  font-weight: 700;
+}
+
+.roommateCopy h2 {
+  color: rgb(var(--color-foreground));
+}
+
+.roommateCopy > p:not(.sectionKicker) {
+  max-width: 38rem;
+  margin-top: 1rem;
+  color: rgb(var(--color-muted-foreground));
+  line-height: 1.7;
+}
+
+.roommateBenefits {
+  display: grid;
+  gap: 0.75rem;
+  margin-top: 1.25rem;
+  color: rgb(var(--color-foreground));
+  font-size: var(--font-size-sm);
+  font-weight: 700;
+}
+
+.roommateBenefits li {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.65rem;
+}
+
+.roommateBenefits svg {
+  flex: 0 0 auto;
+  margin-top: 0.1rem;
+  color: rgb(var(--color-primary));
+}
+
+.roommateAction {
+  width: fit-content;
+  min-height: 3rem;
+  margin-top: 1.5rem;
+  padding-inline: 1.1rem;
+}
+
 .trustSection {
   background: rgb(var(--color-surface));
 }
 
 .trustLayout {
   display: grid;
-  gap: 2rem;
+  gap: 2.5rem;
+}
+
+.trustIntro h2 {
+  color: rgb(var(--color-foreground));
+}
+
+.trustIntro > p:last-child {
+  margin-top: 0.85rem;
+  color: rgb(var(--color-muted-foreground));
+  line-height: 1.6;
 }
 
 .trustGrid {
   display: grid;
-  gap: 1rem;
+  gap: 1.5rem;
 }
 
 .trustGrid article {
-  border-top: 2px solid rgb(var(--color-primary));
+  min-width: 0;
+  border-top: 1px solid rgb(var(--color-border-strong));
   padding-top: 1rem;
 }
 
+.trustIcon {
+  display: grid;
+  width: 2.5rem;
+  height: 2.5rem;
+  place-items: center;
+  border-radius: 50%;
+  background: rgb(var(--color-primary-subtle));
+  color: rgb(var(--color-primary-hover));
+}
+
 .trustGrid h3 {
-  margin-top: 0.85rem;
+  margin-top: 0.75rem;
   color: rgb(var(--color-foreground));
   font-family: var(--font-manrope), sans-serif;
   font-size: 1.05rem;
@@ -488,20 +1059,22 @@
 }
 
 .trustGrid p {
-  margin-top: 0.5rem;
+  max-width: 23rem;
+  margin-top: 0.45rem;
   color: rgb(var(--color-muted-foreground));
   font-size: var(--font-size-sm);
-  line-height: 1.6;
+  line-height: 1.65;
 }
 
 .landlordSection {
-  background: rgb(var(--color-primary-subtle));
-  padding-block: clamp(2.75rem, 5vw, 4.5rem);
+  background: rgb(var(--color-primary-subtle) / 0.6);
+  padding-block: clamp(3rem, 6vw, 5.5rem);
 }
 
 .landlordLayout {
   display: grid;
-  gap: 1.5rem;
+  gap: 2rem;
+  align-items: center;
 }
 
 .landlordCopy {
@@ -509,21 +1082,21 @@
 }
 
 .landlordLayout h2 {
-  max-width: 32rem;
+  color: rgb(var(--color-foreground));
 }
 
 .landlordDescription {
-  max-width: 34rem;
-  margin-top: 1rem;
+  max-width: 36rem;
+  margin-top: 0.9rem;
   color: rgb(var(--color-muted-foreground));
   line-height: 1.7;
 }
 
 .landlordBenefits {
   display: grid;
-  gap: 0.75rem;
-  max-width: 38rem;
-  margin-top: 1.5rem;
+  gap: 0.7rem;
+  max-width: 40rem;
+  margin-top: 1.3rem;
 }
 
 .landlordBenefit {
@@ -531,16 +1104,16 @@
   grid-template-columns: auto minmax(0, 1fr);
   gap: 0.75rem;
   align-items: start;
-  padding-top: 0.75rem;
-  border-top: 1px solid rgb(var(--color-primary) / 0.18);
+  border-top: 1px solid rgb(var(--color-primary) / 0.16);
+  padding-top: 0.7rem;
 }
 
 .landlordBenefitIcon,
 .landlordVisualIcon {
   display: grid;
-  width: 2.5rem;
-  height: 2.5rem;
-  flex-shrink: 0;
+  width: 2.45rem;
+  height: 2.45rem;
+  flex: 0 0 auto;
   place-items: center;
   border-radius: 50%;
   background: rgb(var(--color-accent));
@@ -571,8 +1144,8 @@
   max-width: 34rem;
   padding: clamp(1rem, 3vw, 1.5rem);
   border: 1px solid rgb(var(--color-primary) / 0.16);
-  border-radius: var(--radius-overlay);
-  background: rgb(var(--color-surface) / 0.76);
+  border-radius: 1.35rem;
+  background: rgb(var(--color-surface));
   box-shadow: var(--shadow-raised);
 }
 
@@ -591,23 +1164,22 @@
 
 .landlordVisualHeader small {
   color: rgb(var(--color-muted-foreground));
-  font-size: var(--font-size-xs);
+  font-size: 0.62rem;
   font-weight: 800;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
+  letter-spacing: 0.08em;
 }
 
 .landlordVisualHeader strong {
   color: rgb(var(--color-foreground));
   font-family: var(--font-manrope), sans-serif;
-  font-size: 1.25rem;
+  font-size: 1.2rem;
   font-weight: 800;
   letter-spacing: -0.035em;
 }
 
 .landlordVisualList {
   display: grid;
-  gap: 0.65rem;
+  gap: 0.55rem;
 }
 
 .landlordVisualItem {
@@ -616,9 +1188,9 @@
   align-items: center;
   justify-content: space-between;
   gap: 1rem;
-  padding: 0.75rem 0.9rem;
   border: 1px solid rgb(var(--color-border));
   border-radius: var(--radius-control);
+  padding: 0.7rem 0.85rem;
   background: rgb(var(--color-background));
   color: rgb(var(--color-foreground));
   font-size: var(--font-size-sm);
@@ -633,17 +1205,236 @@
 }
 
 .landlordVisualItem > svg {
-  flex-shrink: 0;
+  flex: 0 0 auto;
   color: rgb(var(--color-primary));
 }
 
 .landlordAction {
   width: fit-content;
-  margin-top: 1.5rem;
-  padding: 0.85rem 1.1rem;
-  background: rgb(var(--color-primary));
-  color: rgb(var(--color-primary-foreground));
-  box-shadow: var(--shadow-surface);
+  min-height: 3rem;
+  margin-top: 1.3rem;
+  padding-inline: 1.1rem;
+}
+
+.finalSection {
+  position: relative;
+  overflow: hidden;
+  background: rgb(var(--color-foreground));
+  color: rgb(var(--color-surface));
+  padding-block: clamp(3.5rem, 8vw, 7rem);
+  text-align: center;
+}
+
+.finalSection::before,
+.finalSection::after {
+  position: absolute;
+  border: 1px solid rgb(var(--color-surface) / 0.1);
+  border-radius: 50%;
+  content: "";
+  pointer-events: none;
+}
+
+.finalSection::before {
+  top: -15rem;
+  left: -9rem;
+  width: 30rem;
+  height: 30rem;
+}
+
+.finalSection::after {
+  right: -10rem;
+  bottom: -22rem;
+  width: 38rem;
+  height: 38rem;
+}
+
+.finalInner {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.finalMark {
+  display: grid;
+  width: 2.8rem;
+  height: 2.8rem;
+  place-items: center;
+  border-radius: 50%;
+  background: rgb(var(--color-accent));
+  color: rgb(var(--color-foreground));
+}
+
+.finalInner .sectionKicker {
+  margin-top: 1.2rem;
+  color: rgb(var(--color-accent));
+}
+
+.finalInner h2 {
+  max-width: 46rem;
+  color: rgb(var(--color-surface));
+}
+
+.finalActions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 0.7rem;
+  margin-top: 1.6rem;
+}
+
+.finalPrimaryAction {
+  background: rgb(var(--color-accent));
+  color: rgb(var(--color-foreground));
+}
+
+.finalPrimaryAction:hover {
+  background: rgb(var(--color-accent-hover));
+  box-shadow: 0 8px 20px rgb(0 0 0 / 0.2);
+  transform: translateY(-2px);
+}
+
+.finalSecondaryAction {
+  border: 1px solid rgb(255 255 255 / 0.32);
+  background: rgb(255 255 255 / 0.08);
+  color: rgb(var(--color-surface));
+}
+
+.finalSecondaryAction:hover {
+  border-color: rgb(255 255 255 / 0.62);
+  background: rgb(255 255 255 / 0.14);
+  transform: translateY(-2px);
+}
+
+.areaLink:focus-visible,
+.journeyCard:focus-visible,
+.heroPrimaryLink:focus-visible,
+.heroSecondaryLink:focus-visible,
+.heroLandlordNote a:focus-visible,
+.sectionAction:focus-visible,
+.emptyAction:focus-visible,
+.landlordAction:focus-visible,
+.roommateAction:focus-visible,
+.finalPrimaryAction:focus-visible,
+.finalSecondaryAction:focus-visible {
+  outline: 3px solid rgb(var(--color-focus-ring));
+  outline-offset: 3px;
+}
+
+@keyframes home-arrive {
+  from {
+    opacity: 0;
+    transform: translateY(1.5rem);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes layer-arrive {
+  from {
+    opacity: 0;
+    transform: translateY(1.2rem) scale(0.985);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes hero-float {
+  0%,
+  100% {
+    translate: 0 0;
+  }
+
+  50% {
+    translate: 0 -5px;
+  }
+}
+
+.home :global(.rm-reveal[data-ready="true"]) .journeyIntro,
+.home :global(.rm-reveal[data-ready="true"]) .journeyCards > *,
+.home :global(.rm-reveal[data-ready="true"]) .listingGrid > *,
+.home :global(.rm-reveal[data-ready="true"]) .areaGrid > *,
+.home :global(.rm-reveal[data-ready="true"]) .areaFooter,
+.home :global(.rm-reveal[data-ready="true"]) .roommateLayout > *,
+.home :global(.rm-reveal[data-ready="true"]) .trustLayout > *,
+.home :global(.rm-reveal[data-ready="true"]) .landlordLayout > *,
+.home :global(.rm-reveal[data-ready="true"]) .finalInner > * {
+  opacity: 0;
+  transform: translateY(1.15rem);
+  transition:
+    opacity 620ms var(--rm-ease-out),
+    transform 620ms var(--rm-ease-out);
+}
+
+.home :global(.rm-reveal[data-visible="true"]) .journeyIntro,
+.home :global(.rm-reveal[data-visible="true"]) .journeyCards > *,
+.home :global(.rm-reveal[data-visible="true"]) .listingGrid > *,
+.home :global(.rm-reveal[data-visible="true"]) .areaGrid > *,
+.home :global(.rm-reveal[data-visible="true"]) .areaFooter,
+.home :global(.rm-reveal[data-visible="true"]) .roommateLayout > *,
+.home :global(.rm-reveal[data-visible="true"]) .trustLayout > *,
+.home :global(.rm-reveal[data-visible="true"]) .landlordLayout > *,
+.home :global(.rm-reveal[data-visible="true"]) .finalInner > * {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.home :global(.rm-reveal[data-visible="true"]) .journeyCards > a:hover {
+  transform: translateY(-3px);
+}
+
+.home :global(.rm-reveal[data-visible="true"]) .listingGrid > article:hover {
+  transform: translateY(-2px);
+}
+
+.home :global(.rm-reveal[data-visible="false"]:focus-within) .journeyIntro,
+.home :global(.rm-reveal[data-visible="false"]:focus-within) .journeyCards > *,
+.home :global(.rm-reveal[data-visible="false"]:focus-within) .listingGrid > *,
+.home :global(.rm-reveal[data-visible="false"]:focus-within) .areaGrid > *,
+.home :global(.rm-reveal[data-visible="false"]:focus-within) .areaFooter,
+.home :global(.rm-reveal[data-visible="false"]:focus-within) .roommateLayout > *,
+.home :global(.rm-reveal[data-visible="false"]:focus-within) .trustLayout > *,
+.home :global(.rm-reveal[data-visible="false"]:focus-within) .landlordLayout > *,
+.home :global(.rm-reveal[data-visible="false"]:focus-within) .finalInner > * {
+  opacity: 1;
+  transform: none;
+}
+
+.home :global(.rm-reveal[data-visible="true"]) .journeyCards > :nth-child(2),
+.home :global(.rm-reveal[data-visible="true"]) .listingGrid > :nth-child(2),
+.home :global(.rm-reveal[data-visible="true"]) .areaGrid > :nth-child(2),
+.home :global(.rm-reveal[data-visible="true"]) .trustGrid > :nth-child(2),
+.home :global(.rm-reveal[data-visible="true"]) .landlordBenefits > :nth-child(2),
+.home :global(.rm-reveal[data-visible="true"]) .finalInner > :nth-child(2) {
+  transition-delay: 80ms;
+}
+
+.home :global(.rm-reveal[data-visible="true"]) .journeyCards > :nth-child(3),
+.home :global(.rm-reveal[data-visible="true"]) .listingGrid > :nth-child(3),
+.home :global(.rm-reveal[data-visible="true"]) .areaGrid > :nth-child(3),
+.home :global(.rm-reveal[data-visible="true"]) .trustGrid > :nth-child(3),
+.home :global(.rm-reveal[data-visible="true"]) .landlordBenefits > :nth-child(3),
+.home :global(.rm-reveal[data-visible="true"]) .finalInner > :nth-child(3) {
+  transition-delay: 160ms;
+}
+
+.home :global(.rm-reveal[data-visible="true"]) .journeyCards > :nth-child(4),
+.home :global(.rm-reveal[data-visible="true"]) .listingGrid > :nth-child(4),
+.home :global(.rm-reveal[data-visible="true"]) .areaGrid > :nth-child(4),
+.home :global(.rm-reveal[data-visible="true"]) .trustGrid > :nth-child(4),
+.home :global(.rm-reveal[data-visible="true"]) .finalInner > :nth-child(4) {
+  transition-delay: 240ms;
+}
+
+.home :global(.rm-reveal[data-visible="true"]) .landlordBenefits > :nth-child(4) {
+  transition-delay: 320ms;
 }
 
 @media (min-width: 640px) {
@@ -654,11 +1445,16 @@
 
   .areaGrid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
-    column-gap: 2rem;
   }
 
   .trustGrid {
     grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 1.2rem;
+  }
+
+  .trustGrid article + article {
+    border-left: 1px solid rgb(var(--color-border));
+    padding-left: 1rem;
   }
 }
 
@@ -667,64 +1463,90 @@
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
+  .journeyCard:last-child {
+    grid-column: 1 / -1;
+  }
+
   .landlordLayout {
     grid-template-columns: minmax(0, 1.1fr) minmax(18rem, 0.9fr);
-    align-items: center;
     gap: clamp(2rem, 5vw, 5rem);
+  }
+
+  .roommateLayout {
+    grid-template-columns: minmax(0, 0.95fr) minmax(0, 1.05fr);
+  }
+
+  .roommateVisual {
+    min-height: 28rem;
   }
 }
 
 @media (min-width: 900px) {
-  .heroTitle {
-    margin-top: 0.85rem;
-    font-size: clamp(2.4rem, 5.2vw, 4.55rem);
-  }
-
-  .heroDescription {
-    margin-top: 0.9rem;
-    font-size: clamp(1rem, 1.35vw, 1.08rem);
-    line-height: 1.5;
-  }
-
-  .heroLinks {
-    margin-top: 1rem;
+  .heroGrid {
+    padding-block: clamp(1.5rem, 3vh, 2rem) 1.4rem;
   }
 
   .heroLayout {
-    grid-template-columns: minmax(0, 1.02fr) minmax(24rem, 0.98fr);
-    gap: clamp(1.75rem, 3.5vw, 3.5rem);
+    min-height: clamp(34rem, 64vh, 42rem);
   }
 
-  .heroVisual {
-    aspect-ratio: 3 / 2;
-  }
-
-  .heroImageFallback {
-    min-height: 0;
+  .heroVisualFrame {
+    height: clamp(29rem, 58vh, 35rem);
   }
 
   .journeyLayout {
-    grid-template-columns: minmax(0, 0.8fr) minmax(30rem, 1.2fr);
-    gap: 4rem;
+    grid-template-columns: minmax(0, 0.72fr) minmax(0, 1.65fr);
+    gap: clamp(2rem, 4vw, 4rem);
+    align-items: center;
   }
 
   .journeyCards {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-template-columns: minmax(0, 1.15fr) minmax(0, 0.85fr);
+    grid-template-rows: repeat(2, minmax(8.25rem, auto));
   }
 
-  .journeyCard {
-    min-height: 13rem;
-    grid-template-columns: auto minmax(0, 1fr);
+  .journeyCard,
+  .journeyCard:last-child {
+    grid-column: auto;
+    min-height: 0;
+    grid-template-columns: auto minmax(0, 1fr) auto;
+  }
+
+  .journeyCardPrimary {
+    grid-row: 1 / span 2;
+    min-height: 18rem;
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-content: start;
+  }
+
+  .journeyCardPrimary .journeyIcon {
+    grid-column: 1 / -1;
+    margin-bottom: 0.5rem;
+  }
+
+  .journeyCardPrimary .journeyContent {
+    grid-column: 1 / -1;
+  }
+
+  .journeyCardPrimary .journeyArrow {
+    position: absolute;
+    right: 1.1rem;
+    bottom: 1.1rem;
+    width: 2.1rem;
+    height: 2.1rem;
+    border-radius: 50%;
+    padding: 0.4rem;
+    background: rgb(var(--color-foreground) / 0.08);
   }
 
   .journeyArrow {
-    grid-column: 2;
+    grid-column: 3;
     justify-self: end;
-    margin-top: -2rem;
+    margin-top: 0;
   }
 
   .trustLayout {
-    grid-template-columns: minmax(0, 0.7fr) minmax(0, 1.3fr);
+    grid-template-columns: minmax(0, 0.72fr) minmax(0, 1.28fr);
     gap: 4rem;
     align-items: start;
   }
@@ -734,13 +1556,17 @@
   .listingGrid {
     grid-template-columns: repeat(4, minmax(0, 1fr));
   }
+
+  .areaGrid {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
 }
 
-@media (max-width: 639px) {
+@media (max-width: 899px) {
   .heroGrid {
     display: flex;
     flex-direction: column;
-    padding-top: 0.75rem;
+    padding-top: 1rem;
   }
 
   .heroLayout {
@@ -749,48 +1575,256 @@
 
   .heroCopy {
     order: 1;
-  }
-
-  .heroDescription {
-    margin-top: 0.8rem;
-  }
-
-  .heroLinks {
-    gap: 0.65rem;
-    margin-top: 0.9rem;
-  }
-
-  .heroPrimaryLink,
-  .heroSecondaryLink {
-    min-height: 2.75rem;
+    padding-block: 0.5rem 0;
   }
 
   .heroSearchBand {
     order: 2;
+    margin-top: 1.15rem;
   }
 
-  .heroVisual {
+  .heroVisualFrame {
     order: 3;
-    margin-top: 1.25rem;
+    height: clamp(24rem, 58vw, 32rem);
+    margin-top: 1.35rem;
+  }
+
+  .heroRoomStage {
+    inset: 0.1rem 1.25rem 0.7rem 0;
+    border-radius: 12rem 1.4rem 1.4rem 1.4rem;
   }
 
   .heroTrustRow {
     order: 4;
+    margin-top: 1rem;
   }
 
-  .heroVisualNote {
-    align-items: flex-start;
+  .journeyLayout {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 767px) {
+  .landlordVisual {
+    border-radius: 1rem;
+  }
+}
+
+@media (max-width: 639px) {
+  .heroGrid {
+    padding-top: 1rem;
+  }
+
+  .heroTitle {
+    max-width: 23rem;
+    margin-top: 1rem;
+    font-size: clamp(2.38rem, 10.4vw, 3.1rem);
+  }
+
+  .heroDescription {
+    margin-top: 0.85rem;
+    font-size: 0.96rem;
+    line-height: 1.58;
+  }
+
+  .heroLinks {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.55rem;
+    margin-top: 1rem;
+  }
+
+  .heroPrimaryLink,
+  .heroSecondaryLink {
+    width: 100%;
+    min-height: 3rem;
+    gap: 0.35rem;
+    padding-inline: 0.45rem;
+    font-size: 0.8rem;
+  }
+
+  .heroLandlordNote {
+    margin-top: 0.75rem;
+  }
+
+  .heroSearchBand {
+    margin-top: 1rem;
+  }
+
+  .heroVisualFrame {
+    height: 16rem;
+    margin-top: 1rem;
+  }
+
+  .heroRoomStage {
+    inset: 0 0.4rem 0.35rem 0;
+    border-radius: 7rem 1.1rem 1rem 1rem;
+  }
+
+  .heroMapCue {
+    display: none;
+  }
+
+  .heroRoommateCue {
+    top: 0.65rem;
+    left: 0.55rem;
+    width: min(12.5rem, 58%);
+    padding: 0.65rem 0.75rem;
+  }
+
+  .heroRoommateIcon {
+    width: 1.7rem;
+    height: 1.7rem;
+  }
+
+  .heroRoommateEyebrow {
+    margin-top: 0.45rem;
+  }
+
+  .heroRoommateCue strong {
+    font-size: 0.82rem;
+  }
+
+  .heroRoommateTopics {
+    display: none;
+  }
+
+  .heroListingCard {
+    right: 0.3rem;
+    bottom: 0.55rem;
+    width: min(18rem, 78%);
+    min-height: 7.2rem;
+    grid-template-columns: 4.6rem minmax(0, 1fr);
+    border-radius: 0.9rem;
+  }
+
+  .heroListingImageFallback {
+    min-height: 7.2rem;
+  }
+
+  .heroListingCopy {
+    padding: 0.55rem 0.65rem;
+  }
+
+  .heroListingEyebrow {
+    font-size: 0.5rem;
+  }
+
+  .heroListingCopy > strong {
+    margin-top: 0.2rem;
+    font-size: 0.67rem;
+  }
+
+  .heroListingArea {
+    font-size: 0.55rem;
+  }
+
+  .heroListingPrice {
+    margin-top: 0.25rem;
+    font-size: 0.68rem;
+  }
+
+  .heroListingVerified {
+    display: none;
+  }
+
+  .heroListingFallback {
+    right: 0.3rem;
+    bottom: 0.55rem;
+    width: 78%;
+    min-height: 3.8rem;
+  }
+
+  .heroTrustRow {
+    display: grid;
+    gap: 0.55rem;
+  }
+
+  .journeyCards {
+    grid-template-columns: 1fr;
+  }
+
+  .journeyCard {
+    min-height: 9.5rem;
+  }
+
+  .roommateVisual {
+    min-height: 20rem;
+    border-top-right-radius: 3.5rem;
+  }
+
+  .roommateVisualCard {
+    width: calc(100% - 2rem);
+    padding: 1rem;
+    transform: rotate(-1deg);
+  }
+
+  .trustGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .trustGrid article + article {
+    border-left: 0;
+    padding-left: 0;
+  }
+
+  .finalActions {
+    width: 100%;
     flex-direction: column;
-    gap: 0.6rem;
   }
 
-  .heroVisualNote p {
-    text-align: left;
+  .finalPrimaryAction,
+  .finalSecondaryAction {
+    width: 100%;
+    min-height: 3rem;
+  }
+}
+
+@media (min-width: 900px) and (max-height: 800px) {
+  .heroLayout {
+    min-height: clamp(31rem, 66vh, 34rem);
+  }
+
+  .heroVisualFrame {
+    width: calc(100% - 3rem);
+    justify-self: end;
+    height: clamp(24rem, 50vh, 30rem);
+  }
+
+  .heroRoommateCue {
+    top: 31%;
+    left: -3rem;
+  }
+
+  .heroListingCard {
+    right: 0;
+    bottom: 1.9rem;
+    width: min(19rem, 72%);
+    grid-template-columns: 5.8rem minmax(0, 1fr);
+  }
+
+  .heroSearchBand {
+    margin-top: -4rem;
+  }
+}
+
+@media (max-width: 359px) {
+  .heroLinks {
+    grid-template-columns: 1fr;
   }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .heroImage,
+  .heroCopy,
+  .heroVisualFrame,
+  .heroSearchBand,
+  .heroMapCue,
+  .heroRoommateCue,
+  .heroListingCard {
+    animation: none;
+  }
+
+  .heroListingCard,
   .journeyCard,
   .journeyArrow,
   .heroPrimaryLink,
@@ -798,7 +1832,29 @@
   .sectionAction,
   .emptyAction,
   .landlordAction,
-  .areaLink {
+  .roommateAction,
+  .finalPrimaryAction,
+  .finalSecondaryAction,
+  .areaLink,
+  .heroListingImage {
+    transition: none;
+  }
+
+  .heroListingCard:hover {
+    transform: none;
+  }
+
+  .home :global(.rm-reveal[data-ready="true"]) .journeyIntro,
+  .home :global(.rm-reveal[data-ready="true"]) .journeyCards > *,
+  .home :global(.rm-reveal[data-ready="true"]) .listingGrid > *,
+  .home :global(.rm-reveal[data-ready="true"]) .areaGrid > *,
+  .home :global(.rm-reveal[data-ready="true"]) .areaFooter,
+  .home :global(.rm-reveal[data-ready="true"]) .roommateLayout > *,
+  .home :global(.rm-reveal[data-ready="true"]) .trustLayout > *,
+  .home :global(.rm-reveal[data-ready="true"]) .landlordLayout > *,
+  .home :global(.rm-reveal[data-ready="true"]) .finalInner > * {
+    opacity: 1;
+    transform: none;
     transition: none;
   }
 }

@@ -14,11 +14,6 @@
   line-height: 1.2;
 }
 
-.page :global(.rm-roommate-subnav) {
-  border-radius: 16px;
-  box-shadow: none;
-}
-
 .layout {
   display: grid;
   grid-template-columns: minmax(0, 1fr) 330px;

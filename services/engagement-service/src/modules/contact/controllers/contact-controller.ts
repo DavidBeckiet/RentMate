@@ -6,6 +6,7 @@ import { validateQueryKeys } from "../../../../../shared/src/runtime/shared/vali
 import type { InquiryMessage, Notification } from "../repositories/contact-repository.js";
 import type { ContactReport, ContactReportEvent } from "../repositories/contact-safety-repository.js";
 import type { InquiryRealtimeEvent, InquiryRealtimeHub } from "../realtime/inquiry-realtime-hub.js";
+import type { NotificationRealtimeHub } from "../realtime/notification-realtime-hub.js";
 import type {
   AdminContactReport,
   AdminContactReportDetail,
@@ -74,6 +75,7 @@ function inquiryDto(inquiry: InquiryView) {
     canSendMessage: inquiry.canSendMessage,
     blockedByCurrentUser: inquiry.blockedByCurrentUser,
     messages: inquiry.messages.map(messageDto),
+    unreadCount: inquiry.unreadCount ?? inquiry.messages.filter((message) => !message.isRead).length,
     listingSummary: listingSummaryDto(inquiry.listingSummary),
     listingContextState: inquiry.listingContextState,
     lastMessage: inquiry.lastMessage ? messageDto(inquiry.lastMessage) : null
@@ -341,6 +343,53 @@ export function createStreamInquiryEventsHandler(
       }, inquiryRealtimePolicy.heartbeatIntervalMs);
       heartbeat.unref();
       const lifetime = setTimeout(() => response.end(), inquiryRealtimePolicy.connectionLifetimeMs);
+      lifetime.unref();
+
+      const cleanup = () => {
+        if (closed) return;
+        closed = true;
+        clearInterval(heartbeat);
+        clearTimeout(lifetime);
+        unsubscribe();
+      };
+      response.once("close", cleanup);
+    })().catch(next);
+  };
+}
+
+export const notificationRealtimePolicy = Object.freeze({
+  heartbeatIntervalMs: 5_000,
+  connectionLifetimeMs: 45_000,
+  reconnectDelayMs: 2_000
+});
+
+export function createStreamNotificationEventsHandler(realtimeHub: NotificationRealtimeHub): RequestHandler {
+  return (request, response, next) => {
+    void (async () => {
+      const principal = requirePrincipal(request);
+      if (response.destroyed) return;
+
+      response.status(200);
+      response.setHeader("Content-Type", "text/event-stream; charset=utf-8");
+      response.setHeader("Cache-Control", "no-cache, no-transform");
+      response.setHeader("Connection", "keep-alive");
+      response.setHeader("X-Accel-Buffering", "no");
+      response.flushHeaders();
+      response.write(`retry: ${notificationRealtimePolicy.reconnectDelayMs}\n\n`);
+      response.write(`data: ${JSON.stringify({ type: "CONNECTED", userId: principal.userId })}\n\n`);
+
+      let closed = false;
+      const unsubscribe = realtimeHub.subscribe(principal.userId, (event) => {
+        if (closed || response.destroyed) return;
+        response.write(
+          `data: ${JSON.stringify({ type: "NOTIFICATION_CREATED", notification: notificationDto(event.notification) })}\n\n`
+        );
+      });
+      const heartbeat = setInterval(() => {
+        if (!closed && !response.destroyed) response.write(": heartbeat\n\n");
+      }, notificationRealtimePolicy.heartbeatIntervalMs);
+      heartbeat.unref();
+      const lifetime = setTimeout(() => response.end(), notificationRealtimePolicy.connectionLifetimeMs);
       lifetime.unref();
 
       const cleanup = () => {

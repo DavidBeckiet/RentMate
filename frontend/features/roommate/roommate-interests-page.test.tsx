@@ -1,7 +1,7 @@
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { AuthContextValue } from "../../lib/auth/auth-provider";
-import { roommateInterest, roommateRequest, tenantUser } from "./test-roommate-fixtures";
+import { listingSummary, roommateInterest, roommateRequest, tenantUser } from "./test-roommate-fixtures";
 
 const apiMocks = vi.hoisted(() => ({
   listMine: vi.fn(),
@@ -47,6 +47,35 @@ describe("RoommateInterestsPage", () => {
       data: [roommateInterest()],
       pagination: { page: 1, pageSize: 20, hasNextPage: false }
     });
+  });
+
+  it("formats preferred area keys with the same Vietnamese labels as discovery", async () => {
+    const request = roommateRequest({ preferredAreaKeys: ["quan-3", "binh-thanh"] });
+    apiMocks.listInterests.mockResolvedValue({
+      data: [roommateInterest({ request })],
+      pagination: { page: 1, pageSize: 20, hasNextPage: false }
+    });
+
+    render(<RoommateInterestsPage />);
+
+    expect(await screen.findAllByText("Quận 3 · Bình Thạnh")).not.toHaveLength(0);
+  });
+
+  it("shows the linked listing area before preferred areas", async () => {
+    const request = roommateRequest({
+      listingId: 23,
+      listingMode: "LINKED",
+      preferredAreaKeys: ["quan-1"],
+      listing: listingSummary({ areaName: "binh-thanh" })
+    });
+    apiMocks.listInterests.mockResolvedValue({
+      data: [roommateInterest({ request })],
+      pagination: { page: 1, pageSize: 20, hasNextPage: false }
+    });
+
+    render(<RoommateInterestsPage />);
+
+    expect(await screen.findAllByText("Bình Thạnh")).not.toHaveLength(0);
   });
 
   it("shows the full safety warning and checklist before accept, then maps the candidate-open conflict", async () => {
@@ -102,11 +131,43 @@ describe("RoommateInterestsPage", () => {
 
     render(<RoommateInterestsPage />);
 
-    expect(await screen.findByRole("heading", { name: /từ chối/iu })).toBeInTheDocument();
+    expect(await screen.findByRole("heading", { name: "Minh" })).toBeInTheDocument();
+    expect(screen.getByText("Đã từ chối")).toBeInTheDocument();
     expect(apiMocks.listInterests).toHaveBeenCalledWith(
       { direction: "INCOMING", page: 1, pageSize: 20 },
       expect.any(AbortSignal)
     );
     expect(apiMocks.listMine).not.toHaveBeenCalled();
+  });
+
+  it("keeps profile details collapsed and opens the existing chat", async () => {
+    render(<RoommateInterestsPage />);
+    const heading = await screen.findByRole("heading", { name: "Minh" });
+    const card = heading.closest("article")!;
+    expect(card.querySelector("details")).not.toHaveAttribute("open");
+    expect(screen.getByRole("link", { name: "Nhắn tin" })).toHaveAttribute("href", "/roommates/messages?roommate=91");
+    expect(screen.queryByRole("navigation", { name: "Phân trang lời quan tâm ở ghép" })).not.toBeInTheDocument();
+    fireEvent.click(screen.getByText("Hồ sơ & nhu cầu ở ghép"));
+    expect(card.querySelector("details")).toHaveAttribute("open");
+    expect(within(card).getByRole("heading", { name: "Lối sống & thói quen" })).toBeInTheDocument();
+    expect(within(card).queryByText("Ngân sách mỗi người")).not.toBeInTheDocument();
+    expect(within(card).queryByText("Khu vực quan tâm")).not.toBeInTheDocument();
+    expect(within(card).getByText("Thời gian chuyển vào")).toBeInTheDocument();
+  });
+
+  it("supports keyboard navigation between received and sent tabs", async () => {
+    render(<RoommateInterestsPage />);
+    const received = await screen.findByRole("tab", { name: "Nhận được" });
+    received.focus();
+    fireEvent.keyDown(received, { key: "ArrowRight" });
+    const sent = screen.getByRole("tab", { name: "Đã gửi" });
+    expect(sent).toHaveFocus();
+    expect(sent).toHaveAttribute("aria-selected", "true");
+    await waitFor(() =>
+      expect(apiMocks.listInterests).toHaveBeenCalledWith(
+        { direction: "OUTGOING", page: 1, pageSize: 20 },
+        expect.any(AbortSignal)
+      )
+    );
   });
 });

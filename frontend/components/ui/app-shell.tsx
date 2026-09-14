@@ -5,7 +5,9 @@ import { usePathname, useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
 import { useComparisonSelection } from "../../features/comparison/comparison-store";
 import { NotificationPopover } from "../../features/contact/notification-popover";
-import { useNotificationUnreadCount } from "../../features/contact/notification-unread-store";
+import { FloatingRoommateChat } from "../../features/roommate/floating-roommate-chat";
+import { useNotificationRealtime, useNotificationUnreadCount } from "../../features/contact/notification-unread-store";
+import { useNotificationSound } from "../../features/contact/notification-sound";
 import { useAuth } from "../../lib/auth/auth-provider";
 import type { UserProfile } from "../../types/api";
 import { accountInitials, accountPrimaryIdentity, accountRoleLabels } from "./account-identity";
@@ -605,100 +607,34 @@ function AuthShell({
   authError,
   onRefresh
 }: Pick<SharedShellProps, "children" | "pathname" | "authStatus" | "authError" | "onRefresh">) {
-  const [menuOpen, setMenuOpen] = useState(false);
-  const triggerRef = useRef<HTMLButtonElement>(null);
-  const publicItems = consumerNavigationItems("anonymous");
-  const closeMenu = useCallback(() => setMenuOpen(false), []);
-  const loginCurrent = pathname === "/login" ? "page" : undefined;
-  const registerCurrent = pathname === "/register" || pathname.startsWith("/register/") ? "page" : undefined;
-
-  useEffect(() => closeMenu(), [closeMenu, pathname]);
+  const isRegistrationRoute = pathname === "/register" || pathname.startsWith("/register/");
+  const isAdminLogin = pathname === "/admin/login";
+  const authAction = isAdminLogin
+    ? { href: "/", label: "Trang chủ" }
+    : isRegistrationRoute
+      ? { href: "/login", label: "Đăng nhập" }
+      : pathname === "/login"
+        ? { href: "/register", label: "Tạo tài khoản" }
+        : { href: "/login", label: "Đăng nhập" };
 
   return (
-    <div className="flex min-h-screen flex-col bg-background text-foreground">
+    <div className="flex min-h-screen flex-col bg-[#eef3ef] text-foreground">
       <SkipLink />
       <header className="border-b border-border bg-surface">
-        <div className="rm-page-container flex min-h-14 items-center gap-3">
+        <div className="rm-page-container flex min-h-16 items-center justify-between gap-3">
           <Brand compact />
-
-          <nav aria-label="Điều hướng công khai" className="ml-auto hidden items-center gap-1 lg:flex">
-            <NavigationLinks
-              items={publicItems}
-              pathname={pathname}
-              linkClassName={cx(desktopNavLink, authHeaderMotion)}
-            />
-          </nav>
-
-          <div className="ml-auto hidden items-center gap-2 lg:flex">
-            <Link
-              href="/login"
-              aria-current={loginCurrent}
-              className={buttonClassName("ghost", "sm", authHeaderMotion)}
-            >
-              <Icon name="logIn" className="h-4 w-4" />
-              Đăng nhập
-            </Link>
-            <Link
-              href="/register"
-              aria-current={registerCurrent}
-              className={buttonClassName("primary", "sm", authHeaderMotion)}
-            >
-              <Icon name="userPlus" className="h-4 w-4" />
-              Đăng ký
-            </Link>
-          </div>
-
-          <IconButton
-            ref={triggerRef}
-            label="Mở menu điều hướng"
-            variant="ghost"
-            className="ml-auto lg:hidden"
-            aria-expanded={menuOpen}
-            aria-controls="auth-mobile-navigation"
-            onClick={() => setMenuOpen(true)}
-          >
-            <Icon name="menu" />
-          </IconButton>
+          <Link href={authAction.href} className={buttonClassName("outline", "sm", authHeaderMotion)}>
+            {authAction.label}
+          </Link>
         </div>
       </header>
       <AuthFeedback status={authStatus} logoutFailed={authError} onRefresh={onRefresh} />
       <main
         id="main-content"
-        className="relative flex flex-1 items-center overflow-hidden px-4 py-4 sm:px-6 sm:py-6 lg:px-8"
+        className="relative flex flex-1 items-start overflow-visible px-4 py-6 sm:px-8 lg:px-10 lg:py-8"
       >
         <PageTransition className="w-full">{children}</PageTransition>
       </main>
-
-      <NavigationOverlay open={menuOpen} title="Điều hướng RentMate" triggerRef={triggerRef} onClose={closeMenu}>
-        <nav id="auth-mobile-navigation" aria-label="Điều hướng công khai trên di động" className="mt-4">
-          <NavigationLinks
-            items={publicItems}
-            pathname={pathname}
-            linkClassName={drawerNavLink}
-            onNavigate={closeMenu}
-          />
-        </nav>
-        <div className="mt-auto grid gap-2 border-t border-border pt-4">
-          <Link
-            href="/login"
-            aria-current={loginCurrent}
-            className={buttonClassName("outline", "md")}
-            onClick={closeMenu}
-          >
-            <Icon name="logIn" className="h-4 w-4" />
-            Đăng nhập
-          </Link>
-          <Link
-            href="/register"
-            aria-current={registerCurrent}
-            className={buttonClassName("primary", "md")}
-            onClick={closeMenu}
-          >
-            <Icon name="userPlus" className="h-4 w-4" />
-            Đăng ký
-          </Link>
-        </div>
-      </NavigationOverlay>
     </div>
   );
 }
@@ -820,6 +756,8 @@ export function AppShell({ children }: Readonly<{ children: ReactNode }>) {
   // refresh before this component's descendants hydrate.
   const visibleUser = mounted ? user : null;
   useNotificationUnreadCount(visibleUser?.id ?? null);
+  const notificationRealtime = useNotificationRealtime(visibleUser?.id ?? null);
+  useNotificationSound(visibleUser?.id ?? null, notificationRealtime);
   const actor = navigationActor(visibleUser?.role ?? null, status);
   const shellKind = resolveShellKind(pathname, actor);
 
@@ -858,5 +796,10 @@ export function AppShell({ children }: Readonly<{ children: ReactNode }>) {
   if (shellKind === "landlord") return <WorkspaceShell {...sharedProps} actor="landlord" />;
   if (shellKind === "admin") return <WorkspaceShell {...sharedProps} actor="admin" />;
   if (shellKind === "restricted") return <RestrictedShell user={visibleUser}>{children}</RestrictedShell>;
-  return <ConsumerShell {...sharedProps} actor={actor} />;
+  return (
+    <>
+      <ConsumerShell {...sharedProps} actor={actor} />
+      <FloatingRoommateChat />
+    </>
+  );
 }

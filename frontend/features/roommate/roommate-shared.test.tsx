@@ -112,8 +112,12 @@ describe("roommate safety controls", () => {
     navigationMocks.pathname.mockReturnValue("/roommates/conversations/91");
     render(<RoommateSubnav />);
 
-    expect(screen.getByRole("link", { name: "Lời quan tâm" })).toHaveAttribute("aria-current", "page");
-    expect(screen.getByRole("link", { name: "Khám phá" })).not.toHaveAttribute("aria-current");
+    const messageLinks = screen.getAllByRole("link", { name: "Tin nhắn" });
+    expect(messageLinks).toHaveLength(2);
+    messageLinks.forEach((link) => expect(link).toHaveAttribute("aria-current", "page"));
+    screen.getAllByRole("link", { name: "Khám phá" }).forEach((link) => {
+      expect(link).not.toHaveAttribute("aria-current");
+    });
   });
 
   it("submits a request report with explicit target and category", async () => {
@@ -147,7 +151,7 @@ describe("roommate safety controls", () => {
     );
 
     expect(
-      screen.getByText("Liên kết này chỉ còn là ngữ cảnh lịch sử; kết nối ở ghép không tự động thay đổi.")
+      screen.getByText("Phòng này chỉ còn là thông tin tham khảo; kết nối ở ghép không tự làm thay đổi tin đăng.")
     ).toBeInTheDocument();
     expect(screen.queryByText(/gỡ liên kết hoặc hủy yêu cầu/i)).not.toBeInTheDocument();
   });

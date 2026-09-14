@@ -19,7 +19,7 @@ import {
   roommateSleepScheduleLabels,
   roommateSmokingLabels
 } from "./roommate-content";
-import { RoommateAvatar, RoommatePageHeader, RoommateSubnav, RoommateTenantBoundary } from "./roommate-shared";
+import { RoommateAvatar, RoommatePageHeader, RoommateTenantBoundary } from "./roommate-shared";
 import { RoommateVerificationPanel } from "./roommate-verification-panel";
 import { RoommateAiPreferencePanel } from "./roommate-ai-preference-panel";
 
@@ -162,7 +162,6 @@ function ProfileEditor() {
   return (
     <div className={`rm-roommate-page ${styles.page}`}>
       <RoommatePageHeader title="Hồ sơ ở ghép" description="Một chút về bạn, để tìm người cùng nhà hợp nhịp sống." />
-      <RoommateSubnav />
       <div className={styles.layout}>
         <Card className={`rm-roommate-card-static ${styles.editor}`}>
           <form

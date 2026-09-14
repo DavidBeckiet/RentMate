@@ -14,11 +14,13 @@ import {
   createMarkNotificationReadHandler,
   createSendMessageHandler,
   createStreamInquiryEventsHandler,
+  createStreamNotificationEventsHandler,
   createUnblockInquiryHandler,
   createUpdateContactReportStatusHandler,
   createUpdateInquiryStatusHandler
 } from "./controllers/contact-controller.js";
 import type { InquiryRealtimeHub } from "./realtime/inquiry-realtime-hub.js";
+import type { NotificationRealtimeHub } from "./realtime/notification-realtime-hub.js";
 import type { ContactService } from "./services/contact-service.js";
 import {
   createRateLimitMiddleware,
@@ -34,6 +36,7 @@ export interface ContactRouteDependencies {
   readonly adminRoleMiddleware: RequestHandler;
   readonly contactService: ContactService;
   readonly realtimeHub: InquiryRealtimeHub;
+  readonly notificationRealtimeHub: NotificationRealtimeHub;
   readonly inquiryRateLimitStore?: RateLimitStore;
   readonly messageRateLimitStore?: RateLimitStore;
   readonly contactReportRateLimitStore?: RateLimitStore;
@@ -105,6 +108,11 @@ export function registerContactRoutes(router: Router, dependencies: ContactRoute
     "/inquiries/:inquiryId/events",
     dependencies.authenticationMiddleware,
     createStreamInquiryEventsHandler(dependencies.contactService, dependencies.realtimeHub)
+  );
+  router.get(
+    "/notifications/events",
+    dependencies.authenticationMiddleware,
+    createStreamNotificationEventsHandler(dependencies.notificationRealtimeHub)
   );
   router.post(
     "/inquiries/:inquiryId/messages",

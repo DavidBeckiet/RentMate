@@ -39,6 +39,11 @@ describe("RoommateAiPreferencePanel", () => {
       promptVersion: "ROOMMATE_AI_PARSER_PROMPT_V1"
     });
     render(<RoommateAiPreferencePanel target="PROFILE" onApply={onApply} />);
+    const toggle = await screen.findByRole("button", { name: /Phân tích nhu cầu bằng AI/ });
+    expect(toggle).toHaveAttribute("aria-expanded", "false");
+    expect(screen.queryByRole("textbox", { name: "Mô tả nhu cầu" })).not.toBeInTheDocument();
+    fireEvent.click(toggle);
+    expect(roommateMocks.createPreferencePreview).not.toHaveBeenCalled();
     const text = await screen.findByLabelText("Mô tả nhu cầu");
     fireEvent.change(text, { target: { value: "Mình thích nhà yên tĩnh và dậy sớm mỗi ngày." } });
     fireEvent.click(screen.getByRole("button", { name: "Phân tích bằng AI" }));
@@ -52,6 +57,14 @@ describe("RoommateAiPreferencePanel", () => {
     const low = screen.getByLabelText("Nhịp sinh hoạt") as HTMLInputElement;
     expect(low.checked).toBe(false);
     fireEvent.change(screen.getByLabelText("Chỉnh sửa Ưu tiên không gian"), { target: { value: "SOCIAL" } });
+    fireEvent.click(toggle);
+    expect(toggle).toHaveAttribute("aria-expanded", "false");
+    expect(screen.queryByRole("button", { name: "Dùng đề xuất" })).not.toBeInTheDocument();
+    expect(onApply).not.toHaveBeenCalled();
+    fireEvent.click(toggle);
+    expect(screen.getByLabelText("Chỉnh sửa Ưu tiên không gian")).toHaveValue("SOCIAL");
+    expect(screen.getByLabelText("Mô tả nhu cầu")).toHaveValue("Mình thích nhà yên tĩnh và dậy sớm mỗi ngày.");
+    expect(roommateMocks.createPreferencePreview).toHaveBeenCalledTimes(1);
     fireEvent.click(screen.getByRole("button", { name: "Dùng đề xuất" }));
     expect(onApply).toHaveBeenCalledWith({ noisePreference: "SOCIAL" });
   });

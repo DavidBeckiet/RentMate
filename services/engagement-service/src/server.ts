@@ -24,6 +24,8 @@ import { createContactSafetyRepository } from "./modules/contact/repositories/co
 import { createContactService } from "./modules/contact/services/contact-service.js";
 import { registerContactRoutes } from "./modules/contact/routes.js";
 import { createInquiryRealtimeHub } from "./modules/contact/realtime/inquiry-realtime-hub.js";
+import { createNotificationRealtimeHub } from "./modules/contact/realtime/notification-realtime-hub.js";
+import { createNotificationRealtimeListener } from "./modules/contact/realtime/notification-realtime-listener.js";
 import { createSavedSearchRepository } from "./modules/saved-searches/repositories/saved-search-repository.js";
 import { registerSavedSearchRoutes } from "./modules/saved-searches/routes.js";
 import { createSavedSearchService } from "./modules/saved-searches/services/saved-search-service.js";
@@ -132,6 +134,12 @@ async function startEngagementService(): Promise<void> {
   const contactRepository = createContactRepository();
   const contactSafetyRepository = createContactSafetyRepository();
   const inquiryRealtimeHub = createInquiryRealtimeHub();
+  const notificationRealtimeHub = createNotificationRealtimeHub();
+  const notificationRealtimeListener = createNotificationRealtimeListener(
+    databasePool,
+    notificationRealtimeHub,
+    logger
+  );
   const contactService = createContactService({
     repository: contactRepository,
     safetyRepository: contactSafetyRepository,
@@ -297,7 +305,8 @@ async function startEngagementService(): Promise<void> {
         landlordRoleMiddleware: landlordRole,
         adminRoleMiddleware: adminRole,
         contactService,
-        realtimeHub: inquiryRealtimeHub
+        realtimeHub: inquiryRealtimeHub,
+        notificationRealtimeHub
       });
       registerSavedSearchRoutes(router, {
         authenticationMiddleware: requiredAuthentication,
@@ -398,6 +407,8 @@ async function startEngagementService(): Promise<void> {
     return;
   }
 
+  await notificationRealtimeListener.start();
+
   leadReminderScheduler.start();
   roommateExpirationScheduler.start();
   roommateAiSafetyWorker.start();
@@ -408,6 +419,7 @@ async function startEngagementService(): Promise<void> {
       leadReminderScheduler.stop();
       roommateExpirationScheduler.stop();
       roommateAiSafetyWorker.stop();
+      await notificationRealtimeListener.stop();
       await closeRuntimePool();
     },
     logger

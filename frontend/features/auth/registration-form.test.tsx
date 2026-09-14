@@ -55,7 +55,7 @@ describe("RegistrationForm", () => {
     expect(name).toBeRequired();
     expect(name).toHaveAttribute("placeholder", "Nguyễn Văn A");
     expect(name).toHaveValue("");
-    expect(screen.getByText("Từ 8 ký tự trở lên.")).toBeInTheDocument();
+    expect(screen.getByText("Tối thiểu 8 ký tự.")).toBeInTheDocument();
     expect(screen.getByText("Không bắt buộc")).toBeInTheDocument();
     expect(screen.getByLabelText("Số điện thoại")).toHaveAttribute("placeholder", "0912345678");
     for (const indicator of screen.getAllByText("(bắt buộc)")) expect(indicator).toHaveClass("sr-only");
@@ -66,9 +66,9 @@ describe("RegistrationForm", () => {
   it.each(["tenant", "landlord"] as const)("renders a disabled Google seam for %s until configured", (mode) => {
     render(<RegistrationForm mode={mode} />);
 
-    const google = screen.getByRole("button", { name: "Đăng ký nhanh bằng Google" });
+    const google = screen.getByRole("button", { name: "Tiếp tục với Google" });
     expect(google).toBeDisabled();
-    expect(screen.getByText("Google chưa được cấu hình")).toBeInTheDocument();
+    expect(screen.getByText("Google chưa được cấu hình.")).toBeInTheDocument();
     fireEvent.click(google);
     expect(apiMocks.registerTenant).not.toHaveBeenCalled();
     expect(apiMocks.registerLandlord).not.toHaveBeenCalled();
@@ -165,7 +165,7 @@ describe("RegistrationForm", () => {
     expect(screen.queryByText("Invalid payload at users.create")).not.toBeInTheDocument();
   });
 
-  it("keeps duplicate email at form level and offers a login recovery link", async () => {
+  it("explains a duplicate email, hides technical IDs, and offers login or email correction", async () => {
     apiMocks.registerTenant.mockRejectedValue(
       new ApiError({
         status: 409,
@@ -180,9 +180,25 @@ describe("RegistrationForm", () => {
     fireEvent.click(screen.getByRole("button", { name: "Đăng ký tìm phòng" }));
 
     const alert = await screen.findByRole("alert");
-    expect(alert).toHaveTextContent("Email này đã được đăng ký.");
-    expect(screen.getByRole("link", { name: "Đi đến trang đăng nhập" })).toHaveAttribute("href", "/login");
+    expect(alert).toHaveTextContent("Email này đã được sử dụng.");
+    expect(alert).toHaveTextContent("Bạn có thể đăng nhập bằng tài khoản hiện có hoặc sử dụng email khác.");
+    expect(alert).not.toHaveTextContent("req-duplicate");
+    expect(alert).not.toHaveTextContent("Mã yêu cầu");
+    expect(screen.getByRole("link", { name: "Đăng nhập" })).toHaveAttribute("href", "/login");
+    fireEvent.click(screen.getByRole("button", { name: "Đổi email" }));
+    expect(screen.getByLabelText("Email (bắt buộc)")).toHaveFocus();
     expect(screen.getByLabelText("Email (bắt buộc)")).not.toHaveAttribute("aria-invalid", "true");
+  });
+
+  it("shows email field validation on blur before submit", () => {
+    render(<RegistrationForm mode="tenant" />);
+    const email = screen.getByLabelText("Email (bắt buộc)");
+    fireEvent.change(email, { target: { value: "not-an-email" } });
+    fireEvent.blur(email);
+
+    expect(screen.getByText("Email không đúng định dạng.")).toBeInTheDocument();
+    expect(email).toHaveAttribute("aria-invalid", "true");
+    expect(apiMocks.registerTenant).not.toHaveBeenCalled();
   });
 
   it.each([

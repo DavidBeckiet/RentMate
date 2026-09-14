@@ -67,7 +67,10 @@ export function LandlordVerificationPanel() {
     try {
       const result = await operation();
       setVerification(result);
-      if (action.startsWith("email")) setEmailRequested(true);
+      if (action.startsWith("email")) {
+        setEmailRequested(true);
+        if (action === "email-request") setEmailToken("");
+      }
       if (action.startsWith("phone")) setPhoneRequested(true);
     } catch (caught) {
       const apiError = caught instanceof ApiError ? caught : null;
@@ -126,12 +129,20 @@ export function LandlordVerificationPanel() {
 
       {loadState === "loading" || loadState === "idle" ? <p role="status">Đang tải trạng thái xác minh…</p> : null}
       {loadState === "error" ? (
-        <p role="alert" className="border-l-4 border-red-800 pl-3 text-sm font-bold text-red-800">
+        <p
+          id="landlord-verification-load-error"
+          role="alert"
+          className="border-l-4 border-red-800 pl-3 text-sm font-bold text-red-800"
+        >
           Không thể tải trạng thái xác minh.
         </p>
       ) : null}
       {error ? (
-        <p role="alert" className="border-l-4 border-red-800 pl-3 text-sm font-bold text-red-800">
+        <p
+          id="landlord-verification-error"
+          role="alert"
+          className="border-l-4 border-red-800 pl-3 text-sm font-bold text-red-800"
+        >
           {error}
         </p>
       ) : null}
@@ -152,7 +163,7 @@ export function LandlordVerificationPanel() {
                   pendingLabel="Đang gửi…"
                   onClick={() => void runContactAction("email-request", () => api.users.requestEmailVerification())}
                 >
-                  Gửi mã email
+                  {emailRequested ? "Gửi lại mã email" : "Gửi mã email"}
                 </Button>
                 {emailRequested ? (
                   <div className="space-y-2">
@@ -164,10 +175,16 @@ export function LandlordVerificationPanel() {
                       value={emailToken}
                       maxLength={6}
                       inputMode="numeric"
+                      pattern="[0-9]{6}"
+                      aria-invalid={Boolean(error)}
+                      aria-describedby={`landlord-email-code-hint${error ? " landlord-verification-error" : ""}`}
                       onChange={(event) => setEmailToken(event.target.value.replace(/\D/gu, "").slice(0, 6))}
-                      className="min-h-12 w-full rounded-control border border-border-strong bg-surface px-4 outline-none transition focus:border-primary focus:ring-[3px] focus:ring-primary/20"
+                      className="min-h-12 w-full rounded-control border border-border-strong bg-surface px-4 text-center font-mono text-lg font-bold tracking-[0.7em] outline-none transition focus:border-primary focus:ring-[3px] focus:ring-primary/20"
                       autoComplete="one-time-code"
                     />
+                    <p id="landlord-email-code-hint" className="text-xs leading-5 text-rent-secondary">
+                      Nhập mã 6 số mới nhất trong email. Mã có hiệu lực trong 30 phút.
+                    </p>
                     <Button
                       pending={pendingAction === "email-confirm"}
                       pendingLabel="Đang xác nhận…"

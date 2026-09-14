@@ -50,6 +50,8 @@ export type IconName =
   | "user"
   | "userPlus"
   | "users"
+  | "volume"
+  | "volumeOff"
   | "wifi";
 
 const paths: Record<IconName, ReactNode> = {
@@ -263,6 +265,17 @@ const paths: Record<IconName, ReactNode> = {
       <path d="M15 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" />
       <circle cx="8.5" cy="7" r="4" />
       <path d="M22 21v-2a4 4 0 0 0-3-3.8M16 3.3a4 4 0 0 1 0 7.4" />
+    </>
+  ),
+  volume: (
+    <>
+      <path d="M4 10v4h4l5 4V6l-5 4H4Z" />
+      <path d="M17 9a4 4 0 0 1 0 6M19.5 6.5a8 8 0 0 1 0 11" />
+    </>
+  ),
+  volumeOff: (
+    <>
+      <path d="m3 3 18 18M4 10v4h4l5 4v-5.5M13 6v2.5M17 9a4 4 0 0 1 1.1 4.9M19.5 6.5a8 8 0 0 1 1.1 9.8" />
     </>
   ),
   wifi: <path d="M5 12.5a10 10 0 0 1 14 0M8.5 16a5 5 0 0 1 7 0M12 20h.01M2 9a15 15 0 0 1 20 0" />

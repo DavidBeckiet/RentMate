@@ -25,7 +25,7 @@ describe("GoogleAuthSeam", () => {
     apiMocks.startGoogle.mockResolvedValue({ redirectUrl: "https://accounts.google.com/oauth" });
     render(<GoogleAuthSeam mode="login" onRedirect={redirect} />);
 
-    fireEvent.click(screen.getByRole("button", { name: "Đăng nhập nhanh bằng Google" }));
+    fireEvent.click(screen.getByRole("button", { name: "Tiếp tục với Google" }));
 
     await waitFor(() => expect(apiMocks.startGoogle).toHaveBeenCalledWith({ intent: "LOGIN" }));
     expect(redirect).toHaveBeenCalledWith("https://accounts.google.com/oauth");
@@ -36,7 +36,7 @@ describe("GoogleAuthSeam", () => {
     apiMocks.startGoogle.mockResolvedValue({ redirectUrl: "https://accounts.google.com/oauth" });
     render(<GoogleAuthSeam mode="register" role="LANDLORD" onRedirect={redirect} />);
 
-    fireEvent.click(screen.getByRole("button", { name: "Đăng ký nhanh bằng Google" }));
+    fireEvent.click(screen.getByRole("button", { name: "Tiếp tục với Google" }));
 
     await waitFor(() =>
       expect(apiMocks.startGoogle).toHaveBeenCalledWith({

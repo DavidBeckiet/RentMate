@@ -141,10 +141,46 @@ describe("InquiryForm floating chat widget", () => {
       expect(apiMocks.listTenantInquiries).toHaveBeenCalledWith({ page: 1, pageSize: 100 }, expect.any(AbortSignal))
     );
 
-    expect(screen.getByRole("heading", { name: "Gửi yêu cầu liên hệ" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Bắt đầu cuộc trò chuyện" })).toBeInTheDocument();
     expect(screen.getByLabelText("Nội dung lời nhắn")).toBeInTheDocument();
+    expect(screen.queryByLabelText("Số điện thoại liên hệ")).not.toBeInTheDocument();
     expect(screen.queryByLabelText("Thời gian mong muốn được liên hệ (tùy chọn)")).not.toBeInTheDocument();
     expect(apiMocks.createInquiry).not.toHaveBeenCalled();
+  });
+
+  it("grows the new-message composer before enabling internal scrolling", async () => {
+    render(<InquiryForm listingId={42} />);
+
+    fireEvent.click(screen.getByTestId("floating-chat-launcher"));
+    const messageField = await screen.findByLabelText("Nội dung lời nhắn");
+
+    Object.defineProperty(messageField, "scrollHeight", { configurable: true, value: 96 });
+    fireEvent.input(messageField);
+    expect(messageField.style.height).toBe("96px");
+    expect(messageField.style.overflowY).toBe("hidden");
+
+    Object.defineProperty(messageField, "scrollHeight", { configurable: true, value: 180 });
+    fireEvent.input(messageField);
+    expect(messageField.style.height).toBe("144px");
+    expect(messageField.style.overflowY).toBe("auto");
+  });
+
+  it("replaces the draft when a different quick question is selected", async () => {
+    render(<InquiryForm listingId={42} />);
+
+    fireEvent.click(screen.getByTestId("floating-chat-launcher"));
+    const messageField = await screen.findByLabelText("Nội dung lời nhắn");
+    const firstQuestion = screen.getByRole("button", { name: /Phòng này hiện tại còn trống/ });
+    const secondQuestion = screen.getByRole("button", { name: /Chi phí dịch vụ/ });
+
+    fireEvent.click(firstQuestion);
+    expect(messageField).toHaveValue("Phòng này hiện tại còn trống không ạ?");
+    expect(firstQuestion).toHaveAttribute("aria-pressed", "true");
+
+    fireEvent.click(secondQuestion);
+    expect(messageField).toHaveValue("Chi phí dịch vụ, điện nước của phòng tính thế nào ạ?");
+    expect(firstQuestion).toHaveAttribute("aria-pressed", "false");
+    expect(secondQuestion).toHaveAttribute("aria-pressed", "true");
   });
 
   it("mounts the persistent launcher through document.body without scrolling or navigation", async () => {
@@ -209,11 +245,11 @@ describe("InquiryForm floating chat widget", () => {
     render(<InquiryForm listingId={42} />);
 
     fireEvent.click(screen.getByRole("button", { name: "Nhắn tin cho chủ trọ" }));
-    expect(await screen.findByText("Yêu cầu đã đóng, không thể gửi thêm tin nhắn.")).toBeInTheDocument();
+    expect(await screen.findByText("Cuộc trò chuyện đã đóng, không thể gửi thêm tin nhắn.")).toBeInTheDocument();
     expect(screen.queryByLabelText("Nhập tin nhắn")).not.toBeInTheDocument();
 
-    fireEvent.click(screen.getByRole("button", { name: "Gửi yêu cầu mới" }));
-    expect(await screen.findByRole("heading", { name: "Gửi yêu cầu liên hệ" })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Bắt đầu cuộc trò chuyện mới" }));
+    expect(await screen.findByRole("heading", { name: "Bắt đầu cuộc trò chuyện" })).toBeInTheDocument();
     expect(apiMocks.createInquiry).not.toHaveBeenCalled();
   });
 
@@ -226,14 +262,14 @@ describe("InquiryForm floating chat widget", () => {
     fireEvent.click(screen.getByRole("button", { name: "Nhắn tin cho chủ trọ" }));
     await screen.findByLabelText("Nội dung lời nhắn");
     fireEvent.change(screen.getByLabelText("Nội dung lời nhắn"), { target: { value: "Mình muốn xem phòng." } });
-    fireEvent.click(screen.getByRole("button", { name: "Gửi yêu cầu liên hệ" }));
+    fireEvent.click(screen.getByRole("button", { name: "Gửi tin nhắn" }));
 
-    expect(await screen.findByText("Yêu cầu đã được gửi. Chủ trọ sẽ nhận được thông báo.")).toBeInTheDocument();
+    expect(await screen.findByText("Tin nhắn đã được gửi. Chủ trọ sẽ nhận được thông báo.")).toBeInTheDocument();
     expect(await screen.findByText("Đã tạo yêu cầu.")).toBeInTheDocument();
     expect(apiMocks.createInquiry).toHaveBeenCalledWith({
       listingId: 42,
       message: "Mình muốn xem phòng.",
-      contactPhone: "+84901234567",
+      contactPhone: null,
       preferredContactAt: null
     });
     expect(apiMocks.getInquiry).toHaveBeenCalledWith(23, expect.any(AbortSignal));
@@ -350,8 +386,8 @@ describe("InquiryForm floating chat widget", () => {
 
     render(<InquiryForm inquiryId={113} open />);
 
-    expect(await screen.findByText("Yêu cầu đã đóng, không thể gửi thêm tin nhắn.")).toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: "Gửi yêu cầu mới" })).not.toBeInTheDocument();
+    expect(await screen.findByText("Cuộc trò chuyện đã đóng, không thể gửi thêm tin nhắn.")).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Bắt đầu cuộc trò chuyện mới" })).not.toBeInTheDocument();
     expect(screen.queryByLabelText("Nhập tin nhắn")).not.toBeInTheDocument();
   });
 

@@ -111,7 +111,11 @@ async function findEligibleListing(context: BrowserContext): Promise<ListingSumm
 
 async function expectRoommateShell(page: Page): Promise<void> {
   await expect(page.locator("main h1").first()).toBeVisible();
-  await expect(page.locator('nav[aria-label="Điều hướng ở ghép"]')).toBeVisible();
+  await expect(
+    page.locator(
+      'nav[aria-label="Điều hướng không gian ở ghép"]:visible, nav[aria-label="Điều hướng ở ghép trên di động"]:visible'
+    )
+  ).toBeVisible();
 }
 
 function captureHydrationDiagnostics(page: Page): string[] {
@@ -220,11 +224,22 @@ test.describe.serial("ROOMMATE-V1-06 browser and Gateway release verification", 
     await expect(seekerPage.getByRole("heading", { name: listing.title, exact: true }).first()).toBeVisible();
 
     const interest = await createInterest(seekerA, request.id, initialMessage);
-    await seekerPage.goto(`/roommates/conversations/${interest.id}`);
+    const ownerConversationPage = await ownerA.newPage();
+    const ownerEventStream = ownerConversationPage.waitForResponse(
+      (response) => response.url() === `${gatewayBaseUrl}/api/v1/notifications/events`
+    );
+    await ownerConversationPage.goto(`/roommates/messages?roommate=${interest.id}`);
+    await expectRoommateShell(ownerConversationPage);
+    await ownerEventStream;
+    await expect(ownerConversationPage.getByText(initialMessage, { exact: true })).toBeVisible();
+
+    await seekerPage.goto(`/roommates/messages?roommate=${interest.id}`);
+    await expectRoommateShell(seekerPage);
     await expect(seekerPage.getByText(initialMessage, { exact: true })).toBeVisible();
     await seekerPage.locator('[name="message"]').fill(chatMessage);
     await seekerPage.getByRole("button", { name: /Gửi tin nhắn/i }).click();
     await expect(seekerPage.getByText(chatMessage, { exact: true })).toBeVisible();
+    await expect(ownerConversationPage.getByText(chatMessage, { exact: true })).toBeVisible({ timeout: 30_000 });
     await expect(seekerPage.getByText(/OTP/i).first()).toBeVisible();
 
     const ownerPage = await ownerA.newPage();

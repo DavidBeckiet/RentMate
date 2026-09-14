@@ -1,0 +1,16 @@
+.profileSummary :global(.rm-roommate-card-static),
+.profileSummary :global(.rm-roommate-card-static:hover) {
+  border: 0;
+  background: transparent;
+  box-shadow: none;
+  padding: 0;
+  transform: none;
+}
+
+.profileSummary :global(.rm-roommate-facts) {
+  gap: 8px;
+}
+
+.profileSummary :global(.rm-roommate-fact) {
+  padding: 10px 12px;
+}

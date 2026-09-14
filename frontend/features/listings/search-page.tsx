@@ -553,13 +553,15 @@ export function SearchPage() {
                     ))}
                   </div>
 
-                  <Pagination
-                    ariaLabel="Phân trang kết quả tìm kiếm"
-                    page={currentPage}
-                    hasNextPage={hasNextPage}
-                    onPrevious={() => navigate(withPage(committed, currentPage - 1))}
-                    onNext={() => navigate(withPage(committed, currentPage + 1))}
-                  />
+                  {currentPage > 1 || hasNextPage ? (
+                    <Pagination
+                      ariaLabel="Phân trang kết quả tìm kiếm"
+                      page={currentPage}
+                      hasNextPage={hasNextPage}
+                      onPrevious={() => navigate(withPage(committed, currentPage - 1))}
+                      onNext={() => navigate(withPage(committed, currentPage + 1))}
+                    />
+                  ) : null}
                   {!hasNextPage ? (
                     <div className={styles.endState}>
                       <span>Bạn đã xem hết {items.length} phòng trọ phù hợp.</span>

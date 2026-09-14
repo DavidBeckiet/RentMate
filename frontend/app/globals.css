@@ -307,7 +307,7 @@ summary {
     transition:
       opacity var(--motion-slow) var(--rm-ease-out),
       transform var(--motion-slow) var(--rm-ease-out);
-    transition-delay: calc(var(--rm-delay, 0) * 48ms);
+    transition-delay: calc(var(--rm-delay, 0) * 80ms);
   }
 
   .rm-reveal[data-visible="true"] {
@@ -317,7 +317,7 @@ summary {
 
   .rm-reveal[data-ready="true"][data-visible="false"] {
     opacity: 0;
-    transform: translateY(12px);
+    transform: translateY(32px);
   }
 
   .rm-reveal[data-delay="1"] {

@@ -22,15 +22,14 @@ describe("RM-047 application isolation", () => {
     expect(existsSync(join(authRoot, "forgot-password", "page.tsx"))).toBe(true);
     expect(existsSync(join(authRoot, "reset-password", "page.tsx"))).toBe(true);
 
-    const loginPage = read("app/(auth)/login/page.tsx");
+    const authShell = read("components/ui/app-shell.tsx");
     const tenantPage = read("app/(auth)/register/tenant/page.tsx");
     const landlordPage = read("app/(auth)/register/landlord/page.tsx");
-    expect(loginPage).toContain('href="/register"');
-    expect(loginPage).not.toMatch(/Quên mật khẩu|Ghi nhớ đăng nhập/);
-    expect(tenantPage).toContain('href="/register/landlord"');
-    expect(tenantPage).toContain('href="/login"');
-    expect(landlordPage).toContain('href="/register/tenant"');
-    expect(landlordPage).toContain('href="/login"');
+    expect(authShell).toContain('href: "/register"');
+    expect(authShell).toContain('href: "/login"');
+    expect(authShell).not.toContain("Điều hướng công khai");
+    expect(tenantPage).toContain('href="/register"');
+    expect(landlordPage).toContain('href="/register"');
   });
 
   it("keeps auth production on shared API/provider/UI seams without raw transport or backend imports", () => {

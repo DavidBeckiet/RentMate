@@ -50,6 +50,8 @@ export function RoommateAiPreferencePanel({
   onApply: (values: Readonly<Record<string, CandidateValue>>) => void;
 }>) {
   const headingId = useId();
+  const contentId = useId();
+  const [expanded, setExpanded] = useState(false);
   const [available, setAvailable] = useState(false);
   const [text, setText] = useState("");
   const [state, setState] = useState<"idle" | "editing" | "parsing" | "preview" | "applying" | "error">("idle");
@@ -104,131 +106,151 @@ export function RoommateAiPreferencePanel({
   };
 
   return (
-    <section className="rm-roommate-ai-panel space-y-5" aria-labelledby={headingId}>
-      <div className="flex flex-wrap items-start justify-between gap-4">
-        <div>
-          <p className="rm-roommate-ai-label">
-            <Icon name="sparkles" className="h-4 w-4" /> AI hỗ trợ · không tự lưu
-          </p>
-          <h2 id={headingId} className="mt-3 font-display text-heading-sm font-bold text-foreground">
-            Phân tích nhu cầu bằng AI
-          </h2>
-          <p className="mt-1 max-w-2xl text-ui-sm leading-6 text-muted-foreground">
-            Viết nhu cầu theo cách tự nhiên. Bạn luôn xem, sửa hoặc bỏ từng đề xuất trước khi điền vào biểu mẫu; AI
-            không tự lưu dữ liệu.
-          </p>
-        </div>
-        <span className="rm-roommate-chip" aria-label="AI chỉ tạo bản xem trước">
-          Xem trước
-        </span>
-      </div>
-      <div className="grid gap-2 sm:grid-cols-3" aria-label="Quy trình đề xuất">
-        <div className="rounded-control bg-surface/70 px-3 py-2 text-ui-xs font-bold text-foreground">
-          <span className="text-primary">01</span> · Bạn viết
-        </div>
-        <div className="rounded-control bg-surface/70 px-3 py-2 text-ui-xs font-bold text-foreground">
-          <span className="text-primary">02</span> · AI gợi ý
-        </div>
-        <div className="rounded-control bg-surface/70 px-3 py-2 text-ui-xs font-bold text-foreground">
-          <span className="text-primary">03</span> · Bạn xác nhận
-        </div>
-      </div>
-      <TextareaField
-        id={`roommate-ai-text-${target.toLowerCase()}`}
-        name="roommateAiText"
-        label="Mô tả nhu cầu"
-        hint="Từ 20 đến 2.000 ký tự. Không nhập thông tin liên hệ hoặc thông tin nhạy cảm."
-        rows={4}
-        value={text}
-        maxLength={2000}
-        onChange={(event) => {
-          setText(event.target.value);
-          if (state !== "parsing") setState("editing");
-        }}
-      />
-      <Button type="button" pending={state === "parsing"} pendingLabel="Đang phân tích…" onClick={() => void parse()}>
-        Phân tích bằng AI
-      </Button>
-      {state === "parsing" ? (
-        <div
-          className="space-y-3 rounded-card border border-info/20 bg-surface/70 p-4"
-          role="status"
-          aria-live="polite"
+    <section className="rm-roommate-ai-panel" aria-labelledby={headingId}>
+      <h2 id={headingId}>
+        <button
+          type="button"
+          aria-expanded={expanded}
+          aria-controls={contentId}
+          onClick={() => setExpanded((current) => !current)}
+          className="flex min-h-11 w-full items-center justify-between gap-3 rounded-control text-left outline-none transition-colors hover:text-primary-hover focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-4 motion-reduce:transition-none"
         >
-          <p className="text-ui-sm font-semibold text-info-foreground">
-            Đang đọc các ưu tiên có thể chuyển thành trường biểu mẫu…
-          </p>
-          <Skeleton className="h-4 w-4/5" />
-          <Skeleton className="h-4 w-3/5" />
-        </div>
-      ) : null}
-      {error ? (
-        <p role="alert" className="rm-roommate-callout text-ui-sm font-semibold text-danger" data-tone="danger">
-          {error}
-        </p>
-      ) : null}
-      {state === "preview" ? (
-        <div className="space-y-3" aria-live="polite">
-          {Object.entries(draft).map(([field, value]) => (
-            <div
-              key={field}
-              className="grid gap-3 rounded-card border border-border bg-surface p-4 sm:grid-cols-[auto_1fr_auto] sm:items-center"
-            >
-              <label className="flex min-h-11 items-center gap-2 text-ui-sm font-bold text-foreground">
-                <input
-                  type="checkbox"
-                  checked={selected.has(field)}
-                  onChange={(event) =>
-                    setSelected((current) => {
-                      const next = new Set(current);
-                      if (event.target.checked) next.add(field);
-                      else next.delete(field);
-                      return next;
-                    })
-                  }
-                />
-                {fieldLabel(field)}
-              </label>
-              <input
-                aria-label={`Chỉnh sửa ${fieldLabel(field)}`}
-                value={displayValue(value)}
-                onChange={(event) =>
-                  setDraft((current) => ({
-                    ...current,
-                    [field]:
-                      field === "preferredAreaKeys"
-                        ? event.target.value
-                            .split(",")
-                            .map((item) => item.trim())
-                            .filter(Boolean)
-                        : event.target.value
-                  }))
-                }
-                className="min-h-12 w-full rounded-control border border-border-strong bg-surface px-4 text-ui-sm font-medium text-foreground outline-none transition-[border-color,box-shadow] duration-fast focus:border-primary focus:ring-[3px] focus:ring-primary/20"
-              />
-              <span className="text-ui-xs font-bold text-muted-foreground">
-                Độ tin cậy: {confidenceLabels[confidence[field] ?? "LOW"]}
+          <span className="flex min-w-0 items-center gap-3">
+            <span className="grid h-10 w-10 shrink-0 place-items-center rounded-control bg-primary-subtle text-primary-hover">
+              <Icon name="sparkles" className="h-5 w-5" />
+            </span>
+            <span>
+              <span className="block font-display text-heading-sm font-bold">Phân tích nhu cầu bằng AI</span>
+              <span className="mt-1 block text-ui-xs font-normal text-muted-foreground">
+                Tùy chọn · Bạn xem trước và xác nhận
               </span>
-            </div>
-          ))}
-          {unresolved.length ? (
-            <ul
-              className="rm-roommate-callout space-y-2 text-ui-sm text-muted-foreground"
-              aria-label="Nội dung cần bạn tự xem lại"
-            >
-              {unresolved.map((item, index) => (
-                <li key={`${item.reason}-${index}`}>{unresolvedLabels[item.reason]}</li>
-              ))}
-            </ul>
-          ) : null}
-          <Button type="button" onClick={apply}>
-            Dùng đề xuất
-          </Button>
-          <p className="text-ui-xs font-semibold text-muted-foreground">
-            Chỉ điền các trường được chọn. Bạn vẫn cần bấm nút Lưu/Tạo/Cập nhật của biểu mẫu.
-          </p>
+            </span>
+          </span>
+          <span
+            className="flex shrink-0 items-center gap-2 text-ui-sm font-semibold text-primary-hover"
+            aria-hidden="true"
+          >
+            <span className="hidden sm:inline">{expanded ? "Thu gọn" : "Mở"}</span>
+            <Icon
+              name="chevronDown"
+              className={`h-5 w-5 transition-transform duration-200 motion-reduce:transition-none ${expanded ? "rotate-180" : ""}`}
+            />
+          </span>
+        </button>
+      </h2>
+      <div id={contentId} hidden={!expanded} className="mt-5 space-y-5">
+        <p className="mt-1 max-w-2xl text-ui-sm leading-6 text-muted-foreground">
+          Viết nhu cầu theo cách tự nhiên. Bạn luôn xem, sửa hoặc bỏ từng đề xuất trước khi điền vào biểu mẫu; AI không
+          tự lưu dữ liệu.
+        </p>
+        <div className="grid gap-2 sm:grid-cols-3" aria-label="Quy trình đề xuất">
+          <div className="rounded-control bg-surface/70 px-3 py-2 text-ui-xs font-bold text-foreground">
+            <span className="text-primary">01</span> · Bạn viết
+          </div>
+          <div className="rounded-control bg-surface/70 px-3 py-2 text-ui-xs font-bold text-foreground">
+            <span className="text-primary">02</span> · AI gợi ý
+          </div>
+          <div className="rounded-control bg-surface/70 px-3 py-2 text-ui-xs font-bold text-foreground">
+            <span className="text-primary">03</span> · Bạn xác nhận
+          </div>
         </div>
-      ) : null}
+        <TextareaField
+          id={`roommate-ai-text-${target.toLowerCase()}`}
+          name="roommateAiText"
+          label="Mô tả nhu cầu"
+          hint="Từ 20 đến 2.000 ký tự. Không nhập thông tin liên hệ hoặc thông tin nhạy cảm."
+          rows={4}
+          value={text}
+          maxLength={2000}
+          onChange={(event) => {
+            setText(event.target.value);
+            if (state !== "parsing") setState("editing");
+          }}
+        />
+        <Button type="button" pending={state === "parsing"} pendingLabel="Đang phân tích…" onClick={() => void parse()}>
+          Phân tích bằng AI
+        </Button>
+        {state === "parsing" ? (
+          <div
+            className="space-y-3 rounded-card border border-info/20 bg-surface/70 p-4"
+            role="status"
+            aria-live="polite"
+          >
+            <p className="text-ui-sm font-semibold text-info-foreground">
+              Đang đọc các ưu tiên có thể chuyển thành trường biểu mẫu…
+            </p>
+            <Skeleton className="h-4 w-4/5" />
+            <Skeleton className="h-4 w-3/5" />
+          </div>
+        ) : null}
+        {error ? (
+          <p role="alert" className="rm-roommate-callout text-ui-sm font-semibold text-danger" data-tone="danger">
+            {error}
+          </p>
+        ) : null}
+        {state === "preview" ? (
+          <div className="space-y-3" aria-live="polite">
+            {Object.entries(draft).map(([field, value]) => (
+              <div
+                key={field}
+                className="grid gap-3 rounded-card border border-border bg-surface p-4 sm:grid-cols-[auto_1fr_auto] sm:items-center"
+              >
+                <label className="flex min-h-11 items-center gap-2 text-ui-sm font-bold text-foreground">
+                  <input
+                    type="checkbox"
+                    checked={selected.has(field)}
+                    onChange={(event) =>
+                      setSelected((current) => {
+                        const next = new Set(current);
+                        if (event.target.checked) next.add(field);
+                        else next.delete(field);
+                        return next;
+                      })
+                    }
+                  />
+                  {fieldLabel(field)}
+                </label>
+                <input
+                  aria-label={`Chỉnh sửa ${fieldLabel(field)}`}
+                  value={displayValue(value)}
+                  onChange={(event) =>
+                    setDraft((current) => ({
+                      ...current,
+                      [field]:
+                        field === "preferredAreaKeys"
+                          ? event.target.value
+                              .split(",")
+                              .map((item) => item.trim())
+                              .filter(Boolean)
+                          : event.target.value
+                    }))
+                  }
+                  className="min-h-12 w-full rounded-control border border-border-strong bg-surface px-4 text-ui-sm font-medium text-foreground outline-none transition-[border-color,box-shadow] duration-fast focus:border-primary focus:ring-[3px] focus:ring-primary/20"
+                />
+                <span className="text-ui-xs font-bold text-muted-foreground">
+                  Độ tin cậy: {confidenceLabels[confidence[field] ?? "LOW"]}
+                </span>
+              </div>
+            ))}
+            {unresolved.length ? (
+              <ul
+                className="rm-roommate-callout space-y-2 text-ui-sm text-muted-foreground"
+                aria-label="Nội dung cần bạn tự xem lại"
+              >
+                {unresolved.map((item, index) => (
+                  <li key={`${item.reason}-${index}`}>{unresolvedLabels[item.reason]}</li>
+                ))}
+              </ul>
+            ) : null}
+            <Button type="button" onClick={apply}>
+              Dùng đề xuất
+            </Button>
+            <p className="text-ui-xs font-semibold text-muted-foreground">
+              Chỉ điền các trường được chọn. Bạn vẫn cần bấm nút Lưu/Tạo/Cập nhật của biểu mẫu.
+            </p>
+          </div>
+        ) : null}
+      </div>
     </section>
   );
 }

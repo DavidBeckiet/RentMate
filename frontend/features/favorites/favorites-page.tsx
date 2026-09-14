@@ -12,6 +12,8 @@ import { api, ApiError } from "../../lib/api/client";
 import { useAuth } from "../../lib/auth/auth-provider";
 import type { ApiPage, PublicListingSummary } from "../../types/api";
 import { ListingCard } from "../listings/listing-card";
+import { RoommateListingCta } from "../roommate/roommate-listing-cta";
+import { isRoommateListingEligible } from "../roommate/roommate-listing-selection";
 import { useFavoriteState } from "./favorite-state";
 import { FavoriteRemoveControl } from "./favorite-remove-control";
 import styles from "./favorites-page.module.css";
@@ -243,7 +245,16 @@ export function FavoritesPage() {
                   favoriteSaved
                   onFavoriteChange={(saved) => (saved ? undefined : reconcileRemoval())}
                 />
-                <div className={styles.removeRow} aria-label={`Thao tác cho ${listing.title}`}>
+                <div
+                  className={`${styles.removeRow} flex-wrap justify-between gap-2`}
+                  aria-label={`Thao tác cho ${listing.title}`}
+                >
+                  <RoommateListingCta
+                    listingId={listing.id}
+                    eligible={isRoommateListingEligible(listing)}
+                    compact
+                    label="Cân nhắc cùng người ở ghép"
+                  />
                   <FavoriteRemoveControl listingId={listing.id} autoLoad={false} onRemoved={reconcileRemoval} />
                 </div>
               </div>

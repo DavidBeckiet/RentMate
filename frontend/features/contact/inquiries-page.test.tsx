@@ -1,63 +1,40 @@
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { AuthContextValue } from "../../lib/auth/auth-provider";
-import type { ApiPage, Inquiry, InquiryMessage } from "../../types/api";
-
-const apiMocks = vi.hoisted(() => ({
-  listTenantInquiries: vi.fn(),
-  listLandlordInquiries: vi.fn(),
-  getInquiry: vi.fn(),
-  sendMessage: vi.fn(),
-  createInquiry: vi.fn()
+import type { ApiPage, Inquiry } from "../../types/api";
+import { roommateInterest, tenantUser } from "../roommate/test-roommate-fixtures";
+const mocks = vi.hoisted(() => ({
+  tenant: vi.fn(),
+  landlord: vi.fn(),
+  interests: vi.fn(),
+  push: vi.fn(),
+  params: new URLSearchParams(),
+  auth: vi.fn<() => AuthContextValue>()
 }));
-const useAuthMock = vi.hoisted(() => vi.fn<() => AuthContextValue>());
-const realtimeMock = vi.hoisted(() => ({ connect: vi.fn(), close: vi.fn() }));
-
-vi.mock("../../lib/api/client", async () => {
-  const actual = await vi.importActual<typeof import("../../lib/api/client")>("../../lib/api/client");
-  return { ...actual, api: { contact: apiMocks } };
-});
-vi.mock("../../lib/auth/auth-provider", () => ({ useAuth: useAuthMock }));
-vi.mock("../../lib/api/inquiry-realtime", () => ({
-  connectInquiryRealtime: vi.fn(() => {
-    realtimeMock.connect();
-    return { close: realtimeMock.close };
-  })
+vi.mock("next/navigation", () => ({
+  useRouter: () => ({ push: mocks.push }),
+  usePathname: () => "/inquiries",
+  useSearchParams: () => mocks.params
 }));
-
+vi.mock("../../lib/auth/auth-provider", () => ({ useAuth: mocks.auth }));
+vi.mock("../../lib/api/client", async () => ({
+  ...(await vi.importActual<typeof import("../../lib/api/client")>("../../lib/api/client")),
+  api: {
+    contact: { listTenantInquiries: mocks.tenant, listLandlordInquiries: mocks.landlord },
+    roommates: { listInterests: mocks.interests }
+  }
+}));
+vi.mock("../roommate/roommate-conversation-page", () => ({
+  RoommateConversationPage: ({ interestId, onRead }: { interestId: string; onRead: () => void }) => (
+    <button onClick={onRead}>Conversation {interestId}</button>
+  )
+}));
 import { InquiriesPage } from "./inquiries-page";
-
+import { rentalThread, roommateThread } from "./message-inbox";
 const updatedAt = "2026-09-04T16:14:00.000Z";
-const tenant: AuthContextValue["user"] = {
-  id: 20,
-  displayName: null,
-  role: "TENANT",
-  email: "tenant@example.com",
-  phone: null,
-  isActive: true,
-  createdAt: updatedAt,
-  updatedAt
-};
-
-const message: InquiryMessage = {
-  id: 1,
-  senderRole: "LANDLORD",
-  body: "Phòng còn trống không ạ?",
-  isRead: true,
-  createdAt: updatedAt
-};
-
-const listingSummary: Inquiry["listingSummary"] = {
-  id: 243,
-  title: "Studio có ban công tại Bình Thạnh",
-  propertyType: { code: "STUDIO", label: "Căn studio" },
-  monthlyRent: 6500000,
-  roomAreaSqm: 32,
-  areaName: "Bình Thạnh",
-  businessStatus: "AVAILABLE",
-  coverImage: { url: "/studio.webp", altText: "Studio", displayOrder: 1 }
-};
-
+function page<T>(data: readonly T[], hasNextPage = false): ApiPage<T> {
+  return { data, pagination: { page: 1, pageSize: 100, hasNextPage } };
+}
 function inquiry(overrides: Partial<Inquiry> = {}): Inquiry {
   return {
     id: 113,
@@ -69,194 +46,141 @@ function inquiry(overrides: Partial<Inquiry> = {}): Inquiry {
     updatedAt,
     canSendMessage: true,
     blockedByCurrentUser: false,
-    messages: [message],
-    listingSummary,
+    messages: [],
+    lastMessage: { id: 1, senderRole: "LANDLORD", body: "Phòng vẫn còn nhé", isRead: false, createdAt: updatedAt },
+    listingSummary: {
+      id: 243,
+      title: "Studio Bình Thạnh",
+      propertyType: { code: "STUDIO", label: "Studio" },
+      monthlyRent: 6500000,
+      roomAreaSqm: 32,
+      areaName: "Bình Thạnh",
+      businessStatus: "AVAILABLE",
+      coverImage: null
+    },
     listingContextState: "AVAILABLE",
-    lastMessage: message,
+    unreadCount: 2,
     ...overrides
   };
 }
-
-function page(data: readonly Inquiry[], pageNumber = 1, hasNextPage = false): ApiPage<Inquiry> {
-  return { data, pagination: { page: pageNumber, pageSize: 20, hasNextPage } };
-}
-
-function authValue(overrides: Partial<AuthContextValue> = {}): AuthContextValue {
-  return {
+beforeEach(() => {
+  mocks.params = new URLSearchParams();
+  mocks.auth.mockReturnValue({
     status: "authenticated",
-    user: tenant,
+    user: tenantUser,
     error: null,
     refresh: vi.fn(),
-    logout: vi.fn(),
-    ...overrides
-  };
-}
-
-beforeEach(() => {
-  apiMocks.listTenantInquiries.mockReset();
-  apiMocks.listLandlordInquiries.mockReset();
-  apiMocks.getInquiry.mockReset();
-  apiMocks.sendMessage.mockReset();
-  apiMocks.createInquiry.mockReset();
-  realtimeMock.connect.mockReset();
-  realtimeMock.close.mockReset();
-  useAuthMock.mockReturnValue(authValue());
-  apiMocks.listTenantInquiries.mockResolvedValue(page([]));
-  apiMocks.getInquiry.mockResolvedValue(inquiry());
+    logout: vi.fn()
+  });
+  mocks.tenant.mockResolvedValue(page([inquiry()]));
+  mocks.landlord.mockResolvedValue(page([]));
+  mocks.interests.mockImplementation(({ direction }: { direction: string }) =>
+    Promise.resolve(page(direction === "OUTGOING" ? [roommateInterest({ unreadCount: 0 })] : []))
+  );
 });
-
-describe("Tenant conversation inbox", () => {
-  it("uses the conversation header without inquiry counts or technical copy", async () => {
+describe("Unified message inbox", () => {
+  it("combines rental and roommate threads with actual unread counts", async () => {
     render(<InquiriesPage />);
-
-    expect(await screen.findByRole("heading", { name: "Tin nhắn" })).toBeInTheDocument();
-    expect(screen.getByText("Các cuộc trò chuyện của bạn với chủ trọ.")).toBeInTheDocument();
-    expect(screen.queryByRole("heading", { name: "Yêu cầu của tôi" })).not.toBeInTheDocument();
-    expect(screen.queryByText(/\d+ yêu cầu/)).not.toBeInTheDocument();
+    expect(await screen.findByText("Studio Bình Thạnh")).toBeInTheDocument();
+    expect(await screen.findByText("Minh")).toBeInTheDocument();
+    expect(screen.getByText("Phòng vẫn còn nhé")).toBeInTheDocument();
+    expect(screen.getByLabelText("2 tin chưa đọc")).toBeInTheDocument();
   });
-
-  it("maps inquiry statuses to conversation language without unread semantics", async () => {
-    apiMocks.listTenantInquiries.mockResolvedValue(
-      page([
-        inquiry({ id: 1, status: "NEW" }),
-        inquiry({ id: 2, status: "CONTACTED" }),
-        inquiry({ id: 3, status: "CLOSED" })
-      ])
-    );
-
+  it("filters categories, unread and accent-insensitive search", async () => {
     render(<InquiriesPage />);
-
-    expect(await screen.findByText("Đã gửi")).toBeInTheDocument();
-    expect(screen.getByText("Đang trao đổi")).toBeInTheDocument();
-    expect(screen.getByText("Đã đóng")).toBeInTheDocument();
-    expect(screen.queryByText("Mới")).not.toBeInTheDocument();
-    expect(screen.queryByText(/chưa đọc|unread/i)).not.toBeInTheDocument();
+    await screen.findByText("Minh");
+    fireEvent.click(screen.getByRole("button", { name: "Ở ghép" }));
+    expect(screen.queryByText("Studio Bình Thạnh")).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Tất cả" }));
+    fireEvent.click(screen.getByRole("checkbox", { name: "Chưa đọc" }));
+    expect(screen.queryByText("Minh")).not.toBeInTheDocument();
+    fireEvent.change(screen.getByRole("textbox"), { target: { value: "binh thanh" } });
+    expect(screen.getByText("Studio Bình Thạnh")).toBeInTheDocument();
+    fireEvent.change(screen.getByRole("textbox"), { target: { value: "not found" } });
+    expect(screen.getByText("Không có cuộc trò chuyện phù hợp với bộ lọc.")).toBeInTheDocument();
   });
-
-  it("shows the real last message with safe fallback metadata and opens the floating chat", async () => {
-    apiMocks.listTenantInquiries.mockResolvedValue(page([inquiry()]));
-
+  it("opens an existing roommate conversation in the main inbox", async () => {
     render(<InquiriesPage />);
-
-    const row = await screen.findByRole("button", { name: /Studio có ban công tại Bình Thạnh/ });
-    expect(row).toHaveAttribute("type", "button");
-    expect(row).toHaveAttribute("aria-pressed", "false");
-    expect(screen.getByText("Studio có ban công tại Bình Thạnh")).toBeInTheDocument();
-    expect(screen.getByText("6.500.000 ₫/tháng · 32 m² · Bình Thạnh")).toBeInTheDocument();
-    expect(screen.getByText("Chủ trọ: Phòng còn trống không ạ?")).toBeInTheDocument();
-    expect(screen.getByText("Mở trò chuyện")).toBeInTheDocument();
-    expect(screen.queryByText("Cuộc trò chuyện về tin đăng")).not.toBeInTheDocument();
-    expect(screen.queryByText(/contactPhone|preferredContactAt|blockedByCurrentUser/i)).not.toBeInTheDocument();
-    expect(apiMocks.listTenantInquiries).toHaveBeenCalledWith({ page: 1, pageSize: 20 }, expect.any(AbortSignal));
+    fireEvent.click(await screen.findByRole("button", { name: /Minh/ }));
+    expect(mocks.push).toHaveBeenCalledWith("/inquiries?roommate=91", { scroll: false });
   });
-
-  it("labels the tenant's own latest message as Bạn", async () => {
-    const ownMessage: InquiryMessage = { ...message, senderRole: "TENANT", body: "hello" };
-    apiMocks.listTenantInquiries.mockResolvedValue(
-      page([inquiry({ messages: [ownMessage], lastMessage: ownMessage })])
-    );
-
+  it("clears unread after reading is confirmed", async () => {
+    mocks.params = new URLSearchParams("roommate=91");
+    mocks.interests.mockResolvedValue(page([roommateInterest({ unreadCount: 3 })]));
     render(<InquiriesPage />);
-
-    expect(await screen.findByText("Bạn: hello")).toBeInTheDocument();
+    expect(await screen.findByLabelText("3 tin chưa đọc")).toBeInTheDocument();
+    fireEvent.click(screen.getByText("Conversation 91"));
+    expect(screen.queryByLabelText("3 tin chưa đọc")).not.toBeInTheDocument();
   });
-
-  it("keeps unavailable listings and empty conversations readable without technical IDs", async () => {
-    apiMocks.listTenantInquiries.mockResolvedValue(
-      page([
-        inquiry({
-          listingSummary: null,
-          listingContextState: "UNAVAILABLE",
-          messages: [],
-          lastMessage: null
-        })
-      ])
-    );
-
+  it("preserves successful sources on partial failure and retries", async () => {
+    mocks.tenant.mockRejectedValueOnce(new Error("network"));
     render(<InquiriesPage />);
-
-    expect(await screen.findByText("Tin đăng không còn khả dụng")).toBeInTheDocument();
-    expect(screen.getByText("Chưa có nội dung trò chuyện.")).toBeInTheDocument();
-    expect(screen.queryByText("Tin đăng #243")).not.toBeInTheDocument();
-  });
-
-  it("keeps the latest message preview when listing context is unavailable", async () => {
-    const unavailableMessage: InquiryMessage = { ...message, body: "Mình vẫn muốn xem phòng." };
-    apiMocks.listTenantInquiries.mockResolvedValue(
-      page([
-        inquiry({
-          listingSummary: null,
-          listingContextState: "TEMPORARILY_UNAVAILABLE",
-          messages: [unavailableMessage],
-          lastMessage: unavailableMessage
-        })
-      ])
-    );
-
-    render(<InquiriesPage />);
-
-    expect(await screen.findByText("Thông tin tin đăng tạm thời chưa tải được")).toBeInTheDocument();
-    expect(screen.getByText("Chủ trọ: Mình vẫn muốn xem phòng.")).toBeInTheDocument();
-  });
-
-  it("opens the known inquiry in the shared floating chat without changing the inbox route", async () => {
-    apiMocks.listTenantInquiries.mockResolvedValue(page([inquiry()]));
-
-    render(<InquiriesPage />);
-
-    const row = await screen.findByRole("button", { name: /Studio có ban công tại Bình Thạnh/ });
-    fireEvent.click(row);
-
-    expect(await screen.findByRole("dialog", { name: "Nhắn tin với chủ trọ" })).toBeInTheDocument();
-    expect(row).toHaveAttribute("aria-pressed", "true");
-    expect(await screen.findByText("Phòng còn trống không ạ?")).toBeInTheDocument();
-    expect(apiMocks.getInquiry).toHaveBeenCalledWith(113, expect.any(AbortSignal));
-    expect(apiMocks.listTenantInquiries).toHaveBeenCalledTimes(1);
-    expect(apiMocks.createInquiry).not.toHaveBeenCalled();
-    expect(window.location.pathname).toBe("/");
-  });
-
-  it("uses bounded API pagination instead of infinite append", async () => {
-    apiMocks.listTenantInquiries.mockImplementation(({ page: requestedPage }: { page: number }) =>
-      Promise.resolve(page([inquiry({ id: requestedPage })], requestedPage, requestedPage === 1))
-    );
-
-    render(<InquiriesPage />);
-    expect(await screen.findByRole("button", { name: /Studio có ban công tại Bình Thạnh/ })).toBeInTheDocument();
-    fireEvent.click(screen.getByRole("button", { name: "Sau" }));
-
-    await waitFor(() =>
-      expect(apiMocks.listTenantInquiries).toHaveBeenLastCalledWith({ page: 2, pageSize: 20 }, expect.any(AbortSignal))
-    );
-    expect(screen.getByRole("button", { name: "Trước" })).toBeEnabled();
-    expect(screen.getByRole("button", { name: "Sau" })).toBeDisabled();
-  });
-
-  it("shows the tenant empty state and links back to search", async () => {
-    render(<InquiriesPage />);
-
-    expect(await screen.findByRole("heading", { name: "Bạn chưa có cuộc trò chuyện nào." })).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: "Tìm phòng" })).toHaveAttribute("href", "/search");
-  });
-
-  it("uses compact conversation skeletons while the inbox is loading", async () => {
-    apiMocks.listTenantInquiries.mockReturnValue(new Promise(() => undefined));
-
-    render(<InquiriesPage />);
-
-    expect(await screen.findByRole("status", { name: "Đang tải tin nhắn" })).toBeInTheDocument();
-    expect(screen.queryByText("Đang kiểm tra tài khoản…")).not.toBeInTheDocument();
-  });
-
-  it("shows the tenant error copy and retries the existing list request", async () => {
-    apiMocks.listTenantInquiries.mockRejectedValueOnce(new Error("network")).mockResolvedValueOnce(page([inquiry()]));
-
-    render(<InquiriesPage />);
-
-    expect(await screen.findByText("Không thể tải tin nhắn lúc này.")).toBeInTheDocument();
+    expect(await screen.findByRole("alert")).toHaveTextContent("Thuê phòng");
+    expect(screen.getByText("Minh")).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "Thử lại" }));
-
-    expect(await screen.findByRole("button", { name: /Studio có ban công tại Bình Thạnh/ })).toBeInTheDocument();
-    expect(apiMocks.listTenantInquiries).toHaveBeenCalledTimes(2);
+    expect(await screen.findByText("Studio Bình Thạnh")).toBeInTheDocument();
+  });
+  it("collects API pages but shows twenty threads per screen", async () => {
+    mocks.interests.mockResolvedValue(page([]));
+    mocks.tenant.mockImplementation(({ page: n }: { page: number }) =>
+      Promise.resolve(
+        page(
+          Array.from({ length: n === 1 ? 20 : 1 }, (_, i) => inquiry({ id: n * 100 + i })),
+          n === 1
+        )
+      )
+    );
+    render(<InquiriesPage />);
+    await waitFor(() => expect(mocks.tenant).toHaveBeenCalledWith({ page: 2, pageSize: 100 }, expect.any(AbortSignal)));
+    expect(screen.getAllByText("Studio Bình Thạnh")).toHaveLength(20);
+    fireEvent.click(screen.getByRole("button", { name: "Trang sau" }));
+    expect(screen.getAllByText("Studio Bình Thạnh")).toHaveLength(1);
+  });
+  it("does not load tenant data for a landlord", async () => {
+    mocks.auth.mockReturnValue({
+      status: "authenticated",
+      user: { ...tenantUser, role: "LANDLORD" },
+      error: null,
+      refresh: vi.fn(),
+      logout: vi.fn()
+    });
+    render(<InquiriesPage landlord />);
+    await screen.findByText("Bạn chưa có cuộc trò chuyện nào.");
+    expect(mocks.landlord).toHaveBeenCalled();
+    expect(mocks.tenant).not.toHaveBeenCalled();
+    expect(mocks.interests).not.toHaveBeenCalled();
+  });
+  it("does not load protected data for visitors", () => {
+    mocks.auth.mockReturnValue({
+      status: "anonymous",
+      user: null,
+      error: null,
+      refresh: vi.fn(),
+      logout: vi.fn()
+    });
+    render(<InquiriesPage />);
+    expect(screen.getByRole("link", { name: "Đăng nhập" })).toHaveAttribute("href", "/login");
+    expect(mocks.tenant).not.toHaveBeenCalled();
+    expect(mocks.interests).not.toHaveBeenCalled();
+  });
+  it("uses safe unavailable fallbacks and never treats NEW status as unread", () => {
+    expect(rentalThread(inquiry({ listingSummary: null, unreadCount: 0, status: "NEW" }), false)).toMatchObject({
+      title: "Tin đăng không còn khả dụng",
+      preview: "Phòng vẫn còn nhé",
+      unread: 0
+    });
+    expect(
+      roommateThread(
+        roommateInterest({
+          lastMessage: {
+            id: 9,
+            body: "This message is no longer available.",
+            createdAt: updatedAt,
+            isRead: false,
+            sender: "COUNTERPART"
+          }
+        })
+      ).preview
+    ).toBe("Tin nhắn này hiện không còn hiển thị.");
   });
 });

@@ -129,11 +129,12 @@ describe("feedback states", () => {
     expect(onAction).toHaveBeenCalledTimes(1);
   });
 
-  it("renders only the safe error message, request id, and recovery action supplied by the caller", () => {
+  it("renders only the safe error message and recovery action, without exposing the request id", () => {
     render(<ErrorState message="Vui lòng thử lại." requestId="req-046" action={<Button>Thử lại</Button>} />);
     const alert = screen.getByRole("alert");
     expect(alert).toHaveTextContent("Vui lòng thử lại.");
-    expect(alert).toHaveTextContent("Mã yêu cầu: req-046");
+    expect(alert).not.toHaveTextContent("req-046");
+    expect(alert).not.toHaveTextContent("Mã yêu cầu");
     expect(screen.getByRole("button", { name: "Thử lại" })).toBeInTheDocument();
     expect(alert).not.toHaveTextContent("stack");
   });

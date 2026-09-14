@@ -62,7 +62,7 @@ describe("RoommateVerificationPanel", () => {
 
     render(<RoommateVerificationPanel />);
     expect(await screen.findByText("Email chưa xác minh")).toBeInTheDocument();
-    fireEvent.click(screen.getByRole("button", { name: "Gửi mã email" }));
+    fireEvent.click(screen.getByRole("button", { name: "Gửi mã xác minh email" }));
     await waitFor(() => expect(apiMocks.requestTenantEmailVerification).toHaveBeenCalledOnce());
     fireEvent.change(screen.getByLabelText("Mã OTP 6 số"), { target: { value: "654321" } });
     fireEvent.click(screen.getByRole("button", { name: "Xác nhận email" }));
@@ -88,7 +88,7 @@ describe("RoommateVerificationPanel", () => {
     apiMocks.requestTenantEmailVerification.mockRejectedValue(
       new ApiError({ status: 429, code: "RATE_LIMITED", message: "private backend detail", category: "backend" })
     );
-    fireEvent.click(screen.getByRole("button", { name: "Gửi mã email" }));
+    fireEvent.click(screen.getByRole("button", { name: "Gửi mã xác minh email" }));
     expect(await screen.findByRole("alert")).toHaveTextContent("Bạn thao tác quá nhiều lần.");
     expect(screen.queryByText("private backend detail")).not.toBeInTheDocument();
   });
@@ -99,7 +99,7 @@ describe("RoommateVerificationPanel", () => {
     );
     render(<RoommateVerificationPanel />);
     expect(await screen.findByText("Email đã xác minh")).toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: /Gửi mã email/ })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /Gửi mã xác minh email|Gửi lại mã email/ })).not.toBeInTheDocument();
     expect(screen.queryByText("private")).not.toBeInTheDocument();
   });
 
@@ -112,5 +112,20 @@ describe("RoommateVerificationPanel", () => {
     apiMocks.getTenantContactVerificationStatus.mockResolvedValueOnce(verification());
     fireEvent.click(screen.getByRole("button", { name: "Thử lại" }));
     expect(await screen.findByText("Email chưa xác minh")).toBeInTheDocument();
+  });
+
+  it("allows email code resend through the existing request operation", async () => {
+    apiMocks.requestTenantEmailVerification.mockResolvedValue(verification());
+    render(<RoommateVerificationPanel presentation="compact" />);
+
+    fireEvent.click(await screen.findByRole("button", { name: "Xác minh email" }));
+    await waitFor(() => expect(apiMocks.requestTenantEmailVerification).toHaveBeenCalledTimes(1));
+    const code = screen.getByLabelText("Mã OTP 6 số");
+    fireEvent.change(code, { target: { value: "654321" } });
+    expect(code).toHaveClass("font-mono", "text-center");
+
+    fireEvent.click(screen.getByRole("button", { name: "Gửi lại mã" }));
+    await waitFor(() => expect(apiMocks.requestTenantEmailVerification).toHaveBeenCalledTimes(2));
+    expect(code).toHaveValue("");
   });
 });

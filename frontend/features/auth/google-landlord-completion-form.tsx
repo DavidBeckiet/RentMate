@@ -21,11 +21,10 @@ type CompletionAction = "restart" | "login" | null;
 interface CompletionFeedback {
   readonly phone: string | null;
   readonly formMessage: string | null;
-  readonly requestId: string | null;
   readonly action: CompletionAction;
 }
 
-const emptyFeedback: CompletionFeedback = { phone: null, formMessage: null, requestId: null, action: null };
+const emptyFeedback: CompletionFeedback = { phone: null, formMessage: null, action: null };
 
 function feedbackFor(error: unknown): CompletionFeedback {
   if (error instanceof ApiError) {
@@ -33,7 +32,6 @@ function feedbackFor(error: unknown): CompletionFeedback {
       return {
         phone: null,
         formMessage: "Phiên đăng ký Google đã hết hạn hoặc đã được sử dụng. Hãy bắt đầu lại.",
-        requestId: error.requestId,
         action: "restart"
       };
     }
@@ -41,7 +39,6 @@ function feedbackFor(error: unknown): CompletionFeedback {
       return {
         phone: null,
         formMessage: "Tài khoản Google này đã được đăng ký trên RentMate. Hãy đăng nhập thay vì đăng ký lại.",
-        requestId: error.requestId,
         action: "login"
       };
     }
@@ -50,7 +47,6 @@ function feedbackFor(error: unknown): CompletionFeedback {
       return {
         phone: mapped.fieldErrors.phone ?? null,
         formMessage: mapped.fieldErrors.phone ? null : "Số điện thoại chưa hợp lệ. Vui lòng kiểm tra lại.",
-        requestId: mapped.requestId,
         action: null
       };
     }
@@ -58,7 +54,6 @@ function feedbackFor(error: unknown): CompletionFeedback {
       return {
         phone: null,
         formMessage: "Bạn đã thử quá nhiều lần. Vui lòng thử lại sau.",
-        requestId: error.requestId,
         action: null
       };
     }
@@ -66,14 +61,12 @@ function feedbackFor(error: unknown): CompletionFeedback {
       return {
         phone: null,
         formMessage: "Không thể kết nối đến máy chủ. Vui lòng thử lại.",
-        requestId: null,
         action: null
       };
     }
     return {
       phone: null,
       formMessage: "Không thể hoàn tất đăng ký lúc này. Vui lòng thử lại sau.",
-      requestId: error.requestId,
       action: null
     };
   }
@@ -81,7 +74,6 @@ function feedbackFor(error: unknown): CompletionFeedback {
   return {
     phone: null,
     formMessage: "Không thể hoàn tất đăng ký lúc này. Vui lòng thử lại sau.",
-    requestId: null,
     action: null
   };
 }
@@ -153,7 +145,7 @@ export function GoogleLandlordCompletionForm() {
       {feedback.formMessage ? (
         <ErrorState
           message={feedback.formMessage}
-          requestId={feedback.requestId}
+          tone="neutral"
           action={
             feedback.action === "restart" ? (
               <Link href="/register/landlord" className={secondaryLinkClasses}>

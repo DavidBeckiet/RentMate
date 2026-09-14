@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useMemo, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from "react";
 import { Button } from "../../components/ui/button";
 import { Icon } from "../../components/ui/icon";
 import { MediaImage } from "../../components/ui/media-image";
@@ -11,6 +11,8 @@ import { amenityLabel, propertyTypeLabel } from "../listings/room-type-label";
 import type { ComparisonCriterionResult, ComparisonNeeds } from "./comparison-needs-evaluator";
 import type { ComparisonListing } from "./comparison-data";
 import { ShareListingControl } from "./share-listing-control";
+import { RoommateListingCta } from "../roommate/roommate-listing-cta";
+import { isRoommateListingEligible } from "../roommate/roommate-listing-selection";
 import styles from "./compare-page.module.css";
 
 interface MatrixRow {
@@ -34,8 +36,9 @@ function listingImage(listing: ComparisonListing) {
     <MediaImage
       src={listing.coverImage.url}
       alt={listing.coverImage.altText ?? `Ảnh của ${listing.title}`}
-      width={88}
-      height={72}
+      width={480}
+      height={240}
+      sizes="(max-width: 699px) 190px, 300px"
       className={styles.matrixImage}
       fallback={
         <div
@@ -129,17 +132,32 @@ export function ComparisonMatrix({
   needs: ComparisonNeeds | null;
   onRemove: (listingId: number) => void;
 }>) {
-  const [scrollHintVisible, setScrollHintVisible] = useState(true);
+  const [scrollHintVisible, setScrollHintVisible] = useState(false);
+  const scrollerRef = useRef<HTMLDivElement>(null);
   const rows = useMemo(() => [...coreRows(listings), ...amenityRows(listings, needs)], [listings, needs]);
 
+  useEffect(() => {
+    const element = scrollerRef.current;
+    if (!element) return;
+    const update = () => setScrollHintVisible(element.scrollWidth > element.clientWidth + 1);
+    update();
+    const observer = typeof ResizeObserver !== "undefined" ? new ResizeObserver(update) : null;
+    observer?.observe(element);
+    return () => observer?.disconnect();
+  }, [listings.length]);
+
   return (
-    <section className={styles.matrixSection} aria-labelledby="comparison-matrix-heading">
+    <section
+      className={styles.matrixSection}
+      aria-labelledby="comparison-matrix-heading"
+      style={{ "--listing-count": listings.length } as CSSProperties}
+    >
       <div className={styles.matrixHeader}>
         <div>
-          <p className="rm-eyebrow">THÔNG TIN ĐỐI CHIẾU</p>
           <h2 id="comparison-matrix-heading" className={styles.sectionTitle}>
             So sánh các tiêu chí
           </h2>
+          <p className={styles.sectionDescription}>Các hàng tô nhạt là những điểm khác nhau giữa các phòng.</p>
         </div>
         {scrollHintVisible && listings.length > 1 ? (
           <span className={styles.scrollHint} role="status">
@@ -148,6 +166,7 @@ export function ComparisonMatrix({
         ) : null}
       </div>
       <div
+        ref={scrollerRef}
         className={styles.matrixScroller}
         role="region"
         aria-label="Bảng so sánh tin đăng"
@@ -164,9 +183,18 @@ export function ComparisonMatrix({
               {listings.map((listing) => (
                 <th scope="col" key={listing.id} className={styles.listingColumnHeader}>
                   <div className={styles.matrixListingIdentity}>
+                    <button
+                      type="button"
+                      className={styles.removeListing}
+                      aria-label="Bỏ khỏi so sánh"
+                      aria-describedby={`comparison-title-${listing.id}`}
+                      onClick={() => onRemove(listing.id)}
+                    >
+                      <Icon name="close" className="h-4 w-4" />
+                    </button>
                     {listingImage(listing)}
                     <div className={styles.matrixListingText}>
-                      <h3>{listing.title}</h3>
+                      <h3 id={`comparison-title-${listing.id}`}>{listing.title}</h3>
                       <p>{formatRent(listing.monthlyRent)}</p>
                       <span>{listing.areaName ? formatAreaLabel(listing.areaName) : "Khu vực chưa cập nhật"}</span>
                       {listing.landlordVerified ? <small>Đã xác minh</small> : null}
@@ -177,9 +205,12 @@ export function ComparisonMatrix({
                       Xem chi tiết <Icon name="arrow" className="h-4 w-4" />
                     </Link>
                     <ShareListingControl listingId={listing.id} title={listing.title} compact />
-                    <Button variant="danger" size="sm" onClick={() => onRemove(listing.id)}>
-                      Bỏ khỏi so sánh
-                    </Button>
+                    <RoommateListingCta
+                      listingId={listing.id}
+                      eligible={isRoommateListingEligible(listing)}
+                      compact
+                      label="Cân nhắc ở ghép"
+                    />
                   </div>
                 </th>
               ))}
@@ -192,11 +223,11 @@ export function ComparisonMatrix({
                 <tr key={row.key} data-different={different ? "true" : undefined}>
                   <th scope="row" className={styles.matrixCriterionCell}>
                     {row.label}
+                    {different ? <span className={styles.differenceLabel}>Khác biệt</span> : null}
                   </th>
                   {row.values.map((value, index) => (
                     <td key={`${row.key}-${listings[index]?.id ?? index}`} className={styles.matrixValueCell}>
                       <span>{value}</span>
-                      {different ? <span className={styles.differenceLabel}>Khác</span> : null}
                     </td>
                   ))}
                 </tr>
@@ -211,9 +242,7 @@ export function ComparisonMatrix({
           tin.
         </p>
       ) : (
-        <p className={styles.matrixFootnote}>
-          Bạn có thể chọn nhu cầu ở phía trên để xem giải thích cho từng tiêu chí.
-        </p>
+        <p className={styles.matrixFootnote}>Chọn nhu cầu bên dưới để xem phòng nào đáp ứng từng tiêu chí của bạn.</p>
       )}
     </section>
   );

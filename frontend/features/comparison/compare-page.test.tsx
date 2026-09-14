@@ -24,6 +24,8 @@ vi.mock("./share-listing-control", () => ({
   ShareListingControl: ({ listingId }: { listingId: number }) => <button>chia-sẻ:{listingId}</button>
 }));
 
+vi.mock("../roommate/roommate-listing-cta", () => ({ RoommateListingCta: () => null }));
+
 import { ComparePage } from "./compare-page";
 import { useComparisonSelection } from "./comparison-store";
 

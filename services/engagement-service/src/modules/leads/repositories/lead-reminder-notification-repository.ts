@@ -1,6 +1,7 @@
 import type { QueryResultRow } from "pg";
 import { executeCommand, queryMany, RepositoryInvariantError } from "../../../../../shared/src/runtime/db/repository-primitives.js";
 import type { SqlExecutor } from "../../../../../shared/src/runtime/db/sql-executor.js";
+import { notificationRealtimeNotifyExpression } from "../../contact/realtime/notification-realtime-channel.js";
 
 const reminderNotificationEvent = "LEAD_REMINDER_DUE" as const;
 const reminderResourcePath = (inquiryId: number): string => `/inquiries/${inquiryId}`;
@@ -64,6 +65,7 @@ export function createLeadReminderNotificationRepository(): LeadReminderNotifica
           text: `
             INSERT INTO notifications (recipient_id, event_type, inquiry_id, resource_path)
             VALUES ($1, $2, $3, $4)
+            RETURNING ${notificationRealtimeNotifyExpression}
           `,
           values: [
             reminder.landlordId,

@@ -9,10 +9,6 @@
   font-size: clamp(28px, 3.2vw, 40px);
   line-height: 1.2;
 }
-.page :global(.rm-roommate-subnav) {
-  border-radius: 16px;
-  box-shadow: none;
-}
 .profileLink {
   display: inline-flex;
   align-items: center;
@@ -32,7 +28,8 @@
   align-items: start;
   gap: 24px;
 }
-.managed[data-editable="false"] {
+.managed[data-editable="false"],
+.managed[data-editing="false"] {
   grid-template-columns: minmax(0, 1fr);
   max-width: 880px;
   margin-inline: auto;

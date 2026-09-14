@@ -15,6 +15,7 @@ import type {
   RoommateReportTargetType
 } from "../validations/roommate-safety-validation.js";
 import type { RoommateMessageRecord } from "./roommate-repository.js";
+import { notificationRealtimeNotifyExpression } from "../../contact/realtime/notification-realtime-channel.js";
 import type {
   RoommateRiskActivity,
   RoommateRiskBlockActivity,
@@ -622,6 +623,7 @@ export function createRoommateSafetyRepository(): RoommateSafetyRepository {
             recipient_id, event_type, roommate_interest_id, resource_path, dedupe_key
           ) VALUES ($1, $2, $3, $4, $5)
           ON CONFLICT (dedupe_key) WHERE dedupe_key IS NOT NULL DO ${input.refreshOnDuplicate ? "UPDATE SET is_read = false, created_at = CURRENT_TIMESTAMP" : "NOTHING"}
+          RETURNING ${notificationRealtimeNotifyExpression}
         `,
         values: [
           input.recipientId,

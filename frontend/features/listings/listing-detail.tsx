@@ -615,7 +615,11 @@ export function ListingDetail({ listingId, actions }: ListingDetailProps) {
             <p className={styles.priceNote}>Giá tham khảo theo tháng · chưa bao gồm chi phí phát sinh</p>
             {roommateListingEligible ? (
               <div className={styles.primaryAction}>
-                <RoommateListingCta listingId={detail.id} eligible={roommateListingEligible} />
+                <RoommateListingCta
+                  listingId={detail.id}
+                  eligible={roommateListingEligible}
+                  label="Cân nhắc cùng người ở ghép"
+                />
               </div>
             ) : null}
             <div className={styles.secondaryActions}>

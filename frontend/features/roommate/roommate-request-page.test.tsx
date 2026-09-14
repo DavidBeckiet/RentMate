@@ -16,6 +16,8 @@ const apiMocks = vi.hoisted(() => ({
   createPreferencePreview: vi.fn()
 }));
 const listingMocks = vi.hoisted(() => ({ getPublicDetail: vi.fn(), searchPublic: vi.fn() }));
+const favoritesMocks = vi.hoisted(() => ({ list: vi.fn() }));
+const lookupMocks = vi.hoisted(() => ({ listPublicAreas: vi.fn(), listPropertyTypes: vi.fn() }));
 const useAuthMock = vi.hoisted(() => vi.fn<() => AuthContextValue>());
 const searchParamsMocks = vi.hoisted(() => ({ value: "" }));
 
@@ -25,7 +27,7 @@ vi.mock("next/navigation", () => ({
 }));
 vi.mock("../../lib/api/client", async () => {
   const actual = await vi.importActual<typeof import("../../lib/api/client")>("../../lib/api/client");
-  return { ...actual, api: { roommates: apiMocks, listings: listingMocks } };
+  return { ...actual, api: { roommates: apiMocks, listings: listingMocks, favorites: favoritesMocks, lookups: lookupMocks } };
 });
 vi.mock("../../lib/auth/auth-provider", () => ({ useAuth: useAuthMock }));
 
@@ -56,6 +58,12 @@ describe("RoommateRequestPage", () => {
     });
     listingMocks.getPublicDetail.mockReset();
     listingMocks.searchPublic.mockReset();
+    favoritesMocks.list.mockReset();
+    lookupMocks.listPublicAreas.mockReset();
+    lookupMocks.listPropertyTypes.mockReset();
+    favoritesMocks.list.mockResolvedValue({ data: [], pagination: { page: 1, pageSize: 12, hasNextPage: false } });
+    lookupMocks.listPublicAreas.mockResolvedValue([]);
+    lookupMocks.listPropertyTypes.mockResolvedValue([]);
     listingMocks.searchPublic.mockResolvedValue({
       data: [listingSummary()],
       pagination: { page: 1, pageSize: 12, hasNextPage: false }
@@ -73,10 +81,12 @@ describe("RoommateRequestPage", () => {
 
     await screen.findByRole("heading", { name: "Tạo yêu cầu tìm người ở ghép" });
     fireEvent.change(screen.getByLabelText("Khu vực quan tâm (bắt buộc)"), { target: { value: "Quận 3, Bình Thạnh" } });
-    fireEvent.change(screen.getByLabelText("Ngân sách tối thiểu mỗi người (bắt buộc)"), {
-      target: { value: "3000000" }
-    });
+    const minimumBudget = screen.getByLabelText("Ngân sách tối thiểu mỗi người (bắt buộc)");
+    fireEvent.change(minimumBudget, { target: { value: "3000000" } });
+    expect(minimumBudget).toHaveValue("3.000.000");
     fireEvent.change(screen.getByLabelText("Ngân sách tối đa mỗi người (bắt buộc)"), { target: { value: "5000000" } });
+    fireEvent.click(screen.getByLabelText("Một ngày cụ thể"));
+    fireEvent.change(screen.getByLabelText("Ngày dự kiến chuyển vào (bắt buộc)"), { target: { value: "2026-10-10" } });
     fireEvent.click(screen.getByRole("button", { name: "Tạo yêu cầu" }));
 
     await waitFor(() =>
@@ -85,7 +95,9 @@ describe("RoommateRequestPage", () => {
           listingId: null,
           preferredAreaKeys: ["Quận 3", "Bình Thạnh"],
           budgetMinPerPerson: 3_000_000,
-          budgetMaxPerPerson: 5_000_000
+          budgetMaxPerPerson: 5_000_000,
+          moveInFrom: "2026-10-10",
+          moveInUntil: "2026-10-10"
         })
       )
     );
@@ -120,17 +132,21 @@ describe("RoommateRequestPage", () => {
     expect(listingMocks.getPublicDetail).toHaveBeenCalledWith(23, expect.any(AbortSignal));
   });
 
-  it("searches listings with Enter without submitting the outer request form", async () => {
+  it("uses search as a fallback source without submitting the outer request form", async () => {
     render(<RoommateRequestPage />);
     await screen.findByRole("heading", { name: "Tạo yêu cầu tìm người ở ghép" });
     fireEvent.click(screen.getByRole("button", { name: /Đã có phòng muốn cân nhắc/ }));
+    fireEvent.click(screen.getByRole("button", { name: "Chọn phòng" }));
 
-    const searchInput = screen.getByLabelText("Tìm phòng đang được đăng");
+    const searchInput = screen.getByLabelText("Từ khóa");
     fireEvent.change(searchInput, { target: { value: "Quận 3" } });
-    fireEvent.keyDown(searchInput, { key: "Enter" });
+    fireEvent.submit(searchInput.closest("form")!);
 
     await waitFor(() =>
-      expect(listingMocks.searchPublic).toHaveBeenCalledWith(expect.objectContaining({ q: "Quận 3", minOccupants: 2 }))
+      expect(listingMocks.searchPublic).toHaveBeenCalledWith(
+        expect.objectContaining({ q: "Quận 3", minOccupants: 2 }),
+        expect.any(AbortSignal)
+      )
     );
     expect(apiMocks.createRequest).not.toHaveBeenCalled();
   });
@@ -150,11 +166,50 @@ describe("RoommateRequestPage", () => {
     apiMocks.linkListing.mockResolvedValue(roommateRequest({ listingId: 23, listingMode: "LINKED" }));
     render(<RoommateRequestPage />);
 
-    expect(await screen.findByText(/Phòng từ trang chi tiết đã được chọn\./)).toBeInTheDocument();
-    fireEvent.click(screen.getByRole("button", { name: "Gắn phòng đã chọn" }));
+    expect(await screen.findByText(/Bạn vừa chọn phòng từ trang chi tiết/)).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Gắn phòng này vào yêu cầu" }));
 
     await waitFor(() => expect(apiMocks.linkListing).toHaveBeenCalledWith(42, 23));
     expect(apiMocks.createRequest).not.toHaveBeenCalled();
+  });
+
+  it("shows a before-and-after confirmation when replacing the room on an open request", async () => {
+    const currentListing = listingSummary({ id: 23, title: "Phòng hiện tại" });
+    const nextListing = listingSummary({
+      id: 24,
+      title: "Phòng mới",
+      monthlyRent: 9_500_000,
+      areaName: "Bình Thạnh"
+    });
+    apiMocks.listMine.mockResolvedValue({
+      data: [roommateRequest({ listingId: currentListing.id, listingMode: "LINKED", listing: currentListing })],
+      pagination: { page: 1, pageSize: 20, hasNextPage: false }
+    });
+    favoritesMocks.list.mockResolvedValue({
+      data: [nextListing],
+      pagination: { page: 1, pageSize: 12, hasNextPage: false }
+    });
+    apiMocks.linkListing.mockResolvedValue(
+      roommateRequest({ listingId: nextListing.id, listingMode: "LINKED", listing: nextListing })
+    );
+    render(<RoommateRequestPage />);
+
+    fireEvent.click(await screen.findByRole("button", { name: "Chỉnh sửa yêu cầu" }));
+    fireEvent.click(screen.getByRole("button", { name: "Chọn phòng khác" }));
+    await screen.findByRole("heading", { name: "Chọn phòng để cùng cân nhắc" });
+    await screen.findByText("Phòng mới");
+    fireEvent.click(screen.getByRole("button", { name: "Chọn phòng" }));
+    fireEvent.click(screen.getByRole("button", { name: "Gắn phòng đã chọn" }));
+
+    const confirmation = await screen.findByRole("dialog", { name: "Thay phòng đang cân nhắc?" });
+    expect(confirmation).toHaveTextContent("Phòng hiện tại");
+    expect(confirmation).toHaveTextContent("Phòng mới");
+    expect(confirmation).toHaveTextContent("9.500.000");
+    expect(apiMocks.linkListing).not.toHaveBeenCalled();
+
+    fireEvent.click(screen.getByRole("button", { name: "Thay phòng này" }));
+    await waitFor(() => expect(apiMocks.linkListing).toHaveBeenCalledWith(42, nextListing.id));
+    expect(await screen.findByText("Đã gắn phòng đã chọn.")).toBeInTheDocument();
   });
 
   it("keeps an unavailable linked open request manageable through unlink or confirmed cancel", async () => {
@@ -178,13 +233,14 @@ describe("RoommateRequestPage", () => {
     );
     render(<RoommateRequestPage />);
 
-    expect(await screen.findByText("Listing không còn khả dụng")).toBeInTheDocument();
-    fireEvent.click(screen.getByText("Chọn hoặc thay đổi phòng"));
+    expect(await screen.findByText("Phòng không còn khả dụng")).toBeInTheDocument();
+    expect(screen.queryByText("Chọn hoặc thay đổi phòng")).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Chỉnh sửa yêu cầu" }));
     fireEvent.click(screen.getByRole("button", { name: "Gỡ phòng đã chọn" }));
     await waitFor(() => expect(apiMocks.unlinkListing).toHaveBeenCalledWith(42));
 
-    fireEvent.click(screen.getByRole("button", { name: "Hủy yêu cầu" }));
-    fireEvent.click(screen.getByRole("button", { name: "Xác nhận hủy yêu cầu" }));
+    fireEvent.click(screen.getByRole("button", { name: "Đóng yêu cầu" }));
+    fireEvent.click(screen.getByRole("button", { name: "Xác nhận đóng yêu cầu" }));
     await waitFor(() => expect(apiMocks.cancelRequest).toHaveBeenCalledWith(42));
   });
 

@@ -275,7 +275,7 @@ describe("SearchPage", () => {
     render(<SearchPage />);
     expect(await screen.findByRole("alert")).toHaveTextContent("chưa hợp lệ");
     expect(screen.getByRole("alert")).not.toHaveTextContent("private backend detail");
-    expect(screen.getByText(/req-search/)).toBeInTheDocument();
+    expect(screen.getByRole("alert")).not.toHaveTextContent("req-search");
     fireEvent.click(screen.getByRole("button", { name: "Thử lại" }));
     expect(await screen.findByRole("heading", { name: "Không tìm thấy phòng phù hợp", level: 3 })).toBeInTheDocument();
     expect(document.body).not.toHaveTextContent(/tổng|kết quả trên tổng/i);
@@ -304,6 +304,15 @@ describe("SearchPage", () => {
     expect(navigation.push).toHaveBeenCalledWith("/search?q=studio");
     fireEvent.click(screen.getByRole("button", { name: "Trang sau" }));
     expect(navigation.push).toHaveBeenCalledWith("/search?q=studio&page=3");
+  });
+
+  it("hides pagination when the result set fits on one page", async () => {
+    apiMocks.searchPublic.mockResolvedValue(page([listing(1, "Studio")]));
+    render(<SearchPage />);
+
+    await screen.findByText("card:Studio");
+    expect(screen.queryByRole("navigation", { name: "Phân trang kết quả tìm kiếm" })).not.toBeInTheDocument();
+    expect(screen.getByText("Bạn đã xem hết 1 phòng trọ phù hợp.")).toBeInTheDocument();
   });
 
   it("syncs the committed filter on back/forward URL changes", async () => {

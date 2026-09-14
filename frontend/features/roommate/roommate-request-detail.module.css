@@ -106,29 +106,32 @@
 }
 .icebreakers {
   display: flex;
-  flex-direction: column;
+  flex-wrap: wrap;
   gap: 0.5rem;
   margin-top: 0.5rem;
 }
 .icebreakerChip {
-  display: block;
-  width: 100%;
+  display: inline-flex;
+  align-items: center;
+  min-height: 2.75rem;
   text-align: left;
-  padding: 0.6rem 0.85rem;
-  border-radius: 0.75rem;
+  padding: 0.4rem 0.7rem;
+  border-radius: 999px;
   border: 1px solid rgb(var(--color-border));
   background: rgb(var(--color-surface-subtle) / 0.8);
-  font-size: 0.8125rem;
+  font-size: 0.75rem;
   line-height: 1.45;
   color: rgb(var(--color-foreground));
   cursor: pointer;
-  transition: all 160ms ease;
+  transition:
+    background-color 160ms ease,
+    border-color 160ms ease;
 }
-.icebreakerChip:hover {
+.icebreakerChip:hover:not(:disabled),
+.icebreakerChip[aria-pressed="true"] {
   background: rgb(var(--color-primary-subtle));
   border-color: rgb(var(--color-primary) / 0.4);
   color: rgb(var(--color-primary-hover));
-  transform: translateX(2px);
 }
 .icebreakerChip:focus-visible {
   outline: 2px solid rgb(var(--color-primary));
@@ -213,7 +216,7 @@
   margin-top: 1rem;
 }
 .composer {
-  border-top: 3px solid rgb(var(--color-primary));
+  padding: 1.25rem;
 }
 .composer > * + *,
 .safety > * + * {
@@ -223,9 +226,46 @@
   font-size: 1.25rem;
 }
 .composer textarea {
-  min-height: 7rem;
-  max-height: 16rem;
-  resize: vertical;
+  flex: 1;
+  min-width: 0;
+  min-height: 2.75rem;
+  max-height: 9rem;
+  resize: none;
+  overflow-y: hidden;
+  border: 0;
+  border-radius: 1rem;
+  background: transparent;
+  padding: 0.6rem 0.75rem;
+  font-size: 1rem;
+  line-height: 1.5rem;
+  color: rgb(var(--color-foreground));
+  outline: none;
+}
+.messageComposer {
+  display: flex;
+  align-items: flex-end;
+  gap: 0.25rem;
+  padding: 0.25rem;
+  border: 1px solid rgb(var(--color-border-strong));
+  border-radius: 1.25rem;
+  background: rgb(var(--color-surface-subtle) / 0.5);
+  transition:
+    border-color 160ms ease,
+    box-shadow 160ms ease;
+}
+.messageComposer:focus-within {
+  border-color: rgb(var(--color-primary));
+  box-shadow: 0 0 0 3px rgb(var(--color-primary) / 0.12);
+}
+.messageComposer .sendButton {
+  flex-shrink: 0;
+  border-radius: 50%;
+  width: 44px;
+  height: 44px;
+}
+.icebreakerChip:disabled {
+  opacity: 0.5;
+  cursor: default;
 }
 .nextStep {
   min-width: 0;
@@ -310,6 +350,8 @@
 }
 @media (prefers-reduced-motion: reduce) {
   .primaryLink,
+  .icebreakerChip,
+  .messageComposer,
   .checklist summary svg:last-child {
     transition: none;
   }

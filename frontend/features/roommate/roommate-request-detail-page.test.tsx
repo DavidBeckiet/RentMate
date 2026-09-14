@@ -9,6 +9,7 @@ const apiMocks = vi.hoisted(() => ({
   listMine: vi.fn(),
   getProfile: vi.fn(),
   createInterest: vi.fn(),
+  listInterests: vi.fn(),
   getAiCapabilities: vi.fn(),
   createAiExplanation: vi.fn(),
   blockRequest: vi.fn(),
@@ -40,6 +41,8 @@ describe("RoommateRequestDetailPage", () => {
     apiMocks.listMine.mockReset();
     apiMocks.getProfile.mockReset();
     apiMocks.createInterest.mockReset();
+    apiMocks.listInterests.mockReset();
+    apiMocks.listInterests.mockResolvedValue(emptyPage());
     apiMocks.getAiCapabilities.mockReset();
     apiMocks.createAiExplanation.mockReset();
     apiMocks.blockRequest.mockReset();
@@ -74,17 +77,64 @@ describe("RoommateRequestDetailPage", () => {
     expect(screen.queryByText("tenant@example.com")).not.toBeInTheDocument();
     expect(screen.queryByText(/106\.682|10\.782/)).not.toBeInTheDocument();
 
-    fireEvent.change(screen.getByLabelText("Lời nhắn mở đầu (bắt buộc)"), {
+    fireEvent.change(await screen.findByLabelText("Lời nhắn mở đầu (bắt buộc)"), {
       target: { value: "Mình muốn trao đổi thêm về nhu cầu ở ghép." }
     });
     expect(
       screen.getByText(`${Array.from("Mình muốn trao đổi thêm về nhu cầu ở ghép.").length}/2000 ký tự`)
     ).toBeInTheDocument();
-    fireEvent.click(screen.getByRole("button", { name: "Gửi lời quan tâm" }));
+    fireEvent.click(screen.getByRole("button", { name: "Gửi tin nhắn" }));
     await waitFor(() =>
       expect(apiMocks.createInterest).toHaveBeenCalledWith(42, "Mình muốn trao đổi thêm về nhu cầu ở ghép.")
     );
-    expect(routerMocks.push).toHaveBeenCalledWith("/roommates/conversations/91");
+    expect(routerMocks.push).toHaveBeenCalledWith("/roommates/messages?roommate=91");
+  });
+
+  it("reuses an existing conversation without creating another interest", async () => {
+    apiMocks.getRequest.mockResolvedValue(roommateRequest());
+    apiMocks.listInterests.mockResolvedValue({ ...emptyPage(), data: [roommateInterest({ direction: "OUTGOING" })] });
+    render(<RoommateRequestDetailPage requestId="42" />);
+    fireEvent.click(await screen.findByRole("button", { name: "Tiếp tục trò chuyện" }));
+    expect(routerMocks.push).toHaveBeenCalledWith("/roommates/messages?roommate=91");
+    expect(apiMocks.createInterest).not.toHaveBeenCalled();
+  });
+
+  it("recovers a duplicate-interest conflict without resending the draft", async () => {
+    apiMocks.getRequest.mockResolvedValue(roommateRequest());
+    apiMocks.listInterests
+      .mockResolvedValueOnce(emptyPage())
+      .mockResolvedValue({ ...emptyPage(), data: [roommateInterest({ direction: "OUTGOING" })] });
+    apiMocks.createInterest.mockRejectedValue(
+      new ApiError({ status: 409, code: "CONCURRENT_MODIFICATION", message: "Conflict", category: "backend" })
+    );
+    render(<RoommateRequestDetailPage requestId="42" />);
+    fireEvent.change(await screen.findByLabelText("Lời nhắn mở đầu (bắt buộc)"), { target: { value: "Xin chào bạn" } });
+    fireEvent.click(screen.getByRole("button", { name: "Gửi tin nhắn" }));
+    expect(await screen.findByRole("button", { name: "Tiếp tục trò chuyện" })).toBeInTheDocument();
+    expect(apiMocks.createInterest).toHaveBeenCalledTimes(1);
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+  });
+
+  it("replaces suggested greetings and preserves the message after a failed send", async () => {
+    apiMocks.getRequest.mockResolvedValue(roommateRequest());
+    apiMocks.createInterest.mockRejectedValue(new Error("Unavailable"));
+    render(<RoommateRequestDetailPage requestId="42" />);
+    const send = await screen.findByRole("button", { name: "Gửi tin nhắn" });
+    const input = screen.getByLabelText("Lời nhắn mở đầu (bắt buộc)");
+    expect(send).toBeDisabled();
+    fireEvent.click(screen.getByRole("button", { name: "Hỏi về phòng" }));
+    fireEvent.click(screen.getByRole("button", { name: "Tìm bạn cùng thuê" }));
+    const greeting = "Chào bạn, mình cũng đang tìm phòng khu vực này và muốn tìm bạn cùng thuê.";
+    expect(input).toHaveValue(greeting);
+    expect(input).toHaveFocus();
+    fireEvent.keyDown(input, { key: "Enter", shiftKey: true });
+    fireEvent.keyDown(input, { key: "Enter", isComposing: true });
+    expect(apiMocks.createInterest).not.toHaveBeenCalled();
+    fireEvent.keyDown(input, { key: "Enter" });
+    await waitFor(() => expect(apiMocks.createInterest).toHaveBeenCalledWith(42, greeting));
+    expect(await screen.findByRole("alert")).toBeInTheDocument();
+    expect(input).toHaveValue(greeting);
+    expect(routerMocks.push).not.toHaveBeenCalled();
   });
 
   it("does not offer a new interest when a linked request is no longer available", async () => {
@@ -96,8 +146,8 @@ describe("RoommateRequestDetailPage", () => {
       })
     );
     render(<RoommateRequestDetailPage requestId="42" />);
-    expect(await screen.findByText("Listing không còn khả dụng")).toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: "Gửi lời quan tâm" })).not.toBeInTheDocument();
+    expect(await screen.findByText("Phòng không còn khả dụng")).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Gửi tin nhắn" })).not.toBeInTheDocument();
   });
 
   it("renders the full backend compatibility breakdown in frozen dimension order", async () => {
@@ -153,7 +203,7 @@ describe("RoommateRequestDetailPage", () => {
       "href",
       "/roommates/profile?next=/roommates/requests/42"
     );
-    expect(screen.queryByRole("button", { name: "Gửi lời quan tâm" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Gửi tin nhắn" })).not.toBeInTheDocument();
     expect(apiMocks.createInterest).not.toHaveBeenCalled();
   });
 

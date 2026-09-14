@@ -2,7 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { useState, type FormEvent } from "react";
+import { useState, type FormEvent, type KeyboardEvent } from "react";
 import { Button } from "../../components/ui/button";
 import { ErrorState } from "../../components/ui/feedback-states";
 import { InputField } from "../../components/ui/form-controls";
@@ -19,42 +19,54 @@ type LoginField = "email" | "password";
 
 interface LoginFeedback {
   readonly fieldErrors: Partial<Record<LoginField, string>>;
+  readonly formTitle: string | null;
   readonly formMessage: string | null;
-  readonly requestId: string | null;
 }
 
-const emptyFeedback: LoginFeedback = { fieldErrors: {}, formMessage: null, requestId: null };
+const emptyFeedback: LoginFeedback = { fieldErrors: {}, formTitle: null, formMessage: null };
 
 function feedbackFor(error: unknown): LoginFeedback {
   if (!(error instanceof ApiError)) {
-    return { fieldErrors: {}, formMessage: "Không thể đăng nhập lúc này. Vui lòng thử lại sau.", requestId: null };
+    return {
+      fieldErrors: {},
+      formTitle: "Không thể đăng nhập lúc này.",
+      formMessage: "Vui lòng thử lại sau."
+    };
   }
 
   if (error.code === "INVALID_CREDENTIALS") {
-    return { fieldErrors: {}, formMessage: "Email hoặc mật khẩu không đúng.", requestId: error.requestId };
+    return {
+      fieldErrors: {},
+      formTitle: "Thông tin đăng nhập chưa đúng.",
+      formMessage: "Email hoặc mật khẩu chưa đúng. Kiểm tra lại thông tin và thử lại."
+    };
   }
   if (error.code === "RATE_LIMITED") {
     return {
       fieldErrors: {},
-      formMessage: "Bạn đã thử đăng nhập quá nhiều lần. Vui lòng thử lại sau.",
-      requestId: error.requestId
+      formTitle: "Bạn thao tác quá nhanh.",
+      formMessage: "Vui lòng thử lại sau ít phút."
     };
   }
   if (error.code === "NETWORK_ERROR") {
-    return { fieldErrors: {}, formMessage: "Không thể kết nối đến máy chủ. Vui lòng thử lại.", requestId: null };
+    return {
+      fieldErrors: {},
+      formTitle: "Không thể kết nối.",
+      formMessage: "Kiểm tra kết nối mạng rồi thử lại."
+    };
   }
   if (error.category === "unexpected" || (error.status !== null && error.status >= 500)) {
     return {
       fieldErrors: {},
-      formMessage: "Không thể đăng nhập lúc này. Vui lòng thử lại sau.",
-      requestId: error.requestId
+      formTitle: "Không thể đăng nhập lúc này.",
+      formMessage: "Vui lòng thử lại sau."
     };
   }
 
   const mapped = mapApiErrorToFields(error, ["email", "password"] as const);
   return {
-    ...mapped,
-    formMessage: mapped.formMessage ? "Không thể đăng nhập. Vui lòng kiểm tra email và mật khẩu." : null,
+    formTitle: mapped.formMessage ? "Không thể đăng nhập." : null,
+    formMessage: mapped.formMessage ? "Vui lòng kiểm tra email và mật khẩu." : null,
     fieldErrors: {
       ...(mapped.fieldErrors.email ? { email: "Email chưa đúng định dạng." } : {}),
       ...(mapped.fieldErrors.password ? { password: "Mật khẩu chưa hợp lệ. Vui lòng kiểm tra lại." } : {})
@@ -77,6 +89,7 @@ export function LoginForm({ requiredRole, successDestination = "/" }: LoginFormP
   const { refresh } = useAuth();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [capsLockOn, setCapsLockOn] = useState(false);
   const [pending, setPending] = useState(false);
   const [feedback, setFeedback] = useState<LoginFeedback>(emptyFeedback);
 
@@ -84,8 +97,23 @@ export function LoginForm({ requiredRole, successDestination = "/" }: LoginFormP
     setFeedback((current) => {
       const fieldErrors = { ...current.fieldErrors };
       delete fieldErrors[field];
-      return { fieldErrors, formMessage: null, requestId: null };
+      return { fieldErrors, formTitle: null, formMessage: null };
     });
+  };
+
+  const validateField = (field: LoginField) => {
+    const validation = validateLoginInput({ email, password });
+    const message = validation.valid ? undefined : validation.errors[field];
+    setFeedback((current) => {
+      const fieldErrors = { ...current.fieldErrors };
+      if (message) fieldErrors[field] = message;
+      else delete fieldErrors[field];
+      return { ...current, fieldErrors };
+    });
+  };
+
+  const updateCapsLockState = (event: KeyboardEvent<HTMLInputElement>) => {
+    setCapsLockOn(event.getModifierState("CapsLock"));
   };
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
@@ -97,8 +125,8 @@ export function LoginForm({ requiredRole, successDestination = "/" }: LoginFormP
       const fieldErrors = validation.errors as Partial<Record<LoginField, string>>;
       setFeedback({
         fieldErrors,
-        formMessage: null,
-        requestId: null
+        formTitle: null,
+        formMessage: null
       });
       focusFirstInvalidField(fieldErrors);
       return;
@@ -112,8 +140,8 @@ export function LoginForm({ requiredRole, successDestination = "/" }: LoginFormP
       if (requiredRole && profile.role !== requiredRole) {
         setFeedback({
           fieldErrors: {},
-          formMessage: "Trang này dành cho quản trị viên.",
-          requestId: null
+          formTitle: "Tài khoản này không có quyền quản trị.",
+          formMessage: "Hãy dùng tài khoản quản trị để tiếp tục."
         });
         return;
       }
@@ -128,7 +156,8 @@ export function LoginForm({ requiredRole, successDestination = "/" }: LoginFormP
   };
 
   return (
-    <form noValidate aria-busy={pending} className="space-y-3" onSubmit={(event) => void handleSubmit(event)}>
+    <form noValidate aria-busy={pending} className="space-y-4" onSubmit={(event) => void handleSubmit(event)}>
+      {requiredRole === "ADMIN" ? null : <GoogleAuthSeam mode="login" dividerPosition="after" />}
       <InputField
         id="login-email"
         name="email"
@@ -141,6 +170,7 @@ export function LoginForm({ requiredRole, successDestination = "/" }: LoginFormP
         className="rm-auth-control"
         value={email}
         error={feedback.fieldErrors.email}
+        onBlur={() => validateField("email")}
         onChange={(event) => {
           setEmail(event.currentTarget.value);
           clearFieldError("email");
@@ -157,11 +187,22 @@ export function LoginForm({ requiredRole, successDestination = "/" }: LoginFormP
         className="rm-auth-control"
         value={password}
         error={feedback.fieldErrors.password}
+        onBlur={() => {
+          validateField("password");
+          setCapsLockOn(false);
+        }}
+        onKeyDown={updateCapsLockState}
+        onKeyUp={updateCapsLockState}
         onChange={(event) => {
           setPassword(event.currentTarget.value);
           clearFieldError("password");
         }}
       />
+      {capsLockOn ? (
+        <p className="-mt-2 text-ui-xs font-semibold text-muted-foreground" role="status" aria-live="polite">
+          Caps Lock đang bật
+        </p>
+      ) : null}
       <div className="text-right">
         <Link
           href="/forgot-password"
@@ -170,12 +211,13 @@ export function LoginForm({ requiredRole, successDestination = "/" }: LoginFormP
           Quên mật khẩu?
         </Link>
       </div>
-      {feedback.formMessage ? <ErrorState message={feedback.formMessage} requestId={feedback.requestId} /> : null}
+      {feedback.formMessage ? (
+        <ErrorState title={feedback.formTitle ?? undefined} message={feedback.formMessage} tone="neutral" />
+      ) : null}
       <Button type="submit" pending={pending} pendingLabel="Đang đăng nhập…" className="rm-auth-primary w-full">
         <Icon name="logIn" className="h-4 w-4" />
         Đăng nhập
       </Button>
-      {requiredRole === "ADMIN" ? null : <GoogleAuthSeam mode="login" />}
     </form>
   );
 }

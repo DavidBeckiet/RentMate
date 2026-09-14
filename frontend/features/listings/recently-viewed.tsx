@@ -7,11 +7,9 @@ import { Icon } from "../../components/ui/icon";
 import { api, ApiError } from "../../lib/api/client";
 import type { PublicListingDetail, PublicListingSummary } from "../../types/api";
 import { ListingCard } from "./listing-card";
-import {
-  clearRecentListings,
-  readRecentListingIds,
-  removeRecentListing
-} from "./recently-viewed-storage";
+import { RoommateListingCta } from "../roommate/roommate-listing-cta";
+import { isRoommateListingEligible } from "../roommate/roommate-listing-selection";
+import { clearRecentListings, readRecentListingIds, removeRecentListing } from "./recently-viewed-storage";
 
 type LoadStatus = "loading" | "success" | "error";
 
@@ -133,7 +131,15 @@ export function RecentlyViewed() {
       {status === "success" && items.length > 0 ? (
         <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 xl:grid-cols-3">
           {items.map((listing) => (
-            <ListingCard key={listing.id} listing={listing} />
+            <div key={listing.id} className="space-y-2">
+              <ListingCard listing={listing} />
+              <RoommateListingCta
+                listingId={listing.id}
+                eligible={isRoommateListingEligible(listing)}
+                compact
+                label="Cân nhắc cùng người ở ghép"
+              />
+            </div>
           ))}
         </div>
       ) : null}

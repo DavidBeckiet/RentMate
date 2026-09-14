@@ -5,6 +5,7 @@ import type { AuthenticatedPrincipal } from "../../shared/src/runtime/shared/typ
 import { ApplicationError } from "../../shared/src/runtime/shared/errors/application-error.js";
 import type {
   RoommateProfileRecord,
+  RoommateInterestRecord,
   RoommateRepository,
   RoommateRequestRecord
 } from "../src/modules/roommate/repositories/roommate-repository.js";
@@ -202,8 +203,62 @@ function harness(initial: readonly RoommateRequestRecord[] = []) {
     transactionRunner: { run: (operation) => operation(executor) },
     now: () => now
   });
-  return { service, requests };
+  return { service, requests, repository };
 }
+
+test("interest inbox summary is participant scoped and redacts hidden latest messages", async () => {
+  const subject = harness();
+  const record: RoommateInterestRecord = {
+    id: 91,
+    requestId: 42,
+    requestOwnerTenantId: 10,
+    interestedTenantId: 20,
+    status: "PENDING",
+    acceptedAt: null,
+    endedAt: null,
+    endedByTenantId: null,
+    terminalReason: null,
+    createdAt: now.toISOString(),
+    updatedAt: now.toISOString(),
+    request: request(42, 10),
+    firstMessage: null,
+    lastMessage: {
+      id: 9,
+      interestId: 91,
+      senderTenantId: 20,
+      body: "private moderated text",
+      moderationState: "HIDDEN",
+      createdAt: now.toISOString(),
+      readAt: null
+    },
+    ownerUnreadCount: 3,
+    candidateUnreadCount: 0
+  };
+  subject.repository.findInterestById = async () => record;
+  subject.repository.findProfiles = async () => [profile(10), profile(20)];
+  const owner = await subject.service.getInterest(tenant, 91);
+  const candidate = await subject.service.getInterest(otherTenant, 91);
+  assert.equal(owner.unreadCount, 3);
+  assert.equal(candidate.unreadCount, 0);
+  assert.equal(owner.lastMessage?.sender, "COUNTERPART");
+  assert.equal(candidate.lastMessage?.sender, "SELF");
+  assert.equal(owner.lastMessage?.body, "This message is no longer available.");
+  assert.equal(JSON.stringify(owner).includes("private moderated text"), false);
+  assert.equal("senderTenantId" in (owner.lastMessage ?? {}), false);
+  await assert.rejects(
+    () => subject.service.getInterest({ userId: 99, role: "TENANT" }, 91),
+    (error: unknown) => error instanceof ApplicationError && error.code === "RESOURCE_NOT_FOUND"
+  );
+  await assert.rejects(
+    () => subject.service.getInterest(landlord, 91),
+    (error: unknown) => error instanceof ApplicationError && error.code === "FORBIDDEN"
+  );
+  subject.repository.isPairBlocked = async () => true;
+  await assert.rejects(
+    () => subject.service.getInterest(tenant, 91),
+    (error: unknown) => error instanceof ApplicationError && error.code === "RESOURCE_NOT_FOUND"
+  );
+});
 
 test("requires tenant role and a complete profile before creating a request", async () => {
   const subject = harness();

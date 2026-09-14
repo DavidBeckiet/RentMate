@@ -9,6 +9,7 @@ import {
 import type { SqlExecutor } from "../../../../../shared/src/runtime/db/sql-executor.js";
 import { formatApiTimestamp } from "../../../../../shared/src/runtime/shared/mapping/api-values.js";
 import type { InquiryStatus } from "../validations/contact-validation.js";
+import { notificationRealtimeNotifyExpression } from "../realtime/notification-realtime-channel.js";
 
 export type NotificationEventType =
   | "INQUIRY_CREATED"
@@ -54,6 +55,7 @@ export interface Inquiry {
   readonly createdAt: string;
   readonly updatedAt: string;
   readonly messages: readonly InquiryMessage[];
+  readonly unreadCount?: number;
 }
 
 export interface Notification {
@@ -141,7 +143,8 @@ function mapInquiry(row: Readonly<InquiryRow>, messages: readonly InquiryMessage
     preferredContactAt: nullableTimestamp(row.preferred_contact_at, "inquiry.preferred_contact_at"),
     createdAt: timestamp(row.created_at, "inquiry.created_at"),
     updatedAt: timestamp(row.updated_at, "inquiry.updated_at"),
-    messages: Object.freeze([...messages])
+    messages: Object.freeze([...messages]),
+    ...(row.unread_count === undefined ? {} : { unreadCount: Number(row.unread_count) })
   });
 }
 
@@ -368,11 +371,15 @@ export function createContactRepository(): ContactRepository {
 
     async listInquiries(executor, input) {
       const actorColumn = input.role === "TENANT" ? "tenant_id" : "landlord_id";
+      const readColumn = input.role === "TENANT" ? "tenant_read_at" : "landlord_read_at";
       return queryMany<InquiryRow, Inquiry>(
         executor,
         {
-          text: `${inquirySelect} WHERE ${actorColumn} = $1 ORDER BY updated_at DESC, id DESC LIMIT $2 OFFSET $3`,
-          values: [input.actorId, input.pageSize + 1, input.offset]
+          text: `SELECT q.*, (SELECT count(*)::int FROM inquiry_messages m
+            WHERE m.inquiry_id = q.id AND m.${readColumn} IS NULL AND m.sender_role <> $4) AS unread_count
+            FROM (${inquirySelect} WHERE ${actorColumn} = $1 ORDER BY updated_at DESC, id DESC LIMIT $2 OFFSET $3) q
+            ORDER BY q.updated_at DESC, q.id DESC`,
+          values: [input.actorId, input.pageSize + 1, input.offset, input.role]
         },
         (row) => mapInquiry(row)
       );
@@ -453,7 +460,8 @@ export function createContactRepository(): ContactRepository {
           text: `
           INSERT INTO notifications (recipient_id, event_type, inquiry_id, resource_path)
           VALUES ($1, $2, $3, $4)
-          RETURNING id, event_type, inquiry_id, listing_id, roommate_request_id, roommate_interest_id, resource_path, is_read, created_at
+          RETURNING id, event_type, inquiry_id, listing_id, roommate_request_id, roommate_interest_id, resource_path, is_read, created_at,
+            ${notificationRealtimeNotifyExpression}
         `,
           values: [input.recipientId, input.eventType, input.inquiryId, `/inquiries/${input.inquiryId}`]
         },
@@ -467,6 +475,7 @@ export function createContactRepository(): ContactRepository {
           INSERT INTO notifications (recipient_id, event_type, listing_id, resource_path, dedupe_key)
           VALUES ($1, $2, $3, $4, $5)
           ON CONFLICT DO NOTHING
+          RETURNING ${notificationRealtimeNotifyExpression}
         `,
         values: [
           input.recipientId,
@@ -484,6 +493,7 @@ export function createContactRepository(): ContactRepository {
           INSERT INTO notifications (recipient_id, event_type, listing_id, resource_path, dedupe_key)
           VALUES ($1, 'LISTING_AVAILABILITY_REMINDER', $2, $3, $4)
           ON CONFLICT DO NOTHING
+          RETURNING ${notificationRealtimeNotifyExpression}
         `,
         values: [input.recipientId, input.listingId, `/landlord/listings/${input.listingId}`, input.dedupeKey]
       });

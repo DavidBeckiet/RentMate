@@ -7,6 +7,8 @@ vi.mock("./share-listing-control", () => ({
   ShareListingControl: ({ listingId }: { listingId: number }) => <button>chia-sẻ:{listingId}</button>
 }));
 
+vi.mock("../roommate/roommate-listing-cta", () => ({ RoommateListingCta: () => null }));
+
 import { ComparisonMatrix } from "./comparison-matrix";
 
 function listing(id: number): ComparisonListing {
@@ -45,7 +47,7 @@ describe("ComparisonMatrix", () => {
 
     expect(screen.getByText("Wi-Fi")).toBeInTheDocument();
     expect(screen.getByText("Chỗ để xe")).toBeInTheDocument();
-    expect(screen.getAllByText("Khác").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("Khác biệt").length).toBeGreaterThan(0);
     expect(screen.getByRole("region", { name: "Bảng so sánh tin đăng" })).toHaveAttribute("tabindex", "0");
   });
 });

@@ -61,7 +61,7 @@ describe("LoginForm", () => {
     render(<LoginForm requiredRole="ADMIN" successDestination="/admin" />);
     fillLogin("tenant@example.com", "password");
     fireEvent.click(screen.getByRole("button", { name: "Đăng nhập" }));
-    expect(await screen.findByRole("alert")).toHaveTextContent("Trang này dành cho quản trị viên.");
+    expect(await screen.findByRole("alert")).toHaveTextContent("không có quyền quản trị");
     expect(authMocks.refresh).toHaveBeenCalledOnce();
     expect(navigationMocks.replace).not.toHaveBeenCalled();
   });
@@ -81,7 +81,9 @@ describe("LoginForm", () => {
     fireEvent.click(screen.getByRole("button", { name: "Đăng nhập" }));
 
     const alert = await screen.findByRole("alert");
-    expect(alert).toHaveTextContent("Email hoặc mật khẩu không đúng.");
+    expect(alert).toHaveTextContent("Email hoặc mật khẩu chưa đúng. Kiểm tra lại thông tin và thử lại.");
+    expect(alert).not.toHaveTextContent("req-credentials");
+    expect(alert).not.toHaveTextContent("Mã yêu cầu");
     expect(alert).not.toHaveTextContent(/email không tồn tại|sai mật khẩu|tài khoản bị khóa|inactive/i);
     expect(screen.getByLabelText("Email (bắt buộc)")).not.toHaveAttribute("aria-invalid", "true");
     expect(screen.getByLabelText("Mật khẩu (bắt buộc)")).not.toHaveAttribute("aria-invalid", "true");
@@ -119,9 +121,9 @@ describe("LoginForm", () => {
     fillLogin("user@example.com", "password");
     fireEvent.click(screen.getByRole("button", { name: "Đăng nhập" }));
 
-    expect(await screen.findByRole("alert")).toHaveTextContent(
-      "Không thể đăng nhập. Vui lòng kiểm tra email và mật khẩu."
-    );
+    const alert = await screen.findByRole("alert");
+    expect(alert).toHaveTextContent("Không thể đăng nhập.");
+    expect(alert).toHaveTextContent("Vui lòng kiểm tra email và mật khẩu.");
     expect(screen.queryByText("Invalid payload at auth.login")).not.toBeInTheDocument();
   });
 
@@ -135,17 +137,17 @@ describe("LoginForm", () => {
         requestId: "req-rate",
         category: "backend"
       }),
-      "thử đăng nhập quá nhiều lần"
+      "Bạn thao tác quá nhanh"
     ],
     [
       "network",
       new ApiError({ status: null, code: "NETWORK_ERROR", message: "Network", category: "network" }),
-      "Không thể kết nối đến máy chủ"
+      "Không thể kết nối."
     ],
     [
       "server",
       new ApiError({ status: 500, code: "INTERNAL_SERVER_ERROR", message: "Private stack", category: "backend" }),
-      "Không thể đăng nhập lúc này"
+      "Không thể đăng nhập lúc này."
     ]
   ])("renders a safe %s error without automatic retry", async (_label, error, message) => {
     apiMocks.login.mockRejectedValue(error);
@@ -201,12 +203,22 @@ describe("LoginForm", () => {
     expect(screen.queryByText(/Ghi nhớ đăng nhập/i)).not.toBeInTheDocument();
   });
 
+  it("shows inline validation after a field loses focus", () => {
+    render(<LoginForm />);
+    const email = screen.getByLabelText("Email (bắt buộc)");
+    fireEvent.change(email, { target: { value: "not-an-email" } });
+    fireEvent.blur(email);
+
+    expect(screen.getByText("Email không đúng định dạng.")).toBeInTheDocument();
+    expect(email).toHaveAttribute("aria-invalid", "true");
+  });
+
   it("shows Google as disabled until the provider is configured without calling the API", () => {
     render(<LoginForm />);
 
-    const google = screen.getByRole("button", { name: "Đăng nhập nhanh bằng Google" });
+    const google = screen.getByRole("button", { name: "Tiếp tục với Google" });
     expect(google).toBeDisabled();
-    expect(screen.getByText("Google chưa được cấu hình")).toBeInTheDocument();
+    expect(screen.getByText("Google chưa được cấu hình.")).toBeInTheDocument();
     fireEvent.click(google);
     expect(apiMocks.login).not.toHaveBeenCalled();
     expect(authMocks.refresh).not.toHaveBeenCalled();

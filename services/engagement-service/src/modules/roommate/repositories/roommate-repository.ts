@@ -7,6 +7,7 @@ import {
   RepositoryInvariantError
 } from "../../../../../shared/src/runtime/db/repository-primitives.js";
 import type { SqlExecutor } from "../../../../../shared/src/runtime/db/sql-executor.js";
+import { notificationRealtimeNotifyExpression } from "../../contact/realtime/notification-realtime-channel.js";
 import { formatApiTimestamp } from "../../../../../shared/src/runtime/shared/mapping/api-values.js";
 import { areaSearchTerms } from "@rentmate/service-shared/area-domain";
 import type {
@@ -77,6 +78,9 @@ export interface RoommateInterestRecord {
   readonly updatedAt: string;
   readonly request: RoommateRequestRecord;
   readonly firstMessage: RoommateMessageRecord | null;
+  readonly lastMessage?: RoommateMessageRecord | null;
+  readonly ownerUnreadCount?: number;
+  readonly candidateUnreadCount?: number;
 }
 
 interface ProfileRow extends QueryResultRow {
@@ -222,7 +226,18 @@ const interestColumns = `
   first_message.body AS first_message_body,
   first_message.moderation_state AS first_message_moderation_state,
   first_message.created_at AS first_message_created_at,
-  first_message.read_at AS first_message_read_at
+  first_message.read_at AS first_message_read_at,
+  latest_message.id AS latest_message_id,
+  latest_message.interest_id AS latest_message_interest_id,
+  latest_message.sender_tenant_id AS latest_message_sender_tenant_id,
+  latest_message.body AS latest_message_body,
+  latest_message.moderation_state AS latest_message_moderation_state,
+  latest_message.created_at AS latest_message_created_at,
+  latest_message.read_at AS latest_message_read_at,
+  (SELECT count(*)::int FROM roommate_messages um WHERE um.interest_id = i.id
+    AND um.read_at IS NULL AND um.sender_tenant_id <> r.owner_tenant_id) AS owner_unread_count,
+  (SELECT count(*)::int FROM roommate_messages um WHERE um.interest_id = i.id
+    AND um.read_at IS NULL AND um.sender_tenant_id <> i.interested_tenant_id) AS candidate_unread_count
 `;
 
 const interestFrom = `
@@ -235,6 +250,11 @@ const interestFrom = `
     ORDER BY m.created_at ASC, m.id ASC
     LIMIT 1
   ) AS first_message ON true
+  LEFT JOIN LATERAL (
+    SELECT m.id, m.interest_id, m.sender_tenant_id, m.body, m.moderation_state, m.created_at, m.read_at
+    FROM roommate_messages m WHERE m.interest_id = i.id
+    ORDER BY m.created_at DESC, m.id DESC LIMIT 1
+  ) AS latest_message ON true
 `;
 
 function positiveId(value: unknown, field: string): number {
@@ -462,7 +482,21 @@ function mapInterest(row: Readonly<InterestRow>): RoommateInterestRecord {
     createdAt: timestamp(row.interest_created_at, "roommateInterest.createdAt"),
     updatedAt: timestamp(row.interest_updated_at, "roommateInterest.updatedAt"),
     request,
-    firstMessage
+    firstMessage,
+    lastMessage:
+      row.latest_message_id == null
+        ? null
+        : mapMessage({
+            first_message_id: row.latest_message_id,
+            first_message_interest_id: row.latest_message_interest_id,
+            first_message_sender_tenant_id: row.latest_message_sender_tenant_id,
+            first_message_body: row.latest_message_body,
+            first_message_moderation_state: row.latest_message_moderation_state,
+            first_message_created_at: row.latest_message_created_at,
+            first_message_read_at: row.latest_message_read_at
+          }),
+    ownerUnreadCount: Number(row.owner_unread_count ?? 0),
+    candidateUnreadCount: Number(row.candidate_unread_count ?? 0)
   });
 }
 
@@ -642,6 +676,7 @@ async function insertExpiryNotification(
         recipient_id, event_type, roommate_request_id, roommate_interest_id, resource_path, dedupe_key
       ) VALUES ($1, $2, $3, $4, $5, $6)
       ON CONFLICT DO NOTHING
+      RETURNING ${notificationRealtimeNotifyExpression}
     `,
     values: [
       recipientId,
@@ -671,6 +706,7 @@ async function insertInterestNotification(
         recipient_id, event_type, roommate_interest_id, resource_path, dedupe_key
       ) VALUES ($1, $2, $3, $4, $5)
       ON CONFLICT DO NOTHING
+      RETURNING ${notificationRealtimeNotifyExpression}
     `,
     values: [
       recipientId,
@@ -1473,6 +1509,7 @@ export function createRoommateRepository(): RoommateRepository {
               recipient_id, event_type, roommate_request_id, resource_path, dedupe_key
             ) VALUES ($1, 'ROOMMATE_REQUEST_EXPIRING', $2, $3, $4)
             ON CONFLICT DO NOTHING
+            RETURNING ${notificationRealtimeNotifyExpression}
           `,
           values: [
             row.ownerTenantId,

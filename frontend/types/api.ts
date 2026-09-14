@@ -430,6 +430,7 @@ export interface Inquiry {
   readonly listingSummary: PublicInquiryListingSummary | null;
   readonly listingContextState: InquiryListingContextState;
   readonly lastMessage: InquiryMessage | null;
+  readonly unreadCount?: number;
 }
 
 export interface CreateInquiryBody {
@@ -1181,6 +1182,8 @@ export interface RoommateInterest {
   readonly request: RoommateRequest;
   readonly counterpart: RoommateProfile | null;
   readonly initialMessage: RoommateInterestMessage | null;
+  readonly lastMessage?: (RoommateInterestMessage & { readonly sender: "SELF" | "COUNTERPART" }) | null;
+  readonly unreadCount?: number;
 }
 
 export interface RoommateInterestQuery extends PaginationQuery {

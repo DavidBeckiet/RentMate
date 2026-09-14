@@ -69,7 +69,7 @@ function ChannelStatusCard({
   const destinationMissing = !isEmail && !destination;
   const requestAction = isEmail ? "email-request" : "phone-request";
   const confirmAction = isEmail ? "email-confirm" : "phone-confirm";
-  const requestLabel = requested ? "Gửi lại mã" : "Gửi mã";
+  const requestLabel = requested ? "Gửi lại mã" : isEmail ? "Gửi mã xác minh" : "Gửi mã";
 
   return (
     <article className="rm-roommate-card-static space-y-4" data-verification-channel={channel}>
@@ -116,12 +116,26 @@ function ChannelStatusCard({
                 inputMode="numeric"
                 autoComplete="one-time-code"
                 onChange={(event) => onValueChange(event.target.value.replace(/\D/gu, "").slice(0, 6))}
-                className="min-h-11 w-full rounded-control border border-border bg-surface px-3 text-base outline-none transition focus-visible:border-primary focus-visible:ring-4 focus-visible:ring-primary/20"
-                aria-describedby={`roommate-${channel}-verification-hint`}
+                className={cx(
+                  "min-h-11 w-full rounded-control border border-border bg-surface px-3 text-base outline-none transition focus-visible:border-primary focus-visible:ring-4 focus-visible:ring-primary/20",
+                  isEmail && "min-h-12 text-center font-mono text-lg font-bold tracking-[0.7em]"
+                )}
+                pattern={isEmail ? "[0-9]{6}" : undefined}
+                aria-invalid={Boolean(error)}
+                aria-describedby={`roommate-${channel}-verification-hint${error ? ` roommate-${channel}-verification-error` : ""}`}
               />
               <p id={`roommate-${channel}-verification-hint`} className="text-ui-xs text-muted-foreground">
                 Không chia sẻ mã này với người khác.
               </p>
+              {error ? (
+                <p
+                  id={`roommate-${channel}-verification-error`}
+                  role="alert"
+                  className="text-ui-sm font-semibold text-danger"
+                >
+                  {error}
+                </p>
+              ) : null}
               <Button pending={pendingAction === confirmAction} pendingLabel="Đang xác nhận…" onClick={onConfirm}>
                 Xác nhận {isEmail ? "email" : "số điện thoại"}
               </Button>
@@ -129,7 +143,7 @@ function ChannelStatusCard({
           ) : null}
         </div>
       ) : null}
-      {error ? (
+      {error && !requested ? (
         <p role="alert" className="rm-roommate-callout text-ui-sm font-semibold text-danger" data-tone="danger">
           {error}
         </p>
@@ -241,8 +255,22 @@ function CompactChannelStatusCard({
                 inputMode="numeric"
                 autoComplete="one-time-code"
                 onChange={(event) => onValueChange(event.target.value.replace(/\D/gu, "").slice(0, 6))}
-                className="min-h-11 w-full rounded-control border border-border bg-surface px-3 text-base outline-none transition focus-visible:border-primary focus-visible:ring-4 focus-visible:ring-primary/20"
+                className={cx(
+                  "min-h-11 w-full rounded-control border border-border bg-surface px-3 text-base outline-none transition focus-visible:border-primary focus-visible:ring-4 focus-visible:ring-primary/20",
+                  isEmail && "min-h-12 text-center font-mono text-lg font-bold tracking-[0.7em]"
+                )}
+                pattern={isEmail ? "[0-9]{6}" : undefined}
+                aria-invalid={Boolean(error)}
+                aria-describedby={`${labelId}-hint${error ? ` ${labelId}-error` : ""}`}
               />
+              <p id={`${labelId}-hint`} className="text-ui-xs text-muted-foreground">
+                Nhập mã mới nhất trong email hoặc tin nhắn.
+              </p>
+              {error ? (
+                <p id={`${labelId}-error`} role="alert" className="text-ui-sm font-semibold text-danger">
+                  {error}
+                </p>
+              ) : null}
               <Button
                 type="button"
                 size="sm"
@@ -257,7 +285,7 @@ function CompactChannelStatusCard({
         </div>
       ) : null}
 
-      {error ? (
+      {error && !requested ? (
         <p role="alert" className="mt-3 text-ui-xs font-semibold leading-5 text-danger">
           {error}
         </p>
@@ -332,7 +360,7 @@ export function RoommateVerificationPanel({
       onStatusChange?.(result);
       if (channel === "email") {
         setEmailRequested(action === "email-request" && !result.email.verified);
-        if (result.email.verified) setEmailToken("");
+        if (action === "email-request" || result.email.verified) setEmailToken("");
       } else {
         setPhoneRequested(action === "phone-request" && !result.phone.verified);
         if (result.phone.verified) setPhoneCode("");

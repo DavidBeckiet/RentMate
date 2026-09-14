@@ -5,6 +5,7 @@ import type {
   PasswordResetRequestBody,
   PasswordResetRequestReceipt
 } from "../../types/api";
+import { ApiError } from "../../lib/api/client";
 
 const apiMocks = vi.hoisted(() => ({
   requestPasswordReset: vi.fn<(body: PasswordResetRequestBody) => Promise<PasswordResetRequestReceipt>>(),
@@ -50,11 +51,34 @@ describe("password reset six-digit OTP flow", () => {
     expect(screen.getByLabelText("Mã đặt lại mật khẩu (bắt buộc)")).toHaveAttribute("maxlength", "6");
   });
 
+  it("clears the revoked OTP after resending while keeping the new password", async () => {
+    apiMocks.requestPasswordReset.mockResolvedValue({ accepted: true });
+    render(<PasswordResetRequestForm />);
+
+    fireEvent.change(screen.getByLabelText("Email tài khoản (bắt buộc)"), {
+      target: { value: "tenant@example.test" }
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Gửi mã 6 số" }));
+    const code = await screen.findByLabelText("Mã đặt lại mật khẩu (bắt buộc)");
+    fireEvent.change(code, { target: { value: "123456" } });
+    const password = screen.getByLabelText("Mật khẩu mới (bắt buộc)");
+    fireEvent.change(password, { target: { value: "new-password" } });
+
+    fireEvent.click(screen.getByRole("button", { name: "Gửi lại mã" }));
+    await waitFor(() => expect(apiMocks.requestPasswordReset).toHaveBeenCalledTimes(2));
+    expect(apiMocks.requestPasswordReset).toHaveBeenLastCalledWith({ email: "tenant@example.test" });
+    await waitFor(() => expect(code).toHaveValue(""));
+    expect(password).toHaveValue("new-password");
+    expect(await screen.findByText(/mã trước đó không còn hiệu lực/i)).toBeInTheDocument();
+  });
+
   it("accepts digits only and submits email, six-digit code, and the new password", async () => {
     apiMocks.confirmPasswordReset.mockResolvedValue();
     render(<PasswordResetConfirmationForm initialEmail="tenant@example.test" />);
 
     const code = screen.getByLabelText("Mã đặt lại mật khẩu (bắt buộc)");
+    expect(code).toHaveAttribute("autocomplete", "one-time-code");
+    expect(code).toHaveAttribute("pattern", "[0-9]{6}");
     fireEvent.change(code, { target: { value: "12a34b56" } });
     expect(code).toHaveValue("123456");
     fireEvent.change(screen.getByLabelText("Mật khẩu mới (bắt buộc)"), { target: { value: "new-password" } });
@@ -84,5 +108,29 @@ describe("password reset six-digit OTP flow", () => {
 
     expect(screen.getByRole("alert")).toHaveTextContent("đúng 6 số");
     expect(apiMocks.confirmPasswordReset).not.toHaveBeenCalled();
+  });
+
+  it("associates an invalid or expired server code with the OTP field", async () => {
+    apiMocks.confirmPasswordReset.mockRejectedValue(
+      new ApiError({
+        status: 422,
+        code: "VALIDATION_FAILED",
+        message: "Invalid code",
+        category: "backend"
+      })
+    );
+    render(<PasswordResetConfirmationForm initialEmail="tenant@example.test" />);
+
+    const code = screen.getByLabelText("Mã đặt lại mật khẩu (bắt buộc)");
+    fireEvent.change(code, { target: { value: "123456" } });
+    fireEvent.change(screen.getByLabelText("Mật khẩu mới (bắt buộc)"), { target: { value: "new-password" } });
+    fireEvent.change(screen.getByLabelText("Nhập lại mật khẩu mới (bắt buộc)"), {
+      target: { value: "new-password" }
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Cập nhật mật khẩu" }));
+
+    await screen.findByText("Mã đặt lại mật khẩu không hợp lệ hoặc đã hết hạn. Hãy kiểm tra mã mới nhất trong email.");
+    expect(code).toHaveAttribute("aria-invalid", "true");
+    expect(code.getAttribute("aria-describedby")).toContain("password-reset-code-error");
   });
 });

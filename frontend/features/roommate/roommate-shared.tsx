@@ -1,7 +1,6 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
 import { useEffect, useId, useState, type ReactNode } from "react";
 import { Button } from "../../components/ui/button";
 import { Card } from "../../components/ui/card";
@@ -31,6 +30,8 @@ import {
   roommateSmokingLabels
 } from "./roommate-content";
 import { RoommateVerificationBadges } from "./roommate-v2";
+
+export { RoommateWorkspaceNav as RoommateSubnav } from "./roommate-workspace";
 
 export function RoommateTenantBoundary({ children }: Readonly<{ children: ReactNode }>) {
   const { status, user, error, refresh } = useAuth();
@@ -95,59 +96,6 @@ export function RoommatePageHeader({
         </div>
       </div>
     </header>
-  );
-}
-
-export function RoommateSubnav() {
-  const pathname = usePathname();
-  const items = [
-    {
-      href: "/roommates",
-      label: "Khám phá",
-      icon: "compass",
-      current: pathname === "/roommates" || pathname.startsWith("/roommates/requests/")
-    },
-    {
-      href: "/roommates/my-request",
-      label: "Yêu cầu của tôi",
-      icon: "note",
-      current: pathname === "/roommates/my-request"
-    },
-    {
-      href: "/roommates/interests",
-      label: "Lời quan tâm",
-      icon: "heart",
-      current: pathname === "/roommates/interests" || pathname.startsWith("/roommates/conversations/")
-    },
-    {
-      href: "/roommates/connection",
-      label: "Kết nối hiện tại",
-      icon: "users",
-      current: pathname === "/roommates/connection"
-    },
-    {
-      href: "/roommates/blocked",
-      label: "Đã chặn",
-      icon: "lock",
-      current: pathname === "/roommates/blocked" || pathname === "/roommates/blocks"
-    },
-    { href: "/roommates/profile", label: "Hồ sơ ở ghép", icon: "user", current: pathname === "/roommates/profile" }
-  ] as const;
-
-  return (
-    <nav aria-label="Điều hướng ở ghép" className="rm-roommate-subnav">
-      {items.map((item) => (
-        <Link
-          key={item.href}
-          href={item.href}
-          aria-current={item.current ? "page" : undefined}
-          className="rm-roommate-subnav-link"
-        >
-          <Icon name={item.icon} className="h-4 w-4" />
-          <span>{item.label}</span>
-        </Link>
-      ))}
-    </nav>
   );
 }
 
@@ -230,12 +178,14 @@ export function RoommateProfileSummary({
   profile,
   heading = "Hồ sơ ở ghép",
   showDisplayName = true,
-  showAvatar = true
+  showAvatar = true,
+  compact = false
 }: Readonly<{
   profile: RoommateProfile | null;
   heading?: string;
   showDisplayName?: boolean;
   showAvatar?: boolean;
+  compact?: boolean;
 }>) {
   if (!profile) {
     return (
@@ -254,7 +204,7 @@ export function RoommateProfileSummary({
   ] as const;
 
   return (
-    <Card className="rm-roommate-card-static space-y-4">
+    <Card className={`rm-roommate-card-static ${compact ? "space-y-3" : "space-y-4"}`}>
       <div className="flex items-start gap-3">
         {showAvatar ? <RoommateAvatar displayName={profile.displayName} /> : null}
         <div className="min-w-0">
@@ -301,10 +251,10 @@ export function RoommateListingContext({ request }: Readonly<{ request: Roommate
     return (
       <Card className="rm-roommate-card-static" data-tone="danger">
         <div className="rm-roommate-callout" data-tone="danger">
-          <h2 className="font-display text-ui-base font-bold text-foreground">Listing không còn khả dụng</h2>
+          <h2 className="font-display text-ui-base font-bold text-foreground">Phòng không còn khả dụng</h2>
           <p className="mt-2 text-ui-sm leading-6 text-muted-foreground">
             {request.status === "MATCHED"
-              ? "Liên kết này chỉ còn là ngữ cảnh lịch sử; kết nối ở ghép không tự động thay đổi."
+              ? "Phòng này chỉ còn là thông tin tham khảo; kết nối ở ghép không tự làm thay đổi tin đăng."
               : "Không thể xác nhận phòng này cho tương tác mới. Nếu đây là yêu cầu của bạn, hãy gỡ liên kết hoặc hủy yêu cầu."}
           </p>
         </div>
@@ -337,35 +287,46 @@ export function RoommateListingContext({ request }: Readonly<{ request: Roommate
   );
 }
 
-export function RoommateRequestFacts({ request }: Readonly<{ request: RoommateRequest }>) {
+export function RoommateRequestFacts({
+  request,
+  showBudget = true,
+  showAreas = true,
+  showStatus = true
+}: Readonly<{ request: RoommateRequest; showBudget?: boolean; showAreas?: boolean; showStatus?: boolean }>) {
   return (
     <dl className="rm-roommate-facts text-ui-sm">
-      <div className="rm-roommate-fact">
-        <dt>Ngân sách mỗi người</dt>
-        <dd>
-          {formatRoommateMoney(request.budgetMinPerPerson)} – {formatRoommateMoney(request.budgetMaxPerPerson)}
-        </dd>
-      </div>
+      {showBudget ? (
+        <div className="rm-roommate-fact">
+          <dt>Ngân sách mỗi người</dt>
+          <dd>
+            {formatRoommateMoney(request.budgetMinPerPerson)} – {formatRoommateMoney(request.budgetMaxPerPerson)}
+          </dd>
+        </div>
+      ) : null}
       <div className="rm-roommate-fact">
         <dt>Thời gian chuyển vào</dt>
         <dd>
           {formatRoommateDate(request.moveInFrom)} – {formatRoommateDate(request.moveInUntil)}
         </dd>
       </div>
-      <div className="rm-roommate-fact">
-        <dt>Khu vực quan tâm</dt>
-        <dd>
-          {request.preferredAreaKeys.length
-            ? request.preferredAreaKeys.map(formatAreaLabel).join(" · ")
-            : "Theo phòng đã chọn"}
-        </dd>
-      </div>
-      <div className="rm-roommate-fact">
-        <dt>Trạng thái</dt>
-        <dd>
-          <RoommateStatusPill status={request.status} label={roommateRequestStatusLabels[request.status]} />
-        </dd>
-      </div>
+      {showAreas ? (
+        <div className="rm-roommate-fact">
+          <dt>Khu vực quan tâm</dt>
+          <dd>
+            {request.preferredAreaKeys.length
+              ? request.preferredAreaKeys.map(formatAreaLabel).join(" · ")
+              : "Theo phòng đã chọn"}
+          </dd>
+        </div>
+      ) : null}
+      {showStatus ? (
+        <div className="rm-roommate-fact">
+          <dt>Trạng thái</dt>
+          <dd>
+            <RoommateStatusPill status={request.status} label={roommateRequestStatusLabels[request.status]} />
+          </dd>
+        </div>
+      ) : null}
     </dl>
   );
 }

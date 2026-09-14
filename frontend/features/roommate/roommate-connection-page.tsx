@@ -7,6 +7,7 @@ import { Card } from "../../components/ui/card";
 import { Dialog } from "../../components/ui/dialog";
 import { EmptyState, ErrorState, LoadingState } from "../../components/ui/feedback-states";
 import { Icon } from "../../components/ui/icon";
+import { buttonClassName } from "../../components/ui/button-styles";
 import { api, ApiError } from "../../lib/api/client";
 import { useAuth } from "../../lib/auth/auth-provider";
 import type { RoommateConnection } from "../../types/api";
@@ -20,9 +21,9 @@ import {
   RoommateRequestFacts,
   RoommateSafetyNotice,
   RoommateStatusPill,
-  RoommateSubnav,
   RoommateTenantBoundary
 } from "./roommate-shared";
+import styles from "./roommate-connection.module.css";
 
 function ConnectionContent() {
   const { status: authStatus, user } = useAuth();
@@ -78,24 +79,21 @@ function ConnectionContent() {
     }
   };
 
-  if (state === "loading") return <LoadingState message="Đang tải kết nối ở ghép…" />;
-  if (state === "error")
-    return (
-      <ErrorState
-        message={roommateErrorMessage(error)}
-        requestId={error?.requestId}
-        action={<Button onClick={() => setRetryKey((key) => key + 1)}>Thử lại</Button>}
-      />
-    );
-
   return (
     <div className="rm-roommate-page space-y-6">
       <RoommatePageHeader
         title="Kết nối tìm roommate hiện tại"
         description="Kết nối này chỉ giúp hai người tiếp tục trao đổi. RentMate không giữ chỗ, không thu tiền và không bảo đảm giao dịch."
       />
-      <RoommateSubnav />
-      {state === "empty" || !connection ? (
+      {state === "loading" ? <LoadingState message="Đang tải kết nối ở ghép…" /> : null}
+      {state === "error" ? (
+        <ErrorState
+          message={roommateErrorMessage(error)}
+          requestId={error?.requestId}
+          action={<Button onClick={() => setRetryKey((key) => key + 1)}>Thử lại</Button>}
+        />
+      ) : null}
+      {state === "empty" || (state === "success" && !connection) ? (
         <EmptyState
           title="Bạn chưa có kết nối ở ghép hiện tại"
           description="Duyệt yêu cầu đang mở hoặc quản lý các lời quan tâm để bắt đầu khi bạn đã sẵn sàng."
@@ -105,7 +103,8 @@ function ConnectionContent() {
             </Link>
           }
         />
-      ) : (
+      ) : null}
+      {state === "success" && connection ? (
         <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_minmax(19rem,0.45fr)]">
           <div className="space-y-5">
             <Card className="rm-roommate-card-static space-y-5">
@@ -120,19 +119,34 @@ function ConnectionContent() {
                 <div className="flex items-center gap-2">
                   <RoommateStatusPill status="ACCEPTED" label="Đang kết nối" />
                   <Link
-                    className="inline-flex min-h-11 w-full items-center justify-center gap-2 border-2 border-heroDark-950 bg-heroDark-950 px-4 text-ui-sm font-bold text-white shadow-glass-sm sm:w-auto"
-                    href={`/roommates/conversations/${connection.interestId}`}
+                    className={buttonClassName("primary", "md", "w-full sm:w-auto")}
+                    href={`/roommates/messages?roommate=${connection.interestId}`}
                   >
                     <Icon name="message" className="h-4 w-4" /> Mở trò chuyện
                   </Link>
                 </div>
               </div>
-              <RoommateProfileSummary profile={connection.counterpart} heading="Hồ sơ người còn lại" />
-              <RoommateRequestFacts request={connection.request} />
+              <div className={styles.profileSummary}>
+                <RoommateProfileSummary profile={connection.counterpart} heading="Hồ sơ người còn lại" compact />
+              </div>
+              <RoommateRequestFacts
+                request={connection.request}
+                showAreas={connection.request.listingMode !== "LINKED"}
+              />
               <RoommateListingContext request={connection.request} />
             </Card>
-            <RoommateSafetyNotice kind="long" />
-            <RoommateSafetyNotice kind="checklist" />
+            <div className="space-y-4">
+              <RoommateSafetyNotice kind="short" />
+              <details className="rm-roommate-card-static rounded-card border border-border bg-surface p-4 shadow-surface">
+                <summary className="min-h-11 cursor-pointer py-2 text-ui-sm font-bold text-foreground">
+                  Xem hướng dẫn an toàn đầy đủ
+                </summary>
+                <div className="mt-4 space-y-4">
+                  <RoommateSafetyNotice kind="long" />
+                  <RoommateSafetyNotice kind="checklist" />
+                </div>
+              </details>
+            </div>
             <Card className="rm-roommate-card-static space-y-3" aria-label="Kết thúc kết nối ở ghép">
               <h2 className="font-display text-ui-base font-bold">Kết thúc kết nối</h2>
               <p className="text-ui-sm leading-6 text-muted-foreground">
@@ -205,7 +219,7 @@ function ConnectionContent() {
             </Card>
           </aside>
         </div>
-      )}
+      ) : null}
     </div>
   );
 }

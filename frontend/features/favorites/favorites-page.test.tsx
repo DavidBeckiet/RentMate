@@ -290,6 +290,15 @@ describe("FavoritesPage", () => {
     expect(apiMocks.list).toHaveBeenCalledTimes(2);
   });
 
+  it("offers the roommate linking flow for a saved room with shared occupancy", async () => {
+    const eligibleListing = { ...listing(21, "Phòng cân nhắc"), maxOccupants: 2 };
+    apiMocks.list.mockResolvedValue(page([eligibleListing]));
+    render(<FavoritesPage />);
+
+    expect(await screen.findByText("Phòng cân nhắc")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Cân nhắc cùng người ở ghép" })).toBeInTheDocument();
+  });
+
   it("moves to the previous URL only when successful removal reconciliation empties a later page", async () => {
     navigationMocks.query = "page=2&pageSize=40";
     const initialPage = deferred<ApiPage<PublicListingSummary>>();

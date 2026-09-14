@@ -12,6 +12,7 @@ interface GoogleAuthSeamProps {
   readonly mode: "login" | "register";
   readonly role?: GoogleRegistrationRole;
   readonly enabled?: boolean;
+  readonly dividerPosition?: "before" | "after";
   readonly onRedirect?: (url: string) => void;
 }
 
@@ -24,27 +25,28 @@ const googleErrorMessages: Readonly<Record<string, string>> = {
   failed: "Không thể hoàn tất đăng nhập bằng Google. Vui lòng thử lại."
 };
 
-function startError(error: unknown): { readonly message: string; readonly requestId: string | null } {
+function startError(error: unknown): string {
   if (error instanceof ApiError && error.code === "GOOGLE_AUTH_NOT_CONFIGURED") {
-    return { message: googleErrorMessages["not-configured"]!, requestId: error.requestId };
+    return googleErrorMessages["not-configured"]!;
   }
   if (error instanceof ApiError && error.code === "NETWORK_ERROR") {
-    return { message: "Không thể kết nối đến máy chủ. Vui lòng thử lại.", requestId: null };
+    return "Không thể kết nối đến máy chủ. Vui lòng thử lại.";
   }
-  return {
-    message: "Không thể bắt đầu đăng nhập bằng Google. Vui lòng thử lại.",
-    requestId: error instanceof ApiError ? error.requestId : null
-  };
+  return "Không thể bắt đầu đăng nhập bằng Google. Vui lòng thử lại.";
 }
 
-export function GoogleAuthSeam({ mode, role, enabled = true, onRedirect }: Readonly<GoogleAuthSeamProps>) {
+export function GoogleAuthSeam({
+  mode,
+  role,
+  enabled = true,
+  onRedirect,
+  dividerPosition = "before"
+}: Readonly<GoogleAuthSeamProps>) {
   const availabilityId = `google-${mode}-availability`;
-  const label = mode === "login" ? "Đăng nhập nhanh bằng Google" : "Đăng ký nhanh bằng Google";
+  const label = "Tiếp tục với Google";
   const providerConfigured = process.env.NEXT_PUBLIC_GOOGLE_AUTH_ENABLED === "true";
   const [pending, setPending] = useState(false);
-  const [feedback, setFeedback] = useState<{ readonly message: string; readonly requestId: string | null } | null>(
-    null
-  );
+  const [feedback, setFeedback] = useState<string | null>(null);
   const [oauthMessage, setOauthMessage] = useState<string | null>(null);
 
   useEffect(() => {
@@ -79,13 +81,17 @@ export function GoogleAuthSeam({ mode, role, enabled = true, onRedirect }: Reado
     }
   };
 
+  const divider = (
+    <div className="rm-auth-divider flex items-center gap-3" aria-hidden="true">
+      <span className="h-px flex-1 bg-border" />
+      <span className="text-ui-xs font-semibold text-muted-foreground">hoặc</span>
+      <span className="h-px flex-1 bg-border" />
+    </div>
+  );
+
   return (
     <div className="rm-auth-google-seam space-y-2 pt-1">
-      <div className="rm-auth-divider flex items-center gap-3" aria-hidden="true">
-        <span className="h-px flex-1 bg-border" />
-        <span className="text-ui-xs font-semibold text-muted-foreground">hoặc</span>
-        <span className="h-px flex-1 bg-border" />
-      </div>
+      {dividerPosition === "before" ? divider : null}
       <Button
         type="button"
         variant="outline"
@@ -104,15 +110,25 @@ export function GoogleAuthSeam({ mode, role, enabled = true, onRedirect }: Reado
         </span>
         {label}
       </Button>
-      {feedback ? <ErrorState message={feedback.message} requestId={feedback.requestId} /> : null}
+      {feedback ? <ErrorState message={feedback} tone="neutral" /> : null}
       {oauthMessage ? (
         <p className="text-center text-ui-xs font-medium text-danger" role="alert">
           {oauthMessage}
         </p>
       ) : null}
-      <p id={availabilityId} className="rm-auth-google-status text-center text-ui-xs font-medium text-muted-foreground">
-        {providerConfigured && enabled ? "Bảo mật bởi Google" : "Google chưa được cấu hình"}
+      <p
+        id={availabilityId}
+        className={
+          providerConfigured && enabled
+            ? "sr-only"
+            : "rm-auth-google-status text-center text-ui-xs font-medium text-muted-foreground"
+        }
+      >
+        {providerConfigured && enabled
+          ? "Bạn sẽ tiếp tục trên trang xác thực của Google."
+          : "Google chưa được cấu hình."}
       </p>
+      {dividerPosition === "after" ? divider : null}
     </div>
   );
 }

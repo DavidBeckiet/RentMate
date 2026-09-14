@@ -1,4 +1,4 @@
-import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { act, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { AuthContextValue } from "../../lib/auth/auth-provider";
 import { roommateInterest, roommateMessage, tenantUser } from "./test-roommate-fixtures";
@@ -10,6 +10,15 @@ const apiMocks = vi.hoisted(() => ({
   sendMessage: vi.fn()
 }));
 const useAuthMock = vi.hoisted(() => vi.fn<() => AuthContextValue>());
+const realtimeMocks = vi.hoisted(() => ({
+  snapshot: {
+    userId: 1,
+    unreadCount: 0,
+    latestNotification: null as Record<string, unknown> | null,
+    latestNotificationVersion: 0,
+    realtimeStatus: "connected" as string
+  }
+}));
 
 vi.mock("next/navigation", () => ({ usePathname: () => "/roommates/conversations/91" }));
 vi.mock("../../lib/api/client", async () => {
@@ -17,6 +26,9 @@ vi.mock("../../lib/api/client", async () => {
   return { ...actual, api: { roommates: apiMocks } };
 });
 vi.mock("../../lib/auth/auth-provider", () => ({ useAuth: useAuthMock }));
+vi.mock("../contact/notification-unread-store", () => ({
+  useNotificationRealtime: () => realtimeMocks.snapshot
+}));
 
 import { RoommateConversationPage } from "./roommate-conversation-page";
 
@@ -31,6 +43,9 @@ function messagePage(message = roommateMessage()) {
 describe("RoommateConversationPage", () => {
   beforeEach(() => {
     Object.values(apiMocks).forEach((mock) => mock.mockReset());
+    realtimeMocks.snapshot.latestNotification = null;
+    realtimeMocks.snapshot.latestNotificationVersion = 0;
+    realtimeMocks.snapshot.realtimeStatus = "connected";
     useAuthMock.mockReturnValue(auth());
     apiMocks.getInterest.mockResolvedValue(roommateInterest());
     apiMocks.listMessages.mockResolvedValue(messagePage());
@@ -38,8 +53,7 @@ describe("RoommateConversationPage", () => {
   });
 
   afterEach(() => {
-    vi.useRealTimers();
-    Object.defineProperty(document, "visibilityState", { configurable: true, value: "visible" });
+    realtimeMocks.snapshot.latestNotification = null;
   });
 
   it("keeps the short safety warning visible, renders message text safely, and offers a non-blocking sensitive-content hint", async () => {
@@ -147,16 +161,42 @@ describe("RoommateConversationPage", () => {
   });
 
   it("sends plain text only after an explicit submit", async () => {
-    apiMocks.sendMessage.mockResolvedValue(
-      roommateMessage({ id: 302, sender: "SELF", body: "Mình muốn trao đổi thêm." })
-    );
-    render(<RoommateConversationPage interestId="91" />);
+    const sentMessage = roommateMessage({ id: 302, sender: "SELF", body: "Mình muốn trao đổi thêm." });
+    apiMocks.sendMessage.mockResolvedValue(sentMessage);
+    apiMocks.listMessages
+      .mockResolvedValueOnce(messagePage())
+      .mockResolvedValueOnce(messagePage())
+      .mockResolvedValueOnce({
+        data: [roommateMessage(), sentMessage],
+        pagination: { page: 1, pageSize: 100, hasNextPage: false }
+      });
+    const view = render(<RoommateConversationPage interestId="91" />);
     const input = await screen.findByLabelText("Tin nhắn (bắt buộc)");
     fireEvent.change(input, { target: { value: "Mình muốn trao đổi thêm." } });
     expect(screen.getByText(`${Array.from("Mình muốn trao đổi thêm.").length}/2000 ký tự`)).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "Gửi tin nhắn" }));
     await waitFor(() => expect(apiMocks.sendMessage).toHaveBeenCalledWith(91, "Mình muốn trao đổi thêm."));
-    expect(await screen.findByLabelText("Tin nhắn của bạn")).toHaveTextContent("Bạn");
+    expect(await screen.findByText("Mình muốn trao đổi thêm.")).toBeInTheDocument();
+
+    act(() => {
+      realtimeMocks.snapshot.latestNotification = roommateMessageNotification(91);
+      realtimeMocks.snapshot.latestNotificationVersion += 1;
+      view.rerender(<RoommateConversationPage interestId="91" />);
+    });
+
+    await waitFor(() => expect(apiMocks.listMessages).toHaveBeenCalledTimes(2));
+    expect(screen.getAllByText("Mình muốn trao đổi thêm.")).toHaveLength(1);
+
+    act(() => {
+      realtimeMocks.snapshot.latestNotification = {
+        ...roommateMessageNotification(91),
+        createdAt: "2026-09-01T12:00:01.000Z"
+      };
+      realtimeMocks.snapshot.latestNotificationVersion += 1;
+      view.rerender(<RoommateConversationPage interestId="91" />);
+    });
+    await waitFor(() => expect(apiMocks.listMessages).toHaveBeenCalledTimes(3));
+    expect(screen.getAllByText("Mình muốn trao đổi thêm.")).toHaveLength(1);
   });
 
   it("lets tenants move through paginated message history", async () => {
@@ -177,163 +217,173 @@ describe("RoommateConversationPage", () => {
     expect(await screen.findByText(secondPageMessage.body)).toBeInTheDocument();
   });
 
-  it("polls at five seconds and never exceeds the thirty-second window", async () => {
-    vi.useFakeTimers();
-    render(<RoommateConversationPage interestId="91" />);
-    await flushMicrotasks();
-    expect(screen.getByText(roommateMessage().body)).toBeInTheDocument();
-
-    await act(async () => {
-      await vi.advanceTimersByTimeAsync(35_000);
-    });
-
-    expect(apiMocks.listMessages).toHaveBeenCalledTimes(6);
-  });
-
-  it("stops polling as soon as a recipient warning arrives", async () => {
-    vi.useFakeTimers();
-    const warning = roommateMessage({
-      safetyWarning: {
-        outcome: "HIGH_CAUTION",
-        signalCodes: ["OTP_REQUEST"],
-        warningCode: "ROOMMATE_AI_HIGH_CAUTION",
-        analysisVersion: "ROOMMATE_AI_SAFETY_V3_1",
-        analyzedAt: "2026-08-31T00:00:00.000Z"
-      }
-    });
-    apiMocks.listMessages
-      .mockResolvedValueOnce(messagePage())
-      .mockResolvedValueOnce(messagePage())
-      .mockResolvedValueOnce(messagePage(warning));
-    render(<RoommateConversationPage interestId="91" />);
-    await flushMicrotasks();
-    expect(screen.getByText(roommateMessage().body)).toBeInTheDocument();
-
-    await act(async () => {
-      await vi.advanceTimersByTimeAsync(10_000);
-    });
-    expect(screen.getAllByRole("alert")).toHaveLength(2);
-
-    await act(async () => {
-      await vi.advanceTimersByTimeAsync(20_000);
-    });
-    expect(apiMocks.listMessages).toHaveBeenCalledTimes(3);
-  });
-
-  it("does not overlap a pending poll request", async () => {
-    vi.useFakeTimers();
-    let resolvePoll: ((value: ReturnType<typeof messagePage>) => void) | null = null;
-    apiMocks.listMessages.mockResolvedValueOnce(messagePage()).mockImplementationOnce(
-      () =>
-        new Promise((resolve) => {
-          resolvePoll = resolve;
-        })
-    );
-    render(<RoommateConversationPage interestId="91" />);
-    await flushMicrotasks();
-    expect(screen.getByText(roommateMessage().body)).toBeInTheDocument();
-
-    await act(async () => {
-      await vi.advanceTimersByTimeAsync(10_000);
-    });
-    expect(apiMocks.listMessages).toHaveBeenCalledTimes(2);
-
-    await act(async () => {
-      resolvePoll?.(messagePage());
-    });
-    await act(async () => {
-      await vi.advanceTimersByTimeAsync(5_000);
-    });
-    expect(apiMocks.listMessages).toHaveBeenCalledTimes(3);
-  });
-
-  it("pauses polling while the document is hidden and resumes only while bounded", async () => {
-    vi.useFakeTimers();
-    render(<RoommateConversationPage interestId="91" />);
-    await flushMicrotasks();
-    expect(screen.getByText(roommateMessage().body)).toBeInTheDocument();
-
-    Object.defineProperty(document, "visibilityState", { configurable: true, value: "hidden" });
-    document.dispatchEvent(new Event("visibilitychange"));
-    await act(async () => {
-      await vi.advanceTimersByTimeAsync(10_000);
-    });
-    expect(apiMocks.listMessages).toHaveBeenCalledTimes(1);
-
-    Object.defineProperty(document, "visibilityState", { configurable: true, value: "visible" });
-    document.dispatchEvent(new Event("visibilitychange"));
-    await act(async () => {
-      await vi.advanceTimersByTimeAsync(5_000);
-    });
-    expect(apiMocks.listMessages).toHaveBeenCalledTimes(2);
-  });
-
-  it("keeps the conversation usable after a polling failure", async () => {
-    vi.useFakeTimers();
-    apiMocks.listMessages.mockResolvedValueOnce(messagePage()).mockRejectedValueOnce(new Error("temporary network"));
-    render(<RoommateConversationPage interestId="91" />);
-    await flushMicrotasks();
-    expect(screen.getByText(roommateMessage().body)).toBeInTheDocument();
-
-    await act(async () => {
-      await vi.advanceTimersByTimeAsync(5_000);
-    });
-    expect(screen.getByRole("button", { name: /G.*tin/iu })).toBeInTheDocument();
-    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
-  });
-
-  it("cleans up polling on unmount and ignores an old conversation response", async () => {
-    vi.useFakeTimers();
-    let resolvePoll: ((value: ReturnType<typeof messagePage>) => void) | null = null;
-    apiMocks.listMessages
-      .mockResolvedValueOnce(messagePage())
-      .mockImplementationOnce(
-        () =>
-          new Promise((resolve) => {
-            resolvePoll = resolve;
-          })
-      )
-      .mockResolvedValueOnce(messagePage(roommateMessage({ body: "Conversation B." })));
+  it("refreshes the active conversation when a matching SSE notification arrives", async () => {
+    const incoming = roommateMessage({ id: 502, body: "A new message arrived." });
+    apiMocks.listMessages.mockResolvedValueOnce(messagePage()).mockResolvedValueOnce(messagePage(incoming));
     const view = render(<RoommateConversationPage interestId="91" />);
-    await flushMicrotasks();
-    expect(screen.getByText(roommateMessage().body)).toBeInTheDocument();
+    expect(await screen.findByText(roommateMessage().body)).toBeInTheDocument();
 
-    await act(async () => {
-      await vi.advanceTimersByTimeAsync(5_000);
+    act(() => {
+      realtimeMocks.snapshot.latestNotification = roommateMessageNotification(91);
+      realtimeMocks.snapshot.latestNotificationVersion += 1;
+      view.rerender(<RoommateConversationPage interestId="91" />);
     });
+
+    expect(await screen.findByText("A new message arrived.")).toBeInTheDocument();
+    expect(apiMocks.listMessages).toHaveBeenNthCalledWith(2, 91, { page: 1, pageSize: 100 }, expect.any(AbortSignal));
+  });
+
+  it("refreshes when a deduplicated notification row announces another message and merges by message id", async () => {
+    const incoming = roommateMessage({ id: 506, body: "A later message arrived." });
+    apiMocks.listMessages
+      .mockResolvedValueOnce(messagePage())
+      .mockResolvedValueOnce({
+        data: [roommateMessage(), incoming],
+        pagination: { page: 1, pageSize: 100, hasNextPage: false }
+      })
+      .mockResolvedValueOnce({
+        data: [roommateMessage(), incoming],
+        pagination: { page: 1, pageSize: 100, hasNextPage: false }
+      });
+    const view = render(<RoommateConversationPage interestId="91" />);
+    expect(await screen.findByText(roommateMessage().body)).toBeInTheDocument();
+
+    act(() => {
+      realtimeMocks.snapshot.latestNotification = roommateMessageNotification(91);
+      realtimeMocks.snapshot.latestNotificationVersion += 1;
+      view.rerender(<RoommateConversationPage interestId="91" />);
+    });
+    expect(await screen.findByText(incoming.body)).toBeInTheDocument();
+
+    act(() => {
+      realtimeMocks.snapshot.latestNotification = {
+        ...roommateMessageNotification(91),
+        createdAt: "2026-09-01T12:00:01.000Z"
+      };
+      realtimeMocks.snapshot.latestNotificationVersion += 1;
+      view.rerender(<RoommateConversationPage interestId="91" />);
+    });
+
+    await waitFor(() => expect(apiMocks.listMessages).toHaveBeenCalledTimes(3));
+    expect(screen.getAllByText(incoming.body)).toHaveLength(1);
+  });
+
+  it("keeps two incoming messages with identical text because their stable ids differ", async () => {
+    const first = roommateMessage({ id: 507, body: "Cùng một nội dung." });
+    const second = roommateMessage({ id: 508, body: "Cùng một nội dung." });
+    apiMocks.listMessages.mockResolvedValueOnce(messagePage()).mockResolvedValueOnce({
+      data: [roommateMessage(), first, second],
+      pagination: { page: 1, pageSize: 100, hasNextPage: false }
+    });
+    const view = render(<RoommateConversationPage interestId="91" />);
+    expect(await screen.findByText(roommateMessage().body)).toBeInTheDocument();
+
+    act(() => {
+      realtimeMocks.snapshot.latestNotification = roommateMessageNotification(91);
+      realtimeMocks.snapshot.latestNotificationVersion += 1;
+      view.rerender(<RoommateConversationPage interestId="91" />);
+    });
+
+    await waitFor(() => expect(screen.getAllByText("Cùng một nội dung.")).toHaveLength(2));
+  });
+
+  it("keeps message reports and blocking in conversation safety instead of each bubble", async () => {
+    render(<RoommateConversationPage interestId="91" />);
+    expect(await screen.findByText(roommateMessage().body)).toBeInTheDocument();
+    expect(screen.queryByLabelText("Tùy chọn tin nhắn")).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Báo cáo tin nhắn" })).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "An toàn" }));
+    const safetyDialog = await screen.findByRole("dialog", { name: "An toàn cuộc trò chuyện" });
+    fireEvent.click(screen.getByRole("button", { name: "Báo cáo tin nhắn" }));
+
+    expect(safetyDialog).not.toBeInTheDocument();
+    expect(await screen.findByText("Chọn tin nhắn cần báo cáo.")).toBeInTheDocument();
+    fireEvent.keyDown(screen.getByRole("button", { name: /Chọn tin nhắn của người còn lại/iu }), { key: "Enter" });
+    expect(await screen.findByRole("dialog", { name: "Báo cáo nội dung ở ghép" })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Hủy" }));
+    fireEvent.keyDown(screen.getByRole("button", { name: /Chọn tin nhắn của người còn lại/iu }), { key: " " });
+    expect(await screen.findByRole("dialog", { name: "Báo cáo nội dung ở ghép" })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Hủy" }));
+    fireEvent.click(screen.getByRole("button", { name: "Hủy chọn tin nhắn" }));
+
+    fireEvent.click(screen.getByRole("button", { name: "An toàn" }));
+    const reopenedSafetyDialog = await screen.findByRole("dialog", { name: "An toàn cuộc trò chuyện" });
+    fireEvent.click(within(reopenedSafetyDialog).getByRole("button", { name: "Chặn" }));
+    expect(await screen.findByRole("dialog", { name: "Xác nhận chặn tương tác" })).toBeInTheDocument();
+  });
+
+  it("ignores realtime notifications for a different roommate conversation", async () => {
+    const view = render(<RoommateConversationPage interestId="91" />);
+    expect(await screen.findByText(roommateMessage().body)).toBeInTheDocument();
+
+    act(() => {
+      realtimeMocks.snapshot.latestNotification = roommateMessageNotification(92);
+      realtimeMocks.snapshot.latestNotificationVersion += 1;
+      view.rerender(<RoommateConversationPage interestId="91" />);
+    });
+
+    expect(apiMocks.listMessages).toHaveBeenCalledTimes(1);
+  });
+
+  it("syncs messages after SSE reconnect", async () => {
+    realtimeMocks.snapshot.realtimeStatus = "connecting";
+    const incoming = roommateMessage({ id: 503, body: "Message after reconnect." });
+    apiMocks.listMessages.mockResolvedValueOnce(messagePage()).mockResolvedValueOnce(messagePage(incoming));
+    const view = render(<RoommateConversationPage interestId="91" />);
+    expect(await screen.findByText(roommateMessage().body)).toBeInTheDocument();
+
+    act(() => {
+      realtimeMocks.snapshot.realtimeStatus = "connected";
+      view.rerender(<RoommateConversationPage interestId="91" />);
+    });
+    expect(await screen.findByText("Message after reconnect.")).toBeInTheDocument();
+    expect(apiMocks.listMessages).toHaveBeenCalledTimes(2);
+  });
+
+  it("aborts a pending refresh when the active conversation changes", async () => {
+    let resolveRefresh: ((page: ReturnType<typeof messagePage>) => void) | null = null;
+    let refreshSignal: AbortSignal | undefined;
+    apiMocks.listMessages
+      .mockResolvedValueOnce(messagePage())
+      .mockImplementationOnce((_interestId, _query, signal) => {
+        refreshSignal = signal;
+        return new Promise((resolve) => {
+          resolveRefresh = resolve;
+        });
+      })
+      .mockResolvedValueOnce(messagePage(roommateMessage({ id: 504, body: "Conversation B." })));
+    const view = render(<RoommateConversationPage interestId="91" />);
+    expect(await screen.findByText(roommateMessage().body)).toBeInTheDocument();
+
+    act(() => {
+      realtimeMocks.snapshot.latestNotification = roommateMessageNotification(91);
+      realtimeMocks.snapshot.latestNotificationVersion += 1;
+      view.rerender(<RoommateConversationPage interestId="91" />);
+    });
+    await waitFor(() => expect(apiMocks.listMessages).toHaveBeenCalledTimes(2));
+    expect(refreshSignal?.aborted).toBe(false);
+
     view.rerender(<RoommateConversationPage interestId="92" />);
-    await flushMicrotasks();
-    expect(screen.getByText("Conversation B.")).toBeInTheDocument();
-
+    expect(await screen.findByText("Conversation B.")).toBeInTheDocument();
+    expect(refreshSignal?.aborted).toBe(true);
     await act(async () => {
-      resolvePoll?.(messagePage(warningMessage()));
+      resolveRefresh?.(messagePage(roommateMessage({ id: 505, body: "Stale conversation message." })));
     });
-    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
-
-    view.unmount();
-    await act(async () => {
-      await vi.advanceTimersByTimeAsync(10_000);
-    });
-    expect(apiMocks.listMessages).toHaveBeenCalledTimes(3);
+    expect(screen.queryByText("Stale conversation message.")).not.toBeInTheDocument();
   });
 });
 
-function warningMessage() {
-  return roommateMessage({
-    safetyWarning: {
-      outcome: "HIGH_CAUTION",
-      signalCodes: ["OTP_REQUEST"],
-      warningCode: "ROOMMATE_AI_HIGH_CAUTION",
-      analysisVersion: "ROOMMATE_AI_SAFETY_V3_1",
-      analyzedAt: "2026-08-31T00:00:00.000Z"
-    }
-  });
-}
-
-async function flushMicrotasks() {
-  await act(async () => {
-    await Promise.resolve();
-    await Promise.resolve();
-    await Promise.resolve();
-  });
+function roommateMessageNotification(interestId: number) {
+  return {
+    id: 501,
+    eventType: "ROOMMATE_MESSAGE_RECEIVED",
+    inquiryId: null,
+    listingId: null,
+    roommateRequestId: 42,
+    roommateInterestId: interestId,
+    resourcePath: `/roommates/messages?roommate=${interestId}`,
+    isRead: false,
+    createdAt: "2026-09-01T12:00:00.000Z"
+  };
 }

@@ -17,14 +17,12 @@ import { validateRegistrationInput, type AuthField, type AuthFieldErrors, type R
 interface RegistrationFeedback {
   readonly fieldErrors: AuthFieldErrors;
   readonly formMessage: string | null;
-  readonly requestId: string | null;
   readonly duplicateEmail: boolean;
 }
 
 const emptyFeedback: RegistrationFeedback = {
   fieldErrors: {},
   formMessage: null,
-  requestId: null,
   duplicateEmail: false
 };
 
@@ -33,7 +31,6 @@ function feedbackFor(error: unknown): RegistrationFeedback {
     return {
       fieldErrors: {},
       formMessage: "Không thể đăng ký lúc này. Vui lòng thử lại sau.",
-      requestId: null,
       duplicateEmail: false
     };
   }
@@ -41,8 +38,7 @@ function feedbackFor(error: unknown): RegistrationFeedback {
   if (error.code === "EMAIL_ALREADY_EXISTS") {
     return {
       fieldErrors: {},
-      formMessage: "Email này đã được đăng ký. Bạn có thể đăng nhập bằng tài khoản hiện có.",
-      requestId: error.requestId,
+      formMessage: "Bạn có thể đăng nhập bằng tài khoản hiện có hoặc sử dụng email khác.",
       duplicateEmail: true
     };
   }
@@ -50,7 +46,6 @@ function feedbackFor(error: unknown): RegistrationFeedback {
     return {
       fieldErrors: {},
       formMessage: "Bạn đã thử đăng ký quá nhiều lần. Vui lòng thử lại sau.",
-      requestId: error.requestId,
       duplicateEmail: false
     };
   }
@@ -58,7 +53,6 @@ function feedbackFor(error: unknown): RegistrationFeedback {
     return {
       fieldErrors: {},
       formMessage: "Không thể xác nhận kết quả đăng ký. Hãy thử đăng nhập trước khi gửi lại đăng ký.",
-      requestId: null,
       duplicateEmail: false
     };
   }
@@ -66,7 +60,6 @@ function feedbackFor(error: unknown): RegistrationFeedback {
     return {
       fieldErrors: {},
       formMessage: "Không thể đăng ký lúc này. Vui lòng thử lại sau.",
-      requestId: error.requestId,
       duplicateEmail: false
     };
   }
@@ -78,7 +71,6 @@ function feedbackFor(error: unknown): RegistrationFeedback {
   if (fieldErrors.password) fieldErrors.password = "Mật khẩu chưa hợp lệ. Vui lòng chọn mật khẩu khác.";
   if (fieldErrors.phone) fieldErrors.phone = "Số điện thoại chưa đúng. Vui lòng kiểm tra lại.";
   return {
-    ...mapped,
     fieldErrors,
     formMessage: mapped.formMessage ? "Không thể tạo tài khoản. Vui lòng kiểm tra thông tin và thử lại." : null,
     duplicateEmail: false
@@ -109,7 +101,23 @@ export function RegistrationForm({ mode }: { readonly mode: RegistrationMode }) 
     setFeedback((current) => {
       const fieldErrors = { ...current.fieldErrors };
       delete fieldErrors[field];
-      return { fieldErrors, formMessage: null, requestId: null, duplicateEmail: false };
+      const duplicateStillApplies = current.duplicateEmail && field !== "email";
+      return {
+        fieldErrors,
+        formMessage: duplicateStillApplies ? current.formMessage : null,
+        duplicateEmail: duplicateStillApplies
+      };
+    });
+  };
+
+  const validateField = (field: AuthField) => {
+    const validation = validateRegistrationInput({ displayName, email, password, confirmPassword, phone }, mode);
+    const message = validation.valid ? undefined : validation.errors[field];
+    setFeedback((current) => {
+      const fieldErrors = { ...current.fieldErrors };
+      if (message) fieldErrors[field] = message;
+      else delete fieldErrors[field];
+      return { fieldErrors, formMessage: current.formMessage, duplicateEmail: current.duplicateEmail };
     });
   };
 
@@ -119,7 +127,7 @@ export function RegistrationForm({ mode }: { readonly mode: RegistrationMode }) 
 
     const validation = validateRegistrationInput({ displayName, email, password, confirmPassword, phone }, mode);
     if (!validation.valid) {
-      setFeedback({ fieldErrors: validation.errors, formMessage: null, requestId: null, duplicateEmail: false });
+      setFeedback({ fieldErrors: validation.errors, formMessage: null, duplicateEmail: false });
       focusFirstInvalidField(mode, validation.errors);
       return;
     }
@@ -146,8 +154,10 @@ export function RegistrationForm({ mode }: { readonly mode: RegistrationMode }) 
   const submitLabel = mode === "tenant" ? "Đăng ký tìm phòng" : "Đăng ký cho thuê";
 
   return (
-    <form noValidate aria-busy={pending} className="space-y-3" onSubmit={(event) => void handleSubmit(event)}>
-      <div className="grid gap-3 sm:grid-cols-2 sm:items-start">
+    <form noValidate aria-busy={pending} className="space-y-4" onSubmit={(event) => void handleSubmit(event)}>
+      <GoogleAuthSeam mode="register" role={mode === "landlord" ? "LANDLORD" : "TENANT"} dividerPosition="after" />
+      <fieldset className="grid gap-3 sm:grid-cols-2 sm:items-start">
+        <legend className="col-span-full pb-1 text-ui-sm font-bold text-foreground">Thông tin cá nhân</legend>
         <InputField
           id={`${mode}-registration-display-name`}
           name="displayName"
@@ -161,6 +171,7 @@ export function RegistrationForm({ mode }: { readonly mode: RegistrationMode }) 
           placeholder="Nguyễn Văn A"
           value={displayName}
           error={feedback.fieldErrors.displayName}
+          onBlur={() => validateField("displayName")}
           onChange={(event) => {
             setDisplayName(event.currentTarget.value);
             clearFieldError("displayName");
@@ -181,11 +192,15 @@ export function RegistrationForm({ mode }: { readonly mode: RegistrationMode }) 
           hint={mode === "tenant" ? "Không bắt buộc" : "Dùng để người thuê có thể liên hệ với bạn."}
           value={phone}
           error={feedback.fieldErrors.phone}
+          onBlur={() => validateField("phone")}
           onChange={(event) => {
             setPhone(event.currentTarget.value);
             clearFieldError("phone");
           }}
         />
+      </fieldset>
+      <fieldset className="grid gap-3 border-t border-border pt-4 sm:grid-cols-2 sm:items-start">
+        <legend className="col-span-full pb-1 text-ui-sm font-bold text-foreground">Tài khoản</legend>
         <div className="sm:col-span-2">
           <InputField
             id={`${mode}-registration-email`}
@@ -199,6 +214,7 @@ export function RegistrationForm({ mode }: { readonly mode: RegistrationMode }) 
             className="rm-auth-control"
             value={email}
             error={feedback.fieldErrors.email}
+            onBlur={() => validateField("email")}
             onChange={(event) => {
               setEmail(event.currentTarget.value);
               clearFieldError("email");
@@ -214,9 +230,10 @@ export function RegistrationForm({ mode }: { readonly mode: RegistrationMode }) 
           requiredIndicator="sr-only"
           leadingIcon={<Icon name="lock" className="h-4 w-4" />}
           className="rm-auth-control"
-          hint="Từ 8 ký tự trở lên."
+          hint="Tối thiểu 8 ký tự."
           value={password}
           error={feedback.fieldErrors.password}
+          onBlur={() => validateField("password")}
           onChange={(event) => {
             setPassword(event.currentTarget.value);
             clearFieldError("password");
@@ -233,24 +250,39 @@ export function RegistrationForm({ mode }: { readonly mode: RegistrationMode }) 
           className="rm-auth-control"
           value={confirmPassword}
           error={feedback.fieldErrors.confirmPassword}
+          onBlur={() => validateField("confirmPassword")}
           onChange={(event) => {
             setConfirmPassword(event.currentTarget.value);
             clearFieldError("confirmPassword");
           }}
         />
-      </div>
+      </fieldset>
       {feedback.formMessage ? (
         <ErrorState
+          title={feedback.duplicateEmail ? "Email này đã được sử dụng." : undefined}
           message={feedback.formMessage}
-          requestId={feedback.requestId}
+          tone="neutral"
           action={
             feedback.duplicateEmail ? (
-              <Link
-                href="/login"
-                className="inline-flex min-h-11 items-center font-semibold text-danger underline decoration-2 underline-offset-4 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-danger focus-visible:ring-offset-2"
-              >
-                Đi đến trang đăng nhập
-              </Link>
+              <>
+                <Link
+                  href="/login"
+                  className="inline-flex min-h-11 items-center font-semibold text-primary-hover underline decoration-2 underline-offset-4 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2"
+                >
+                  Đăng nhập
+                </Link>
+                <button
+                  type="button"
+                  className="inline-flex min-h-11 items-center rounded-control px-3 font-semibold text-primary-hover underline decoration-2 underline-offset-4 hover:bg-primary-subtle focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2"
+                  onClick={() => {
+                    const emailInput = document.getElementById(`${mode}-registration-email`);
+                    emailInput?.focus();
+                    if (emailInput instanceof HTMLInputElement) emailInput.select();
+                  }}
+                >
+                  Đổi email
+                </button>
+              </>
             ) : undefined
           }
         />
@@ -259,7 +291,6 @@ export function RegistrationForm({ mode }: { readonly mode: RegistrationMode }) 
         <Icon name="userPlus" className="h-4 w-4" />
         {submitLabel}
       </Button>
-      <GoogleAuthSeam mode="register" role={mode === "landlord" ? "LANDLORD" : "TENANT"} />
     </form>
   );
 }

@@ -15,6 +15,7 @@ vi.mock("../../lib/auth/auth-provider", () => ({ useAuth: useAuthMock }));
 
 import { ApiError } from "../../lib/api/client";
 import { RoommateConnectionPage } from "./roommate-connection-page";
+import { RoommateWorkspace } from "./roommate-workspace";
 
 function auth(overrides: Partial<AuthContextValue> = {}): AuthContextValue {
   return { status: "authenticated", user: tenantUser, error: null, refresh: vi.fn(), logout: vi.fn(), ...overrides };
@@ -39,6 +40,16 @@ describe("RoommateConnectionPage", () => {
     expect(await screen.findByRole("heading", { name: "Kết nối tìm roommate hiện tại" })).toBeInTheDocument();
     expect(
       screen.getByText(
+        "Không chia sẻ OTP, mật khẩu hoặc thông tin tài chính. Thận trọng với yêu cầu chuyển tiền hoặc đặt cọc."
+      )
+    ).toBeInTheDocument();
+    const safetySummary = screen.getByText("Xem hướng dẫn an toàn đầy đủ");
+    const safetyDetails = safetySummary.closest("details");
+    expect(safetyDetails).not.toHaveAttribute("open");
+    fireEvent.click(safetySummary);
+    expect(safetyDetails).toHaveAttribute("open");
+    expect(
+      screen.getByText(
         "RentMate không giữ chỗ, thu tiền hoặc bảo đảm giao dịch giữa người ở ghép. Không chuyển tiền hoặc đặt cọc chỉ dựa vào yêu cầu ở ghép hay tin nhắn. Hãy kiểm tra phòng, người cho thuê và điều kiện thuê trước khi giao dịch."
       )
     ).toBeInTheDocument();
@@ -53,6 +64,21 @@ describe("RoommateConnectionPage", () => {
     render(<RoommateConnectionPage />);
     expect(await screen.findByRole("heading", { name: "Bạn chưa có kết nối ở ghép hiện tại" })).toBeInTheDocument();
     expect(screen.queryByText("private")).not.toBeInTheDocument();
+  });
+
+  it("keeps the roommate page navigation visible when loading fails", async () => {
+    apiMocks.getCurrentConnection.mockRejectedValue(
+      new ApiError({ status: 503, code: "DEPENDENCY_UNAVAILABLE", message: "private", category: "backend" })
+    );
+    render(
+      <RoommateWorkspace>
+        <RoommateConnectionPage />
+      </RoommateWorkspace>
+    );
+
+    expect(await screen.findByRole("button", { name: "Thử lại" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Kết nối tìm roommate hiện tại" })).toBeInTheDocument();
+    expect(screen.getByRole("navigation", { name: "Điều hướng không gian ở ghép" })).toBeInTheDocument();
   });
 
   it("requires confirmation before leaving the current connection", async () => {

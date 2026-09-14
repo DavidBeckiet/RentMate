@@ -1,4 +1,5 @@
 import type { Config } from "tailwindcss";
+import tailwindcssAnimate from "tailwindcss-animate";
 
 const color = (token: string) => `rgb(var(--color-${token}) / <alpha-value>)`;
 
@@ -217,7 +218,7 @@ const config: Config = {
       }
     }
   },
-  plugins: []
+  plugins: [tailwindcssAnimate]
 };
 
 export default config;

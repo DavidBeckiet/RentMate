@@ -15,6 +15,7 @@ vi.mock("../../lib/auth/auth-provider", () => ({ useAuth: useAuthMock }));
 
 import { ApiError } from "../../lib/api/client";
 import { RoommateBlockedPage } from "./roommate-blocked-page";
+import { RoommateWorkspace } from "./roommate-workspace";
 
 function auth(overrides: Partial<AuthContextValue> = {}): AuthContextValue {
   return { status: "authenticated", user: tenantUser, error: null, refresh: vi.fn(), logout: vi.fn(), ...overrides };
@@ -48,6 +49,7 @@ describe("RoommateBlockedPage", () => {
     render(<RoommateBlockedPage />);
 
     expect(await screen.findByRole("heading", { name: "Minh" })).toBeInTheDocument();
+    expect(screen.getByText("Chặn từ yêu cầu ở ghép")).toBeInTheDocument();
     expect(screen.queryByText("42")).not.toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "Bỏ chặn" }));
     expect(apiMocks.unblockRequest).not.toHaveBeenCalled();
@@ -67,6 +69,7 @@ describe("RoommateBlockedPage", () => {
     render(<RoommateBlockedPage />);
 
     expect(await screen.findByRole("heading", { name: "Minh" })).toBeInTheDocument();
+    expect(screen.getByText("Chặn từ lời quan tâm")).toBeInTheDocument();
     expect(screen.queryByText("91")).not.toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "Bỏ chặn" }));
     fireEvent.click(screen.getByRole("button", { name: "Xác nhận bỏ chặn" }));
@@ -91,7 +94,11 @@ describe("RoommateBlockedPage", () => {
         data: [roommateOwnedBlock({ counterpart: { displayName: "Trang hai", memberSince: null } })],
         pagination: { page: 2, pageSize: 20, hasNextPage: false }
       });
-    render(<RoommateBlockedPage />);
+    render(
+      <RoommateWorkspace>
+        <RoommateBlockedPage />
+      </RoommateWorkspace>
+    );
 
     expect(await screen.findByRole("heading", { name: "Trang một" })).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "Sau" }));
@@ -105,5 +112,7 @@ describe("RoommateBlockedPage", () => {
     );
     fireEvent.click(screen.getByRole("button", { name: "Trước" }));
     expect(await screen.findByRole("button", { name: "Thử lại" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Đã chặn" })).toBeInTheDocument();
+    expect(screen.getByRole("navigation", { name: "Điều hướng không gian ở ghép" })).toBeInTheDocument();
   });
 });

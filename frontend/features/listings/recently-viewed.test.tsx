@@ -1,8 +1,11 @@
 import { render, screen, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import type { AuthContextValue } from "../../lib/auth/auth-provider";
 import type { PublicListingDetail } from "../../types/api";
 
 const apiMocks = vi.hoisted(() => ({ getPublicDetail: vi.fn() }));
+const useAuthMock = vi.hoisted(() => vi.fn<() => AuthContextValue>());
+const routerMocks = vi.hoisted(() => ({ push: vi.fn() }));
 
 vi.mock("../../lib/api/client", async () => {
   const actual = await vi.importActual<typeof import("../../lib/api/client")>("../../lib/api/client");
@@ -13,6 +16,8 @@ vi.mock("./listing-card", () => ({
     <article data-testid={`recent-listing-${listing.id}`}>{listing.title}</article>
   )
 }));
+vi.mock("next/navigation", () => ({ useRouter: () => routerMocks }));
+vi.mock("../../lib/auth/auth-provider", () => ({ useAuth: useAuthMock }));
 
 import { ApiError } from "../../lib/api/client";
 import { RecentlyViewed } from "./recently-viewed";
@@ -42,6 +47,22 @@ function detail(id: number, title: string): PublicListingDetail {
 beforeEach(() => {
   window.localStorage.clear();
   apiMocks.getPublicDetail.mockReset();
+  useAuthMock.mockReturnValue({
+    status: "authenticated",
+    user: {
+      id: 7,
+      role: "TENANT",
+      displayName: "Tenant",
+      email: "tenant@example.com",
+      phone: null,
+      isActive: true,
+      createdAt: "2026-08-01T00:00:00.000Z",
+      updatedAt: "2026-08-01T00:00:00.000Z"
+    },
+    error: null,
+    refresh: vi.fn(),
+    logout: vi.fn()
+  });
 });
 
 describe("RecentlyViewed", () => {
@@ -61,6 +82,7 @@ describe("RecentlyViewed", () => {
 
     expect(await screen.findByTestId("recent-listing-41")).toHaveTextContent("Phòng 41");
     expect(screen.getByTestId("recent-listing-42")).toHaveTextContent("Phòng 42");
+    expect(screen.getAllByRole("button", { name: "Cân nhắc cùng người ở ghép" })).toHaveLength(2);
     expect(apiMocks.getPublicDetail.mock.calls.map(([id]) => id)).toEqual([41, 42]);
   });
 

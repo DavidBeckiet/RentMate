@@ -24,6 +24,23 @@ vi.mock("./marketplace-home", () => ({
       <button type="button" onClick={() => props.onSearch({ q: "Thảo Điền", amenities: [] })}>
         Tìm từ trang chủ
       </button>
+      <button
+        type="button"
+        onClick={() =>
+          props.onSearch({
+            areaName: "binh-thanh",
+            minMonthlyRent: 3_000_000,
+            maxMonthlyRent: 5_000_000,
+            propertyType: "ROOM",
+            amenities: []
+          })
+        }
+      >
+        Tìm theo bộ lọc
+      </button>
+      <button type="button" onClick={() => props.onSearch({ amenities: [] })}>
+        Tìm mặc định
+      </button>
     </section>
   )
 }));
@@ -52,5 +69,25 @@ describe("HomePageExperience", () => {
 
     fireEvent.click(screen.getByRole("button", { name: "Tìm từ trang chủ" }));
     await waitFor(() => expect(navigation.push).toHaveBeenCalledWith("/search?q=Th%E1%BA%A3o+%C4%90i%E1%BB%81n"));
+  });
+
+  it("uses the shared search serializer for combined homepage filters", async () => {
+    render(<HomePageExperience />);
+
+    fireEvent.click(await screen.findByRole("button", { name: "Tìm theo bộ lọc" }));
+
+    await waitFor(() =>
+      expect(navigation.push).toHaveBeenCalledWith(
+        "/search?areaName=B%C3%ACnh+Th%E1%BA%A1nh&minMonthlyRent=3000000&maxMonthlyRent=5000000&propertyType=ROOM"
+      )
+    );
+  });
+
+  it("omits default search filters from the homepage URL", async () => {
+    render(<HomePageExperience />);
+
+    fireEvent.click(await screen.findByRole("button", { name: "Tìm mặc định" }));
+
+    await waitFor(() => expect(navigation.push).toHaveBeenCalledWith("/search"));
   });
 });

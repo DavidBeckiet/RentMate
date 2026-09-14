@@ -3,6 +3,7 @@ import {
   RepositoryInvariantError
 } from "../../../../../shared/src/runtime/db/repository-primitives.js";
 import type { SqlExecutor } from "../../../../../shared/src/runtime/db/sql-executor.js";
+import { notificationRealtimeNotifyExpression } from "../../contact/realtime/notification-realtime-channel.js";
 
 export interface SavedSearchNotificationListing {
   readonly id: number;
@@ -99,6 +100,7 @@ export function createSavedSearchNotificationRepository(): SavedSearchNotificati
               )
             )
           ON CONFLICT (dedupe_key) WHERE dedupe_key IS NOT NULL DO NOTHING
+          RETURNING ${notificationRealtimeNotifyExpression}
         `,
         values: [
           listing.id,
