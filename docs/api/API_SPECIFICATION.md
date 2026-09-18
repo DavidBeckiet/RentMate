@@ -1,8 +1,8 @@
-# RentMate MVP API Specification v1
+# RentMate API Specification v1
 
 ## 1. Purpose and scope
 
-This document is the authoritative HTTP contract for the RentMate MVP. It freezes the API required by the approved Requirements, Architecture, and Database Design specifications.
+This document is the authoritative HTTP contract for the RentMate MVP and explicitly approved additive post-MVP capabilities. Historical MVP behavior remains frozen unless a later section documents a deliberate additive contract.
 
 The contract covers authentication, current-user contact data, controlled lookups, public listing discovery, landlord listing management, listing images, forward geocoding, tenant favorites, admin moderation, moderation history, and basic tenant/landlord account activation.
 
@@ -761,6 +761,7 @@ If either coordinate is present in a create or PATCH request, both must be prese
 | 28 | GET | `/api/v1/admin/listings/:listingId/moderation-actions` | Active `ADMIN` |
 | 29 | POST | `/api/v1/admin/listings/:listingId/moderation-actions` | Active `ADMIN` |
 | 30 | GET | `/api/v1/admin/users` | Active `ADMIN` |
+| 30a | GET | `/api/v1/admin/users/:userId` | Active `ADMIN` |
 | 31 | PATCH | `/api/v1/admin/users/:userId/activation` | Active `ADMIN`; tenant/landlord targets only |
 
 ## 15. Detailed endpoint specifications
@@ -1239,9 +1240,9 @@ Only `phone` is accepted. Tenant/admin may set it to `null`; landlord may not.
 - **Purpose:** Return exact listing and landlord data needed for moderation.
 - **Authentication/role:** Active `ADMIN`.
 - **Path:** Positive listing ID.
-- **Success:** `200 OK` with `{ "data": <AdminListingDetail> }`.
+- **Success:** `200 OK` with `{ "data": <AdminListingDetail> }`. The detail includes `openReportCount` (reports for this listing currently in `OPEN` or `INVESTIGATING`) and `possibleDuplicate` (another listing owned by the same landlord has the same non-blank title after trimming and case normalization). These fields use the same factual semantics as the admin listing collection.
 - **Important errors:** `401`; `403`; `404`; `422`.
-- **Privacy:** May include exact address/coordinates, landlord account/contact data, owner/admin image metadata, and current moderation reason. It omits password data and Cloudinary public IDs.
+- **Privacy:** May include exact address/coordinates, landlord account/contact data, owner/admin image metadata, current moderation reason, and the two factual review signals above. It omits reporter identity, report contents, password data, and Cloudinary public IDs. Neither signal is a risk score or a conclusion that abuse occurred.
 - **Idempotency:** Safe and idempotent.
 
 ### V1-28 — GET `/api/v1/admin/listings/:listingId/moderation-actions`
@@ -1285,14 +1286,30 @@ Only `phone` is accepted. Tenant/admin may set it to `null`; landlord may not.
 
 ### V1-30 — GET `/api/v1/admin/users`
 
-- **Purpose:** Return the basic user list for account management.
+- **Purpose:** Return the searchable account directory for account management.
 - **Authentication/role:** Active `ADMIN`.
-- **Query:** `role` (optional), `isActive` (optional boolean), `page`, `pageSize`.
+- **Query:** `q` (optional), `role` (optional), `isActive` (optional boolean), `page`, `pageSize`.
+- **Search normalization:** `q` is normalized to NFC and trimmed at both ends. Internal whitespace is preserved. An omitted, empty, or whitespace-only value applies no search filter. The maximum is 320 Unicode code points; control characters, duplicate values, and non-scalar values return `422`.
+- **Search matching:** A positive int32 decimal `q` may match `id` exactly. Email and `displayName` use case-insensitive literal substring matching; SQL wildcard characters in input have no special meaning. Phone is not searched.
+- **Composition:** Search, role, and activity filters are combined before pagination. Changing search state starts a new directory query at page 1 in clients.
 - **Ordering:** `createdAt DESC`, then `id DESC`.
 - **Success:** `200 OK` with paginated user profiles.
 - **Important errors:** `401`; `403`; `422`.
 - **Privacy:** Admin-authorized account/contact fields only; never password/hash data.
 - **Scope:** May list `ADMIN` accounts, but activation mutation remains forbidden for them.
+- **Idempotency:** Safe and idempotent.
+
+### V1-30a — GET `/api/v1/admin/users/:userId`
+
+- **Purpose:** Return factual account information for the authorized Admin User Detail workflow.
+- **Authentication/role:** Active `ADMIN`.
+- **Path:** Positive user ID.
+- **Success:** `200 OK` with `{ "data": <AdminUserDetail> }`, containing `id`, `displayName`, `role`, `email`, `phone`, `isActive`, `emailVerified`, `phoneVerified`, `createdAt`, and `updatedAt`.
+- **Verification semantics:** `emailVerified` and `phoneVerified` are factual booleans derived only from authoritative Identity Service verification timestamps. They do not imply trust, safety, legitimacy, risk, reputation, or landlord-profile approval.
+- **Readable targets:** Existing active or inactive `TENANT`, `LANDLORD`, and `ADMIN` accounts are readable.
+- **Important errors:** `401`; `403`; `404`; `422`.
+- **Privacy:** Never return password hashes, session/token material, OAuth provider data, verification challenge secrets, or unrelated product data.
+- **Scope:** Landlord verification remains a separate workflow and is not joined into this response.
 - **Idempotency:** Safe and idempotent.
 
 ### V1-31 — PATCH `/api/v1/admin/users/:userId/activation`

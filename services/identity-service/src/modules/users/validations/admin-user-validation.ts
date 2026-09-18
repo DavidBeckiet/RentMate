@@ -9,9 +9,14 @@ import {
 } from "../../../../../shared/src/runtime/shared/validation/request.js";
 
 const userRoles = ["TENANT", "LANDLORD", "ADMIN"] as const satisfies readonly UserRole[];
-const collectionQueryKeys = ["role", "isActive", "page", "pageSize"] as const;
+const collectionQueryKeys = ["q", "role", "isActive", "page", "pageSize"] as const;
+const maximumSearchLength = 320;
+const controlCharacterPattern = /\p{Cc}/u;
+const nonScalarPattern = /[\uD800-\uDFFF]/u;
 
 export interface AdminUserCollectionQuery {
+  readonly q: string | null;
+  readonly userId: number | null;
   readonly role: UserRole | null;
   readonly isActive: boolean | null;
   readonly page: number;
@@ -48,9 +53,31 @@ function parseIsActive(value: unknown): boolean | null {
   throwValidationIssue("isActive", "INVALID_VALUE", "isActive must be either true or false.");
 }
 
+function parseSearch(value: unknown): Pick<AdminUserCollectionQuery, "q" | "userId"> {
+  const scalar = readScalarQueryValue(value, "q");
+  if (scalar === undefined) return Object.freeze({ q: null, userId: null });
+  if (nonScalarPattern.test(scalar)) {
+    throwValidationIssue("q", "INVALID_VALUE", "q must contain valid Unicode scalar values.");
+  }
+
+  const normalized = scalar.normalize("NFC").trim();
+  if (!normalized) return Object.freeze({ q: null, userId: null });
+  if (controlCharacterPattern.test(normalized)) {
+    throwValidationIssue("q", "INVALID_VALUE", "q must not contain control characters.");
+  }
+  if ([...normalized].length > maximumSearchLength) {
+    throwValidationIssue("q", "TOO_LONG", `q must not exceed ${maximumSearchLength} Unicode code points.`);
+  }
+
+  const numericId = /^[1-9][0-9]*$/.test(normalized) ? Number(normalized) : Number.NaN;
+  const userId = Number.isInteger(numericId) && numericId <= 2_147_483_647 ? numericId : null;
+  return Object.freeze({ q: normalized, userId });
+}
+
 export function validateAdminUserCollectionQuery(value: unknown): AdminUserCollectionQuery {
   const query = validateQueryKeys(value, collectionQueryKeys);
   return Object.freeze({
+    ...parseSearch(query.q),
     role: parseRole(query.role),
     isActive: parseIsActive(query.isActive),
     ...checkedPagination(query)
@@ -64,6 +91,10 @@ export function validateAdminUserReadBody(value: unknown): void {
 }
 
 export function validateAdminUserActivationQuery(value: unknown): void {
+  validateQueryKeys(value, []);
+}
+
+export function validateAdminUserDetailQuery(value: unknown): void {
   validateQueryKeys(value, []);
 }
 

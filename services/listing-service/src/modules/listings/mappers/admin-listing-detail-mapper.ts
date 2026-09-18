@@ -3,6 +3,12 @@ import type { UserRole } from "../../../../../shared/src/runtime/shared/types/au
 import type { LookupValue } from "./lookup-mapper.js";
 import type { OwnerImage } from "./owner-image-mapper.js";
 import {
+  copyAdminListingSignals,
+  mapAdminListingSignals,
+  type AdminListingSignalRow,
+  type AdminListingSignals
+} from "./admin-listing-signals.js";
+import {
   createOwnerListingDetail,
   mapOwnerListingToDto,
   mapPersistedOwnerListingRow,
@@ -15,7 +21,7 @@ import {
 const maximumIntegerId = 2_147_483_647;
 const e164Pattern = /^\+[1-9][0-9]{7,14}$/;
 
-export interface AdminListingDetailRow extends PersistedOwnerListingRow, QueryResultRow {
+export interface AdminListingDetailRow extends PersistedOwnerListingRow, QueryResultRow, AdminListingSignalRow {
   readonly landlord_id: unknown;
   readonly landlord_role: unknown;
   readonly landlord_email: unknown;
@@ -34,13 +40,14 @@ export interface AdminListingDetailLandlord {
 export interface AdminListingDetailBase {
   readonly listing: OwnerListingDetailBase;
   readonly landlord: AdminListingDetailLandlord;
+  readonly signals: AdminListingSignals;
 }
 
-export interface AdminListingDetail extends OwnerListingDetail {
+export interface AdminListingDetail extends OwnerListingDetail, AdminListingSignals {
   readonly landlord: AdminListingDetailLandlord;
 }
 
-export interface AdminListingDetailDto extends OwnerListingDetailDto {
+export interface AdminListingDetailDto extends OwnerListingDetailDto, AdminListingSignals {
   readonly landlord: AdminListingDetailLandlord;
 }
 
@@ -92,7 +99,8 @@ export function mapAdminListingDetailRow(row: Readonly<AdminListingDetailRow>): 
   try {
     return Object.freeze({
       listing: mapPersistedOwnerListingRow(row),
-      landlord: mapLandlord(row)
+      landlord: mapLandlord(row),
+      signals: mapAdminListingSignals(row)
     });
   } catch {
     throw new AdminListingDetailMappingError();
@@ -107,7 +115,11 @@ export function createAdminListingDetail(
 ): AdminListingDetail {
   try {
     const owner = createOwnerListingDetail(base.listing, amenities, images, currentModerationReason);
-    return Object.freeze({ ...owner, landlord: copyLandlord(base.landlord) });
+    return Object.freeze({
+      ...owner,
+      landlord: copyLandlord(base.landlord),
+      ...copyAdminListingSignals(base.signals)
+    });
   } catch {
     throw new AdminListingDetailMappingError();
   }
@@ -115,7 +127,11 @@ export function createAdminListingDetail(
 
 export function mapAdminListingDetailToDto(detail: Readonly<AdminListingDetail>): AdminListingDetailDto {
   try {
-    return Object.freeze({ ...mapOwnerListingToDto(detail), landlord: copyLandlord(detail.landlord) });
+    return Object.freeze({
+      ...mapOwnerListingToDto(detail),
+      landlord: copyLandlord(detail.landlord),
+      ...copyAdminListingSignals(detail)
+    });
   } catch {
     throw new AdminListingDetailMappingError();
   }

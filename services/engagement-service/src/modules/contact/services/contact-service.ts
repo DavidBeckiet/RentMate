@@ -162,10 +162,7 @@ function mapDuplicateReport(error: unknown): never {
 }
 
 function allowedReportTransition(current: ContactReportStatus, next: ContactReportStatus): boolean {
-  return (
-    (current === "OPEN" && (next === "INVESTIGATING" || next === "DISMISSED")) ||
-    (current === "INVESTIGATING" && next === "RESOLVED")
-  );
+  return (current === "OPEN" || current === "INVESTIGATING") && (next === "RESOLVED" || next === "DISMISSED");
 }
 
 function requireReportProfile(report: ContactReport, profiles: readonly IdentityUserProfile[]): IdentityUserProfile {

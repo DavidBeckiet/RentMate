@@ -2,7 +2,12 @@ import type { AdminUserQuery, UserRole } from "../../types/api";
 
 export const adminUserRoles = ["TENANT", "LANDLORD", "ADMIN"] as const;
 
+const maximumSearchLength = 320;
+const controlCharacterPattern = /\p{Cc}/u;
+const nonScalarPattern = /[\uD800-\uDFFF]/u;
+
 export interface AdminUserQueryState {
+  readonly q?: string;
   readonly role?: UserRole;
   readonly isActive?: boolean;
   readonly page: number;
@@ -41,14 +46,27 @@ function activityValue(value: string | undefined): boolean | undefined {
   throw new Error("invalid");
 }
 
+export function normalizeAdminUserSearch(value: string | undefined): string | undefined {
+  if (value === undefined) return undefined;
+  if (nonScalarPattern.test(value)) throw new Error("invalid");
+  const normalized = value.normalize("NFC").trim();
+  if (!normalized) return undefined;
+  if (controlCharacterPattern.test(normalized) || [...normalized].length > maximumSearchLength) {
+    throw new Error("invalid");
+  }
+  return normalized;
+}
+
 export function parseAdminUserQuery(parameters: URLSearchParams): ParsedAdminUserQuery {
   try {
+    const q = normalizeAdminUserSearch(scalar(parameters, "q"));
     const role = roleValue(scalar(parameters, "role"));
     const isActive = activityValue(scalar(parameters, "isActive"));
     const pageSize = positiveInteger(scalar(parameters, "pageSize"), 100);
     return {
       ok: true,
       state: {
+        ...(q === undefined ? {} : { q }),
         ...(role === undefined ? {} : { role }),
         ...(isActive === undefined ? {} : { isActive }),
         page: positiveInteger(scalar(parameters, "page")) ?? 1,
@@ -62,6 +80,7 @@ export function parseAdminUserQuery(parameters: URLSearchParams): ParsedAdminUse
 
 export function serializeAdminUserQuery(state: AdminUserQueryState): URLSearchParams {
   const parameters = new URLSearchParams();
+  if (state.q !== undefined) parameters.set("q", state.q);
   if (state.role !== undefined) parameters.set("role", state.role);
   if (state.isActive !== undefined) parameters.set("isActive", String(state.isActive));
   if (state.page > 1) parameters.set("page", String(state.page));
@@ -74,11 +93,33 @@ export function adminUsersUrl(state: AdminUserQueryState): string {
   return query ? `/admin/users?${query}` : "/admin/users";
 }
 
+export function adminUserDetailUrl(userId: number, state: AdminUserQueryState): string {
+  const query = serializeAdminUserQuery(state).toString();
+  return query ? `/admin/users/${userId}?${query}` : `/admin/users/${userId}`;
+}
+
+export function adminUserReturnUrl(parameters: URLSearchParams): string {
+  const parsed = parseAdminUserQuery(parameters);
+  return parsed.ok ? adminUsersUrl(parsed.state) : "/admin/users";
+}
+
+export function withAdminUserSearch(state: AdminUserQueryState, q: string | undefined): AdminUserQueryState {
+  const normalized = normalizeAdminUserSearch(q);
+  return {
+    ...(normalized === undefined ? {} : { q: normalized }),
+    ...(state.role === undefined ? {} : { role: state.role }),
+    ...(state.isActive === undefined ? {} : { isActive: state.isActive }),
+    page: 1,
+    ...(state.pageSize === undefined ? {} : { pageSize: state.pageSize })
+  };
+}
+
 export function withAdminUserFilters(
   state: AdminUserQueryState,
   filters: Pick<AdminUserQueryState, "role" | "isActive">
 ): AdminUserQueryState {
   return {
+    ...(state.q === undefined ? {} : { q: state.q }),
     ...(filters.role === undefined ? {} : { role: filters.role }),
     ...(filters.isActive === undefined ? {} : { isActive: filters.isActive }),
     page: 1,
@@ -92,6 +133,7 @@ export function withAdminUserPage(state: AdminUserQueryState, page: number): Adm
 
 export function toAdminUserQuery(state: AdminUserQueryState): AdminUserQuery {
   return {
+    ...(state.q === undefined ? {} : { q: state.q }),
     ...(state.role === undefined ? {} : { role: state.role }),
     ...(state.isActive === undefined ? {} : { isActive: state.isActive }),
     page: state.page,

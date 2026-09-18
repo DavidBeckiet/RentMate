@@ -1,30 +1,32 @@
-import { fireEvent, render, screen } from "@testing-library/react";
-import { describe, expect, it, vi } from "vitest";
+import { render, screen } from "@testing-library/react";
+import { describe, expect, it } from "vitest";
+import type { UserProfile } from "../../types/api";
 import { AdminUserCard } from "./admin-user-card";
 
-const base = {
-  id: 1,
-  displayName: null,
-  email: "user@example.com",
-  phone: null,
+const user: UserProfile = {
+  id: 42,
+  displayName: "Minh Anh",
+  role: "LANDLORD",
+  email: "minh@example.com",
+  phone: "+84901234567",
   isActive: true,
   createdAt: "2026-08-01T00:00:00.000Z",
   updatedAt: "2026-08-01T00:00:00.000Z"
-} as const;
+};
 
 describe("AdminUserCard", () => {
-  it("never exposes an activation control for an ADMIN row", () => {
-    const user = { ...base, role: "ADMIN" as const };
-    render(<AdminUserCard user={user} onActivationRequest={vi.fn()} />);
-    expect(screen.getByText("Không thể thay đổi trạng thái tài khoản quản trị.")).toBeInTheDocument();
-    expect(screen.queryByRole("button")).not.toBeInTheDocument();
-  });
+  it("renders a compact identity row that opens detail without list-level account actions", () => {
+    render(<AdminUserCard user={user} href="/admin/users/42?q=minh&page=2" />);
 
-  it("requests an inline confirmation for a non-admin row", () => {
-    const request = vi.fn();
-    const user = { ...base, role: "LANDLORD" as const };
-    render(<AdminUserCard user={user} onActivationRequest={request} />);
-    fireEvent.click(screen.getByRole("button", { name: "Ngừng hoạt động" }));
-    expect(request).toHaveBeenCalledWith(user);
+    expect(screen.getByRole("link", { name: "Xem tài khoản Minh Anh" })).toHaveAttribute(
+      "href",
+      "/admin/users/42?q=minh&page=2"
+    );
+    expect(screen.getByText("minh@example.com")).toBeInTheDocument();
+    expect(screen.getByText("Người cho thuê")).toBeInTheDocument();
+    expect(screen.getByText("Đang hoạt động")).toBeInTheDocument();
+    expect(screen.getByText("ID #42")).toBeInTheDocument();
+    expect(screen.queryByText("+84901234567")).not.toBeInTheDocument();
+    expect(screen.queryByRole("button")).not.toBeInTheDocument();
   });
 });

@@ -1,18 +1,27 @@
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { AuthContextValue } from "../../lib/auth/auth-provider";
-import type { AdminListingReport, ApiPage } from "../../types/api";
+import type { AdminListingReport } from "../../types/api";
 
-const apiMocks = vi.hoisted(() => ({ listReports: vi.fn(), getReport: vi.fn(), updateReportStatus: vi.fn() }));
+const adminApi = vi.hoisted(() => ({ listReports: vi.fn() }));
 const useAuthMock = vi.hoisted(() => vi.fn<() => AuthContextValue>());
-vi.mock("../../lib/api/client", async () => {
-  const actual = await vi.importActual<typeof import("../../lib/api/client")>("../../lib/api/client");
-  return { ...actual, api: { admin: apiMocks } };
-});
+vi.mock("../../lib/api/client", async () => ({
+  ...(await vi.importActual<typeof import("../../lib/api/client")>("../../lib/api/client")),
+  api: { admin: adminApi }
+}));
 vi.mock("../../lib/auth/auth-provider", () => ({ useAuth: useAuthMock }));
-
 import { AdminReportsPage } from "./admin-reports-page";
 
+const admin = {
+  id: 1,
+  displayName: null,
+  role: "ADMIN" as const,
+  email: "admin@example.com",
+  phone: null,
+  isActive: true,
+  createdAt: "2026-01-01T00:00:00.000Z",
+  updatedAt: "2026-01-01T00:00:00.000Z"
+};
 const report: AdminListingReport = {
   id: 5,
   listing: { id: 42, title: "Phòng sáng", areaName: "Quận 3", status: "APPROVED" },
@@ -24,93 +33,56 @@ const report: AdminListingReport = {
   assignedAdminId: null,
   createdAt: "2026-08-23T00:00:00.000Z",
   updatedAt: "2026-08-23T00:00:00.000Z",
-  resolvedAt: null,
-  events: [
-    {
-      id: 1,
-      actorId: 7,
-      actorRole: "TENANT",
-      previousStatus: null,
-      newStatus: "OPEN",
-      note: "Đề nghị chuyển cọc.",
-      createdAt: "2026-08-23T00:00:00.000Z"
-    }
-  ]
+  resolvedAt: null
 };
-const page: ApiPage<AdminListingReport> = { data: [report], pagination: { page: 1, pageSize: 20, hasNextPage: false } };
 
 describe("AdminReportsPage", () => {
   beforeEach(() => {
+    window.history.replaceState(null, "", "/admin/reports");
     useAuthMock.mockReturnValue({
       status: "authenticated",
-      user: {
-        id: 1,
-        displayName: null,
-        role: "ADMIN",
-        email: "admin@example.com",
-        phone: null,
-        isActive: true,
-        createdAt: "2026-08-01T00:00:00.000Z",
-        updatedAt: "2026-08-01T00:00:00.000Z"
-      },
+      user: admin,
       error: null,
       refresh: vi.fn(),
       logout: vi.fn()
     });
-    apiMocks.listReports.mockResolvedValue(page);
-    apiMocks.getReport.mockResolvedValue(report);
-    apiMocks.updateReportStatus.mockResolvedValue({
-      ...report,
-      status: "INVESTIGATING",
-      assignedAdminId: 1,
-      events: [
-        ...(report.events ?? []),
-        {
-          id: 2,
-          actorId: 1,
-          actorRole: "ADMIN",
-          previousStatus: "OPEN",
-          newStatus: "INVESTIGATING",
-          note: null,
-          createdAt: "2026-08-23T01:00:00.000Z"
-        }
-      ]
+    adminApi.listReports.mockResolvedValue({
+      data: [report],
+      pagination: { page: 1, pageSize: 20, hasNextPage: false }
     });
   });
-
-  it("loads the OPEN queue, displays history, and starts investigation", async () => {
+  it("loads the queue and links actionable reports to a dedicated detail route", async () => {
     render(<AdminReportsPage />);
     expect(await screen.findByRole("heading", { name: "Phòng sáng" })).toBeInTheDocument();
-    expect(apiMocks.listReports).toHaveBeenCalledWith(
-      { status: "OPEN", page: 1, pageSize: 20 },
-      expect.any(AbortSignal)
-    );
-    fireEvent.click(screen.getByRole("button", { name: "Xem & xử lý" }));
-    expect(await screen.findByRole("heading", { name: "Báo cáo #5" })).toBeInTheDocument();
-    fireEvent.click(screen.getByRole("button", { name: "Bắt đầu điều tra" }));
+    expect(screen.getByRole("link", { name: "Xem và xử lý" })).toHaveAttribute("href", "/admin/reports/5");
     await waitFor(() =>
-      expect(apiMocks.updateReportStatus).toHaveBeenCalledWith(5, { status: "INVESTIGATING", note: null })
+      expect(adminApi.listReports).toHaveBeenCalledWith(
+        { status: "OPEN", page: 1, pageSize: 20 },
+        expect.any(AbortSignal)
+      )
     );
   });
-
-  it("blocks non-admin users before loading report data", () => {
+  it("does not load data for a non-admin", () => {
     useAuthMock.mockReturnValue({
       status: "authenticated",
-      user: { ...useAuthMock().user!, role: "TENANT" },
+      user: { ...admin, role: "TENANT" },
       error: null,
       refresh: vi.fn(),
       logout: vi.fn()
     });
     render(<AdminReportsPage />);
     expect(screen.getByRole("alert")).toHaveTextContent("dành cho quản trị viên");
-    expect(apiMocks.listReports).not.toHaveBeenCalled();
+    expect(adminApi.listReports).not.toHaveBeenCalled();
   });
+  it("offers previous-page recovery for an empty report page while preserving filters", async () => {
+    window.history.replaceState(null, "", "/admin/reports?status=RESOLVED&category=FRAUD&page=3");
+    adminApi.listReports.mockResolvedValueOnce({ data: [], pagination: { page: 3, pageSize: 20, hasNextPage: false } });
 
-  it("shows a visible error when report detail cannot be loaded", async () => {
-    apiMocks.getReport.mockRejectedValueOnce(new Error("unavailable"));
     render(<AdminReportsPage />);
-    expect(await screen.findByRole("heading", { name: "Phòng sáng" })).toBeInTheDocument();
-    fireEvent.click(screen.getByRole("button", { name: "Xem & xử lý" }));
-    expect(await screen.findByRole("alert")).toHaveTextContent("Không thể tải chi tiết báo cáo");
+
+    fireEvent.click(await screen.findByRole("button", { name: "Quay lại trang trước" }));
+    expect(window.location.pathname + window.location.search).toBe(
+      "/admin/reports?status=RESOLVED&category=FRAUD&page=2"
+    );
   });
 });

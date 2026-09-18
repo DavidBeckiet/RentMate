@@ -34,6 +34,24 @@ interface ListingExistenceRow extends QueryResultRow {
   readonly id: unknown;
 }
 
+const adminListingSignalProjection = `
+  (
+    SELECT COUNT(*)::integer
+    FROM listing_reports AS report
+    WHERE report.listing_id = l.id
+      AND report.status IN ('OPEN', 'INVESTIGATING')
+  ) AS open_report_count,
+  EXISTS (
+    SELECT 1
+    FROM listings AS duplicate
+    WHERE duplicate.landlord_id = l.landlord_id
+      AND duplicate.id <> l.id
+      AND BTRIM(COALESCE(duplicate.title, '')) <> ''
+      AND BTRIM(COALESCE(l.title, '')) <> ''
+      AND LOWER(BTRIM(duplicate.title)) = LOWER(BTRIM(l.title))
+  ) AS possible_duplicate
+`;
+
 export interface AdminListingPageInput {
   readonly status: ListingStatus;
   readonly limit: number;
@@ -105,21 +123,7 @@ export function createAdminListingReadRepository(
                 l.area_name,
                 l.updated_at,
                 l.landlord_id,
-                (
-                  SELECT COUNT(*)::integer
-                  FROM listing_reports AS report
-                  WHERE report.listing_id = l.id
-                    AND report.status IN ('OPEN', 'INVESTIGATING')
-                ) AS open_report_count,
-                EXISTS (
-                  SELECT 1
-                  FROM listings AS duplicate
-                  WHERE duplicate.landlord_id = l.landlord_id
-                    AND duplicate.id <> l.id
-                    AND BTRIM(COALESCE(duplicate.title, '')) <> ''
-                    AND BTRIM(COALESCE(l.title, '')) <> ''
-                    AND LOWER(BTRIM(duplicate.title)) = LOWER(BTRIM(l.title))
-                ) AS possible_duplicate
+                ${adminListingSignalProjection}
               FROM listings AS l
               WHERE l.status = $1::listing_status
               ORDER BY
@@ -166,21 +170,7 @@ export function createAdminListingReadRepository(
                 landlord.email AS landlord_email,
                 landlord.phone_e164 AS landlord_phone,
                 landlord.is_active AS landlord_is_active,
-                (
-                  SELECT COUNT(*)::integer
-                  FROM listing_reports AS report
-                  WHERE report.listing_id = l.id
-                    AND report.status IN ('OPEN', 'INVESTIGATING')
-                ) AS open_report_count,
-                EXISTS (
-                  SELECT 1
-                  FROM listings AS duplicate
-                  WHERE duplicate.landlord_id = l.landlord_id
-                    AND duplicate.id <> l.id
-                    AND BTRIM(COALESCE(duplicate.title, '')) <> ''
-                    AND BTRIM(COALESCE(l.title, '')) <> ''
-                    AND LOWER(BTRIM(duplicate.title)) = LOWER(BTRIM(l.title))
-                ) AS possible_duplicate
+                ${adminListingSignalProjection}
               FROM listings AS l
               JOIN users AS landlord
                 ON landlord.id = l.landlord_id
@@ -225,7 +215,8 @@ export function createAdminListingReadRepository(
                 l.updated_at,
                 property_type.code AS property_type_code,
                 property_type.label AS property_type_label,
-                l.landlord_id
+                l.landlord_id,
+                ${adminListingSignalProjection}
               FROM listings AS l
               LEFT JOIN property_types AS property_type
                 ON property_type.id = l.property_type_id
@@ -278,7 +269,8 @@ export function createAdminListingReadRepository(
               landlord.role AS landlord_role,
               landlord.email AS landlord_email,
               landlord.phone_e164 AS landlord_phone,
-              landlord.is_active AS landlord_is_active
+              landlord.is_active AS landlord_is_active,
+              ${adminListingSignalProjection}
             FROM listings AS l
             LEFT JOIN property_types AS property_type
               ON property_type.id = l.property_type_id

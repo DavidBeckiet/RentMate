@@ -54,6 +54,15 @@ export function createListAdminSupportRequestsHandler(service: SupportService): 
   };
 }
 
+export function createGetAdminSupportRequestHandler(service: SupportService): RequestHandler {
+  return (request, response, next) => {
+    void service
+      .getAdmin(principal(request), parseSupportRequestId(request.params.supportRequestId))
+      .then((supportRequest) => sendObject(response, adminSupportDto(supportRequest)))
+      .catch(next);
+  };
+}
+
 export function createUpdateAdminSupportRequestStatusHandler(service: SupportService): RequestHandler {
   return (request, response, next) => {
     void service

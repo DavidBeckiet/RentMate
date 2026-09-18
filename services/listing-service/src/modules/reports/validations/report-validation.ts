@@ -25,7 +25,7 @@ export interface CreateReportInput {
   readonly details: string | null;
 }
 export interface UpdateReportStatusInput {
-  readonly status: Exclude<ReportStatus, "OPEN">;
+  readonly status: Extract<ReportStatus, "RESOLVED" | "DISMISSED">;
   readonly note: string | null;
 }
 export interface ReportCollectionQuery {
@@ -53,10 +53,11 @@ export function validateCreateReportBody(value: unknown): CreateReportInput {
 export function validateUpdateReportStatusBody(value: unknown): UpdateReportStatusInput {
   const body = validateBodyFields(value, ["status", "note"]);
   if (!("status" in body)) throwValidationIssue("status", "REQUIRED", "status is required.");
-  const status = normalizeControlledCode(body.status, "status", reportStatuses.slice(1)) as Exclude<
-    ReportStatus,
-    "OPEN"
-  >;
+  const status = normalizeControlledCode(
+    body.status,
+    "status",
+    reportStatuses.slice(2)
+  ) as UpdateReportStatusInput["status"];
   const note = optionalText(body.note, "note");
   if ((status === "RESOLVED" || status === "DISMISSED") && note === null) {
     throwValidationIssue("note", "REQUIRED", "note is required for a terminal report status.");

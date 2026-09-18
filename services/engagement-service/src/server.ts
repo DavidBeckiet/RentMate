@@ -49,6 +49,9 @@ import { registerListingNoteRoutes } from "./modules/listing-notes/routes.js";
 import { createSupportRepository } from "./modules/support/repositories/support-repository.js";
 import { createSupportService } from "./modules/support/services/support-service.js";
 import { registerSupportRoutes } from "./modules/support/routes.js";
+import { createEngagementOverviewRepository } from "./modules/overview/repositories/engagement-overview-repository.js";
+import { createEngagementOverviewService } from "./modules/overview/services/engagement-overview-service.js";
+import { registerEngagementOverviewRoutes } from "./modules/overview/routes.js";
 import { createRoommateRepository } from "./modules/roommate/repositories/roommate-repository.js";
 import { createRoommateService } from "./modules/roommate/services/roommate-service.js";
 import { createRoommateSafetyRepository } from "./modules/roommate/repositories/roommate-safety-repository.js";
@@ -274,6 +277,11 @@ async function startEngagementService(): Promise<void> {
     logger,
     checkDatabaseConnection: () => checkDatabaseConnection(databasePool),
     registerApiRoutes: (router) => {
+      registerEngagementOverviewRoutes(router, {
+        authenticationMiddleware: requiredAuthentication,
+        adminRoleMiddleware: adminRole,
+        service: createEngagementOverviewService(createEngagementOverviewRepository(sqlExecutor))
+      });
       registerFavoriteRoutes(router, {
         authenticationMiddleware: requiredAuthentication,
         tenantRoleMiddleware: tenantRole,

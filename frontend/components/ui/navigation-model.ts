@@ -174,13 +174,20 @@ export const landlordNavigationItems: readonly NavigationItem[] = [
   }
 ];
 
-export const adminNavigationItems: readonly NavigationItem[] = [
+export const adminOperationsNavigationItems: readonly NavigationItem[] = [
+  {
+    key: "admin-overview",
+    label: "Tổng quan",
+    href: "/admin",
+    icon: "chart",
+    exactPaths: ["/admin"]
+  },
   {
     key: "admin-listings",
     label: "Kiểm duyệt tin",
-    href: "/admin",
+    href: "/admin/listings",
     icon: "clipboard",
-    exactPaths: ["/admin"],
+    exactPaths: ["/admin/listings"],
     pathPrefixes: ["/admin/listings/"]
   },
   {
@@ -191,26 +198,15 @@ export const adminNavigationItems: readonly NavigationItem[] = [
     pathPrefixes: ["/admin/users"]
   },
   {
-    key: "admin-reports",
-    label: "Báo cáo",
-    href: "/admin/reports",
-    icon: "flag",
-    pathPrefixes: ["/admin/reports"]
-  },
-  {
-    key: "admin-contact-reports",
-    label: "Báo cáo contact",
-    href: "/admin/contact-reports",
-    icon: "message",
-    pathPrefixes: ["/admin/contact-reports"]
-  },
-  {
-    key: "admin-roommate-reports",
-    label: "Báo cáo ở ghép",
-    href: "/admin/roommate-reports",
-    icon: "users",
-    pathPrefixes: ["/admin/roommate-reports"]
-  },
+    key: "admin-verifications",
+    label: "Xác minh chủ trọ",
+    href: "/admin/verifications",
+    icon: "shield",
+    pathPrefixes: ["/admin/verifications"]
+  }
+];
+
+export const adminSupportNavigationItems: readonly NavigationItem[] = [
   {
     key: "admin-support-requests",
     label: "Yêu cầu hỗ trợ",
@@ -220,25 +216,48 @@ export const adminNavigationItems: readonly NavigationItem[] = [
   },
   {
     key: "admin-reviews",
-    label: "Reviews",
+    label: "Đánh giá",
     href: "/admin/reviews",
     icon: "star",
     pathPrefixes: ["/admin/reviews"]
+  }
+];
+
+export const adminReportNavigationItems: readonly NavigationItem[] = [
+  {
+    key: "admin-reports",
+    label: "Tin đăng",
+    href: "/admin/reports",
+    icon: "flag",
+    pathPrefixes: ["/admin/reports"]
+  },
+  {
+    key: "admin-contact-reports",
+    label: "Liên hệ",
+    href: "/admin/contact-reports",
+    icon: "message",
+    pathPrefixes: ["/admin/contact-reports"]
+  },
+  {
+    key: "admin-roommate-reports",
+    label: "Ở ghép",
+    href: "/admin/roommate-reports",
+    icon: "users",
+    pathPrefixes: ["/admin/roommate-reports"]
   },
   {
     key: "admin-review-reports",
-    label: "Báo cáo review",
+    label: "Đánh giá",
     href: "/admin/review-reports",
     icon: "flag",
     pathPrefixes: ["/admin/review-reports"]
-  },
-  {
-    key: "admin-verifications",
-    label: "Xác minh",
-    href: "/admin/verifications",
-    icon: "shield",
-    pathPrefixes: ["/admin/verifications"]
   }
+];
+
+export const adminNavigationItems: readonly NavigationItem[] = [
+  ...adminOperationsNavigationItems,
+  ...adminSupportNavigationItems,
+  ...adminReportNavigationItems
 ];
 
 export function navigationActor(

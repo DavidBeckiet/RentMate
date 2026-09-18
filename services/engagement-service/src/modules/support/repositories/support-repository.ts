@@ -124,7 +124,11 @@ export interface SupportRepository {
     executor: SqlExecutor,
     input: { readonly status: SupportRequestStatus; readonly limit: number; readonly offset: number }
   ) => Promise<readonly SupportRequest[]>;
-  readonly findById: (executor: SqlExecutor, supportRequestId: number, forUpdate?: boolean) => Promise<SupportRequest | null>;
+  readonly findById: (
+    executor: SqlExecutor,
+    supportRequestId: number,
+    forUpdate?: boolean
+  ) => Promise<SupportRequest | null>;
   readonly updateStatus: (
     executor: SqlExecutor,
     supportRequestId: number,
@@ -192,7 +196,7 @@ export function createSupportRepository(): SupportRepository {
           text: `
             UPDATE support_requests
             SET status = $2,
-                assigned_admin_id = $3,
+                assigned_admin_id = CASE WHEN $4::boolean THEN $3::integer ELSE NULL END,
                 resolution_note = CASE WHEN $4::boolean THEN $5 ELSE NULL END,
                 resolved_at = CASE WHEN $4::boolean THEN CURRENT_TIMESTAMP ELSE NULL END,
                 updated_at = CURRENT_TIMESTAMP

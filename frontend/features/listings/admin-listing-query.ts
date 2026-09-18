@@ -1,6 +1,6 @@
 import type { AdminListingQuery, ListingStatus } from "../../types/api";
 
-export const adminListingStatuses = ["PENDING", "APPROVED", "REJECTED", "HIDDEN", "DRAFT", "INACTIVE"] as const;
+export const adminListingStatuses = ["PENDING", "APPROVED", "REJECTED", "HIDDEN", "INACTIVE"] as const;
 
 export interface AdminListingQueryState {
   readonly status: ListingStatus;
@@ -29,7 +29,7 @@ function positiveInteger(value: string | undefined, maximum?: number): number | 
 function statusValue(value: string | undefined): ListingStatus {
   if (value === undefined) return "PENDING";
   const normalized = value.trim().toUpperCase();
-  if (!adminListingStatuses.includes(normalized as ListingStatus)) throw new Error("invalid");
+  if (!adminListingStatuses.some((status) => status === normalized)) throw new Error("invalid");
   return normalized as ListingStatus;
 }
 
@@ -59,7 +59,68 @@ export function serializeAdminListingQuery(state: AdminListingQueryState): URLSe
 
 export function adminListingsUrl(state: AdminListingQueryState): string {
   const query = serializeAdminListingQuery(state).toString();
-  return query ? `/admin?${query}` : "/admin";
+  return query ? `/admin/listings?${query}` : "/admin/listings";
+}
+
+export type LegacyAdminListingSearchParams = Readonly<Record<string, string | readonly string[] | undefined>>;
+
+/**
+ * Carries only the former queue parameters from /admin to its canonical route.
+ * Values intentionally remain unparsed here so the existing queue validator can
+ * still surface malformed legacy links instead of silently changing their state.
+ */
+export function legacyAdminListingsUrl(searchParams: LegacyAdminListingSearchParams): string | null {
+  const parameters = new URLSearchParams();
+  let hasQueueParameter = false;
+
+  for (const key of ["status", "page", "pageSize"] as const) {
+    const value = searchParams[key];
+    if (value === undefined) continue;
+    hasQueueParameter = true;
+    const values = typeof value === "string" ? [value] : value;
+    values.forEach((entry) => parameters.append(key, entry));
+  }
+
+  if (!hasQueueParameter) return null;
+  const query = parameters.toString();
+  return query ? `/admin/listings?${query}` : "/admin/listings";
+}
+
+function serializeAdminListingReturnQuery(state: AdminListingQueryState): URLSearchParams {
+  const parameters = new URLSearchParams();
+  if (state.status !== "PENDING") parameters.set("returnStatus", state.status);
+  if (state.page > 1) parameters.set("returnPage", String(state.page));
+  if (state.pageSize !== undefined) parameters.set("returnPageSize", String(state.pageSize));
+  return parameters;
+}
+
+export function adminListingDetailUrl(listingId: number, state: AdminListingQueryState): string {
+  const query = serializeAdminListingReturnQuery(state).toString();
+  return `/admin/listings/${listingId}${query ? `?${query}` : ""}`;
+}
+
+export function parseAdminListingReturnQuery(parameters: URLSearchParams): AdminListingQueryState | null {
+  try {
+    const pageSize = positiveInteger(scalar(parameters, "returnPageSize"), 100);
+    return {
+      status: statusValue(scalar(parameters, "returnStatus")),
+      page: positiveInteger(scalar(parameters, "returnPage")) ?? 1,
+      ...(pageSize === undefined ? {} : { pageSize })
+    };
+  } catch {
+    return null;
+  }
+}
+
+export function adminListingReturnUrl(parameters: URLSearchParams): string {
+  const state = parseAdminListingReturnQuery(parameters);
+  return state ? adminListingsUrl(state) : "/admin/listings";
+}
+
+export function appendAdminListingReturnQuery(target: URLSearchParams, source: URLSearchParams): void {
+  const state = parseAdminListingReturnQuery(source);
+  if (!state) return;
+  serializeAdminListingReturnQuery(state).forEach((value, key) => target.set(key, value));
 }
 
 export function withAdminListingStatus(state: AdminListingQueryState, status: ListingStatus): AdminListingQueryState {

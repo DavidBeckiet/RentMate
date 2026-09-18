@@ -1,11 +1,15 @@
-import { Suspense } from "react";
-import { LoadingState } from "../../../components/ui/feedback-states";
-import { AdminListingsPage } from "../../../features/listings/admin-listings-page";
+import { redirect } from "next/navigation";
+import { AdminOverviewPage } from "../../../features/admin-overview/admin-overview-page";
+import { legacyAdminListingsUrl } from "../../../features/listings/admin-listing-query";
 
-export default function AdminDashboardRoute() {
-  return (
-    <Suspense fallback={<LoadingState message="Đang mở hàng đợi kiểm duyệt…" />}>
-      <AdminListingsPage />
-    </Suspense>
-  );
+type DashboardSearchParams = Record<string, string | string[] | undefined>;
+
+export default async function AdminDashboardRoute({
+  searchParams
+}: Readonly<{
+  searchParams: Promise<DashboardSearchParams>;
+}>) {
+  const legacyQueueUrl = legacyAdminListingsUrl(await searchParams);
+  if (legacyQueueUrl) redirect(legacyQueueUrl);
+  return <AdminOverviewPage />;
 }

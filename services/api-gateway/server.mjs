@@ -85,6 +85,7 @@ export function resolveUpstream(pathname, routes) {
     routes.identity &&
     (pathname.startsWith("/api/v1/auth") ||
       pathname.startsWith("/api/v1/users") ||
+      pathname === "/api/v1/admin/overview/identity" ||
       pathname.startsWith("/api/v1/admin/users") ||
       pathname.startsWith("/api/v1/admin/verifications") ||
       pathname.startsWith("/api/v1/landlord/verifications") ||
@@ -102,6 +103,7 @@ export function resolveUpstream(pathname, routes) {
     routes.listing &&
     (pathname.startsWith("/api/v1/listings") ||
       pathname.startsWith("/api/v1/landlord/listings") ||
+      pathname === "/api/v1/admin/overview/listings" ||
       pathname.startsWith("/api/v1/admin/listings") ||
       pathname.startsWith("/api/v1/admin/reports") ||
       pathname.startsWith("/api/v1/lookups") ||
@@ -130,6 +132,7 @@ export function resolveUpstream(pathname, routes) {
       pathname.startsWith("/api/v1/landlord/analytics") ||
       pathname.startsWith("/api/v1/analytics/listings/") ||
       pathname.startsWith("/api/v1/notifications") ||
+      pathname === "/api/v1/admin/overview/engagement" ||
       pathname.startsWith("/api/v1/admin/contact-reports") ||
       pathname.startsWith("/api/v1/admin/support-requests") ||
       pathname.startsWith("/api/v1/admin/review-reports") ||

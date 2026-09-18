@@ -39,6 +39,9 @@ import { registerVerificationRoutes } from "./modules/verifications/routes.js";
 import { createContactVerificationRepository } from "./modules/verifications/repositories/contact-verification-repository.js";
 import { createContactVerificationService } from "./modules/verifications/services/contact-verification-service.js";
 import { createContactVerificationDelivery } from "./modules/verifications/contact-verification-delivery.js";
+import { createIdentityOverviewRepository } from "./modules/overview/repositories/identity-overview-repository.js";
+import { createIdentityOverviewService } from "./modules/overview/services/identity-overview-service.js";
+import { registerIdentityOverviewRoutes } from "./modules/overview/routes.js";
 import type { TransactionRunner } from "./shared/transaction.js";
 
 function listen(server: Server, port: number): Promise<void> {
@@ -123,6 +126,7 @@ async function startIdentityService(): Promise<void> {
     repository: createAdminUserRepository(sqlExecutor),
     transactionRunner
   });
+  const identityOverviewService = createIdentityOverviewService(createIdentityOverviewRepository(sqlExecutor));
   const verificationService = createVerificationService({ repository: verificationRepository, transactionRunner });
   const contactVerificationDelivery = createContactVerificationDelivery({
     nodeEnvironment: config.nodeEnv,
@@ -191,6 +195,11 @@ async function startIdentityService(): Promise<void> {
         adminRoleMiddleware: adminRole,
         adminUserService,
         usersService
+      });
+      registerIdentityOverviewRoutes(router, {
+        authenticationMiddleware: requiredAuthentication,
+        adminRoleMiddleware: adminRole,
+        service: identityOverviewService
       });
       registerVerificationRoutes(router, {
         authenticationMiddleware: requiredAuthentication,

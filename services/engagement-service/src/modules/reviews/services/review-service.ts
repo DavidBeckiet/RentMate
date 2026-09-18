@@ -109,10 +109,7 @@ function mapDuplicateReport(error: unknown): never {
 }
 
 function allowedReportTransition(current: ReviewReportStatus, next: ReviewReportStatus): boolean {
-  return (
-    (current === "OPEN" && (next === "INVESTIGATING" || next === "DISMISSED")) ||
-    (current === "INVESTIGATING" && next === "RESOLVED")
-  );
+  return (current === "OPEN" || current === "INVESTIGATING") && (next === "RESOLVED" || next === "DISMISSED");
 }
 
 export function createReviewService(dependencies: {

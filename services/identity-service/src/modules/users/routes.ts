@@ -1,5 +1,9 @@
 import type { RequestHandler, Router } from "express";
-import { createListAdminUsersHandler, createSetAdminUserActivationHandler } from "./controllers/admin-user-controller.js";
+import {
+  createGetAdminUserHandler,
+  createListAdminUsersHandler,
+  createSetAdminUserActivationHandler
+} from "./controllers/admin-user-controller.js";
 import type { AdminUserService } from "./services/admin-user-service.js";
 import { createGetCurrentUserHandler, createPatchCurrentUserHandler } from "./controllers/users-controller.js";
 import type { UsersService } from "./services/users-service.js";
@@ -28,6 +32,12 @@ export function registerUsersRoutes(router: Router, dependencies: UsersRouteDepe
       dependencies.authenticationMiddleware,
       dependencies.adminRoleMiddleware,
       createListAdminUsersHandler(dependencies.adminUserService)
+    );
+    router.get(
+      "/admin/users/:userId",
+      dependencies.authenticationMiddleware,
+      dependencies.adminRoleMiddleware,
+      createGetAdminUserHandler(dependencies.adminUserService)
     );
     router.patch(
       "/admin/users/:userId/activation",

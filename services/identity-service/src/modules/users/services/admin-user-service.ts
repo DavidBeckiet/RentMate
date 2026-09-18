@@ -8,7 +8,7 @@ import {
   type AdminUserRepositoryFactory
 } from "../repositories/admin-user-repository.js";
 import type { AdminUserActivationInput, AdminUserCollectionQuery } from "../validations/admin-user-validation.js";
-import type { UserProfile } from "../user-profile.js";
+import type { AdminUserDetail, UserProfile } from "../user-profile.js";
 
 const resourceNotFoundMessage = "The requested resource was not found.";
 
@@ -24,6 +24,7 @@ export interface AdminUserService {
     principal: AuthenticatedPrincipal,
     query: AdminUserCollectionQuery
   ) => Promise<PaginatedAdminUsers>;
+  readonly getUser: (principal: AuthenticatedPrincipal, userId: number) => Promise<AdminUserDetail>;
   readonly setActivation: (
     principal: AuthenticatedPrincipal,
     userId: number,
@@ -50,6 +51,8 @@ export function createAdminUserService(dependencies: AdminUserServiceDependencie
     async listUsers(principal: AuthenticatedPrincipal, query: AdminUserCollectionQuery): Promise<PaginatedAdminUsers> {
       requireAdmin(principal);
       const rows = await dependencies.repository.findUserPage({
+        q: query.q,
+        userId: query.userId,
         role: query.role,
         isActive: query.isActive,
         limit: query.pageSize + 1,
@@ -61,6 +64,15 @@ export function createAdminUserService(dependencies: AdminUserServiceDependencie
         pageSize: query.pageSize,
         hasNextPage: rows.length > query.pageSize
       });
+    },
+
+    async getUser(principal: AuthenticatedPrincipal, userId: number): Promise<AdminUserDetail> {
+      requireAdmin(principal);
+      const user = await dependencies.repository.findUserDetail(userId);
+      if (user === null) {
+        throw new ApplicationError("RESOURCE_NOT_FOUND", resourceNotFoundMessage);
+      }
+      return user;
     },
 
     async setActivation(

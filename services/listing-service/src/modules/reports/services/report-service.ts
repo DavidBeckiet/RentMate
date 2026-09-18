@@ -47,10 +47,7 @@ function requireRole(principal: AuthenticatedPrincipal, role: "TENANT" | "ADMIN"
   return principal.userId;
 }
 function allowedTransition(current: ReportStatus, next: ReportStatus): boolean {
-  return (
-    (current === "OPEN" && (next === "INVESTIGATING" || next === "DISMISSED")) ||
-    (current === "INVESTIGATING" && next === "RESOLVED")
-  );
+  return (current === "OPEN" || current === "INVESTIGATING") && (next === "RESOLVED" || next === "DISMISSED");
 }
 function mapDuplicate(error: unknown): never {
   if (typeof error === "object" && error !== null && "code" in error && error.code === "23505") {

@@ -17,6 +17,6 @@
 - `GET /api/v1/admin/reports/:reportId` returns the listing projection, reporter profile, report details, and complete ordered processing history.
 - `PATCH /api/v1/admin/reports/:reportId/status` accepts `{ status, note? }`.
 
-Allowed transitions are `OPEN -> INVESTIGATING -> RESOLVED` and `OPEN -> DISMISSED`. `RESOLVED` and `DISMISSED` require a nonblank resolution note. Status update and history insertion commit atomically under a row lock. A stale or invalid transition returns `409`.
+Allowed decisions are `OPEN -> RESOLVED` and `OPEN -> DISMISSED`. Existing `INVESTIGATING` reports may transition to either `RESOLVED` or `DISMISSED`; new status updates cannot create `INVESTIGATING` reports. `DISMISSED` means no further action is required. `RESOLVED` means the admin completed case review, without implying that a violation or enforcement action occurred. Both decisions require a nonblank resolution note. Status update and history insertion commit atomically under a row lock. An unsupported requested status is rejected during validation; a stale or invalid transition from the current state returns `409`.
 
 Report handling does not silently change listing moderation status. Admins use the existing listing moderation contract for hide/restore actions, preserving its lifecycle and moderation history.

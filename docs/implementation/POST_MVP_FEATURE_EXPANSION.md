@@ -197,8 +197,9 @@ Tenant có thể báo cáo tin về giá sai, vị trí sai, ảnh sai, tin đã
 Trạng thái report:
 
 ```text
-OPEN → INVESTIGATING → RESOLVED
+OPEN → RESOLVED
 OPEN → DISMISSED
+INVESTIGATING → RESOLVED | DISMISSED  (legacy reports only)
 ```
 
 Admin cần xem resource, lý do, người báo cáo, lịch sử xử lý và hành động đã thực hiện.

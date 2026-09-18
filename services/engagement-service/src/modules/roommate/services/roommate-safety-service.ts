@@ -297,10 +297,7 @@ function blockView(blocked: boolean): RoommateBlockView {
 }
 
 function canTransitionReportStatus(current: RoommateReportStatus, next: RoommateReportStatus): boolean {
-  return (
-    (current === "OPEN" && (next === "INVESTIGATING" || next === "DISMISSED")) ||
-    (current === "INVESTIGATING" && next === "RESOLVED")
-  );
+  return (current === "OPEN" || current === "INVESTIGATING") && (next === "RESOLVED" || next === "DISMISSED");
 }
 
 function reportMatches(

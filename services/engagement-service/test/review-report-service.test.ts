@@ -20,7 +20,7 @@ const executor: SqlExecutor = {
   }
 };
 
-function harness() {
+function harness(initialStatus: ReviewReport["status"] = "OPEN") {
   const report: ReviewReport = {
     id: 1,
     reviewId: 7,
@@ -28,7 +28,7 @@ function harness() {
     reporterId: landlord.userId,
     category: "INACCURATE",
     details: "Thông tin không khớp.",
-    status: "OPEN",
+    status: initialStatus,
     resolutionNote: null,
     assignedAdminId: null,
     createdAt: "2026-08-25T00:00:00.000Z",
@@ -104,16 +104,28 @@ test("creates a public-review report for another role and records its first even
 test("keeps review-report status transitions auditable and rejects stale decisions", async () => {
   const service = harness();
   await service.createReport(landlord, 7, { category: "OTHER", details: null });
-  const investigating = await service.moderateReport(admin, 1, { status: "INVESTIGATING", note: null });
-  assert.equal(investigating.status, "INVESTIGATING");
-  const resolved = await service.moderateReport(admin, 1, { status: "RESOLVED", note: "Đã xử lý." });
+  const resolved = await service.moderateReport(admin, 1, { status: "RESOLVED", note: "Đã xem xét." });
   assert.equal(resolved.status, "RESOLVED");
   assert.deepEqual(
     resolved.events.map((event) => event.newStatus),
-    ["OPEN", "INVESTIGATING", "RESOLVED"]
+    ["OPEN", "RESOLVED"]
   );
   await assert.rejects(
     () => service.moderateReport(admin, 1, { status: "DISMISSED", note: "Muộn." }),
     (error: unknown) => error instanceof ApplicationError && error.code === "CONCURRENT_MODIFICATION"
   );
+});
+
+test("dismisses an open report and completes legacy investigating reports either way", async () => {
+  const open = harness();
+  const dismissed = await open.moderateReport(admin, 1, { status: "DISMISSED", note: "Không có căn cứ." });
+  assert.equal(dismissed.events[0]?.previousStatus, "OPEN");
+
+  const legacyResolved = harness("INVESTIGATING");
+  const resolved = await legacyResolved.moderateReport(admin, 1, { status: "RESOLVED", note: "Đã xem xét." });
+  assert.equal(resolved.events[0]?.previousStatus, "INVESTIGATING");
+
+  const legacyDismissed = harness("INVESTIGATING");
+  const closed = await legacyDismissed.moderateReport(admin, 1, { status: "DISMISSED", note: "Không cần xử lý." });
+  assert.equal(closed.events[0]?.previousStatus, "INVESTIGATING");
 });

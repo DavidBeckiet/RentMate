@@ -1,6 +1,7 @@
 import type { RequestHandler, Router } from "express";
 import {
   createCreateSupportRequestHandler,
+  createGetAdminSupportRequestHandler,
   createListAdminSupportRequestsHandler,
   createUpdateAdminSupportRequestStatusHandler
 } from "./controllers/support-controller.js";
@@ -39,6 +40,12 @@ export function registerSupportRoutes(router: Router, dependencies: SupportRoute
     dependencies.authenticationMiddleware,
     dependencies.adminRoleMiddleware,
     createListAdminSupportRequestsHandler(dependencies.service)
+  );
+  router.get(
+    "/admin/support-requests/:supportRequestId",
+    dependencies.authenticationMiddleware,
+    dependencies.adminRoleMiddleware,
+    createGetAdminSupportRequestHandler(dependencies.service)
   );
   router.patch(
     "/admin/support-requests/:supportRequestId/status",

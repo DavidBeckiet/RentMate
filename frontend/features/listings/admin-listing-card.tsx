@@ -1,62 +1,67 @@
 import Link from "next/link";
-import { AdminPill } from "../../components/ui/admin-workspace";
-import { AccountStatusBadge, BusinessStatusBadge, ListingStatusBadge } from "../../components/ui/status-badge";
-import type { AdminListingSummary } from "../../types/api";
-import { ListingMetadata } from "./listing-presentation";
-import { getListingFreshness, ListingFreshnessLabel } from "./listing-freshness";
+import type { AdminListingSummary, ListingBusinessStatus } from "../../types/api";
+import styles from "./admin-listings-page.module.css";
 
 const dateFormatter = new Intl.DateTimeFormat("vi-VN", { dateStyle: "medium", timeStyle: "short" });
+const businessStatusLabels: Record<ListingBusinessStatus, string> = {
+  AVAILABLE: "Còn phòng",
+  PAUSED: "Tạm dừng",
+  RENTED: "Đã thuê",
+  UNKNOWN: "Chưa xác định"
+};
 
-export function AdminListingCard({ listing }: { readonly listing: AdminListingSummary }) {
-  const freshness = getListingFreshness(listing.updatedAt);
-  const hasTrustSignals = freshness.isStale || listing.openReportCount > 0 || listing.possibleDuplicate;
+export function AdminListingCard({
+  listing,
+  detailHref
+}: {
+  readonly listing: AdminListingSummary;
+  readonly detailHref: string;
+}) {
+  const hasReviewSignals = listing.openReportCount > 0 || listing.possibleDuplicate;
 
   return (
-    <article className="rm-admin-mobile-record">
-      <div className="flex min-w-0 flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-        <div className="min-w-0 flex-1 space-y-3">
-          <div className="flex min-w-0 flex-wrap items-center gap-2">
-            <h2 className="min-w-0 flex-1 basis-full truncate font-display text-lg font-bold tracking-tight text-foreground sm:basis-auto sm:text-xl">
-              {listing.title ?? "Chưa có tiêu đề"}
-            </h2>
-            <ListingStatusBadge status={listing.status} />
-            <BusinessStatusBadge status={listing.businessStatus} />
-          </div>
-          <ListingMetadata>{listing.areaName ?? "Chưa có khu vực"}</ListingMetadata>
-          <dl className="grid min-w-0 gap-3 border-t border-border pt-3 text-ui-sm text-muted-foreground sm:grid-cols-2">
-            <div className="min-w-0">
-              <dt className="font-semibold text-foreground">Người cho thuê</dt>
-              <dd className="truncate">{listing.landlord.email}</dd>
-            </div>
-            <div className="min-w-0">
-              <dt className="font-semibold text-foreground">Điện thoại</dt>
-              <dd className="truncate">{listing.landlord.phone || "Chưa có số điện thoại"}</dd>
-            </div>
-          </dl>
-          <div className="flex min-w-0 flex-wrap items-center gap-2">
-            <AccountStatusBadge isActive={listing.landlord.isActive} />
-            <span className="text-ui-xs text-subtle-foreground">
-              <ListingFreshnessLabel updatedAt={listing.updatedAt} /> ·{" "}
-              {dateFormatter.format(new Date(listing.updatedAt))}
-            </span>
-          </div>
-          {hasTrustSignals ? (
-            <div className="flex min-w-0 flex-wrap items-center gap-2" role="note" aria-label="Tín hiệu cần kiểm tra">
-              {freshness.isStale ? <AdminPill tone="attention">Lâu chưa cập nhật</AdminPill> : null}
-              {listing.openReportCount > 0 ? (
-                <AdminPill tone="attention">{listing.openReportCount} báo cáo đang chờ xử lý</AdminPill>
-              ) : null}
-              {listing.possibleDuplicate ? <AdminPill tone="attention">Có khả năng trùng lặp</AdminPill> : null}
-            </div>
-          ) : null}
+    <article
+      className={`${styles.row} ${hasReviewSignals ? "" : styles.rowWithoutSignals}`}
+      aria-labelledby={`admin-listing-${listing.id}`}
+    >
+      <div className={styles.listingCell}>
+        <h2 id={`admin-listing-${listing.id}`} className={styles.listingTitle}>
+          {listing.title ?? "Chưa có tiêu đề"}
+        </h2>
+        <div className={styles.listingMeta}>
+          <span>#{listing.id}</span>
+          <span aria-hidden="true">·</span>
+          <span>{businessStatusLabels[listing.businessStatus]}</span>
         </div>
-        <Link
-          href={`/admin/listings/${listing.id}`}
-          className="inline-flex min-h-11 shrink-0 items-center justify-center rounded-control border border-primary bg-primary px-4 py-2 text-ui-sm font-semibold text-primary-foreground shadow-surface transition-[background-color,border-color,box-shadow,transform] duration-fast ease-standard hover:-translate-y-0.5 hover:bg-primary-hover hover:shadow-raised focus-visible:outline-none lg:mt-1"
-        >
-          Xem chi tiết
-        </Link>
       </div>
+      {hasReviewSignals ? (
+        <div className={styles.signalsCell}>
+          <div role="note" aria-label="Tín hiệu cần kiểm tra" className={styles.signalList}>
+            {listing.openReportCount > 0 ? (
+              <span className={styles.signal}>{listing.openReportCount} báo cáo đang mở</span>
+            ) : null}
+            {listing.possibleDuplicate ? <span className={styles.signal}>Có khả năng trùng tiêu đề</span> : null}
+          </div>
+        </div>
+      ) : null}
+      <div className={styles.areaCell}>
+        <span className={styles.cellLabel}>Khu vực</span>
+        <span>{listing.areaName ?? "Chưa có khu vực"}</span>
+      </div>
+      <div className={styles.ownerCell}>
+        <span className={styles.cellLabel}>Người đăng</span>
+        <span className={styles.ownerEmail}>{listing.landlord.email}</span>
+        <span className={listing.landlord.isActive ? styles.secondaryLine : styles.inactiveOwner}>
+          {listing.landlord.isActive ? "Đang hoạt động" : "Ngừng hoạt động"}
+        </span>
+      </div>
+      <div className={styles.updatedCell}>
+        <span className={styles.cellLabel}>Cập nhật</span>
+        <time dateTime={listing.updatedAt}>{dateFormatter.format(new Date(listing.updatedAt))}</time>
+      </div>
+      <Link href={detailHref} className={styles.detailLink}>
+        Xem
+      </Link>
     </article>
   );
 }

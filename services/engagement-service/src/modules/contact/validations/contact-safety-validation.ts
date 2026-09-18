@@ -1,7 +1,10 @@
 import { normalizeControlledCode } from "../../../../../shared/src/runtime/shared/validation/normalization.js";
 import { throwValidationIssue } from "../../../../../shared/src/runtime/shared/validation/issues.js";
 import { parsePagination, parsePathId } from "../../../../../shared/src/runtime/shared/validation/parsing.js";
-import { validateJsonIntegerId, validateJsonText } from "../../../../../shared/src/runtime/shared/validation/primitives.js";
+import {
+  validateJsonIntegerId,
+  validateJsonText
+} from "../../../../../shared/src/runtime/shared/validation/primitives.js";
 import {
   readScalarQueryValue,
   validateBodyFields,
@@ -20,7 +23,7 @@ export interface CreateContactReportInput {
 }
 
 export interface UpdateContactReportStatusInput {
-  readonly status: Exclude<ContactReportStatus, "OPEN">;
+  readonly status: Extract<ContactReportStatus, "RESOLVED" | "DISMISSED">;
   readonly note: string | null;
 }
 
@@ -47,7 +50,10 @@ export function validateCreateContactReportBody(value: unknown): CreateContactRe
   return Object.freeze({
     category: normalizeControlledCode(body.category, "category", contactReportCategories) as ContactReportCategory,
     details: optionalText(body.details, "details"),
-    messageId: body.messageId === undefined || body.messageId === null ? null : validateJsonIntegerId(body.messageId, "messageId")
+    messageId:
+      body.messageId === undefined || body.messageId === null
+        ? null
+        : validateJsonIntegerId(body.messageId, "messageId")
   });
 }
 
@@ -57,8 +63,8 @@ export function validateUpdateContactReportStatusBody(value: unknown): UpdateCon
   const status = normalizeControlledCode(
     body.status,
     "status",
-    contactReportStatuses.slice(1)
-  ) as Exclude<ContactReportStatus, "OPEN">;
+    contactReportStatuses.slice(2)
+  ) as UpdateContactReportStatusInput["status"];
   const note = optionalText(body.note, "note");
   if ((status === "RESOLVED" || status === "DISMISSED") && note === null) {
     throwValidationIssue("note", "REQUIRED", "note is required for a terminal report status.");

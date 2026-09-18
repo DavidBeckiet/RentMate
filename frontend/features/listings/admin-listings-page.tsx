@@ -3,15 +3,6 @@
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useMemo, useRef, useState } from "react";
-import {
-  AdminFilter,
-  AdminPage,
-  AdminPageHeader,
-  AdminSection,
-  AdminSummaryCard,
-  AdminSummaryGrid,
-  AdminToolbar
-} from "../../components/ui/admin-workspace";
 import { Button } from "../../components/ui/button";
 import { EmptyState, ErrorState, LoadingState } from "../../components/ui/feedback-states";
 import { Pagination } from "../../components/ui/pagination";
@@ -21,12 +12,14 @@ import type { ApiPage, AdminListingSummary, ListingStatus } from "../../types/ap
 import { AdminListingCard } from "./admin-listing-card";
 import {
   adminListingStatuses,
+  adminListingDetailUrl,
   adminListingsUrl,
   parseAdminListingQuery,
   toAdminListingQuery,
   withAdminListingPage,
   withAdminListingStatus
 } from "./admin-listing-query";
+import styles from "./admin-listings-page.module.css";
 
 const statusLabels: Record<ListingStatus, string> = {
   PENDING: "Chờ duyệt",
@@ -53,6 +46,7 @@ export function AdminListingsPage() {
   const [mounted, setMounted] = useState(false);
   const [loadState, setLoadState] = useState<LoadState>({ status: "idle" });
   const [reloadVersion, setReloadVersion] = useState(0);
+  const [listingIdInput, setListingIdInput] = useState("");
   const requestId = useRef(0);
   const adminReady = authStatus === "authenticated" && user?.role === "ADMIN";
   const queryIdentity = parsed.ok ? JSON.stringify(parsed.state) : "invalid";
@@ -106,80 +100,83 @@ export function AdminListingsPage() {
   if (!parsed.ok) return <ErrorState message={parsed.message} />;
   if (!mounted) return <LoadingState message="Đang kiểm tra tài khoản…" />;
 
-  const updateStatus = (status: ListingStatus) =>
-    router.push(adminListingsUrl(withAdminListingStatus(parsed.state, status)));
   const updatePage = (page: number) => router.push(adminListingsUrl(withAdminListingPage(parsed.state, page)));
   const visibleResult = loadState.status === "success" ? loadState.result : null;
   const visibleListings = visibleResult?.data ?? [];
+  const emptyLaterPage = Boolean(visibleResult && visibleListings.length === 0 && visibleResult.pagination.page > 1);
   const openReportCount = visibleListings.reduce((total, listing) => total + listing.openReportCount, 0);
   const duplicateCount = visibleListings.filter((listing) => listing.possibleDuplicate).length;
-  const pendingCount = visibleListings.filter((listing) => listing.status === "PENDING").length;
+  const normalizedListingId = listingIdInput.trim();
+  const listingId = /^[1-9][0-9]*$/.test(normalizedListingId) ? Number(normalizedListingId) : null;
+  const canOpenListing = listingId !== null && Number.isSafeInteger(listingId);
 
   return (
-    <AdminPage labelledBy="admin-listings-heading">
-      <AdminPageHeader
-        eyebrow="Tổng quan vận hành · kiểm duyệt tin"
-        title="Hàng đợi kiểm duyệt"
-        titleId="admin-listings-heading"
-        description="Một góc nhìn gọn để nhận biết tin cần xem, tín hiệu báo cáo và các trường hợp nên mở chi tiết. Số liệu bên dưới chỉ phản ánh trang dữ liệu hiện tại."
-        icon="clipboard"
-        tone={openReportCount > 0 || duplicateCount > 0 ? "attention" : "default"}
-      />
+    <section aria-labelledby="admin-listings-heading" className={styles.page}>
+      <header className={styles.header}>
+        <h1 id="admin-listings-heading" className={styles.title}>
+          Kiểm duyệt tin
+        </h1>
+      </header>
 
-      {visibleResult ? (
-        <AdminSummaryGrid>
-          <AdminSummaryCard
-            label="Tin trong trang"
-            value={numberFormatter.format(visibleListings.length)}
-            note={`Trang ${visibleResult.pagination.page} · không phải tổng hệ thống`}
-            icon="clipboard"
-          />
-          <AdminSummaryCard
-            label="Tin chờ duyệt"
-            value={numberFormatter.format(pendingCount)}
-            note="Trong dữ liệu đang hiển thị"
-            tone={pendingCount > 0 ? "attention" : "success"}
-            icon="target"
-          />
-          <AdminSummaryCard
-            label="Báo cáo mở"
-            value={numberFormatter.format(openReportCount)}
-            note="Gắn với các tin trong trang"
-            tone={openReportCount > 0 ? "attention" : "muted"}
-            icon="flag"
-          />
-          <AdminSummaryCard
-            label="Tín hiệu trùng lặp"
-            value={numberFormatter.format(duplicateCount)}
-            note="Cần đối chiếu thủ công"
-            tone={duplicateCount > 0 ? "attention" : "muted"}
-            icon="search"
-          />
-        </AdminSummaryGrid>
-      ) : null}
-
-      <AdminToolbar
-        summary={
-          visibleResult
-            ? `${visibleListings.length} bản ghi · page size ${visibleResult.pagination.pageSize}`
-            : undefined
-        }
-      >
-        <AdminFilter id="admin-listing-status" label="Trạng thái">
-          <select
-            id="admin-listing-status"
-            name="status"
-            value={parsed.state.status}
-            onChange={(event) => updateStatus(event.currentTarget.value as ListingStatus)}
+      <nav aria-label="Lọc tin theo trạng thái" className={styles.statusNavigation}>
+        {adminListingStatuses.map((status) => (
+          <Link
+            key={status}
+            href={adminListingsUrl(withAdminListingStatus(parsed.state, status))}
+            prefetch={false}
+            aria-current={parsed.state.status === status ? "page" : undefined}
+            className={styles.statusLink}
           >
-            {adminListingStatuses.map((status) => (
-              <option key={status} value={status}>
-                {statusLabels[status]}
-              </option>
-            ))}
-          </select>
-        </AdminFilter>
-      </AdminToolbar>
+            {statusLabels[status]}
+          </Link>
+        ))}
+      </nav>
+
+      <div className={styles.toolbar}>
+        {visibleResult ? (
+          <div aria-label="Số liệu trong trang hiện tại" className={styles.pageSummary}>
+            <span className={styles.summaryCount}>
+              {numberFormatter.format(visibleListings.length)} tin trong trang này
+            </span>
+            {openReportCount > 0 ? (
+              <span className={styles.summarySignal}>{numberFormatter.format(openReportCount)} báo cáo mở</span>
+            ) : null}
+            {duplicateCount > 0 ? (
+              <span className={styles.summarySignal}>{numberFormatter.format(duplicateCount)} nghi trùng</span>
+            ) : null}
+          </div>
+        ) : (
+          <span className={styles.queueContext}>Đang xem: {statusLabels[parsed.state.status]}</span>
+        )}
+        <form
+          aria-label="Mở tin bằng mã"
+          className={styles.idForm}
+          onSubmit={(event) => {
+            event.preventDefault();
+            if (canOpenListing && listingId !== null) {
+              router.push(adminListingDetailUrl(listingId, parsed.state));
+            }
+          }}
+        >
+          <label htmlFor="admin-listing-id" className={styles.idLabel}>
+            Mở theo mã tin
+          </label>
+          <input
+            id="admin-listing-id"
+            name="listingId"
+            type="text"
+            inputMode="numeric"
+            autoComplete="off"
+            placeholder="Ví dụ: 123"
+            value={listingIdInput}
+            onChange={(event) => setListingIdInput(event.currentTarget.value)}
+            className={styles.idInput}
+          />
+          <Button type="submit" variant="secondary" disabled={!canOpenListing} className={styles.idSubmit}>
+            Mở tin
+          </Button>
+        </form>
+      </div>
 
       {loadState.status === "idle" || loadState.status === "loading" ? (
         <LoadingState message="Đang tải hàng đợi kiểm duyệt…" />
@@ -196,20 +193,40 @@ export function AdminListingsPage() {
       {loadState.status === "success" && loadState.result.data.length === 0 ? (
         <EmptyState
           title="Không có tin nào ở trạng thái này"
-          description="Hãy chọn một trạng thái khác hoặc quay lại sau."
+          description={
+            emptyLaterPage
+              ? "Trang này không còn tin đăng. Dữ liệu có thể đã thay đổi trong khi bạn đang xem."
+              : "Hãy chọn một trạng thái khác hoặc quay lại sau."
+          }
+          action={
+            emptyLaterPage ? (
+              <Button variant="secondary" onClick={() => updatePage(loadState.result.pagination.page - 1)}>
+                Quay lại trang trước
+              </Button>
+            ) : undefined
+          }
         />
       ) : null}
       {loadState.status === "success" && loadState.result.data.length > 0 ? (
-        <AdminSection
-          title="Danh sách tin"
-          description="Mở từng tin để xem thông tin riêng tư được phép hiển thị, lịch sử kiểm duyệt và hành động phù hợp."
-        >
-          <div className="divide-y divide-border">
+        <section aria-label="Hàng đợi kiểm duyệt" className={styles.queue}>
+          <div aria-hidden="true" className={styles.columnHeadings}>
+            <span>Tin đăng</span>
+            <span>Khu vực</span>
+            <span>Người đăng</span>
+            <span>Cập nhật</span>
+            <span>Tín hiệu</span>
+            <span className={styles.actionHeading}>Chi tiết</span>
+          </div>
+          <div className={styles.rows}>
             {loadState.result.data.map((listing) => (
-              <AdminListingCard key={listing.id} listing={listing} />
+              <AdminListingCard
+                key={listing.id}
+                listing={listing}
+                detailHref={adminListingDetailUrl(listing.id, parsed.state)}
+              />
             ))}
           </div>
-        </AdminSection>
+        </section>
       ) : null}
       {loadState.status === "success" ? (
         <Pagination
@@ -218,8 +235,9 @@ export function AdminListingsPage() {
           hasNextPage={loadState.result.pagination.hasNextPage}
           onPrevious={() => updatePage(loadState.result.pagination.page - 1)}
           onNext={() => updatePage(loadState.result.pagination.page + 1)}
+          variant="moderation"
         />
       ) : null}
-    </AdminPage>
+    </section>
   );
 }

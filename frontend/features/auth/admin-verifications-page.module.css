@@ -1,0 +1,382 @@
+.page {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 1rem;
+  padding-bottom: 2rem;
+}
+
+.header {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 0.35rem;
+  padding: 0.125rem 0 0.25rem;
+}
+
+.title {
+  color: rgb(var(--color-foreground));
+  font-family: var(--font-be-vietnam-pro), sans-serif;
+  font-size: clamp(1.5rem, 2vw, 1.875rem);
+  font-weight: 800;
+  letter-spacing: -0.035em;
+  line-height: 1.2;
+}
+
+.description {
+  max-width: 44rem;
+  color: rgb(var(--color-muted-foreground));
+  font-size: 0.8125rem;
+  line-height: 1.55;
+}
+
+.statusNavigation {
+  display: flex;
+  min-width: 0;
+  flex-wrap: wrap;
+  gap: 0.25rem 1.5rem;
+  border-bottom: 1px solid rgb(var(--color-border));
+}
+
+.statusLink {
+  display: inline-flex;
+  min-height: 2.75rem;
+  align-items: center;
+  border-bottom: 2px solid transparent;
+  padding: 0.5rem 0.125rem;
+  color: rgb(var(--color-muted-foreground));
+  font-size: 0.8125rem;
+  font-weight: 650;
+  line-height: 1.25;
+  text-decoration: none;
+  transition:
+    border-color 160ms ease,
+    color 160ms ease;
+}
+
+.statusLink:hover {
+  color: rgb(var(--color-primary-hover));
+}
+
+.statusLink[aria-current="page"] {
+  border-bottom-color: rgb(var(--color-primary));
+  color: rgb(var(--color-foreground));
+  font-weight: 800;
+}
+
+.statusLink:focus-visible,
+.detailButton:focus-visible {
+  border-radius: 0.25rem;
+  outline: 2px solid rgb(var(--color-primary));
+  outline-offset: 3px;
+}
+
+.toolbar {
+  min-height: 1.5rem;
+  padding: 0.125rem 0 0.25rem;
+}
+
+.pageSummary {
+  color: rgb(var(--color-foreground));
+  font-size: 0.8125rem;
+  font-weight: 750;
+  line-height: 1.4;
+}
+
+.queueContext {
+  color: rgb(var(--color-muted-foreground));
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+.queue {
+  min-width: 0;
+  overflow: hidden;
+  border: 1px solid rgb(var(--color-border));
+  border-radius: var(--radius-card);
+  background: rgb(var(--color-surface));
+  container-type: inline-size;
+}
+
+.columnHeadings,
+.row {
+  display: grid;
+  grid-template-columns:
+    minmax(13rem, 1.65fr) minmax(12rem, 1.3fr) minmax(7.5rem, 0.7fr)
+    minmax(8.5rem, 0.85fr) minmax(7rem, 0.65fr) 6.5rem;
+  column-gap: 1rem;
+}
+
+.columnHeadings {
+  align-items: center;
+  border-bottom: 1px solid rgb(var(--color-border));
+  background: rgb(var(--color-surface-subtle));
+  padding: 0.7rem 1rem;
+  color: rgb(var(--color-muted-foreground));
+  font-size: 0.6875rem;
+  font-weight: 750;
+  line-height: 1.3;
+}
+
+.actionHeading {
+  text-align: right;
+}
+
+.rows > .row + .row {
+  border-top: 1px solid rgb(var(--color-border));
+}
+
+.row {
+  grid-template-areas: "profile contact account submitted note action";
+  align-items: center;
+  min-width: 0;
+  padding: 0.875rem 1rem;
+  transition: background-color 160ms ease;
+}
+
+.row:hover,
+.row:focus-within {
+  background: rgb(var(--color-surface-subtle));
+}
+
+.profileCell,
+.contactCell,
+.accountCell,
+.submittedCell,
+.noteCell {
+  min-width: 0;
+}
+
+.profileCell {
+  grid-area: profile;
+}
+
+.profileName {
+  overflow: hidden;
+  color: rgb(var(--color-foreground));
+  font-family: var(--font-be-vietnam-pro), sans-serif;
+  font-size: 0.9375rem;
+  font-weight: 750;
+  line-height: 1.35;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.profileMeta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem;
+  margin-top: 0.25rem;
+  color: rgb(var(--color-subtle-foreground));
+  font-size: 0.6875rem;
+  line-height: 1.4;
+}
+
+.contactCell {
+  grid-area: contact;
+  display: flex;
+  flex-direction: column;
+  gap: 0.125rem;
+}
+
+.contactEmail {
+  overflow-wrap: anywhere;
+  color: rgb(var(--color-foreground));
+  font-size: 0.75rem;
+  line-height: 1.4;
+}
+
+.secondaryLine,
+.missingContact,
+.accountActive,
+.accountDisabled,
+.submittedCell,
+.noteCell {
+  font-size: 0.6875rem;
+  line-height: 1.45;
+}
+
+.secondaryLine,
+.accountActive,
+.submittedCell,
+.noteCell {
+  color: rgb(var(--color-muted-foreground));
+}
+
+.missingContact,
+.accountDisabled {
+  color: rgb(var(--color-warning-foreground));
+  font-weight: 750;
+}
+
+.accountCell {
+  grid-area: account;
+}
+
+.submittedCell {
+  grid-area: submitted;
+  font-variant-numeric: tabular-nums;
+}
+
+.submittedCell time {
+  white-space: nowrap;
+}
+
+.noteCell {
+  grid-area: note;
+}
+
+.cellLabel {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+}
+
+.detailButton {
+  grid-area: action;
+  display: inline-flex;
+  min-height: 2.75rem;
+  align-items: center;
+  justify-self: end;
+  border: 0;
+  background: transparent;
+  color: rgb(var(--color-primary-hover));
+  font-size: 0.75rem;
+  font-weight: 800;
+  line-height: 1.35;
+  text-align: right;
+  text-decoration: underline;
+  text-decoration-color: transparent;
+  text-underline-offset: 0.2rem;
+  transition:
+    color 160ms ease,
+    text-decoration-color 160ms ease;
+}
+
+.detailButton:hover {
+  text-decoration-color: currentColor;
+}
+
+@container (max-width: 1080px) {
+  .columnHeadings {
+    display: none;
+  }
+
+  .row {
+    grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr) 6.5rem;
+    grid-template-areas:
+      "profile contact action"
+      "account submitted action"
+      "note note action";
+    align-items: start;
+    row-gap: 0.35rem;
+  }
+
+  .cellLabel {
+    position: static;
+    width: auto;
+    height: auto;
+    overflow: visible;
+    clip: auto;
+    color: rgb(var(--color-subtle-foreground));
+    font-size: 0.6875rem;
+    font-weight: 700;
+  }
+
+  .cellLabel::after {
+    content: " · ";
+  }
+
+  .contactCell {
+    display: block;
+  }
+
+  .contactEmail,
+  .secondaryLine,
+  .missingContact,
+  .accountActive,
+  .accountDisabled,
+  .submittedCell time {
+    display: inline;
+  }
+
+  .contactEmail + .secondaryLine::before,
+  .contactEmail + .missingContact::before {
+    content: " · ";
+  }
+}
+
+@container (max-width: 720px) {
+  .row {
+    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-areas:
+      "profile profile"
+      "contact contact"
+      "account submitted"
+      "note action";
+    column-gap: 0.75rem;
+    row-gap: 0.4rem;
+  }
+
+  .profileName {
+    white-space: normal;
+  }
+}
+
+@container (max-width: 480px) {
+  .row {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-areas:
+      "profile"
+      "contact"
+      "account"
+      "submitted"
+      "note"
+      "action";
+    row-gap: 0.3rem;
+    padding: 0.75rem 1rem;
+  }
+
+  .detailButton {
+    justify-self: start;
+    margin-top: 0.25rem;
+  }
+}
+
+@media (max-width: 600px) {
+  .page {
+    gap: 0.75rem;
+  }
+
+  .statusNavigation {
+    flex-wrap: nowrap;
+    gap: 0 1rem;
+    overflow-x: auto;
+    overscroll-behavior-inline: contain;
+    padding-inline: 0.25rem;
+    scrollbar-width: none;
+  }
+
+  .statusNavigation::-webkit-scrollbar {
+    display: none;
+  }
+
+  .statusLink {
+    flex: 0 0 auto;
+  }
+
+  .statusLink:focus-visible {
+    outline-offset: -2px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .statusLink,
+  .row,
+  .detailButton {
+    transition: none;
+  }
+}

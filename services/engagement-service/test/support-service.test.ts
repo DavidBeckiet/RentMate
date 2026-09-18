@@ -60,7 +60,7 @@ function createSupportHarness(): { readonly service: SupportService; readonly re
       const updated: SupportRequest = Object.freeze({
         ...current,
         status,
-        assignedAdminId: adminId,
+        assignedAdminId: status === "RESOLVED" ? adminId : null,
         resolutionNote: status === "RESOLVED" ? note : null,
         resolvedAt: status === "RESOLVED" ? createdAt : null,
         updatedAt: createdAt
@@ -71,8 +71,20 @@ function createSupportHarness(): { readonly service: SupportService; readonly re
   };
 
   const profiles: readonly IdentityUserProfile[] = Object.freeze([
-    Object.freeze({ id: tenant.userId, role: "TENANT", email: "tenant@example.test", phone: "+84900000000", isActive: true }),
-    Object.freeze({ id: landlord.userId, role: "LANDLORD", email: "landlord@example.test", phone: null, isActive: true })
+    Object.freeze({
+      id: tenant.userId,
+      role: "TENANT",
+      email: "tenant@example.test",
+      phone: "+84900000000",
+      isActive: true
+    }),
+    Object.freeze({
+      id: landlord.userId,
+      role: "LANDLORD",
+      email: "landlord@example.test",
+      phone: null,
+      isActive: true
+    })
   ]);
   const identityAccountClient: Pick<IdentityAccountClient, "loadProfilesByIds"> = {
     loadProfilesByIds: async (ids) => Object.freeze(profiles.filter((profile) => ids.includes(profile.id)))
@@ -117,14 +129,37 @@ test("restricts admin actions and applies support request status transitions", a
   );
   const inProgress = await harness.service.updateAdmin(admin, created.id, { status: "IN_PROGRESS", note: null });
   assert.equal(inProgress.status, "IN_PROGRESS");
+  assert.equal(inProgress.assignedAdminId, null);
+  assert.equal(inProgress.resolutionNote, null);
+  assert.equal(inProgress.resolvedAt, null);
   const resolved = await harness.service.updateAdmin(admin, created.id, {
     status: "RESOLVED",
     note: "Đã hướng dẫn người dùng."
   });
   assert.equal(resolved.status, "RESOLVED");
+  assert.equal(resolved.assignedAdminId, admin.userId);
   assert.equal(resolved.resolutionNote, "Đã hướng dẫn người dùng.");
   await assert.rejects(
     () => harness.service.updateAdmin(admin, created.id, { status: "IN_PROGRESS", note: null }),
     (error: unknown) => error instanceof ApplicationError && error.code === "CONCURRENT_MODIFICATION"
+  );
+});
+
+test("retrieves the current admin support request representation by ID", async () => {
+  const harness = createSupportHarness();
+  const created = await harness.service.create(tenant, supportInput);
+
+  const found = await harness.service.getAdmin(admin, created.id);
+  assert.equal(found.id, created.id);
+  assert.equal(found.requester.id, tenant.userId);
+  assert.equal(found.requester.email, "tenant@example.test");
+  assert.equal("phone" in found.requester, false);
+  await assert.rejects(
+    () => harness.service.getAdmin(tenant, created.id),
+    (error: unknown) => error instanceof ApplicationError && error.code === "FORBIDDEN"
+  );
+  await assert.rejects(
+    () => harness.service.getAdmin(admin, 999),
+    (error: unknown) => error instanceof ApplicationError && error.code === "RESOURCE_NOT_FOUND"
   );
 });

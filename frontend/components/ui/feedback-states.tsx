@@ -53,6 +53,7 @@ export function EmptyState({ title, description, visual, action, className }: Em
 export interface ErrorStateProps {
   readonly message: string;
   readonly title?: string;
+  readonly headingLevel?: "h1" | "h2";
   readonly requestId?: string | null;
   readonly onRetry?: () => void;
   readonly retryLabel?: string;
@@ -64,12 +65,14 @@ export interface ErrorStateProps {
 export function ErrorState({
   message,
   title = "Không thể hoàn tất yêu cầu",
+  headingLevel = "h2",
   onRetry,
   retryLabel = "Thử lại",
   action,
   tone = "danger",
   className
 }: ErrorStateProps) {
+  const Heading = headingLevel;
   return (
     <section
       role="alert"
@@ -88,7 +91,7 @@ export function ErrorState({
       >
         !
       </span>
-      <h2 className="font-display text-ui-base font-semibold">{title}</h2>
+      <Heading className="font-display text-ui-base font-semibold">{title}</Heading>
       <p className="mt-1 text-ui-sm text-muted-foreground">{message}</p>
       {onRetry || action ? (
         <div className="mt-4 flex flex-wrap items-center gap-3">

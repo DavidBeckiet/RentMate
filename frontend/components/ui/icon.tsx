@@ -15,6 +15,7 @@ export type IconName =
   | "eye"
   | "eyeOff"
   | "heart"
+  | "info"
   | "home"
   | "key"
   | "lock"
@@ -105,6 +106,12 @@ const paths: Record<IconName, ReactNode> = {
   ),
   heart: (
     <path d="M20.8 5.7a5.5 5.5 0 0 0-7.8 0L12 6.8l-1.1-1.1a5.5 5.5 0 0 0-7.8 7.8l1.1 1.1L12 22l7.8-7.4 1.1-1.1a5.5 5.5 0 0 0-.1-7.8Z" />
+  ),
+  info: (
+    <>
+      <circle cx="12" cy="12" r="9" />
+      <path d="M12 11v5m0-8h.01" />
+    </>
   ),
   flag: <path d="M5 22V4m0 1h11l-2 4 2 4H5" />,
   home: (

@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useId, useRef, useState, type ReactNode } from "react";
 import { useComparisonSelection } from "../../features/comparison/comparison-store";
 import { NotificationPopover } from "../../features/contact/notification-popover";
 import { FloatingRoommateChat } from "../../features/roommate/floating-roommate-chat";
@@ -18,7 +18,9 @@ import { cx } from "./class-names";
 import { Icon } from "./icon";
 import { IconButton } from "./icon-button";
 import {
-  adminNavigationItems,
+  adminOperationsNavigationItems,
+  adminReportNavigationItems,
+  adminSupportNavigationItems,
   consumerNavigationItems,
   isNavigationItemActive,
   landlordNavigationItems,
@@ -47,11 +49,16 @@ const drawerNavLink =
 const workspaceNavLink =
   "group relative flex min-h-12 items-center gap-3 rounded-control border border-transparent px-3 py-2.5 font-sans text-ui-sm font-semibold text-white/80 transition-[background-color,border-color,color] duration-fast hover:bg-white/10 hover:text-white aria-[current=page]:bg-accent aria-[current=page]:text-foreground";
 
-function Brand({ compact = false, inverse = false }: Readonly<{ compact?: boolean; inverse?: boolean }>) {
+function Brand({
+  compact = false,
+  inverse = false,
+  href = "/",
+  label = "RentMate — về trang chủ"
+}: Readonly<{ compact?: boolean; inverse?: boolean; href?: string; label?: string }>) {
   return (
     <Link
-      href="/"
-      aria-label="RentMate — về trang chủ"
+      href={href}
+      aria-label={label}
       className={cx("inline-flex min-h-11 shrink-0 items-center gap-2", inverse ? "text-white" : "text-foreground")}
     >
       <span
@@ -101,6 +108,72 @@ function NavigationLinks({
           </Link>
         );
       })}
+    </div>
+  );
+}
+
+function AdminNavigationLinks({
+  pathname,
+  onNavigate,
+  drawer = false
+}: Readonly<{ pathname: string; onNavigate?: () => void; drawer?: boolean }>) {
+  const reportsActive = adminReportNavigationItems.some((item) => isNavigationItemActive(item, pathname));
+  const [reportsOpen, setReportsOpen] = useState(reportsActive);
+  const reportPanelId = useId();
+  const linkClassName = drawer ? drawerNavLink : workspaceNavLink;
+
+  return (
+    <div className="rm-admin-navigation">
+      <div className="rm-admin-navigation-section">
+        <p className="rm-admin-navigation-heading">Vận hành</p>
+        <NavigationLinks
+          items={adminOperationsNavigationItems}
+          pathname={pathname}
+          className="rm-workspace-nav rm-admin-navigation-links"
+          linkClassName={linkClassName}
+          onNavigate={onNavigate}
+        />
+      </div>
+      <div className="rm-admin-navigation-section">
+        <p className="rm-admin-navigation-heading">Chăm sóc & phản hồi</p>
+        <NavigationLinks
+          items={adminSupportNavigationItems}
+          pathname={pathname}
+          className="rm-workspace-nav rm-admin-navigation-links"
+          linkClassName={linkClassName}
+          onNavigate={onNavigate}
+        />
+        <button
+          type="button"
+          className={cx(linkClassName, "rm-admin-navigation-toggle w-full text-left")}
+          aria-expanded={reportsOpen}
+          aria-controls={reportPanelId}
+          data-active={reportsActive ? "true" : undefined}
+          onClick={() => setReportsOpen((open) => !open)}
+        >
+          <Icon name="flag" className="h-5 w-5 shrink-0" />
+          <span className="min-w-0 flex-1">Xử lý báo cáo</span>
+          <Icon
+            name="chevronDown"
+            className={cx("h-4 w-4 shrink-0 transition-transform", reportsOpen && "rotate-180")}
+          />
+        </button>
+        <div
+          id={reportPanelId}
+          role="group"
+          aria-label="Loại báo cáo"
+          className="rm-admin-report-panel"
+          hidden={!reportsOpen}
+        >
+          <NavigationLinks
+            items={adminReportNavigationItems}
+            pathname={pathname}
+            className="rm-workspace-nav rm-admin-navigation-links"
+            linkClassName={linkClassName}
+            onNavigate={onNavigate}
+          />
+        </div>
+      </div>
     </div>
   );
 }
@@ -432,31 +505,19 @@ function WorkspaceShell({
   logoutPending,
   onLogout,
   onRefresh
-}: SharedShellProps & Readonly<{ actor: WorkspaceActor }>) {
+}: SharedShellProps & Readonly<{ actor: "admin" }>) {
   const [menuOpen, setMenuOpen] = useState(false);
   const triggerRef = useRef<HTMLButtonElement>(null);
   const closeMenu = useCallback(() => setMenuOpen(false), []);
   const ready = authStatus === "authenticated" && user?.role.toLowerCase() === actor;
-  const items = actor === "landlord" ? landlordNavigationItems : adminNavigationItems;
-  const title = actor === "landlord" ? "Không gian cho thuê" : "Khu vực quản trị";
-  const navLabel = actor === "landlord" ? "Điều hướng không gian cho thuê" : "Điều hướng khu vực quản trị";
-  const landlordShell = actor === "landlord";
-  const adminShell = actor === "admin";
+  const title = "Khu vực quản trị";
+  const navLabel = "Điều hướng khu vực quản trị";
+  const adminShell = true;
 
   useEffect(() => closeMenu(), [closeMenu, pathname]);
 
   const navigation = ready ? (
-    <NavigationLinks
-      items={items}
-      pathname={pathname}
-      className={cx(
-        "rm-workspace-nav",
-        landlordShell && "rm-landlord-sidebar-nav",
-        adminShell && "rm-admin-sidebar-nav"
-      )}
-      linkClassName={workspaceNavLink}
-      onNavigate={closeMenu}
-    />
+    <AdminNavigationLinks key={pathname} pathname={pathname} onNavigate={closeMenu} />
   ) : (
     <div aria-label="Đang kiểm tra quyền truy cập" className="space-y-3 px-2 py-3">
       {[0, 1, 2, 3, 4].map((item) => (
@@ -469,7 +530,6 @@ function WorkspaceShell({
     <div
       className={cx(
         "min-h-screen bg-background text-foreground lg:grid lg:grid-cols-[16.5rem_minmax(0,1fr)]",
-        landlordShell && "rm-landlord-shell",
         adminShell && "rm-admin-shell"
       )}
     >
@@ -477,57 +537,25 @@ function WorkspaceShell({
       <aside
         className={cx(
           "sticky top-0 hidden h-[100dvh] flex-col border-r border-primary/30 bg-brand-dark p-4 lg:flex",
-          landlordShell && "rm-landlord-sidebar",
           adminShell && "rm-admin-sidebar"
         )}
       >
         <Brand inverse />
-        <div className="mt-7 px-2">
-          <p
-            className={cx(
-              "text-ui-xs font-bold uppercase tracking-[0.14em] text-white/60",
-              landlordShell && "rm-workspace-side-label"
-            )}
-          >
-            Workspace
-          </p>
-          <p
-            className={cx(
-              "mt-1 font-display text-heading-sm font-semibold text-white",
-              landlordShell && "rm-workspace-side-title"
-            )}
-          >
-            {title}
-          </p>
-        </div>
-        <nav aria-label={navLabel} className="mt-5 flex-1 overflow-y-auto">
+        <nav aria-label={navLabel} className="rm-admin-sidebar-scroll mt-7 min-h-0 flex-1 overflow-y-auto pr-1">
           {navigation}
         </nav>
-        <div className="border-t border-white/15 pt-4">
-          {user ? <AccountSummary user={user} inverse /> : <Skeleton className="h-11 w-full" />}
-          {user ? (
-            <Button variant="ghost" size="sm" className="mt-3 w-full" pending={logoutPending} onClick={onLogout}>
-              <Icon name="logout" />
-              Đăng xuất
-            </Button>
-          ) : null}
-        </div>
       </aside>
 
       <div className="min-w-0">
         <header
-          className={cx(
-            "sticky top-0 z-header border-b border-border bg-surface",
-            landlordShell && "rm-workspace-topbar",
-            adminShell && "rm-admin-topbar"
-          )}
+          className={cx("sticky top-0 z-header border-b border-border bg-surface", adminShell && "rm-admin-topbar")}
         >
           <div className="flex min-h-16 items-center gap-3 px-4 sm:px-6 lg:min-h-[4.5rem] lg:px-8">
             <div className="lg:hidden">
               <Brand compact />
             </div>
             <div className="hidden min-w-0 lg:block">
-              <p className="text-ui-xs font-semibold text-muted-foreground">RentMate Workspace</p>
+              <p className="text-ui-xs font-semibold text-muted-foreground">Không gian quản trị RentMate</p>
               <p className="truncate font-display text-ui-base font-semibold text-foreground">{title}</p>
             </div>
             <div className="ml-auto flex items-center gap-2">
@@ -561,8 +589,8 @@ function WorkspaceShell({
         <main
           id="main-content"
           className={cx(
-            "mx-auto min-w-0 max-w-[90rem] px-4 py-6 sm:px-6 sm:py-8 lg:px-8 lg:py-10",
-            landlordShell && "rm-workspace-main",
+            "min-w-0 py-6 sm:py-8 lg:py-10",
+            "mx-auto max-w-[90rem] px-4 sm:px-6 lg:px-8",
             adminShell && "rm-admin-main"
           )}
         >
@@ -575,10 +603,14 @@ function WorkspaceShell({
         title={title}
         triggerRef={triggerRef}
         onClose={closeMenu}
-        className={cx(landlordShell && "rm-landlord-drawer", adminShell && "rm-admin-drawer")}
+        className={cx(adminShell && "rm-admin-drawer")}
       >
         <nav id="workspace-mobile-navigation" aria-label={`${navLabel} trên di động`} className="mt-4">
-          {navigation}
+          {ready ? (
+            <AdminNavigationLinks key={pathname} pathname={pathname} onNavigate={closeMenu} drawer />
+          ) : (
+            navigation
+          )}
         </nav>
         {user ? (
           <div className="mt-auto space-y-3 border-t border-border pt-4">

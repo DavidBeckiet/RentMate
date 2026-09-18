@@ -34,6 +34,7 @@ export interface SupportService {
     principal: AuthenticatedPrincipal,
     query: SupportRequestCollectionQuery
   ) => Promise<SupportPage<AdminSupportRequest>>;
+  readonly getAdmin: (principal: AuthenticatedPrincipal, supportRequestId: number) => Promise<AdminSupportRequest>;
   readonly updateAdmin: (
     principal: AuthenticatedPrincipal,
     supportRequestId: number,
@@ -47,8 +48,10 @@ function requireAdmin(principal: AuthenticatedPrincipal): number {
 }
 
 function allowedTransition(current: SupportRequestStatus, next: SupportRequestStatus): boolean {
-  return (current === "OPEN" && (next === "IN_PROGRESS" || next === "RESOLVED")) ||
-    (current === "IN_PROGRESS" && next === "RESOLVED");
+  return (
+    (current === "OPEN" && (next === "IN_PROGRESS" || next === "RESOLVED")) ||
+    (current === "IN_PROGRESS" && next === "RESOLVED")
+  );
 }
 
 function requesterProfile(
@@ -95,13 +98,25 @@ export function createSupportService(dependencies: {
       });
     },
 
+    async getAdmin(principal, supportRequestId) {
+      requireAdmin(principal);
+      const request = await transactionRunner.run((executor) => repository.findById(executor, supportRequestId));
+      if (!request) throw new ApplicationError("RESOURCE_NOT_FOUND", notFoundMessage);
+      const [enriched] = await enrich([request]);
+      if (!enriched) throw new Error("Support request enrichment failed.");
+      return enriched;
+    },
+
     async updateAdmin(principal, supportRequestId, input) {
       const adminId = requireAdmin(principal);
       const updated = await transactionRunner.run(async (executor) => {
         const current = await repository.findById(executor, supportRequestId, true);
         if (!current) throw new ApplicationError("RESOURCE_NOT_FOUND", notFoundMessage);
         if (!allowedTransition(current.status, input.status)) {
-          throw new ApplicationError("CONCURRENT_MODIFICATION", "The support request status transition is not allowed.");
+          throw new ApplicationError(
+            "CONCURRENT_MODIFICATION",
+            "The support request status transition is not allowed."
+          );
         }
         return repository.updateStatus(executor, supportRequestId, input.status, adminId, input.note);
       });

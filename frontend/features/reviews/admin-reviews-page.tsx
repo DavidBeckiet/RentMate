@@ -1,313 +1,188 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { useEffect, useMemo, useState } from "react";
 import { Button } from "../../components/ui/button";
 import { EmptyState, ErrorState, LoadingState } from "../../components/ui/feedback-states";
 import { Icon } from "../../components/ui/icon";
 import { Pagination } from "../../components/ui/pagination";
-import {
-  AdminDecisionPanel,
-  AdminEvidence,
-  AdminFilter,
-  AdminPage,
-  AdminPageHeader,
-  AdminPill,
-  AdminQueueCard,
-  AdminSummaryCard,
-  AdminSummaryGrid,
-  AdminToolbar
-} from "../../components/ui/admin-workspace";
-import { api, ApiError } from "../../lib/api/client";
+import { AdminPage, AdminPageHeader } from "../../components/ui/admin-workspace";
+import { api } from "../../lib/api/client";
 import { useAuth } from "../../lib/auth/auth-provider";
-import type { AdminListingReview, ApiPage, ReviewStatus } from "../../types/api";
+import type { AdminListingReview, ApiPage } from "../../types/api";
+import {
+  parseAdminReviewQueueQuery,
+  reviewDetailUrl,
+  reviewQueueUrl,
+  reviewQuery,
+  reviewStatuses,
+  reviewStatusLabels
+} from "./admin-review-query";
+import styles from "./admin-reviews.module.css";
 
-const statuses: readonly ReviewStatus[] = ["PENDING", "APPROVED", "REJECTED"];
-const statusLabels: Record<ReviewStatus, string> = {
-  PENDING: "Chờ duyệt",
-  APPROVED: "Đã duyệt",
-  REJECTED: "Đã từ chối"
-};
+const dateOnlyFormatter = new Intl.DateTimeFormat("vi-VN", { dateStyle: "short" });
+
+function statusClass(status: AdminListingReview["status"]): string {
+  if (status === "PENDING") return styles.statusPending;
+  if (status === "APPROVED") return styles.statusApproved;
+  return styles.statusRejected;
+}
 
 export function AdminReviewsPage() {
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const queryString = searchParams.toString();
+  const queueState = useMemo(() => parseAdminReviewQueueQuery(new URLSearchParams(queryString)), [queryString]);
   const { status: authStatus, user, error: authError, refresh } = useAuth();
   const adminReady = authStatus === "authenticated" && user?.role === "ADMIN";
-  const [mounted, setMounted] = useState(false);
-  const [filter, setFilter] = useState<ReviewStatus>("PENDING");
-  const [page, setPage] = useState(1);
   const [result, setResult] = useState<ApiPage<AdminListingReview> | null>(null);
-  const [selected, setSelected] = useState<AdminListingReview | null>(null);
-  const [status, setStatus] = useState<"idle" | "loading" | "success" | "error">("idle");
-  const [note, setNote] = useState("");
-  const [pending, setPending] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [loadStatus, setLoadStatus] = useState<"idle" | "loading" | "success" | "error">("idle");
   const [retryKey, setRetryKey] = useState(0);
-
-  useEffect(() => setMounted(true), []);
 
   useEffect(() => {
     if (!adminReady) return;
     const controller = new AbortController();
-    setStatus("loading");
-    setSelected(null);
-    setError(null);
+    setLoadStatus("loading");
+    setResult(null);
     void api.admin
-      .listReviews({ status: filter, page, pageSize: 20 }, controller.signal)
+      .listReviews(reviewQuery(queueState), controller.signal)
       .then((data) => {
-        if (!controller.signal.aborted) {
-          setResult(data);
-          setStatus("success");
-        }
+        if (controller.signal.aborted) return;
+        setResult(data);
+        setLoadStatus("success");
       })
       .catch(() => {
-        if (!controller.signal.aborted) setStatus("error");
+        if (!controller.signal.aborted) setLoadStatus("error");
       });
     return () => controller.abort();
-  }, [adminReady, filter, page, retryKey]);
-
-  const open = async (reviewId: number) => {
-    setError(null);
-    setSelected(null);
-    try {
-      setSelected(await api.admin.getReview(reviewId));
-      setNote("");
-    } catch {
-      setError("Không thể tải chi tiết đánh giá.");
-    }
-  };
-
-  const moderate = async (nextStatus: "APPROVED" | "REJECTED") => {
-    if (!selected || !note.trim()) {
-      setError("Cần nhập ghi chú quyết định trước khi hoàn tất.");
-      return;
-    }
-    setPending(true);
-    setError(null);
-    try {
-      await api.admin.moderateReview(selected.id, { status: nextStatus, note: note.trim() });
-      setSelected(null);
-      setNote("");
-      setRetryKey((value) => value + 1);
-    } catch (caught) {
-      const apiError = caught instanceof ApiError ? caught : null;
-      setError(apiError?.status === 409 ? "Đánh giá này đã được xử lý." : "Chưa thể lưu quyết định.");
-    } finally {
-      setPending(false);
-    }
-  };
-
-  const reviewsOnPage = result?.data ?? [];
-  const pendingOnPage = reviewsOnPage.filter((review) => review.status === "PENDING").length;
-  const averageRating = reviewsOnPage.length
-    ? (reviewsOnPage.reduce((sum, review) => sum + review.overallRating, 0) / reviewsOnPage.length).toFixed(1)
-    : "—";
+  }, [adminReady, queueState, retryKey]);
 
   if (authStatus === "loading") return <LoadingState message="Đang kiểm tra tài khoản…" />;
-  if (authStatus === "anonymous")
+  if (authStatus === "anonymous") {
     return (
       <ErrorState
-        message="Bạn cần đăng nhập bằng tài khoản quản trị viên."
-        action={
-          <Link className="font-bold underline" href="/admin/login">
-            Đăng nhập quản trị
-          </Link>
-        }
+        headingLevel="h1"
+        title="Đăng nhập quản trị viên để tiếp tục"
+        message="Bạn cần đăng nhập bằng tài khoản quản trị viên để tiếp tục."
+        action={<Link href="/admin/login">Đăng nhập quản trị</Link>}
       />
     );
-  if (authStatus === "error")
+  }
+  if (authStatus === "error") {
     return (
       <ErrorState
+        headingLevel="h1"
+        title="Không thể kiểm tra tài khoản"
         message="Không thể kiểm tra tài khoản lúc này."
         requestId={authError?.requestId}
         action={<Button onClick={() => void refresh()}>Thử lại</Button>}
       />
     );
-  if (!adminReady) return <ErrorState message="Trang này dành cho quản trị viên." />;
-  if (!mounted) return <LoadingState message="Đang kiểm tra tài khoản…" />;
+  }
+  if (!adminReady) {
+    return <ErrorState headingLevel="h1" title="Không có quyền truy cập" message="Trang này dành cho quản trị viên." />;
+  }
+
+  const rows = result?.data ?? [];
+  const currentPage = result?.pagination.page ?? queueState.page;
+  const emptyLaterPage = Boolean(result && rows.length === 0 && result.pagination.page > 1);
 
   return (
-    <AdminPage labelledBy="admin-reviews-heading" className="my-8">
+    <AdminPage labelledBy="admin-reviews-heading" className={styles.page}>
       <AdminPageHeader
-        eyebrow="Trust & Safety · Reviews"
+        eyebrow="Tin cậy & an toàn · Đánh giá"
         title="Kiểm duyệt đánh giá"
         titleId="admin-reviews-heading"
         icon="star"
         tone="attention"
-        description="Đối chiếu nội dung từ tương tác đã xác minh và ghi rõ lý do cho mọi quyết định. Số liệu bên dưới chỉ phản ánh trang hiện tại."
+        description="Xem nội dung đánh giá và ghi chú nội bộ cho từng quyết định."
       />
-      <AdminToolbar summary={`${reviewsOnPage.length} đánh giá trong trang`}>
-        <AdminFilter id="review-status-filter" label="Trạng thái">
-          <select
-            id="review-status-filter"
-            value={filter}
-            onChange={(event) => {
-              setFilter(event.target.value as ReviewStatus);
-              setPage(1);
-            }}
+
+      <nav className={styles.statusNav} aria-label="Trạng thái đánh giá">
+        {reviewStatuses.map((status) => (
+          <Link
+            key={status}
+            href={reviewQueueUrl({ ...queueState, status, page: 1 })}
+            className={`${styles.statusLink} ${queueState.status === status ? styles.statusLinkActive : ""}`}
+            aria-current={queueState.status === status ? "page" : undefined}
           >
-            {statuses.map((value) => (
-              <option key={value} value={value}>
-                {statusLabels[value]}
-              </option>
-            ))}
-          </select>
-        </AdminFilter>
-      </AdminToolbar>
-      {status === "success" && result ? (
-        <AdminSummaryGrid>
-          <AdminSummaryCard
-            label="Đánh giá trong trang"
-            value={reviewsOnPage.length}
-            note="Dữ liệu trang hiện tại"
-            icon="star"
-          />
-          <AdminSummaryCard
-            label="Đang chờ duyệt"
-            value={pendingOnPage}
-            tone="attention"
-            note="Theo bộ lọc hiện tại"
-            icon="bell"
-          />
-          <AdminSummaryCard
-            label="Điểm trung bình"
-            value={averageRating}
-            tone="info"
-            note="Điểm tổng quan / 5"
-            icon="chart"
-          />
-        </AdminSummaryGrid>
+            {reviewStatusLabels[status]}
+          </Link>
+        ))}
+      </nav>
+
+      {loadStatus === "loading" || loadStatus === "idle" ? (
+        <LoadingState message="Đang tải hàng đợi đánh giá…" />
       ) : null}
-      {status === "loading" || status === "idle" ? <LoadingState message="Đang tải hàng đợi đánh giá…" /> : null}
-      {status === "error" ? (
+      {loadStatus === "error" ? (
         <ErrorState
-          message="Không thể tải hàng đợi đánh giá."
+          headingLevel="h2"
+          title="Không thể tải hàng đợi đánh giá"
+          message="Dữ liệu chưa tải được. Bạn có thể thử lại mà không tạo quyết định mới."
           action={<Button onClick={() => setRetryKey((value) => value + 1)}>Thử lại</Button>}
         />
       ) : null}
-      {error && !selected ? (
-        <p role="alert" className="border-l-4 border-red-700 pl-3 text-sm font-bold text-red-800">
-          {error}
-        </p>
-      ) : null}
-      {status === "success" && result?.data.length === 0 ? (
+
+      {loadStatus === "success" && result?.data.length === 0 ? (
         <EmptyState
-          title="Không có đánh giá ở trạng thái này"
-          description="Hãy chọn một trạng thái khác để tiếp tục."
+          title={`Không có đánh giá ở trạng thái ${reviewStatusLabels[queueState.status].toLowerCase()}`}
+          description={
+            emptyLaterPage
+              ? "Trang này không còn đánh giá. Dữ liệu có thể đã thay đổi trong khi bạn đang xem."
+              : "Chọn trạng thái khác để tiếp tục xem xét."
+          }
+          action={
+            emptyLaterPage ? (
+              <Button
+                variant="secondary"
+                onClick={() => router.push(reviewQueueUrl({ ...queueState, page: currentPage - 1 }))}
+              >
+                Quay lại trang trước
+              </Button>
+            ) : undefined
+          }
         />
       ) : null}
-      {status === "success" && result && result.data.length > 0 ? (
-        <div className="rm-admin-queue-layout">
-          <div className="rm-admin-queue" aria-label="Danh sách đánh giá">
-            {result.data.map((review) => (
-              <AdminQueueCard key={review.id} selected={selected?.id === review.id}>
-                <div className="rm-admin-queue-card__meta">
-                  <span>
-                    #{review.id} · Tin #{review.listingId}
+
+      {loadStatus === "success" && result && rows.length > 0 ? (
+        <section className={styles.queue} aria-label="Danh sách đánh giá">
+          {rows.map((review) => (
+            <article key={review.id} className={styles.row}>
+              <div className={styles.rowContent}>
+                <div className={styles.rowMeta}>
+                  <span>Đánh giá #{review.id}</span>
+                  <span aria-hidden="true">·</span>
+                  <span>Tin đăng #{review.listingId}</span>
+                  <span className={`${styles.status} ${statusClass(review.status)}`}>
+                    {reviewStatusLabels[review.status]}
                   </span>
-                  <AdminPill
-                    tone={review.overallRating >= 4 ? "success" : review.overallRating <= 2 ? "attention" : "info"}
-                  >
-                    {review.overallRating}/5
-                  </AdminPill>
                 </div>
-                <p className="rm-admin-queue-card__body line-clamp-3">{review.comment}</p>
-                <Button
-                  type="button"
-                  variant="secondary"
-                  size="sm"
-                  onClick={() => void open(review.id)}
-                  className="mt-4"
-                >
-                  Xem và xử lý
-                </Button>
-              </AdminQueueCard>
-            ))}
-            <Pagination
-              ariaLabel="Phân trang đánh giá quản trị"
-              page={result.pagination.page}
-              hasNextPage={result.pagination.hasNextPage}
-              onPrevious={() => setPage((value) => value - 1)}
-              onNext={() => setPage((value) => value + 1)}
-            />
-          </div>
-          <aside className="rm-admin-detail" aria-label="Chi tiết kiểm duyệt đánh giá">
-            {selected ? (
-              <div className="space-y-5">
-                <div className="rm-admin-detail__header">
-                  <AdminPill
-                    tone={
-                      selected.status === "PENDING" ? "attention" : selected.status === "APPROVED" ? "success" : "muted"
-                    }
-                  >
-                    {statusLabels[selected.status]}
-                  </AdminPill>
-                  <h2 className="rm-admin-detail__title">Đánh giá #{selected.id}</h2>
-                  <Link
-                    className="rm-text-link mt-3 inline-flex items-center gap-2"
-                    href={`/admin/listings/${selected.listingId}`}
-                  >
-                    Mở tin đăng <Icon name="arrowUpRight" className="h-4 w-4" />
-                  </Link>
+                <p className={styles.excerpt}>{review.comment}</p>
+                <div className={styles.rowFooter}>
+                  <span>Điểm tổng quan {review.overallRating}/5</span>
+                  <span aria-hidden="true">·</span>
+                  <span>Người thuê #{review.tenantId}</span>
+                  <span aria-hidden="true">·</span>
+                  <time dateTime={review.createdAt}>{dateOnlyFormatter.format(new Date(review.createdAt))}</time>
                 </div>
-                <dl className="rm-admin-detail__stats grid gap-3 sm:grid-cols-3">
-                  <div>
-                    <dt>Chung</dt>
-                    <dd className="text-2xl">{selected.overallRating}/5</dd>
-                  </div>
-                  <div>
-                    <dt>Chính xác</dt>
-                    <dd className="text-2xl">{selected.accuracyRating}/5</dd>
-                  </div>
-                  <div>
-                    <dt>Phản hồi</dt>
-                    <dd className="text-2xl">{selected.responsivenessRating}/5</dd>
-                  </div>
-                </dl>
-                <AdminEvidence title="Nội dung đánh giá" icon="message" tone="muted">
-                  <p className="whitespace-pre-wrap">{selected.comment}</p>
-                </AdminEvidence>
-                {selected.status === "PENDING" ? (
-                  <AdminDecisionPanel
-                    title="Quyết định kiểm duyệt"
-                    description="Ghi chú là bắt buộc để lưu quyết định."
-                  >
-                    <label htmlFor="review-moderation-note" className="grid gap-2 text-sm font-extrabold">
-                      Ghi chú quyết định
-                      <textarea
-                        id="review-moderation-note"
-                        required
-                        maxLength={1000}
-                        rows={4}
-                        value={note}
-                        onChange={(event) => setNote(event.target.value)}
-                        className="rm-admin-textarea"
-                      />
-                    </label>
-                    <div className="flex flex-wrap gap-3">
-                      <Button pending={pending} onClick={() => void moderate("APPROVED")}>
-                        Duyệt công khai
-                      </Button>
-                      <Button variant="danger" pending={pending} onClick={() => void moderate("REJECTED")}>
-                        Từ chối
-                      </Button>
-                    </div>
-                  </AdminDecisionPanel>
-                ) : (
-                  <p className="rm-admin-evidence rm-admin-evidence--info text-sm font-semibold">
-                    Ghi chú: {selected.moderationNote}
-                  </p>
-                )}
-                {error ? (
-                  <p role="alert" className="border-l-4 border-red-700 pl-3 text-sm font-bold text-red-800">
-                    {error}
-                  </p>
-                ) : null}
               </div>
-            ) : (
-              <EmptyState title="Chọn một đánh giá" description="Nội dung và công cụ xử lý sẽ xuất hiện tại đây." />
-            )}
-          </aside>
-        </div>
+              <Link className={styles.openLink} href={reviewDetailUrl(review.id, queueState)}>
+                Xem đánh giá
+                <Icon name="arrow" className={styles.openIcon} />
+              </Link>
+            </article>
+          ))}
+          <Pagination
+            ariaLabel="Phân trang đánh giá quản trị"
+            variant="moderation"
+            page={currentPage}
+            hasNextPage={result.pagination.hasNextPage}
+            onPrevious={() => router.push(reviewQueueUrl({ ...queueState, page: Math.max(1, currentPage - 1) }))}
+            onNext={() => router.push(reviewQueueUrl({ ...queueState, page: currentPage + 1 }))}
+            className={styles.pagination}
+          />
+        </section>
       ) : null}
     </AdminPage>
   );

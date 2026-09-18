@@ -1,0 +1,319 @@
+.page {
+  width: min(100%, 78rem);
+  margin: 1.25rem auto 3rem;
+  padding: 0 1rem;
+}
+
+.header {
+  border-bottom: 1px solid rgb(var(--color-border));
+  padding: 0.25rem 0 1.25rem;
+}
+
+.backLink,
+.inlineLink {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  color: rgb(var(--color-primary-hover));
+  font-size: 0.82rem;
+  font-weight: 750;
+  text-decoration: none;
+}
+
+.backLink:hover,
+.inlineLink:hover {
+  text-decoration: underline;
+  text-underline-offset: 0.2rem;
+}
+
+.backLink:focus-visible,
+.inlineLink:focus-visible,
+.retryButton:focus-visible {
+  outline: 3px solid rgb(var(--color-focus-ring) / 0.45);
+  outline-offset: 3px;
+}
+
+.backIcon {
+  width: 1rem;
+  height: 1rem;
+  transform: rotate(180deg);
+}
+
+.identityLine {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.6rem;
+  margin-top: 1.15rem;
+}
+
+.eyebrow,
+.kicker {
+  color: rgb(var(--color-muted-foreground));
+  font-size: 0.7rem;
+  font-weight: 850;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.title {
+  margin: 0.35rem 0 0;
+  color: rgb(var(--color-foreground));
+  font-family: var(--font-display, inherit);
+  font-size: clamp(1.45rem, 2.4vw, 2rem);
+  font-weight: 850;
+  letter-spacing: -0.03em;
+  outline: none;
+}
+
+.subline {
+  margin: 0.45rem 0 0;
+  color: rgb(var(--color-muted-foreground));
+  font-size: 0.9rem;
+}
+
+.status {
+  display: inline-flex;
+  align-items: center;
+  border-radius: 999px;
+  padding: 0.25rem 0.65rem;
+  font-size: 0.72rem;
+  font-weight: 850;
+}
+
+.statusPending {
+  background: rgb(var(--color-warning-subtle));
+  color: rgb(var(--color-warning-foreground));
+}
+.statusApproved {
+  background: rgb(var(--color-success-subtle));
+  color: rgb(var(--color-success-foreground));
+}
+.statusRejected {
+  background: rgb(var(--color-surface-subtle));
+  color: rgb(var(--color-muted-foreground));
+}
+
+.success,
+.warning {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin-top: 1rem;
+  border: 1px solid rgb(var(--color-border));
+  border-radius: var(--radius-control);
+  padding: 0.75rem 0.9rem;
+  color: rgb(var(--color-foreground));
+  font-size: 0.88rem;
+}
+
+.success {
+  background: rgb(var(--color-success-subtle));
+  border-color: rgb(var(--color-success) / 0.3);
+}
+.warning {
+  background: rgb(var(--color-warning-subtle));
+  border-color: rgb(var(--color-warning) / 0.35);
+}
+.success p,
+.warning p {
+  margin: 0;
+}
+.retryButton {
+  flex: 0 0 auto;
+}
+
+.workspace {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(18rem, 23rem);
+  gap: clamp(1rem, 3vw, 2rem);
+  align-items: start;
+  margin-top: 1.25rem;
+}
+
+.evidenceColumn,
+.rail {
+  display: grid;
+  gap: 1rem;
+  min-width: 0;
+}
+
+.evidence,
+.context,
+.outcome,
+.decision {
+  border: 1px solid rgb(var(--color-border));
+  border-radius: var(--radius-card);
+  background: rgb(var(--color-surface));
+  box-shadow: var(--shadow-surface);
+  padding: clamp(1rem, 2vw, 1.4rem);
+}
+
+.sectionTitle {
+  margin: 0.35rem 0 0;
+  color: rgb(var(--color-foreground));
+  font-size: 1.08rem;
+  font-weight: 850;
+  letter-spacing: -0.015em;
+}
+
+.comment {
+  margin: 1rem 0 0;
+  color: rgb(var(--color-foreground));
+  font-size: 1.05rem;
+  line-height: 1.75;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.scoreGrid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.7rem;
+  margin: 1rem 0 0;
+}
+
+.scoreGrid > div {
+  border: 1px solid rgb(var(--color-border));
+  border-radius: var(--radius-control);
+  padding: 0.75rem;
+  background: rgb(var(--color-surface-subtle));
+}
+
+.scoreGrid dt,
+.facts dt {
+  color: rgb(var(--color-muted-foreground));
+  font-size: 0.75rem;
+  font-weight: 750;
+}
+
+.scoreGrid dd {
+  margin: 0.35rem 0 0;
+  color: rgb(var(--color-primary-hover));
+  font-size: 1.25rem;
+  font-weight: 850;
+}
+
+.facts {
+  display: grid;
+  gap: 0.8rem;
+  margin: 1rem 0 0;
+}
+.facts > div {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  border-bottom: 1px solid rgb(var(--color-border));
+  padding-bottom: 0.65rem;
+}
+.facts > div:last-child {
+  border-bottom: 0;
+  padding-bottom: 0;
+}
+.facts dd {
+  margin: 0;
+  color: rgb(var(--color-foreground));
+  font-size: 0.9rem;
+  font-weight: 750;
+  text-align: right;
+}
+.outcomeStatus {
+  margin: 1rem 0 0;
+  color: rgb(var(--color-foreground));
+  font-size: 1rem;
+  font-weight: 850;
+}
+.outcomeNote {
+  margin: 0.75rem 0 0;
+  color: rgb(var(--color-foreground));
+  line-height: 1.55;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.outcomeMeta {
+  margin: 0.8rem 0 0;
+  color: rgb(var(--color-muted-foreground));
+  font-size: 0.8rem;
+}
+.decision {
+  border-color: rgb(var(--color-primary-400));
+}
+.decisionCopy {
+  margin: 0.7rem 0 0;
+  color: rgb(var(--color-muted-foreground));
+  font-size: 0.86rem;
+  line-height: 1.55;
+}
+.noteLabel {
+  display: grid;
+  gap: 0.45rem;
+  margin-top: 1rem;
+  color: rgb(var(--color-foreground));
+  font-size: 0.82rem;
+  font-weight: 800;
+}
+.textarea {
+  width: 100%;
+  min-height: 7rem;
+  resize: vertical;
+  border: 1px solid rgb(var(--color-border-strong));
+  border-radius: var(--radius-control);
+  padding: 0.75rem;
+  background: rgb(var(--color-background));
+  color: rgb(var(--color-foreground));
+  font: inherit;
+  line-height: 1.5;
+}
+.textarea:focus {
+  border-color: rgb(var(--color-primary));
+  outline: 3px solid rgb(var(--color-focus-ring) / 0.28);
+  outline-offset: 1px;
+}
+.textareaError {
+  border-color: rgb(var(--color-danger));
+}
+.fieldError {
+  margin: 0.45rem 0 0;
+  color: rgb(var(--color-danger));
+  font-size: 0.8rem;
+  font-weight: 700;
+}
+.decisionButtons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.65rem;
+  margin-top: 0.9rem;
+}
+.dialogCopy {
+  margin: 0;
+  color: rgb(var(--color-foreground));
+  line-height: 1.6;
+}
+
+@media (max-width: 760px) {
+  .page {
+    margin-top: 0.75rem;
+    padding: 0 0.75rem;
+  }
+  .workspace {
+    grid-template-columns: 1fr;
+  }
+  .rail {
+    order: 2;
+  }
+  .scoreGrid {
+    grid-template-columns: 1fr;
+  }
+  .facts > div {
+    align-items: baseline;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .backLink,
+  .inlineLink {
+    transition: none;
+  }
+}

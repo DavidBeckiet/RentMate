@@ -61,7 +61,7 @@ export interface RoommateBlockPageQuery {
 }
 
 export interface UpdateRoommateReportStatusInput {
-  readonly status: Exclude<RoommateReportStatus, "OPEN">;
+  readonly status: Extract<RoommateReportStatus, "RESOLVED" | "DISMISSED">;
   readonly note: string | null;
 }
 
@@ -170,10 +170,11 @@ export function validateUpdateRoommateReportStatusBody(value: unknown): UpdateRo
   if (!Object.prototype.hasOwnProperty.call(body, "status")) {
     throwValidationIssue("status", "REQUIRED", "status is required.");
   }
-  const status = normalizeControlledCode(body.status, "status", roommateReportStatuses.slice(1)) as Exclude<
-    RoommateReportStatus,
-    "OPEN"
-  >;
+  const status = normalizeControlledCode(
+    body.status,
+    "status",
+    roommateReportStatuses.slice(2)
+  ) as UpdateRoommateReportStatusInput["status"];
   const note = normalizeDetails(body.note);
   if ((status === "RESOLVED" || status === "DISMISSED") && note === null) {
     throwValidationIssue("note", "REQUIRED", "note is required for a terminal report status.");

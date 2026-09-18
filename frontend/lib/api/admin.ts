@@ -1,5 +1,9 @@
 import type {
   ActivationBody,
+  AdminEngagementOverview,
+  AdminIdentityOverview,
+  AdminListingOverview,
+  AdminUserDetail,
   AdminLandlordVerification,
   AdminContactReport,
   AdminContactReportQuery,
@@ -32,6 +36,15 @@ import type { ApiTransport } from "./transport";
 
 export function createAdminApi(transport: ApiTransport) {
   return {
+    getIdentityOverview: (signal?: AbortSignal): Promise<AdminIdentityOverview> =>
+      transport.object("/api/v1/admin/overview/identity", { signal }),
+
+    getListingOverview: (signal?: AbortSignal): Promise<AdminListingOverview> =>
+      transport.object("/api/v1/admin/overview/listings", { signal }),
+
+    getEngagementOverview: (signal?: AbortSignal): Promise<AdminEngagementOverview> =>
+      transport.object("/api/v1/admin/overview/engagement", { signal }),
+
     listListings: (query: AdminListingQuery = {}, signal?: AbortSignal): Promise<ApiPage<AdminListingSummary>> =>
       transport.page("/api/v1/admin/listings", { query, signal }),
 
@@ -54,6 +67,9 @@ export function createAdminApi(transport: ApiTransport) {
 
     listUsers: (query: AdminUserQuery = {}, signal?: AbortSignal): Promise<ApiPage<UserProfile>> =>
       transport.page("/api/v1/admin/users", { query, signal }),
+
+    getUser: (userId: number, signal?: AbortSignal): Promise<AdminUserDetail> =>
+      transport.object(`/api/v1/admin/users/${userId}`, { signal }),
 
     setActivation: (userId: number, body: ActivationBody, signal?: AbortSignal): Promise<UserProfile> =>
       transport.object(`/api/v1/admin/users/${userId}/activation`, { method: "PATCH", json: body, signal }),
@@ -90,6 +106,9 @@ export function createAdminApi(transport: ApiTransport) {
       query: AdminSupportRequestQuery = {},
       signal?: AbortSignal
     ): Promise<ApiPage<AdminSupportRequest>> => transport.page("/api/v1/admin/support-requests", { query, signal }),
+
+    getSupportRequest: (supportRequestId: number, signal?: AbortSignal): Promise<AdminSupportRequest> =>
+      transport.object(`/api/v1/admin/support-requests/${supportRequestId}`, { signal }),
 
     updateSupportRequestStatus: (
       supportRequestId: number,

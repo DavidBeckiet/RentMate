@@ -34,3 +34,5 @@ Thumbs.db
 # Python generated cache
 __pycache__/
 *.py[cod]
+
+.venv/

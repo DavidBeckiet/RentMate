@@ -36,6 +36,47 @@ export interface UserProfile {
   readonly updatedAt: string;
 }
 
+export interface AdminUserDetail extends UserProfile {
+  readonly emailVerified: boolean;
+  readonly phoneVerified: boolean;
+}
+
+export interface AdminIdentityOverview {
+  readonly accounts: {
+    readonly total: number;
+    readonly byRole: { readonly TENANT: number; readonly LANDLORD: number; readonly ADMIN: number };
+    readonly active: number;
+    readonly inactive: number;
+  };
+  readonly verifications: { readonly pending: number };
+  readonly capturedAt: string;
+}
+
+export interface AdminListingOverview {
+  readonly listings: {
+    readonly total: number;
+    readonly byStatus: {
+      readonly DRAFT: number;
+      readonly PENDING: number;
+      readonly APPROVED: number;
+      readonly REJECTED: number;
+      readonly HIDDEN: number;
+      readonly INACTIVE: number;
+    };
+  };
+  readonly listingReports: { readonly open: number; readonly investigating: number };
+  readonly capturedAt: string;
+}
+
+export interface AdminEngagementOverview {
+  readonly support: { readonly open: number; readonly inProgress: number };
+  readonly reviews: { readonly pending: number };
+  readonly contactReports: { readonly open: number; readonly investigating: number };
+  readonly roommateReports: { readonly open: number; readonly investigating: number };
+  readonly reviewReports: { readonly open: number; readonly investigating: number };
+  readonly capturedAt: string;
+}
+
 export interface PropertyType {
   readonly code: string;
   readonly label: string;
@@ -158,19 +199,22 @@ export interface AdminListingLandlord {
   readonly isActive: boolean;
 }
 
-export interface AdminListingSummary {
+export interface AdminListingSignals {
+  readonly openReportCount: number;
+  readonly possibleDuplicate: boolean;
+}
+
+export interface AdminListingSummary extends AdminListingSignals {
   readonly id: number;
   readonly status: ListingStatus;
   readonly businessStatus: ListingBusinessStatus;
   readonly title: string | null;
   readonly areaName: string | null;
   readonly landlord: AdminListingLandlord;
-  readonly openReportCount: number;
-  readonly possibleDuplicate: boolean;
   readonly updatedAt: string;
 }
 
-export interface AdminListingDetail extends OwnerListingDetail {
+export interface AdminListingDetail extends OwnerListingDetail, AdminListingSignals {
   readonly landlord: AdminListingLandlord & { readonly role: "LANDLORD" };
 }
 
@@ -332,6 +376,7 @@ export interface ModerationBody {
 }
 
 export interface AdminUserQuery extends PaginationQuery {
+  readonly q?: string;
   readonly role?: UserRole;
   readonly isActive?: boolean;
 }
@@ -622,7 +667,7 @@ export interface AdminContactReportQuery extends PaginationQuery {
 }
 
 export interface UpdateContactReportStatusBody {
-  readonly status: Exclude<ContactReportStatus, "OPEN">;
+  readonly status: "RESOLVED" | "DISMISSED";
   readonly note?: string | null;
 }
 
@@ -675,7 +720,7 @@ export interface AdminReportQuery extends PaginationQuery {
 }
 
 export interface UpdateReportStatusBody {
-  readonly status: Exclude<ReportStatus, "OPEN">;
+  readonly status: "RESOLVED" | "DISMISSED";
   readonly note?: string | null;
 }
 
@@ -773,7 +818,7 @@ export interface AdminReviewReportQuery extends PaginationQuery {
 }
 
 export interface UpdateReviewReportStatusBody {
-  readonly status: Exclude<ReviewReportStatus, "OPEN">;
+  readonly status: "RESOLVED" | "DISMISSED";
   readonly note?: string | null;
 }
 
@@ -1289,7 +1334,7 @@ export interface AdminRoommateReportQuery extends PaginationQuery {
 }
 
 export interface UpdateRoommateReportStatusBody {
-  readonly status: Exclude<RoommateReportStatus, "OPEN">;
+  readonly status: "RESOLVED" | "DISMISSED";
   readonly note?: string | null;
 }
 

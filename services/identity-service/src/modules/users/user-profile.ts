@@ -16,6 +16,11 @@ export interface UserProfileRow extends QueryResultRow {
   readonly updated_at: Date | string;
 }
 
+export interface AdminUserDetailRow extends UserProfileRow {
+  readonly email_verified: boolean;
+  readonly phone_verified: boolean;
+}
+
 export interface UserProfile {
   readonly id: number;
   readonly role: UserRole;
@@ -36,6 +41,16 @@ export interface UserProfileDto {
   readonly isActive: boolean;
   readonly createdAt: string;
   readonly updatedAt: string;
+}
+
+export interface AdminUserDetail extends UserProfile {
+  readonly emailVerified: boolean;
+  readonly phoneVerified: boolean;
+}
+
+export interface AdminUserDetailDto extends UserProfileDto {
+  readonly emailVerified: boolean;
+  readonly phoneVerified: boolean;
 }
 
 export class UserProfileMappingError extends Error {
@@ -83,6 +98,18 @@ export function mapUserProfileRow(row: Readonly<UserProfileRow>): UserProfile {
   });
 }
 
+export function mapAdminUserDetailRow(row: Readonly<AdminUserDetailRow>): AdminUserDetail {
+  if (typeof row.email_verified !== "boolean" || typeof row.phone_verified !== "boolean") {
+    throw new UserProfileMappingError();
+  }
+
+  return Object.freeze({
+    ...mapUserProfileRow(row),
+    emailVerified: row.email_verified,
+    phoneVerified: row.phone_verified
+  });
+}
+
 export function mapUserProfileToDto(user: Readonly<UserProfile>): UserProfileDto {
   if (
     !isValidUserId(user.id) ||
@@ -109,4 +136,16 @@ export function mapUserProfileToDto(user: Readonly<UserProfile>): UserProfileDto
   } catch {
     throw new UserProfileMappingError();
   }
+}
+
+export function mapAdminUserDetailToDto(user: Readonly<AdminUserDetail>): AdminUserDetailDto {
+  if (typeof user.emailVerified !== "boolean" || typeof user.phoneVerified !== "boolean") {
+    throw new UserProfileMappingError();
+  }
+
+  return Object.freeze({
+    ...mapUserProfileToDto(user),
+    emailVerified: user.emailVerified,
+    phoneVerified: user.phoneVerified
+  });
 }

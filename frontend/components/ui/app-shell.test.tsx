@@ -244,24 +244,83 @@ describe("AppShell", () => {
   });
 
   it.each([
-    ["/admin", "Kiểm duyệt tin"],
-    ["/admin/listings/42", "Kiểm duyệt tin"],
-    ["/admin/users", "Người dùng"],
-    ["/admin/reports", "Báo cáo"],
-    ["/admin/contact-reports", "Báo cáo contact"],
-    ["/admin/roommate-reports", "Báo cáo ở ghép"],
-    ["/admin/support-requests", "Yêu cầu hỗ trợ"],
-    ["/admin/reviews", "Reviews"],
-    ["/admin/verifications", "Xác minh"]
-  ])("renders the admin workspace and active item at %s", (pathname, activeLabel) => {
+    ["/admin", "Tổng quan", false],
+    ["/admin/listings", "Kiểm duyệt tin", false],
+    ["/admin/listings/42", "Kiểm duyệt tin", false],
+    ["/admin/users", "Người dùng", false],
+    ["/admin/verifications", "Xác minh chủ trọ", false],
+    ["/admin/support-requests", "Yêu cầu hỗ trợ", false],
+    ["/admin/reviews", "Đánh giá", false],
+    ["/admin/reports", "Tin đăng", true],
+    ["/admin/contact-reports", "Liên hệ", true],
+    ["/admin/roommate-reports", "Ở ghép", true],
+    ["/admin/review-reports", "Đánh giá", true]
+  ])("renders the admin workspace and active item at %s", (pathname, activeLabel, isReport) => {
     navigationMocks.pathname.mockReturnValue(pathname);
     authenticate("ADMIN");
     render(<AppShell>Nội dung admin</AppShell>);
 
     const navigation = screen.getByRole("navigation", { name: "Điều hướng khu vực quản trị" });
-    expect(within(navigation).getByRole("link", { name: activeLabel })).toHaveAttribute("aria-current", "page");
-    expect(within(navigation).queryByRole("link", { name: "Tin đăng" })).not.toBeInTheDocument();
+    const reportToggle = within(navigation).getByRole("button", { name: "Xử lý báo cáo" });
+    expect(reportToggle).toHaveAttribute("aria-expanded", String(isReport));
+    const activeSection = isReport ? within(navigation).getByRole("group", { name: "Loại báo cáo" }) : navigation;
+    expect(within(activeSection).getByRole("link", { name: activeLabel })).toHaveAttribute("aria-current", "page");
+    if (!isReport) expect(within(navigation).queryByRole("link", { name: "Tin đăng" })).not.toBeInTheDocument();
     expect(within(navigation).queryByRole("link", { name: "Yêu thích" })).not.toBeInTheDocument();
+  });
+
+  it("expands and collapses report links without hiding them from the mobile drawer", () => {
+    navigationMocks.pathname.mockReturnValue("/admin");
+    authenticate("ADMIN");
+    render(<AppShell>Nội dung admin</AppShell>);
+
+    const sidebar = screen.getByRole("navigation", { name: "Điều hướng khu vực quản trị" });
+    const toggle = within(sidebar).getByRole("button", { name: "Xử lý báo cáo" });
+    const panelId = toggle.getAttribute("aria-controls");
+    expect(panelId).toBeTruthy();
+    expect(within(sidebar).queryByRole("link", { name: "Tin đăng" })).not.toBeInTheDocument();
+
+    fireEvent.click(toggle);
+    expect(toggle).toHaveAttribute("aria-expanded", "true");
+    const reports = within(sidebar).getByRole("group", { name: "Loại báo cáo" });
+    expect(reports).toHaveAttribute("id", panelId);
+    expect(within(reports).getAllByRole("link")).toHaveLength(4);
+    fireEvent.click(toggle);
+    expect(toggle).toHaveAttribute("aria-expanded", "false");
+
+    fireEvent.click(screen.getByRole("button", { name: "Mở điều hướng khu vực quản trị" }));
+    const dialog = screen.getByRole("dialog", { name: "Khu vực quản trị" });
+    const mobileNavigation = within(dialog).getByRole("navigation", {
+      name: "Điều hướng khu vực quản trị trên di động"
+    });
+    fireEvent.click(within(mobileNavigation).getByRole("button", { name: "Xử lý báo cáo" }));
+    expect(within(mobileNavigation).getByRole("link", { name: "Tin đăng" })).toHaveAttribute("href", "/admin/reports");
+    expect(within(dialog).getByRole("button", { name: "Đăng xuất" })).toBeInTheDocument();
+  });
+
+  it("opens the report group when navigation enters a report route", () => {
+    navigationMocks.pathname.mockReturnValue("/admin");
+    authenticate("ADMIN");
+    const view = render(<AppShell>Nội dung admin</AppShell>);
+
+    navigationMocks.pathname.mockReturnValue("/admin/review-reports");
+    view.rerender(<AppShell>Nội dung admin</AppShell>);
+
+    const navigation = screen.getByRole("navigation", { name: "Điều hướng khu vực quản trị" });
+    expect(within(navigation).getByRole("button", { name: "Xử lý báo cáo" })).toHaveAttribute("aria-expanded", "true");
+    const reports = within(navigation).getByRole("group", { name: "Loại báo cáo" });
+    expect(within(reports).getByRole("link", { name: "Đánh giá" })).toHaveAttribute("aria-current", "page");
+  });
+
+  it("keeps the admin account in the top bar without a duplicate sidebar profile", () => {
+    navigationMocks.pathname.mockReturnValue("/admin");
+    authenticate("ADMIN", "Admin RentMate");
+    render(<AppShell>Nội dung admin</AppShell>);
+
+    const sidebar = screen.getByRole("complementary");
+    expect(within(sidebar).queryByText("admin@example.com")).not.toBeInTheDocument();
+    expect(within(sidebar).queryByRole("button", { name: "Đăng xuất" })).not.toBeInTheDocument();
+    expect(within(screen.getByRole("banner")).getByRole("button", { name: /Admin RentMate/ })).toBeInTheDocument();
   });
 
   it("resolves the shared inquiry detail into the landlord workspace", () => {

@@ -4,7 +4,7 @@ import { AdminReviewReportsPage } from "../../../../features/reports/admin-revie
 
 export default function AdminReviewReportsRoute() {
   return (
-    <Suspense fallback={<LoadingState message="Đang mở hàng đợi báo cáo review…" />}>
+    <Suspense fallback={<LoadingState message="Đang mở hàng đợi báo cáo đánh giá…" />}>
       <AdminReviewReportsPage />
     </Suspense>
   );

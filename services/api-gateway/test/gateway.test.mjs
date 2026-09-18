@@ -44,6 +44,7 @@ test("keeps the monolith as the default upstream and switches configured boundar
   assert.equal(resolveUpstream("/api/v1/admin/reports", routes).hostname, "listing");
   assert.equal(resolveUpstream("/api/v1/admin/contact-reports", routes).hostname, "engagement");
   assert.equal(resolveUpstream("/api/v1/admin/support-requests", routes).hostname, "engagement");
+  assert.equal(resolveUpstream("/api/v1/admin/support-requests/42", routes).hostname, "engagement");
   assert.equal(resolveUpstream("/api/v1/support-requests", routes).hostname, "engagement");
   assert.equal(resolveUpstream("/api/v1/saved-searches", routes).hostname, "engagement");
   assert.equal(resolveUpstream("/api/v1/listings/12/reviews", routes).hostname, "engagement");
@@ -51,6 +52,9 @@ test("keeps the monolith as the default upstream and switches configured boundar
   assert.equal(resolveUpstream("/api/v1/admin/listings", routes).hostname, "listing");
   assert.equal(resolveUpstream("/api/v1/admin/users", routes).hostname, "identity");
   assert.equal(resolveUpstream("/api/v1/admin/verifications", routes).hostname, "identity");
+  assert.equal(resolveUpstream("/api/v1/admin/overview/identity", routes).hostname, "identity");
+  assert.equal(resolveUpstream("/api/v1/admin/overview/listings", routes).hostname, "listing");
+  assert.equal(resolveUpstream("/api/v1/admin/overview/engagement", routes).hostname, "engagement");
   assert.equal(resolveUpstream("/api/v1/landlord/verifications/current", routes).hostname, "identity");
   for (const path of [
     "/api/v1/tenant/verifications/status",

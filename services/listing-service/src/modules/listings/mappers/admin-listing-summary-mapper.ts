@@ -3,11 +3,17 @@ import { mapPgTimestamptz } from "../../../../../shared/src/runtime/db/value-map
 import { formatApiTimestamp } from "../../../../../shared/src/runtime/shared/mapping/api-values.js";
 import { isListingStatus, type ListingStatus } from "./owner-listing-mapper.js";
 import { isListingBusinessStatus, type ListingBusinessStatus } from "../../../../../shared/listing-business-status.js";
+import {
+  copyAdminListingSignals,
+  mapAdminListingSignals,
+  type AdminListingSignalRow,
+  type AdminListingSignals
+} from "./admin-listing-signals.js";
 
 const maximumIntegerId = 2_147_483_647;
 const e164Pattern = /^\+[1-9][0-9]{7,14}$/;
 
-export interface AdminListingSummaryRow extends QueryResultRow {
+export interface AdminListingSummaryRow extends QueryResultRow, AdminListingSignalRow {
   readonly id: unknown;
   readonly status: unknown;
   readonly business_status: unknown;
@@ -17,8 +23,6 @@ export interface AdminListingSummaryRow extends QueryResultRow {
   readonly landlord_email: unknown;
   readonly landlord_phone: unknown;
   readonly landlord_is_active: unknown;
-  readonly open_report_count: unknown;
-  readonly possible_duplicate: unknown;
   readonly updated_at: unknown;
 }
 
@@ -29,27 +33,23 @@ export interface AdminListingSummaryLandlord {
   readonly isActive: boolean;
 }
 
-export interface AdminListingSummary {
+export interface AdminListingSummary extends AdminListingSignals {
   readonly id: number;
   readonly status: ListingStatus;
   readonly businessStatus: ListingBusinessStatus;
   readonly title: string | null;
   readonly areaName: string | null;
   readonly landlord: AdminListingSummaryLandlord;
-  readonly openReportCount: number;
-  readonly possibleDuplicate: boolean;
   readonly updatedAt: Date;
 }
 
-export interface AdminListingSummaryDto {
+export interface AdminListingSummaryDto extends AdminListingSignals {
   readonly id: number;
   readonly status: ListingStatus;
   readonly businessStatus: ListingBusinessStatus;
   readonly title: string | null;
   readonly areaName: string | null;
   readonly landlord: AdminListingSummaryLandlord;
-  readonly openReportCount: number;
-  readonly possibleDuplicate: boolean;
   readonly updatedAt: string;
 }
 
@@ -76,10 +76,6 @@ function isLandlordPhone(value: unknown): value is string {
   return typeof value === "string" && e164Pattern.test(value);
 }
 
-function isNonNegativeInteger(value: unknown): value is number {
-  return Number.isSafeInteger(value) && (value as number) >= 0;
-}
-
 function copyLandlord(landlord: Readonly<AdminListingSummaryLandlord>): AdminListingSummaryLandlord {
   if (
     !isPositiveIntegerId(landlord.id) ||
@@ -102,14 +98,13 @@ export function mapAdminListingSummaryRow(row: Readonly<AdminListingSummaryRow>)
     !isPositiveIntegerId(row.landlord_id) ||
     !isNormalizedEmail(row.landlord_email) ||
     !isLandlordPhone(row.landlord_phone) ||
-    typeof row.landlord_is_active !== "boolean" ||
-    !isNonNegativeInteger(row.open_report_count) ||
-    typeof row.possible_duplicate !== "boolean"
+    typeof row.landlord_is_active !== "boolean"
   ) {
     throw new AdminListingSummaryMappingError();
   }
 
   try {
+    const signals = mapAdminListingSignals(row);
     return Object.freeze({
       id: row.id,
       status: row.status,
@@ -122,8 +117,7 @@ export function mapAdminListingSummaryRow(row: Readonly<AdminListingSummaryRow>)
         phone: row.landlord_phone,
         isActive: row.landlord_is_active
       }),
-      openReportCount: row.open_report_count,
-      possibleDuplicate: row.possible_duplicate,
+      ...signals,
       updatedAt: mapPgTimestamptz(row.updated_at, "updated_at")
     });
   } catch {
@@ -137,13 +131,12 @@ export function mapAdminListingSummaryToDto(summary: Readonly<AdminListingSummar
     !isListingStatus(summary.status) ||
     !isListingBusinessStatus(summary.businessStatus) ||
     !isNullableString(summary.title) ||
-    !isNullableString(summary.areaName) ||
-    !isNonNegativeInteger(summary.openReportCount) ||
-    typeof summary.possibleDuplicate !== "boolean"
+    !isNullableString(summary.areaName)
   ) {
     throw new AdminListingSummaryMappingError();
   }
   try {
+    const signals = copyAdminListingSignals(summary);
     return Object.freeze({
       id: summary.id,
       status: summary.status,
@@ -151,8 +144,7 @@ export function mapAdminListingSummaryToDto(summary: Readonly<AdminListingSummar
       title: summary.title,
       areaName: summary.areaName,
       landlord: copyLandlord(summary.landlord),
-      openReportCount: summary.openReportCount,
-      possibleDuplicate: summary.possibleDuplicate,
+      ...signals,
       updatedAt: formatApiTimestamp(summary.updatedAt)
     });
   } catch {

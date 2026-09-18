@@ -4,7 +4,7 @@ import { AdminContactReportsPage } from "../../../../features/reports/admin-cont
 
 export default function AdminContactReportsRoute() {
   return (
-    <Suspense fallback={<LoadingState message="Đang mở hàng đợi báo cáo contact…" />}>
+    <Suspense fallback={<LoadingState message="Đang mở hàng đợi báo cáo liên hệ…" />}>
       <AdminContactReportsPage />
     </Suspense>
   );

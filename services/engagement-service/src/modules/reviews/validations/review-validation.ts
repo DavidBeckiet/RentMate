@@ -40,7 +40,7 @@ export interface CreateReviewReportInput {
 }
 
 export interface UpdateReviewReportStatusInput {
-  readonly status: Exclude<ReviewReportStatus, "OPEN">;
+  readonly status: Extract<ReviewReportStatus, "RESOLVED" | "DISMISSED">;
   readonly note: string | null;
 }
 
@@ -138,10 +138,11 @@ export function validateCreateReviewReportBody(value: unknown): CreateReviewRepo
 export function validateUpdateReviewReportStatusBody(value: unknown): UpdateReviewReportStatusInput {
   const body = validateBodyFields(value, ["status", "note"]);
   if (!("status" in body)) throwValidationIssue("status", "REQUIRED", "status is required.");
-  const status = normalizeControlledCode(body.status, "status", reviewReportStatuses.slice(1)) as Exclude<
-    ReviewReportStatus,
-    "OPEN"
-  >;
+  const status = normalizeControlledCode(
+    body.status,
+    "status",
+    reviewReportStatuses.slice(2)
+  ) as UpdateReviewReportStatusInput["status"];
   const note = optionalText(body.note, "note");
   if ((status === "RESOLVED" || status === "DISMISSED") && note === null) {
     throwValidationIssue("note", "REQUIRED", "note is required for a terminal review report status.");

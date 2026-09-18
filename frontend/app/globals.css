@@ -437,20 +437,61 @@ summary {
     padding: 1.25rem;
   }
 
-  .rm-admin-sidebar .rm-workspace-nav {
-    margin-top: 1.25rem;
+  .rm-admin-navigation {
+    display: grid;
+    gap: 1.5rem;
   }
 
-  .rm-admin-sidebar .rm-workspace-nav::before {
-    display: block;
-    margin: 0 0 0.55rem 0.75rem;
-    color: rgb(255 255 255 / 0.48);
-    content: "Điều hành";
+  .rm-admin-navigation-section,
+  .rm-admin-navigation-links {
+    display: grid;
+    gap: 0.25rem;
+  }
+
+  .rm-admin-navigation-heading {
+    margin: 0 0 0.3rem 0.75rem;
+    color: rgb(255 255 255 / 0.56);
     font-family: var(--font-be-vietnam-pro), sans-serif;
     font-size: 0.625rem;
     font-weight: 800;
     letter-spacing: 0.14em;
     text-transform: uppercase;
+  }
+
+  .rm-admin-sidebar .rm-workspace-nav {
+    margin-top: 0;
+  }
+
+  .rm-admin-sidebar-scroll {
+    scrollbar-color: rgb(255 255 255 / 0.3) transparent;
+    scrollbar-width: thin;
+  }
+
+  .rm-admin-sidebar-scroll::-webkit-scrollbar {
+    width: 6px;
+  }
+
+  .rm-admin-sidebar-scroll::-webkit-scrollbar-thumb {
+    border-radius: 999px;
+    background: rgb(255 255 255 / 0.3);
+  }
+
+  .rm-admin-sidebar-scroll::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  .rm-admin-report-panel {
+    margin-left: 1.1rem;
+    border-left: 1px solid rgb(255 255 255 / 0.24);
+    padding-left: 0.6rem;
+  }
+
+  .rm-admin-report-panel[hidden] {
+    display: none;
+  }
+
+  .rm-admin-report-panel .rm-workspace-nav a {
+    min-height: 2.5rem;
   }
 
   .rm-admin-sidebar .rm-workspace-nav a {
@@ -471,6 +512,16 @@ summary {
     color: rgb(var(--color-foreground));
   }
 
+  .rm-admin-sidebar .rm-admin-navigation-toggle[data-active="true"] {
+    background: rgb(255 255 255 / 0.12);
+    color: rgb(255 255 255);
+  }
+
+  .rm-admin-navigation-toggle:focus-visible {
+    outline: 2px solid rgb(var(--color-accent));
+    outline-offset: 2px;
+  }
+
   .rm-admin-topbar {
     background: rgb(var(--color-surface) / 0.94);
     -webkit-backdrop-filter: blur(14px);
@@ -484,6 +535,14 @@ summary {
   .rm-admin-drawer .rm-workspace-nav {
     display: grid;
     gap: 0.25rem;
+  }
+
+  .rm-admin-drawer .rm-admin-navigation-heading {
+    color: rgb(var(--color-muted-foreground));
+  }
+
+  .rm-admin-drawer .rm-admin-report-panel {
+    border-left-color: rgb(var(--color-border-strong));
   }
 
   .rm-admin-drawer .rm-workspace-nav a {
@@ -2274,16 +2333,6 @@ summary {
 
   .rm-admin-table tbody tr:hover {
     background: rgb(var(--color-surface-subtle) / 0.72);
-  }
-
-  .rm-admin-mobile-record {
-    min-width: 0;
-    border-bottom: 1px solid rgb(var(--color-border));
-    padding: 1rem;
-  }
-
-  .rm-admin-mobile-record:last-child {
-    border-bottom: 0;
   }
 
   @media (min-width: 640px) {

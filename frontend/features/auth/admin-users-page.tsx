@@ -2,30 +2,33 @@
 
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { AdminPage, AdminSection, AdminSummaryCard, AdminSummaryGrid } from "../../components/ui/admin-workspace";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Button } from "../../components/ui/button";
 import { EmptyState, ErrorState, LoadingState } from "../../components/ui/feedback-states";
-import { SelectField } from "../../components/ui/form-controls";
+import { Icon } from "../../components/ui/icon";
 import { Pagination } from "../../components/ui/pagination";
 import { api, ApiError } from "../../lib/api/client";
 import { useAuth } from "../../lib/auth/auth-provider";
 import type { ApiPage, UserProfile, UserRole } from "../../types/api";
 import { AdminUserCard } from "./admin-user-card";
 import {
+  adminUserDetailUrl,
   adminUserRoles,
   adminUsersUrl,
   parseAdminUserQuery,
   toAdminUserQuery,
   withAdminUserFilters,
-  withAdminUserPage
+  withAdminUserPage,
+  withAdminUserSearch
 } from "./admin-user-query";
+import styles from "./admin-users.module.css";
 
 const roleLabels: Record<UserRole, string> = {
   TENANT: "Người thuê",
   LANDLORD: "Người cho thuê",
   ADMIN: "Quản trị viên"
 };
+
 type LoadState =
   | { readonly status: "idle" | "loading" }
   | { readonly status: "success"; readonly result: ApiPage<UserProfile> }
@@ -33,26 +36,40 @@ type LoadState =
 
 export function AdminUsersPage() {
   const router = useRouter();
+  const push = router.push;
   const replace = router.replace;
   const searchParams = useSearchParams();
   const rawQuery = searchParams.toString();
   const { status: authStatus, user: currentUser, error: authError, refresh } = useAuth();
   const parsed = useMemo(() => parseAdminUserQuery(new URLSearchParams(rawQuery)), [rawQuery]);
   const [mounted, setMounted] = useState(false);
+  const [searchValue, setSearchValue] = useState("");
+  const [searchError, setSearchError] = useState<string | null>(null);
   const [loadState, setLoadState] = useState<LoadState>({ status: "idle" });
   const [reloadVersion, setReloadVersion] = useState(0);
-  const [candidate, setCandidate] = useState<UserProfile | null>(null);
-  const [mutationPending, setMutationPending] = useState(false);
-  const [mutationMessage, setMutationMessage] = useState<string | null>(null);
-  const [recoveryRequired, setRecoveryRequired] = useState(false);
   const requestId = useRef(0);
-  const mutationInFlight = useRef(false);
   const adminReady = authStatus === "authenticated" && currentUser?.role === "ADMIN";
-  const queryIdentity = parsed.ok ? JSON.stringify(parsed.state) : "invalid";
-
-  const requestReload = useCallback(() => setReloadVersion((value) => value + 1), []);
 
   useEffect(() => setMounted(true), []);
+
+  useEffect(() => {
+    if (parsed.ok) setSearchValue(parsed.state.q ?? "");
+  }, [rawQuery, parsed]);
+
+  useEffect(() => {
+    if (!mounted || !parsed.ok) return;
+    let nextState;
+    try {
+      nextState = withAdminUserSearch(parsed.state, searchValue);
+      setSearchError(null);
+    } catch {
+      setSearchError("Từ khóa tìm kiếm không hợp lệ hoặc dài quá 320 ký tự.");
+      return;
+    }
+    if ((nextState.q ?? "") === (parsed.state.q ?? "")) return;
+    const timer = window.setTimeout(() => replace(adminUsersUrl(nextState)), 300);
+    return () => window.clearTimeout(timer);
+  }, [mounted, parsed, replace, searchValue]);
 
   useEffect(() => {
     if (!adminReady || !parsed.ok) return;
@@ -68,8 +85,6 @@ export function AdminUsersPage() {
           return;
         }
         setLoadState({ status: "success", result });
-        setRecoveryRequired(false);
-        setMutationMessage(null);
       })
       .catch((error: unknown) => {
         if (controller.signal.aborted || currentRequest !== requestId.current) return;
@@ -78,57 +93,22 @@ export function AdminUsersPage() {
         if (apiError?.status === 401) void refresh();
       });
     return () => controller.abort();
-  }, [adminReady, parsed, queryIdentity, refresh, reloadVersion, replace]);
-
-  const confirmActivation = async () => {
-    if (!candidate || mutationInFlight.current) return;
-    mutationInFlight.current = true;
-    setMutationPending(true);
-    setMutationMessage(null);
-    try {
-      await api.admin.setActivation(candidate.id, { isActive: !candidate.isActive });
-      setCandidate(null);
-      setMutationMessage(
-        candidate.isActive
-          ? "Đã ngừng hoạt động tài khoản. Danh sách đang được tải lại."
-          : "Đã kích hoạt lại tài khoản. Danh sách đang được tải lại."
-      );
-      requestReload();
-    } catch (error) {
-      const apiError = error instanceof ApiError ? error : null;
-      if (apiError?.code === "NETWORK_ERROR") {
-        setRecoveryRequired(true);
-        setMutationMessage(
-          "Không xác định được yêu cầu đã được áp dụng hay chưa. Hãy tải lại danh sách trước khi thao tác tiếp."
-        );
-      } else {
-        setMutationMessage(
-          apiError?.status === 403
-            ? "Bạn không được phép thay đổi tài khoản này."
-            : apiError?.status === 404
-              ? "Không tìm thấy tài khoản cần thay đổi."
-              : "Không thể thay đổi trạng thái tài khoản."
-        );
-      }
-    } finally {
-      mutationInFlight.current = false;
-      setMutationPending(false);
-    }
-  };
+  }, [adminReady, parsed, rawQuery, refresh, reloadVersion, replace]);
 
   if (authStatus === "loading") return <LoadingState message="Đang kiểm tra tài khoản…" />;
-  if (authStatus === "anonymous")
+  if (authStatus === "anonymous") {
     return (
       <ErrorState
         message="Bạn cần đăng nhập bằng tài khoản quản trị viên để tiếp tục."
         action={
-          <Link href="/admin/login" className="font-semibold text-teal-800 underline">
+          <Link href="/admin/login" className="font-semibold text-primary-hover underline">
             Đăng nhập quản trị
           </Link>
         }
       />
     );
-  if (authStatus === "error")
+  }
+  if (authStatus === "error") {
     return (
       <ErrorState
         message="Không thể kiểm tra tài khoản lúc này."
@@ -136,33 +116,55 @@ export function AdminUsersPage() {
         action={<Button onClick={() => void refresh()}>Thử lại</Button>}
       />
     );
+  }
   if (!currentUser || currentUser.role !== "ADMIN") return <ErrorState message="Trang này dành cho quản trị viên." />;
   if (!parsed.ok) return <ErrorState message={parsed.message} />;
-  if (!mounted) return <LoadingState message="Đang kiểm tra tài khoản…" />;
+  if (!mounted) return <LoadingState message="Đang mở danh bạ tài khoản…" />;
 
   const updateFilters = (role: UserRole | undefined, isActive: boolean | undefined) =>
-    router.push(adminUsersUrl(withAdminUserFilters(parsed.state, { role, isActive })));
+    push(adminUsersUrl(withAdminUserFilters(parsed.state, { role, isActive })));
   const selectedRole = parsed.state.role ?? "";
   const selectedActivity = parsed.state.isActive === undefined ? "" : String(parsed.state.isActive);
-  const visibleUsers = loadState.status === "success" ? loadState.result.data : [];
-  const activeUsers = visibleUsers.filter((listedUser) => listedUser.isActive).length;
-  const landlordUsers = visibleUsers.filter((listedUser) => listedUser.role === "LANDLORD").length;
+  const hasDirectoryContext =
+    parsed.state.q !== undefined || parsed.state.role !== undefined || parsed.state.isActive !== undefined;
 
   return (
-    <AdminPage labelledBy="admin-users-heading">
-      <header className="rm-admin-hero">
-        <p className="text-sm font-semibold text-teal-700">QUẢN TRỊ</p>
-        <h1 id="admin-users-heading" className="rm-admin-title mt-2 text-3xl sm:text-4xl">
-          Quản lý người dùng
-        </h1>
-        <p className="mt-3 max-w-2xl text-rent-secondary">Lọc tài khoản theo vai trò và trạng thái hoạt động.</p>
+    <section aria-labelledby="admin-users-heading" className={styles.page}>
+      <header className={styles.pageHeader}>
+        <p className={styles.eyebrow}>Quản trị tài khoản</p>
+        <h1 id="admin-users-heading">Người dùng</h1>
+        <p>Tìm đúng tài khoản, kiểm tra trạng thái và mở không gian xử lý riêng.</p>
       </header>
-      <div className="rm-admin-toolbar">
-        <div className="rm-admin-toolbar-controls">
-          <SelectField
+
+      <section aria-label="Tìm kiếm và lọc tài khoản" className={styles.controlBar}>
+        <label className={styles.searchField} htmlFor="admin-user-search">
+          <span>Tìm tài khoản</span>
+          <span className={styles.searchControl}>
+            <Icon name="search" className={styles.searchIcon} />
+            <input
+              id="admin-user-search"
+              name="q"
+              type="search"
+              autoComplete="off"
+              value={searchValue}
+              aria-invalid={searchError ? true : undefined}
+              aria-describedby={searchError ? "admin-user-search-error" : undefined}
+              placeholder="Tên, email hoặc ID người dùng"
+              onChange={(event) => setSearchValue(event.currentTarget.value)}
+            />
+          </span>
+          {searchError ? (
+            <span id="admin-user-search-error" role="alert" className={styles.fieldError}>
+              {searchError}
+            </span>
+          ) : null}
+        </label>
+
+        <label className={styles.filterField} htmlFor="admin-user-role">
+          <span>Vai trò</span>
+          <select
             id="admin-user-role"
             name="role"
-            label="Vai trò"
             value={selectedRole}
             onChange={(event) =>
               updateFilters((event.currentTarget.value || undefined) as UserRole | undefined, parsed.state.isActive)
@@ -174,11 +176,14 @@ export function AdminUsersPage() {
                 {roleLabels[role]}
               </option>
             ))}
-          </SelectField>
-          <SelectField
+          </select>
+        </label>
+
+        <label className={styles.filterField} htmlFor="admin-user-active">
+          <span>Trạng thái</span>
+          <select
             id="admin-user-active"
             name="isActive"
-            label="Trạng thái tài khoản"
             value={selectedActivity}
             onChange={(event) =>
               updateFilters(
@@ -190,122 +195,84 @@ export function AdminUsersPage() {
             <option value="">Mọi trạng thái</option>
             <option value="true">Đang hoạt động</option>
             <option value="false">Ngừng hoạt động</option>
-          </SelectField>
-        </div>
-      </div>
+          </select>
+        </label>
 
-      {loadState.status === "success" ? (
-        <AdminSummaryGrid>
-          <AdminSummaryCard
-            label="Tài khoản trong trang"
-            value={visibleUsers.length}
-            note={`Trang ${loadState.result.pagination.page} · không phải tổng hệ thống`}
-            icon="users"
-          />
-          <AdminSummaryCard
-            label="Đang hoạt động"
-            value={activeUsers}
-            note="Trạng thái hiện tại"
-            tone={activeUsers > 0 ? "success" : "muted"}
-            icon="check"
-          />
-          <AdminSummaryCard label="Chủ trọ" value={landlordUsers} note="Trong dữ liệu đang hiển thị" icon="building" />
-          <AdminSummaryCard
-            label="Tài khoản cần xem"
-            value={visibleUsers.filter((listedUser) => !listedUser.isActive).length}
-            note="Đang ngừng hoạt động"
-            tone={visibleUsers.some((listedUser) => !listedUser.isActive) ? "attention" : "muted"}
-            icon="shield"
-          />
-        </AdminSummaryGrid>
-      ) : null}
-
-      {mutationMessage ? (
-        <div
-          role="status"
-          className={`rounded-control border p-4 text-sm ${recoveryRequired ? "border-amber-300 bg-amber-50 text-amber-950" : "border-teal-200 bg-teal-50 text-teal-950"}`}
-        >
-          <p>{mutationMessage}</p>
-          {recoveryRequired ? (
-            <Button className="mt-3" onClick={requestReload}>
-              Tải lại danh sách
-            </Button>
-          ) : null}
-        </div>
-      ) : null}
-      {candidate ? (
-        <section aria-label="Xác nhận thay đổi trạng thái tài khoản" className="rm-admin-decision-panel">
-          <h2 className="font-semibold">Xác nhận thay đổi</h2>
-          <p className="mt-2 text-sm">
-            {candidate.role === "LANDLORD" && candidate.isActive
-              ? "Ngừng hoạt động người cho thuê sẽ làm các tin đã duyệt của họ biến mất khỏi kết quả công khai, nhưng không đổi trạng thái của các tin đó."
-              : `${candidate.isActive ? "Ngừng hoạt động" : "Kích hoạt lại"} tài khoản ${candidate.email}?`}
-          </p>
-          <div className="mt-4 flex flex-wrap gap-3">
-            <Button
-              variant={candidate.isActive ? "danger" : "primary"}
-              pending={mutationPending}
-              onClick={() => void confirmActivation()}
-            >
-              Xác nhận
-            </Button>
-            <Button variant="secondary" disabled={mutationPending} onClick={() => setCandidate(null)}>
-              Hủy
-            </Button>
-          </div>
-        </section>
-      ) : null}
+        {hasDirectoryContext ? (
+          <Button variant="ghost" size="sm" className={styles.resetButton} onClick={() => push("/admin/users")}>
+            Xóa bộ lọc
+          </Button>
+        ) : null}
+      </section>
 
       {loadState.status === "idle" || loadState.status === "loading" ? (
-        <LoadingState message="Đang tải danh sách người dùng…" />
+        <LoadingState message="Đang tải danh bạ tài khoản…" className={styles.feedback} />
       ) : null}
+
       {loadState.status === "error" ? (
         <ErrorState
+          title="Không thể tải danh bạ"
           message={
             loadState.error?.status === 401
               ? "Phiên đăng nhập không còn hợp lệ."
-              : "Không thể tải danh sách người dùng."
+              : "Danh sách người dùng chưa thể tải lúc này."
           }
           requestId={loadState.error?.requestId}
-          action={<Button onClick={requestReload}>Thử lại</Button>}
+          action={<Button onClick={() => setReloadVersion((value) => value + 1)}>Thử lại</Button>}
+          className={styles.feedback}
         />
       ) : null}
+
       {loadState.status === "success" && loadState.result.data.length === 0 ? (
-        <EmptyState title="Không có người dùng phù hợp" description="Hãy thay đổi bộ lọc hoặc quay lại sau." />
+        hasDirectoryContext ? (
+          <EmptyState
+            title="Không tìm thấy tài khoản phù hợp"
+            description="Thử từ khóa khác hoặc xóa các điều kiện lọc hiện tại."
+            action={<Button onClick={() => push("/admin/users")}>Xóa tìm kiếm và bộ lọc</Button>}
+            className={styles.feedback}
+          />
+        ) : (
+          <EmptyState
+            title="Chưa có tài khoản"
+            description="Danh bạ sẽ hiển thị khi hệ thống có tài khoản người dùng."
+            className={styles.feedback}
+          />
+        )
       ) : null}
+
       {loadState.status === "success" && loadState.result.data.length > 0 ? (
-        <AdminSection
-          title="Tài khoản trong trang"
-          description="Chỉ hiển thị các trường cần thiết cho quản trị; hành động thay đổi trạng thái luôn cần xác nhận."
-        >
-          <div className="divide-y divide-border">
+        <section aria-labelledby="directory-results-heading" className={styles.directory}>
+          <header className={styles.directoryHeader}>
+            <div>
+              <p className={styles.resultKicker}>Kết quả hiện tại</p>
+              <h2 id="directory-results-heading">Danh bạ tài khoản</h2>
+            </div>
+            <p aria-live="polite">
+              Trang {loadState.result.pagination.page} · {loadState.result.data.length} tài khoản đang hiển thị
+            </p>
+          </header>
+          <div className={styles.directoryList}>
             {loadState.result.data.map((listedUser) => (
               <AdminUserCard
                 key={listedUser.id}
                 user={listedUser}
-                actionDisabled={mutationPending || recoveryRequired}
-                onActivationRequest={(next) => {
-                  setMutationMessage(null);
-                  setCandidate(next);
-                }}
+                href={adminUserDetailUrl(listedUser.id, parsed.state)}
               />
             ))}
           </div>
-        </AdminSection>
+        </section>
       ) : null}
+
       {loadState.status === "success" ? (
         <Pagination
           ariaLabel="Phân trang người dùng"
           page={loadState.result.pagination.page}
           hasNextPage={loadState.result.pagination.hasNextPage}
-          onPrevious={() =>
-            router.push(adminUsersUrl(withAdminUserPage(parsed.state, loadState.result.pagination.page - 1)))
-          }
-          onNext={() =>
-            router.push(adminUsersUrl(withAdminUserPage(parsed.state, loadState.result.pagination.page + 1)))
-          }
+          variant="moderation"
+          onPrevious={() => push(adminUsersUrl(withAdminUserPage(parsed.state, loadState.result.pagination.page - 1)))}
+          onNext={() => push(adminUsersUrl(withAdminUserPage(parsed.state, loadState.result.pagination.page + 1)))}
         />
       ) : null}
-    </AdminPage>
+    </section>
   );
 }

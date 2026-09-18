@@ -54,6 +54,9 @@ import { createInternalServiceGuard } from "../../shared/internal-service-auth.j
 import { createReportRepository } from "./modules/reports/repositories/report-repository.js";
 import { registerReportRoutes } from "./modules/reports/routes.js";
 import { createReportService } from "./modules/reports/services/report-service.js";
+import { createListingOverviewRepository } from "./modules/overview/repositories/listing-overview-repository.js";
+import { createListingOverviewService } from "./modules/overview/services/listing-overview-service.js";
+import { registerListingOverviewRoutes } from "./modules/overview/routes.js";
 
 function listen(server: Server, port: number): Promise<void> {
   return new Promise((resolve, reject) => {
@@ -143,6 +146,11 @@ async function startListingService(): Promise<void> {
     logger,
     checkDatabaseConnection: () => checkDatabaseConnection(databasePool),
     registerApiRoutes: (router) => {
+      registerListingOverviewRoutes(router, {
+        authenticationMiddleware: requiredAuthentication,
+        adminRoleMiddleware: adminRole,
+        service: createListingOverviewService(createListingOverviewRepository(sqlExecutor))
+      });
       registerListingsRoutes(router, {
         lookupRepository: createLookupRepository(sqlExecutor),
         loadActiveLandlordIds: identityAccountClient.loadActiveLandlordIds,
