@@ -379,7 +379,7 @@ export function RoommateListingPicker({
               <Icon name="home" className="h-5 w-5" />
             </span>
             <p>
-              Bạn chưa gắn phòng nào vào yêu cầu này. <strong>Liên kết phòng là tùy chọn</strong>; yêu cầu vẫn đầy đủ
+              Bạn chưa gắn phòng nào vào nhu cầu này. <strong>Liên kết phòng là tùy chọn</strong>; nhu cầu vẫn đầy đủ
               nếu bạn muốn cùng người ở ghép tìm phòng sau.
             </p>
           </div>

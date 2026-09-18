@@ -72,7 +72,9 @@ function LeadCard({
     } catch (caught) {
       const apiError = caught instanceof ApiError ? caught : null;
       setError(
-        apiError?.status === 404 ? "Lead không còn tồn tại hoặc không thuộc tài khoản này." : "Chưa thể lưu ghi chú."
+        apiError?.status === 404
+          ? "Khách quan tâm không còn tồn tại hoặc không thuộc tài khoản này."
+          : "Chưa thể lưu ghi chú."
       );
     } finally {
       setPending(false);
@@ -101,7 +103,7 @@ function LeadCard({
       const apiError = caught instanceof ApiError ? caught : null;
       setReminderError(
         apiError?.status === 404
-          ? "Lead không còn tồn tại hoặc không thuộc tài khoản này."
+          ? "Khách quan tâm không còn tồn tại hoặc không thuộc tài khoản này."
           : apiError?.status === 422
             ? "Thời gian nhắc phải trong tương lai và không quá 365 ngày."
             : "Chưa thể lưu nhắc việc."
@@ -119,7 +121,7 @@ function LeadCard({
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div>
             <div className="flex flex-wrap items-center gap-2">
-              <span className="rm-workspace-eyebrow">Lead #{lead.inquiryId}</span>
+              <span className="rm-workspace-eyebrow">Yêu cầu liên hệ #{lead.inquiryId}</span>
               {lead.hasUnreadTenantMessages ? (
                 <Badge variant="warning" context="Tin nhắn của người thuê" showIndicator>
                   Chưa đọc
@@ -128,7 +130,11 @@ function LeadCard({
             </div>
             <h2 className="mt-3 font-display text-2xl font-bold">Tin đăng #{lead.listingId}</h2>
           </div>
-          <Badge variant={statusVariant(lead.status, lead.needsReply)} context="Trạng thái lead" showIndicator>
+          <Badge
+            variant={statusVariant(lead.status, lead.needsReply)}
+            context="Trạng thái khách quan tâm"
+            showIndicator
+          >
             {lead.needsReply ? "Cần phản hồi" : statusLabels[lead.status]}
           </Badge>
         </div>
@@ -163,7 +169,10 @@ function LeadCard({
           </div>
         </dl>
 
-        <section className="mt-5 border-t border-border pt-5" aria-label={`Ghi chú nội bộ lead ${lead.inquiryId}`}>
+        <section
+          className="mt-5 border-t border-border pt-5"
+          aria-label={`Ghi chú riêng cho khách quan tâm ${lead.inquiryId}`}
+        >
           <div className="flex flex-wrap items-center justify-between gap-3">
             <h3 className="font-display text-sm font-bold uppercase">Ghi chú nội bộ</h3>
             {!editing ? (
@@ -224,7 +233,10 @@ function LeadCard({
           ) : null}
         </section>
 
-        <section className="mt-5 border-t border-border pt-5" aria-label={`Nhắc việc lead ${lead.inquiryId}`}>
+        <section
+          className="mt-5 border-t border-border pt-5"
+          aria-label={`Nhắc việc cho khách quan tâm ${lead.inquiryId}`}
+        >
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div className="flex flex-wrap items-center gap-2">
               <h3 className="font-display text-sm font-bold uppercase">Nhắc việc</h3>
@@ -272,7 +284,7 @@ function LeadCard({
                 className="min-h-12 w-full rounded-control border border-border-strong bg-surface px-4 text-sm font-bold outline-none transition focus:border-primary focus:ring-[3px] focus:ring-primary/20"
               />
               <p id={`lead-reminder-help-${lead.inquiryId}`} className="text-xs font-medium text-slate-600">
-                Dùng giờ trên thiết bị của bạn. Reminder sẽ hiện trong bộ lọc Nhắc việc, không gửi push notification.
+                Dùng giờ trên thiết bị của bạn. Nhắc việc sẽ hiện trong bộ lọc tương ứng, không gửi thông báo đẩy.
               </p>
               <div className="flex flex-wrap gap-3">
                 <Button
@@ -385,7 +397,7 @@ export function LandlordLeadsPage() {
       <header className="rm-workspace-hero" data-tone="info">
         <div className="min-w-0">
           <span className="rm-workspace-eyebrow inline-flex items-center gap-2">
-            <Icon name="users" className="h-4 w-4" /> LANDLORD OPERATIONS
+            <Icon name="users" className="h-4 w-4" /> KHÁCH QUAN TÂM
           </span>
           <h1 id="landlord-leads-heading" className="rm-workspace-title mt-3">
             Khách quan tâm cần xử lý
@@ -397,7 +409,7 @@ export function LandlordLeadsPage() {
         </div>
       </header>
 
-      <nav className="rm-workspace-card flex flex-wrap gap-2 p-3" aria-label="Bộ lọc lead">
+      <nav className="rm-workspace-card flex flex-wrap gap-2 p-3" aria-label="Bộ lọc khách quan tâm">
         {views.map((item) => (
           <button
             key={item.value}
@@ -424,8 +436,8 @@ export function LandlordLeadsPage() {
       ) : null}
       {status === "success" && result?.data.length === 0 ? (
         <EmptyState
-          title="Không có lead trong nhóm này"
-          description="Chọn một bộ lọc khác hoặc quay lại khi có inquiry mới."
+          title="Không có khách quan tâm trong nhóm này"
+          description="Chọn bộ lọc khác hoặc quay lại khi có yêu cầu liên hệ mới."
         />
       ) : null}
       {status === "success" && result && result.data.length > 0 ? (

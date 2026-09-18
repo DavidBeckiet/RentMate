@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "../../components/ui/button";
 import { Icon } from "../../components/ui/icon";
+import { Toast, ToastViewport } from "../../components/ui/toast";
 import { api, ApiError } from "../../lib/api/client";
 import { useAuth } from "../../lib/auth/auth-provider";
 import { mapApiErrorToFields } from "../../lib/validation/api-field-errors";
@@ -94,6 +95,7 @@ export function OwnerLifecycleActions({
   const [pendingAction, setPendingAction] = useState<LifecycleAction | null>(null);
   const [confirmingDelete, setConfirmingDelete] = useState(false);
   const [feedback, setFeedback] = useState<ActionFeedback | null>(null);
+  const [submitNotice, setSubmitNotice] = useState(false);
   const pendingRef = useRef(false);
   const controllerRef = useRef<AbortController | null>(null);
 
@@ -108,6 +110,12 @@ export function OwnerLifecycleActions({
     if (detail.status !== "DRAFT") setConfirmingDelete(false);
   }, [detail.status]);
 
+  useEffect(() => {
+    if (!submitNotice) return;
+    const timeout = window.setTimeout(() => setSubmitNotice(false), 5000);
+    return () => window.clearTimeout(timeout);
+  }, [submitNotice]);
+
   const run = async (action: LifecycleAction) => {
     if (pendingRef.current || blocked) return;
     const controller = new AbortController();
@@ -115,6 +123,7 @@ export function OwnerLifecycleActions({
     pendingRef.current = true;
     setPendingAction(action);
     setFeedback(null);
+    setSubmitNotice(false);
     onEditorFeedback(null);
 
     try {
@@ -130,7 +139,10 @@ export function OwnerLifecycleActions({
           : action === "deactivate"
             ? await api.listings.deactivate(detail.id, controller.signal)
             : await api.listings.reactivate(detail.id, controller.signal);
-      if (!controller.signal.aborted) onDetailChange(returned);
+      if (!controller.signal.aborted) {
+        onDetailChange(returned);
+        if (action === "submit" && returned.status === "PENDING") setSubmitNotice(true);
+      }
     } catch (caught: unknown) {
       if (controller.signal.aborted) return;
       if (caught instanceof ApiError && caught.status === 422 && action === "submit") {
@@ -139,8 +151,8 @@ export function OwnerLifecycleActions({
         const formMessage = imageMissing
           ? "Cần ít nhất một ảnh trước khi gửi duyệt."
           : (mapped.formMessage ?? "Tin chưa đủ thông tin để gửi duyệt. Hãy kiểm tra các mục được đánh dấu.");
-        onEditorFeedback({ ...mapped, formMessage });
-        setFeedback({ message: formMessage, requestId: caught.requestId, refreshSuggested: false });
+        onEditorFeedback({ ...mapped, formMessage, requestId: null });
+        setFeedback({ message: formMessage, requestId: null, refreshSuggested: false });
       } else {
         const nextFeedback = actionError(action, caught);
         setFeedback(nextFeedback);
@@ -169,6 +181,16 @@ export function OwnerLifecycleActions({
 
   return (
     <section aria-labelledby="owner-actions-heading" className="rm-workspace-card space-y-5 p-5 sm:p-6">
+      {submitNotice ? (
+        <ToastViewport>
+          <Toast
+            variant="success"
+            title="Đã gửi duyệt"
+            description="Tin của bạn đang chờ kiểm duyệt."
+            onDismiss={() => setSubmitNotice(false)}
+          />
+        </ToastViewport>
+      ) : null}
       <div>
         <h2 id="owner-actions-heading" className="rm-workspace-section-title">
           Trạng thái &amp; tác vụ

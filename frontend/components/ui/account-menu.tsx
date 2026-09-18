@@ -22,9 +22,10 @@ function linksFor(user: UserProfile) {
     ];
   if (user.role === "LANDLORD")
     return [
-      { href: "/landlord/profile", label: "Hồ sơ", icon: "user" as const },
-      { href: "/landlord", label: "Không gian cho thuê", icon: "building" as const },
-      { href: "/notifications", label: "Thông báo", icon: "bell" as const }
+      { href: "/landlord", label: "Quản lý cho thuê", icon: "building" as const },
+      { href: "/landlord/profile", label: "Hồ sơ & xác minh", icon: "user" as const },
+      { href: "/notifications", label: "Thông báo", icon: "bell" as const },
+      { href: "/search", label: "Xem trang người thuê", icon: "eye" as const, separatorBefore: true }
     ];
   return [];
 }
@@ -32,8 +33,9 @@ function linksFor(user: UserProfile) {
 export function AccountMenu({
   user,
   logoutPending,
-  onLogout
-}: Readonly<{ user: UserProfile; logoutPending: boolean; onLogout: () => void }>) {
+  onLogout,
+  compact = false
+}: Readonly<{ user: UserProfile; logoutPending: boolean; onLogout: () => void; compact?: boolean }>) {
   const pathname = usePathname();
   const [open, setOpen] = useState(false);
   const rootRef = useRef<HTMLDivElement>(null);
@@ -92,7 +94,7 @@ export function AccountMenu({
   };
 
   return (
-    <div ref={rootRef} className="relative min-w-0">
+    <div ref={rootRef} className={compact ? "relative flex justify-center" : "relative min-w-0"}>
       <button
         ref={triggerRef}
         type="button"
@@ -101,7 +103,11 @@ export function AccountMenu({
         aria-controls={panelId}
         onClick={() => setOpen((value) => !value)}
         onKeyDown={onTriggerKeyDown}
-        className="flex min-h-11 max-w-56 cursor-pointer items-center gap-2 rounded-control border border-transparent px-2 text-left transition-colors duration-fast hover:border-border hover:bg-surface-subtle focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-focus"
+        className={
+          compact
+            ? "grid h-12 w-12 cursor-pointer place-items-center rounded-2xl border border-border bg-surface-subtle p-0 text-left transition-colors duration-fast hover:border-primary/40 hover:bg-primary-subtle focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-focus"
+            : "flex min-h-11 max-w-56 cursor-pointer items-center gap-2 rounded-control border border-transparent px-2 text-left transition-colors duration-fast hover:border-border hover:bg-surface-subtle focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-focus"
+        }
       >
         <span
           aria-hidden="true"
@@ -109,16 +115,18 @@ export function AccountMenu({
         >
           {accountInitials(user)}
         </span>
-        <span className="min-w-0 flex-1">
+        <span className={compact ? "sr-only" : "min-w-0 flex-1"}>
           <span className="block truncate text-ui-sm font-semibold text-foreground">
             {accountPrimaryIdentity(user)}
           </span>
           <span className="block truncate text-ui-xs text-muted-foreground">{accountRoleLabels[user.role]}</span>
         </span>
-        <Icon
-          name="chevronDown"
-          className={`h-4 w-4 shrink-0 transition-transform duration-fast ${open ? "rotate-180" : ""}`}
-        />
+        {!compact ? (
+          <Icon
+            name="chevronDown"
+            className={`h-4 w-4 shrink-0 transition-transform duration-fast ${open ? "rotate-180" : ""}`}
+          />
+        ) : null}
       </button>
       {open ? (
         <div
@@ -126,7 +134,11 @@ export function AccountMenu({
           role="menu"
           aria-label="Tài khoản"
           onKeyDown={onMenuKeyDown}
-          className="absolute right-0 z-dropdown mt-2 w-[min(20rem,calc(100vw-2rem))] rounded-card border border-border bg-surface p-2 shadow-raised"
+          className={
+            compact
+              ? "absolute bottom-0 left-full z-dropdown ml-3 w-[min(20rem,calc(100vw-2rem))] rounded-card border border-border bg-surface p-2 shadow-raised"
+              : "absolute right-0 z-dropdown mt-2 w-[min(20rem,calc(100vw-2rem))] rounded-card border border-border bg-surface p-2 shadow-raised"
+          }
         >
           <div className="border-b border-border px-3 py-3">
             <p className="break-words font-semibold text-foreground">{accountPrimaryIdentity(user)}</p>
@@ -139,7 +151,7 @@ export function AccountMenu({
                 role="menuitem"
                 href={item.href}
                 aria-label={item.href === "/notifications" ? notificationAccessibleLabel(unreadCount) : item.label}
-                className={menuItemClass}
+                className={`${menuItemClass} ${"separatorBefore" in item && item.separatorBefore ? "mt-2 border-t border-border pt-3" : ""}`}
               >
                 <Icon name={item.icon} className="h-5 w-5" />
                 <span className="min-w-0 flex-1">{item.label}</span>

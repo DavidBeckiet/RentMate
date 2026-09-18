@@ -2,8 +2,11 @@
   min-width: 0;
 }
 .page :global(.rm-roommate-hero) {
-  background: rgb(var(--color-primary-subtle));
-  box-shadow: none;
+  border-color: rgb(var(--color-primary) / 0.16);
+  background:
+    radial-gradient(circle at 88% 15%, rgb(235 111 88 / 0.17), transparent 25%),
+    linear-gradient(115deg, rgb(var(--color-primary-subtle) / 0.82), rgb(var(--color-surface)) 72%);
+  box-shadow: 0 16px 40px rgb(var(--color-primary) / 0.06);
 }
 .page :global(.rm-roommate-hero-title) {
   font-size: clamp(28px, 3.2vw, 40px);
@@ -21,6 +24,16 @@
   background: rgb(var(--color-surface));
   font-size: 13px;
   font-weight: 700;
+  box-shadow: 0 8px 22px rgb(var(--color-foreground) / 0.06);
+  transition:
+    border-color 160ms ease,
+    transform 160ms ease,
+    box-shadow 160ms ease;
+}
+.profileLink:hover {
+  border-color: rgb(var(--color-primary) / 0.45);
+  transform: translateY(-1px);
+  box-shadow: 0 12px 26px rgb(var(--color-primary) / 0.09);
 }
 .managed {
   display: grid;
@@ -38,7 +51,8 @@
 .edit,
 .create {
   min-width: 0;
-  box-shadow: none;
+  border-color: rgb(var(--color-primary) / 0.14);
+  box-shadow: 0 18px 42px rgb(var(--color-foreground) / 0.055);
   padding: 24px;
   border-radius: 20px;
 }
@@ -48,6 +62,7 @@
 }
 .overview {
   border-top: 4px solid rgb(var(--color-primary));
+  background: radial-gradient(circle at 100% 0, rgb(120 103 184 / 0.1), transparent 28%), rgb(var(--color-surface));
 }
 .overview h2 {
   font-size: 24px;

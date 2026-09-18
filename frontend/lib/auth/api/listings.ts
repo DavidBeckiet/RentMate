@@ -11,6 +11,8 @@ import type {
   PublicListingSearchQuery,
   PublicListingSummary,
   ReorderImagesBody,
+  ReverseGeocodeBody,
+  ReverseGeocodingResult,
   UploadImageInput
 } from "../../../types/api";
 import type { ApiTransport } from "./transport";
@@ -76,6 +78,9 @@ export function createListingsApi(transport: ApiTransport) {
       transport.object(`/api/v1/landlord/listings/${listingId}/images/order`, { method: "PUT", json: body, signal }),
 
     forwardGeocode: (body: ForwardGeocodeBody, signal?: AbortSignal): Promise<readonly GeocodingCandidate[]> =>
-      transport.object("/api/v1/geocoding/forward", { method: "POST", json: body, signal })
+      transport.object("/api/v1/geocoding/forward", { method: "POST", json: body, signal }),
+
+    reverseGeocode: (body: ReverseGeocodeBody, signal?: AbortSignal): Promise<ReverseGeocodingResult | null> =>
+      transport.object("/api/v1/geocoding/reverse", { method: "POST", json: body, signal })
   } as const;
 }

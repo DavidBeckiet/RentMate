@@ -28,10 +28,11 @@ test("requires terminal resolution notes and rejects unknown fields", () => {
   assert.throws(() => validateCreateReportBody({ category: "FRAUD", screenshot: "private" }), /invalid data/i);
 });
 
-test("accepts investigation without a note and rejects unsupported categories", () => {
-  assert.deepEqual(validateUpdateReportStatusBody({ status: "INVESTIGATING" }), {
-    status: "INVESTIGATING",
-    note: null
+test("accepts direct terminal decisions and rejects new investigation updates", () => {
+  assert.deepEqual(validateUpdateReportStatusBody({ status: "resolved", note: "  Đã xem xét.  " }), {
+    status: "RESOLVED",
+    note: "Đã xem xét."
   });
+  assert.throws(() => validateUpdateReportStatusBody({ status: "INVESTIGATING" }), /invalid data/i);
   assert.throws(() => validateCreateReportBody({ category: "OTHER" }), /invalid data/i);
 });

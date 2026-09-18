@@ -4,6 +4,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { ApiError } from "../../lib/api/transport";
 import type { AuthContextValue } from "../../lib/auth/auth-provider";
 import type { UserProfile, UserRole } from "../../types/api";
+import { useRegisterLandlordCommandBar } from "./landlord-command-bar";
 
 const navigationMocks = vi.hoisted(() => ({
   pathname: vi.fn(() => "/"),
@@ -43,6 +44,19 @@ function authValue(value: Partial<AuthContextValue> = {}): AuthContextValue {
 
 function authenticate(role: UserRole, displayName: string | null = null) {
   useAuthMock.mockReturnValue(authValue({ status: "authenticated", user: user(role, displayName) }));
+}
+
+const landlordCommandBarFixtureConfig = {
+  searchValue: "",
+  onSearchChange: vi.fn(),
+  searchEnabled: true,
+  onCreate: vi.fn(),
+  createPending: false
+};
+
+function LandlordCommandBarFixture() {
+  useRegisterLandlordCommandBar(landlordCommandBarFixtureConfig);
+  return null;
 }
 
 describe("AppShell", () => {
@@ -126,6 +140,30 @@ describe("AppShell", () => {
     expect(screen.getByText("tenant@example.com")).toBeInTheDocument();
   });
 
+  it("keeps the global marketplace navigation stable inside the roommate experience", () => {
+    navigationMocks.pathname.mockReturnValue("/roommates/interests");
+    authenticate("TENANT");
+    render(<AppShell>Nội dung ở ghép</AppShell>);
+
+    const navigation = screen.getByRole("navigation", { name: "Điều hướng marketplace" });
+    expect(within(navigation).getByRole("link", { name: "Ở ghép" })).toHaveAttribute("aria-current", "page");
+    expect(within(navigation).getByRole("link", { name: "Tìm phòng" })).toHaveAttribute("href", "/search");
+    expect(within(navigation).getByRole("link", { name: "Tin nhắn" })).toHaveAttribute("href", "/inquiries");
+    expect(within(navigation).queryByRole("link", { name: "Hồ sơ ở ghép" })).not.toBeInTheDocument();
+  });
+
+  it("gives the roommate discovery page the full available workspace width", () => {
+    navigationMocks.pathname.mockReturnValue("/roommates");
+    authenticate("TENANT");
+    render(<AppShell>Nội dung khám phá ở ghép</AppShell>);
+
+    expect(screen.getByRole("main")).toHaveClass("box-border", "w-full", "max-w-none", "pb-24", "lg:pb-0");
+    expect(screen.getByRole("main")).not.toHaveClass("w-screen", "overflow-x-clip");
+    expect(screen.getByRole("main")).not.toHaveClass("px-4", "py-8", "sm:py-12", "lg:px-8", "lg:pb-12");
+    expect(screen.getByRole("main")).not.toHaveClass("rm-page-container");
+    expect(screen.getByRole("main").firstElementChild).toHaveClass("w-full", "max-w-none");
+  });
+
   it("provides a five-item tenant mobile navigation using existing routes", async () => {
     navigationMocks.pathname.mockReturnValue("/inquiries");
     authenticate("TENANT");
@@ -189,7 +227,7 @@ describe("AppShell", () => {
   });
 
   it.each([
-    ["LANDLORD", "Không gian cho thuê", "/landlord"],
+    ["LANDLORD", "Quản lý cho thuê", "/landlord"],
     ["ADMIN", "Khu vực quản trị", "/admin"]
   ] as const)("does not give %s the tenant navigation on marketplace routes", (role, workspaceLabel, href) => {
     authenticate(role);
@@ -225,22 +263,65 @@ describe("AppShell", () => {
   });
 
   it.each([
-    ["/landlord", "Tin đăng"],
-    ["/landlord/listings/42", "Tin đăng"],
+    ["/landlord", "Tin cho thuê"],
+    ["/landlord/listings/42", "Tin cho thuê"],
     ["/landlord/inquiries", "Tin nhắn"],
-    ["/landlord/leads", "Leads"],
-    ["/landlord/analytics", "Analytics"],
+    ["/landlord/leads", "Khách quan tâm"],
+    ["/landlord/analytics", "Phân tích"],
     ["/landlord/profile", "Hồ sơ & xác minh"]
   ])("renders the landlord workspace and active item at %s", (pathname, activeLabel) => {
     navigationMocks.pathname.mockReturnValue(pathname);
     authenticate("LANDLORD");
     render(<AppShell>Nội dung landlord</AppShell>);
 
-    const navigation = screen.getByRole("navigation", { name: "Điều hướng không gian cho thuê" });
+    const navigation = screen.getByRole("navigation", { name: "Điều hướng quản lý cho thuê" });
     expect(within(navigation).getByRole("link", { name: activeLabel })).toHaveAttribute("aria-current", "page");
+    expect(screen.queryByText("KHU VỰC QUẢN LÝ")).not.toBeInTheDocument();
+    const rail = screen.getByRole("complementary");
+    expect(within(rail).getByRole("link", { name: "RentMate — về quản lý cho thuê" })).toHaveAttribute(
+      "href",
+      "/landlord"
+    );
+    expect(within(rail).getByRole("link", { name: activeLabel })).toHaveAttribute("title", activeLabel);
+    expect(screen.queryByText("RentMate Workspace")).not.toBeInTheDocument();
     expect(screen.queryByRole("navigation", { name: "Điều hướng marketplace" })).not.toBeInTheDocument();
     expect(screen.queryByRole("contentinfo")).not.toBeInTheDocument();
     expect(screen.getByRole("main")).toHaveTextContent("Nội dung landlord");
+  });
+
+  it("opens the sidebar notification panel beside the bell instead of below the viewport", () => {
+    navigationMocks.pathname.mockReturnValue("/landlord");
+    authenticate("LANDLORD");
+    render(<AppShell>Nội dung landlord</AppShell>);
+
+    const rail = screen.getByRole("complementary");
+    const trigger = within(rail).getByRole("link", { name: /Thông báo/ });
+    fireEvent.click(trigger);
+
+    const panel = within(rail).getByRole("dialog", { name: "Thông báo gần đây" });
+    expect(trigger).toHaveAttribute("aria-expanded", "true");
+    expect(panel).toHaveClass("bottom-0", "left-full");
+    expect(panel).not.toHaveClass("top-full", "right-0");
+    expect(within(panel).getByRole("link", { name: /Xem tất cả thông báo/ })).toHaveAttribute("href", "/notifications");
+
+    fireEvent.keyDown(document, { key: "Escape" });
+    expect(within(rail).queryByRole("dialog", { name: "Thông báo gần đây" })).not.toBeInTheDocument();
+  });
+
+  it("renders landlord inventory actions in the shared horizontal command bar", async () => {
+    navigationMocks.pathname.mockReturnValue("/landlord");
+    authenticate("LANDLORD");
+    render(
+      <AppShell>
+        <LandlordCommandBarFixture />
+      </AppShell>
+    );
+
+    const header = await screen.findByRole("banner");
+    expect(
+      within(header).getByRole("searchbox", { name: "Tìm tin theo tên, khu vực hoặc loại phòng" })
+    ).toBeInTheDocument();
+    expect(within(header).getByRole("button", { name: "Đăng phòng mới" })).toBeInTheDocument();
   });
 
   it.each([
@@ -328,7 +409,7 @@ describe("AppShell", () => {
     authenticate("LANDLORD");
     render(<AppShell>Nội dung hội thoại</AppShell>);
 
-    const navigation = screen.getByRole("navigation", { name: "Điều hướng không gian cho thuê" });
+    const navigation = screen.getByRole("navigation", { name: "Điều hướng quản lý cho thuê" });
     expect(within(navigation).getByRole("link", { name: "Tin nhắn" })).toHaveAttribute("aria-current", "page");
     expect(screen.getByRole("main")).toHaveTextContent("Nội dung hội thoại");
   });
@@ -358,9 +439,9 @@ describe("AppShell", () => {
     useAuthMock.mockReturnValue(authValue({ status: "loading" }));
     render(<AppShell>Nội dung đang kiểm tra</AppShell>);
 
-    const navigation = screen.getByRole("navigation", { name: "Điều hướng không gian cho thuê" });
+    const navigation = screen.getByRole("navigation", { name: "Điều hướng quản lý cho thuê" });
     expect(within(navigation).getByLabelText("Đang kiểm tra quyền truy cập")).toBeInTheDocument();
-    expect(within(navigation).queryByRole("link", { name: "Tin đăng" })).not.toBeInTheDocument();
+    expect(within(navigation).queryByRole("link", { name: "Tin cho thuê" })).not.toBeInTheDocument();
     expect(screen.queryByRole("navigation", { name: "Điều hướng marketplace" })).not.toBeInTheDocument();
   });
 
@@ -381,15 +462,31 @@ describe("AppShell", () => {
     expect(trigger).toHaveFocus();
   });
 
-  it("provides an accessible mobile workspace menu with active state", () => {
+  it("provides compact mobile navigation and an accessible More menu with active state", () => {
     navigationMocks.pathname.mockReturnValue("/landlord/leads");
     authenticate("LANDLORD");
     render(<AppShell>Nội dung trang</AppShell>);
 
-    fireEvent.click(screen.getByRole("button", { name: "Mở điều hướng không gian cho thuê" }));
-    const dialog = screen.getByRole("dialog", { name: "Không gian cho thuê" });
-    const navigation = within(dialog).getByRole("navigation", { name: "Điều hướng không gian cho thuê trên di động" });
-    expect(within(navigation).getByRole("link", { name: "Leads" })).toHaveAttribute("aria-current", "page");
+    const quickNavigation = screen.getByRole("navigation", { name: "Điều hướng nhanh trên di động" });
+    expect(within(quickNavigation).getByRole("link", { name: "Tin cho thuê trên di động" })).toHaveAttribute(
+      "href",
+      "/landlord"
+    );
+    expect(within(quickNavigation).getByRole("link", { name: "Tin nhắn trên di động" })).toHaveAttribute(
+      "href",
+      "/landlord/inquiries"
+    );
+    expect(within(quickNavigation).getByRole("link", { name: "Khách quan tâm trên di động" })).toHaveAttribute(
+      "aria-current",
+      "page"
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Mở thêm mục quản lý cho thuê" }));
+    const dialog = screen.getByRole("dialog", { name: "Quản lý cho thuê" });
+    const navigation = within(dialog).getByRole("navigation", { name: "Điều hướng quản lý cho thuê trên di động" });
+    expect(within(navigation).getByRole("link", { name: "Khách quan tâm" })).toHaveAttribute("aria-current", "page");
+    expect(within(navigation).getByRole("link", { name: "Phân tích" })).toHaveAttribute("href", "/landlord/analytics");
+    expect(within(navigation).getByRole("link", { name: "Xem trang người thuê" })).toHaveAttribute("href", "/search");
   });
 
   it("preserves logout behavior and redirects only after auth becomes anonymous", async () => {

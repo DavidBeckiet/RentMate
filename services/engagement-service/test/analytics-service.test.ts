@@ -31,6 +31,15 @@ const snapshot: LandlordAnalyticsSnapshot = Object.freeze({
   favorites: 4,
   callClicks: 3,
   emailClicks: 2,
+  previousPeriod: Object.freeze({
+    sinceAt: "2026-06-26T00:00:00.000Z",
+    untilAt: "2026-07-26T00:00:00.000Z",
+    inquiries: 2,
+    views: 8,
+    favorites: 2,
+    callClicks: 1,
+    emailClicks: 1
+  }),
   daily: Object.freeze([
     Object.freeze({ date: "2026-08-23", inquiries: 1, firstResponses: 0 }),
     Object.freeze({ date: "2026-08-24", inquiries: 3, firstResponses: 3 })
@@ -61,6 +70,7 @@ test("calculates landlord response rates from an authorized aggregate snapshot",
   assert.equal(receivedDays, 30);
   assert.equal(analytics.responseRate, 75);
   assert.equal(analytics.responseWithin24HoursRate, 50);
+  assert.equal(analytics.previousPeriod.inquiries, 2);
   assert.equal(analytics.daily, snapshot.daily);
 });
 

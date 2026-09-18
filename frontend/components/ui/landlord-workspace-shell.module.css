@@ -1,0 +1,528 @@
+.shell {
+  --color-background: 251 251 250;
+  --color-surface: 255 255 255;
+  --color-surface-subtle: 248 250 252;
+  --color-foreground: 15 23 42;
+  --color-muted-foreground: 71 85 105;
+  --color-border: 226 232 240;
+  --color-border-strong: 203 213 225;
+  --color-primary: 6 95 70;
+  --color-primary-hover: 6 78 59;
+  --color-primary-subtle: 236 253 245;
+  --color-accent: 209 250 229;
+  --color-focus-ring: 4 120 87;
+  min-height: 100vh;
+  background: #fbfbfa;
+  color: #0f172a;
+}
+
+.sidebar {
+  display: none;
+}
+.content {
+  min-width: 0;
+}
+.header {
+  position: sticky;
+  top: 0;
+  z-index: 40;
+  border-bottom: 1px solid #e2e8f0;
+  background: rgb(255 255 255 / 0.96);
+  backdrop-filter: blur(12px);
+}
+
+.headerInner {
+  display: flex;
+  width: 100%;
+  min-width: 0;
+  min-height: 4rem;
+  max-width: none;
+  align-items: center;
+  gap: 0.75rem;
+  margin-inline: auto;
+  padding-inline: 2rem;
+}
+.headerContext {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 0.85rem;
+  color: #64748b;
+  font-size: 0.75rem;
+  font-weight: 700;
+}
+.headerContext strong {
+  overflow: hidden;
+  color: #0f172a;
+  font-size: 1rem;
+  letter-spacing: -0.025em;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.headerSpaceBadge,
+.occupancyPill {
+  display: inline-flex;
+  min-height: 1.8rem;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: 0.45rem;
+  border: 1px solid #a7f3d0;
+  border-radius: 0.6rem;
+  background: #ecfdf5;
+  padding: 0.2rem 0.65rem;
+  color: #065f46;
+  font-size: 0.6875rem;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+.occupancyPill {
+  min-height: 1.65rem;
+  border-radius: 999px;
+  background: #f0fdf8;
+  color: #475569;
+  font-size: 0.75rem;
+  font-weight: 650;
+  letter-spacing: 0;
+  text-transform: none;
+}
+.occupancyPill b {
+  color: #047857;
+}
+.occupancyDot {
+  width: 0.45rem;
+  height: 0.45rem;
+  border-radius: 999px;
+  background: #10b981;
+}
+.headerCommandBar {
+  display: flex;
+  max-width: 100%;
+  min-width: 0;
+  align-items: center;
+  gap: 0.625rem;
+  margin-left: auto;
+}
+.headerSearch {
+  display: flex;
+  width: min(22rem, 28vw);
+  min-width: 15rem;
+  min-height: 2.75rem;
+  align-items: center;
+  gap: 0.5rem;
+  border: 1px solid #dbe5e1;
+  border-radius: 0.8rem;
+  background: #f8fafc;
+  padding: 0 0.625rem 0 0.8rem;
+  color: #64748b;
+  transition:
+    border-color 180ms ease,
+    background-color 180ms ease,
+    box-shadow 180ms ease;
+}
+.headerSearch:focus-within {
+  border-color: #6ee7b7;
+  background: white;
+  box-shadow: 0 0 0 3px rgb(16 185 129 / 0.12);
+}
+.headerSearch > svg {
+  width: 1rem;
+  height: 1rem;
+  flex: 0 0 auto;
+}
+.headerSearch input {
+  width: 100%;
+  min-width: 0;
+  border: 0;
+  outline: 0;
+  background: transparent;
+  color: #0f172a;
+  font: inherit;
+  font-size: 0.8125rem;
+}
+.headerSearch input::placeholder {
+  color: #94a3b8;
+}
+.headerSearch input::-webkit-search-cancel-button {
+  display: none;
+}
+.headerSearch button {
+  display: grid;
+  width: 2rem;
+  height: 2rem;
+  flex: 0 0 auto;
+  place-items: center;
+  border: 0;
+  border-radius: 0.5rem;
+  background: transparent;
+  color: #64748b;
+  cursor: pointer;
+}
+.headerSearch button:hover {
+  background: #e2e8f0;
+  color: #0f172a;
+}
+.headerSearch button svg {
+  width: 0.9rem;
+  height: 0.9rem;
+}
+.headerAddButton {
+  display: inline-flex;
+  min-height: 2.75rem;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  border: 1px solid #065f46;
+  border-radius: 0.8rem;
+  background: #065f46;
+  padding: 0.6rem 1rem;
+  color: white;
+  font-size: 0.8125rem;
+  font-weight: 750;
+  box-shadow: 0 2px 4px rgb(6 95 70 / 0.1);
+  white-space: nowrap;
+}
+.headerAddButton:hover:not(:disabled) {
+  border-color: #064e3b;
+  background: #064e3b;
+  transform: none;
+}
+.headerAddButton svg {
+  width: 1rem;
+  height: 1rem;
+}
+.headerDot {
+  width: 0.45rem;
+  height: 0.45rem;
+  flex: 0 0 auto;
+  border-radius: 999px;
+  background: #059669;
+}
+.headerDivider {
+  width: 1px;
+  height: 1rem;
+  flex: 0 0 auto;
+  background: #e2e8f0;
+}
+.mobileHeaderActions {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  margin-left: auto;
+}
+
+.main {
+  width: 100%;
+  max-width: none;
+  min-height: calc(100dvh - 4rem);
+  margin-inline: auto;
+  padding: 1.5rem 2rem 3rem;
+}
+
+.mobileNav {
+  display: none;
+}
+
+.sidebarBrand,
+.sidebarNav,
+.sidebarBottom,
+.sidebarLoading {
+  display: flex;
+}
+.sidebarBrand,
+.sidebarNav,
+.sidebarBottom {
+  flex-direction: column;
+  align-items: center;
+}
+.sidebarBrand {
+  padding: 1rem 0.5rem 0;
+}
+.sidebarBrand > a {
+  flex-direction: column;
+  gap: 0.4rem;
+  text-align: center;
+}
+.sidebarBrand > a > span:first-child {
+  width: 3.1rem;
+  height: 3.1rem;
+  border-color: #059669;
+  background: white;
+  box-shadow: 0 5px 14px rgb(6 95 70 / 0.08);
+}
+.sidebarBrand > a > span:last-child {
+  color: #065f46;
+  font-size: 0.625rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+.sidebarNav {
+  flex: 1;
+  justify-content: center;
+  width: 100%;
+  padding: 1.5rem 0;
+}
+.sidebarNavList {
+  display: grid;
+  width: 100%;
+  justify-items: center;
+  gap: 0.6rem;
+}
+.sidebarLink {
+  position: relative;
+  display: grid;
+  width: 3.25rem;
+  height: 3.25rem;
+  min-height: 3.25rem;
+  place-items: center;
+  border: 1px solid transparent;
+  border-radius: 1rem;
+  color: #64748b;
+  transition:
+    background-color 180ms ease,
+    border-color 180ms ease,
+    color 180ms ease,
+    transform 180ms ease;
+}
+.sidebarLink:hover {
+  border-color: #d1fae5;
+  background: #f0fdf4;
+  color: #065f46;
+  transform: translateY(-1px);
+}
+.sidebarLink[aria-current="page"] {
+  border-color: #6ee7b7;
+  background: #ecfdf5;
+  color: #047857;
+  box-shadow: 0 5px 14px rgb(6 95 70 / 0.07);
+}
+.sidebarLink > span:first-of-type {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+.sidebarLink :global(svg) {
+  width: 1.35rem;
+  height: 1.35rem;
+}
+.sidebarLoading {
+  flex-direction: column;
+  align-items: center;
+  gap: 0.6rem;
+}
+.sidebarBottom {
+  width: 100%;
+  gap: 0.65rem;
+  padding: 0 0.5rem 1rem;
+}
+.sidebarBottom :global(.relative) {
+  min-width: 0;
+}
+
+/* Landlord pages share this treatment; public and admin shells keep their own theme. */
+.shell :global(.rm-workspace-page) {
+  max-width: none;
+  padding: 0;
+}
+.shell :global(.rm-workspace-page)::before,
+.shell :global(.rm-workspace-hero)::after {
+  display: none;
+}
+.shell :global(.rm-workspace-hero),
+.shell :global(.rm-workspace-hero)[data-tone] {
+  min-height: 0;
+  border: 1px solid #e2e8f0;
+  border-radius: 1rem;
+  background: white;
+  padding: 1.5rem;
+  color: #0f172a;
+  box-shadow: none;
+}
+.shell :global(.rm-workspace-title) {
+  font-size: clamp(1.5rem, 3vw, 2rem);
+  line-height: 1.25;
+  letter-spacing: -0.04em;
+  color: #0f172a;
+}
+.shell :global(.rm-workspace-description) {
+  max-width: 44rem;
+  color: #475569;
+  font-size: 0.875rem;
+  line-height: 1.65;
+}
+.shell :global(.rm-workspace-eyebrow) {
+  color: #047857;
+  font-size: 0.75rem;
+  letter-spacing: 0.04em;
+}
+.shell :global(.rm-workspace-card),
+.shell :global(.rm-workspace-panel),
+.shell :global(.rm-inquiry-card),
+.shell :global(.rm-lead-card),
+.shell :global(.rm-analytics-metric) {
+  border: 1px solid #e2e8f0;
+  border-radius: 1rem;
+  background: white;
+  box-shadow: 0 2px 6px rgb(15 23 42 / 0.025);
+  color: #0f172a;
+}
+.shell :global(.rm-lead-card):hover,
+.shell :global(.rm-inquiry-card):hover {
+  transform: none;
+  border-color: #a7f3d0;
+  box-shadow: 0 6px 20px rgb(6 95 70 / 0.06);
+}
+.shell :global(.rm-workspace-card-header) {
+  border-bottom: 1px solid #e2e8f0;
+  background: #f8fafc;
+}
+.shell :global(.rm-workspace-section-title) {
+  color: #0f172a;
+  font-size: 1.125rem;
+}
+.shell :global(.rm-workspace-section-description) {
+  color: #475569;
+}
+.shell :global(.rm-workspace-callout) {
+  border: 1px solid #a7f3d0;
+  border-radius: 0.75rem;
+  background: #ecfdf5;
+  color: #065f46;
+  box-shadow: none;
+}
+.shell :global(.rm-analytics-metric)[data-tone="primary"] {
+  border-top: 3px solid #047857;
+}
+.shell :global(.rm-analytics-metric)[data-tone="attention"] {
+  border-top: 3px solid #e11d48;
+}
+.shell :global(.rm-analytics-value) {
+  font-size: 2rem;
+  color: #0f172a;
+}
+.shell :global(.rm-chart-frame) {
+  border: 1px solid #e2e8f0;
+  border-radius: 0.75rem;
+  background: #fbfbfa;
+  box-shadow: none;
+}
+.shell :is(button, select, summary) {
+  touch-action: manipulation;
+}
+.shell :is(a, button, select, input, textarea, summary):focus-visible {
+  outline: 2px solid #047857;
+  outline-offset: 3px;
+}
+
+@media (max-width: 1023px) {
+  .content {
+    margin-left: 0;
+  }
+  .headerInner {
+    flex-wrap: wrap;
+    row-gap: 0.7rem;
+    padding-inline: 1.5rem;
+  }
+  .headerContext {
+    order: 1;
+  }
+  .headerContext {
+    font-size: 0.6875rem;
+  }
+  .headerContext strong,
+  .headerDivider {
+    display: none;
+  }
+  .headerCommandBar {
+    order: 3;
+    width: 100%;
+    flex: 1 0 100%;
+    margin-left: 0;
+  }
+  .occupancyPill {
+    display: none;
+  }
+  .headerSearch {
+    width: auto;
+    min-width: 0;
+    flex: 1;
+  }
+  .mobileHeaderActions {
+    order: 2;
+  }
+  .main {
+    padding: 1.25rem 1.5rem 7rem;
+  }
+  .mobileNav {
+    display: block;
+    position: fixed;
+    inset: auto 0 0;
+    z-index: 40;
+    border-top: 1px solid #e2e8f0;
+    background: rgb(255 255 255 / 0.97);
+    padding: 0.4rem 0.5rem max(0.5rem, env(safe-area-inset-bottom));
+    backdrop-filter: blur(12px);
+  }
+  .mobileNav :is(a, button) {
+    min-height: 3rem;
+    font-size: 0.6875rem;
+    color: #475569;
+  }
+  .mobileNav a[aria-current="page"] {
+    background: #ecfdf5;
+    color: #065f46;
+  }
+}
+@media (max-width: 560px) {
+  .headerInner {
+    padding-inline: 1rem;
+  }
+  .main {
+    padding: 1rem 1rem 7rem;
+  }
+  .headerAddButton {
+    padding-inline: 0.75rem;
+    font-size: 0.75rem;
+  }
+  .headerSpaceBadge {
+    display: none;
+  }
+  .headerContext strong {
+    font-size: 0.875rem;
+  }
+  .shell :global(.rm-workspace-hero) {
+    padding: 1.1rem;
+  }
+}
+
+@media (min-width: 1024px) {
+  .sidebar {
+    position: fixed;
+    inset: 0 auto 0 0;
+    z-index: 50;
+    display: flex;
+    width: 5.75rem;
+    flex-direction: column;
+    border-right: 1px solid #e2e8f0;
+    background: white;
+    box-shadow: 1px 0 8px rgb(15 23 42 / 0.025);
+  }
+  .content {
+    min-height: 100vh;
+    margin-left: 5.75rem;
+  }
+  .mobileHeaderActions > :global(div) {
+    display: none;
+  }
+  .headerInner {
+    padding-inline: 2.25rem;
+  }
+  .main {
+    min-height: calc(100dvh - 4rem);
+  }
+}

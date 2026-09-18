@@ -150,6 +150,10 @@ describe("OwnerLifecycleActions", () => {
       fireEvent.click(screen.getByRole("button", { name: "Gửi duyệt" }));
       await waitFor(() => expect(onDetailChange).toHaveBeenCalledWith(returned));
       expect(apiMocks.submit).toHaveBeenCalledWith(42, expect.any(AbortSignal));
+      expect(screen.getByRole("status")).toHaveTextContent("Đã gửi duyệt");
+      expect(screen.getByRole("status")).toHaveTextContent("Tin của bạn đang chờ kiểm duyệt.");
+      fireEvent.click(screen.getByRole("button", { name: "Đóng thông báo" }));
+      expect(screen.queryByRole("status")).not.toBeInTheDocument();
     }
   );
 
@@ -170,9 +174,13 @@ describe("OwnerLifecycleActions", () => {
     );
     renderActions("DRAFT", false, { images: [] });
     fireEvent.click(screen.getByRole("button", { name: "Gửi duyệt" }));
-    expect(await screen.findByRole("alert")).toHaveTextContent("Cần ít nhất một ảnh trước khi gửi duyệt");
+    const alert = await screen.findByRole("alert");
+    expect(alert).toHaveTextContent("Cần ít nhất một ảnh trước khi gửi duyệt");
+    expect(screen.queryByRole("status")).not.toBeInTheDocument();
+    expect(alert).not.toHaveTextContent("Mã yêu cầu");
+    expect(alert).not.toHaveTextContent("req-action");
     expect(onEditorFeedback).toHaveBeenCalledWith(
-      expect.objectContaining({ formMessage: "Cần ít nhất một ảnh trước khi gửi duyệt." })
+      expect.objectContaining({ formMessage: "Cần ít nhất một ảnh trước khi gửi duyệt.", requestId: null })
     );
   });
 

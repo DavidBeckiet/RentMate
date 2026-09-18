@@ -63,6 +63,7 @@ function setup(
   };
   const ownerReadRepository: OwnerListingReadRepository = {
     findOwnerListingPage: async () => [],
+    hasEverApprovedListing: async () => false,
     findOwnerListingDetailBase: async () => ({ ...base, businessStatus: currentStatus }),
     findAmenitiesForListing: async () => [],
     findImagesForListing: async () => [],

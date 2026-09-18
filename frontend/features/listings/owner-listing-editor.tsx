@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState, type FormEvent } from "react";
 import { Button } from "../../components/ui/button";
+import { Icon } from "../../components/ui/icon";
 import {
   CheckboxField,
   CheckboxGroup,
@@ -14,6 +15,7 @@ import { useAuth } from "../../lib/auth/auth-provider";
 import { mapApiErrorToFields } from "../../lib/validation/api-field-errors";
 import type { Amenity, ListingContentBody, OwnerListingDetail, PropertyType } from "../../types/api";
 import { OwnerLocationControls } from "./owner-location-controls";
+import styles from "./owner-listing-editor.module.css";
 
 export type LookupResource<Value> =
   | { readonly status: "loading"; readonly data: readonly Value[] }
@@ -75,6 +77,33 @@ interface SaveFeedback extends OwnerEditorFeedback {
 
 const emptyFeedback: SaveFeedback = { fieldErrors: {}, formMessage: null, requestId: null, success: null };
 
+const amenityLabels: Readonly<Record<string, string>> = {
+  AIR_CONDITIONING: "Máy lạnh",
+  WIFI: "Wi-Fi",
+  FURNISHED: "Có nội thất",
+  PRIVATE_BATHROOM: "Nhà vệ sinh riêng",
+  KITCHEN: "Khu bếp",
+  REFRIGERATOR: "Tủ lạnh",
+  WASHING_MACHINE: "Máy giặt",
+  PARKING: "Chỗ để xe",
+  ELEVATOR: "Thang máy",
+  SECURITY: "An ninh",
+  BALCONY: "Ban công",
+  PET_FRIENDLY: "Cho nuôi thú cưng"
+};
+
+const propertyTypeLabels: Readonly<Record<string, string>> = {
+  ROOM: "Phòng trọ",
+  STUDIO: "Studio",
+  APARTMENT: "Căn hộ",
+  HOUSE: "Nhà nguyên căn",
+  DORMITORY: "Ký túc xá"
+};
+
+function localizedLabel(code: string, fallback: string, labels: Readonly<Record<string, string>>): string {
+  return labels[code] ?? fallback;
+}
+
 function formFromDetail(detail: OwnerListingDetail): FormState {
   return {
     title: detail.title ?? "",
@@ -97,6 +126,25 @@ function sameSet(left: readonly string[], right: readonly string[]): boolean {
 
 function nullableString(value: string): string | null {
   return value.trim() || null;
+}
+
+function currencyDigits(value: string): string {
+  return value.replace(/\D/g, "");
+}
+
+function formatCurrencyInput(value: string): string {
+  const digits = currencyDigits(value);
+  return digits ? new Intl.NumberFormat("vi-VN").format(Number(digits)) : "";
+}
+
+function formatCurrencyHint(value: string): string {
+  const amount = Number(currencyDigits(value));
+  if (!Number.isFinite(amount) || amount <= 0) return "Nhập giá thuê theo tháng, ví dụ 3.500.000 ₫.";
+  if (amount >= 1_000_000) {
+    const millions = Math.round((amount / 1_000_000) * 10) / 10;
+    return `${formatCurrencyInput(value)} ₫/tháng · khoảng ${String(millions).replace(".", ",")} triệu đồng.`;
+  }
+  return `${formatCurrencyInput(value)} ₫/tháng.`;
 }
 
 function parseNumber(
@@ -276,6 +324,9 @@ export function OwnerListingEditor({
   const [dirtyFields, setDirtyFields] = useState<ReadonlySet<OwnerEditorField>>(() => new Set());
   const [pending, setPending] = useState(false);
   const [feedback, setFeedback] = useState<SaveFeedback>(emptyFeedback);
+  const [locationConfirmed, setLocationConfirmed] = useState(
+    () => detail.latitude !== null && detail.longitude !== null
+  );
   const pendingRef = useRef(false);
   const controllerRef = useRef<AbortController | null>(null);
   const savedDetailRef = useRef<OwnerListingDetail | null>(null);
@@ -284,6 +335,7 @@ export function OwnerListingEditor({
   useEffect(() => {
     setForm(formFromDetail(detail));
     setDirtyFields(new Set());
+    setLocationConfirmed(detail.latitude !== null && detail.longitude !== null);
     if (savedDetailRef.current !== detail) setFeedback(emptyFeedback);
     savedDetailRef.current = null;
   }, [detail]);
@@ -312,6 +364,37 @@ export function OwnerListingEditor({
       else next.add(field);
       return next;
     });
+    if (field === "areaName" && form.latitude.trim() && form.longitude.trim()) {
+      setLocationConfirmed(
+        value === canonicalForm.areaName &&
+          form.latitude === canonicalForm.latitude &&
+          form.longitude === canonicalForm.longitude
+      );
+    }
+    setFeedback(emptyFeedback);
+    onEdit();
+  };
+
+  const updateAddress = (value: string) => {
+    const restored = value === canonicalForm.addressText;
+    const latitude = restored ? canonicalForm.latitude : "";
+    const longitude = restored ? canonicalForm.longitude : "";
+    setForm((current) => ({ ...current, addressText: value, latitude, longitude }));
+    setDirtyFields((current) => {
+      const next = new Set(current);
+      for (const [field, nextValue] of [
+        ["addressText", value],
+        ["latitude", latitude],
+        ["longitude", longitude]
+      ] as const) {
+        if (nextValue === canonicalForm[field]) next.delete(field);
+        else next.add(field);
+      }
+      return next;
+    });
+    setLocationConfirmed(
+      restored && canonicalForm.latitude.trim().length > 0 && canonicalForm.longitude.trim().length > 0
+    );
     setFeedback(emptyFeedback);
     onEdit();
   };
@@ -343,6 +426,23 @@ export function OwnerListingEditor({
       else next.add("longitude");
       return next;
     });
+    setLocationConfirmed(latitude === canonicalForm.latitude && longitude === canonicalForm.longitude);
+    setFeedback(emptyFeedback);
+    onEdit();
+  };
+
+  const updateCurrentLocation = (addressText: string, areaName: string, latitude: string, longitude: string) => {
+    const values = { addressText, areaName, latitude, longitude };
+    setForm((current) => ({ ...current, ...values }));
+    setDirtyFields((current) => {
+      const next = new Set(current);
+      for (const [field, value] of Object.entries(values) as Array<[keyof typeof values, string]>) {
+        if (value === canonicalForm[field]) next.delete(field);
+        else next.add(field);
+      }
+      return next;
+    });
+    setLocationConfirmed(false);
     setFeedback(emptyFeedback);
     onEdit();
   };
@@ -350,6 +450,7 @@ export function OwnerListingEditor({
   const revert = () => {
     setForm(canonicalForm);
     setDirtyFields(new Set());
+    setLocationConfirmed(detail.latitude !== null && detail.longitude !== null);
     setFeedback(emptyFeedback);
     onEdit();
   };
@@ -357,6 +458,13 @@ export function OwnerListingEditor({
   const save = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     if (pendingRef.current || !dirty) return;
+    if (form.latitude.trim() && form.longitude.trim() && !locationConfirmed) {
+      setFeedback({
+        ...emptyFeedback,
+        formMessage: "Hãy kiểm tra bản đồ và xác nhận địa chỉ & vị trí trước khi lưu."
+      });
+      return;
+    }
     const patch = buildPatch(form, dirtyFields);
     if (Object.keys(patch.errors).length > 0) {
       setFeedback({ ...emptyFeedback, fieldErrors: patch.errors });
@@ -394,55 +502,121 @@ export function OwnerListingEditor({
   const warning = statusWarning(detail.status);
 
   return (
-    <form noValidate onSubmit={(event) => void save(event)} className="rm-workspace-card space-y-0">
+    <form noValidate onSubmit={(event) => void save(event)} className={styles.editor}>
       {warning ? (
-        <p className="rounded-control border border-amber-200 bg-amber-50 p-4 text-sm text-amber-950">{warning}</p>
+        <p className={styles.warning}>
+          <Icon name="info" className="h-4 w-4 shrink-0" />
+          {warning}
+        </p>
       ) : null}
 
-      <section aria-labelledby="owner-basic-heading" className="rm-editor-section rm-form-section">
-        <h2 id="owner-basic-heading">Thông tin cơ bản</h2>
-        <InputField
-          id="owner-title"
-          name="title"
-          label="Tiêu đề"
-          maxLength={160}
-          value={form.title}
-          error={combinedErrors.title}
-          disabled={pending}
-          onChange={(event) => updateField("title", event.target.value)}
-        />
-        <TextareaField
-          id="owner-description"
-          name="description"
-          label="Mô tả"
-          maxLength={5000}
-          value={form.description}
-          error={combinedErrors.description}
-          disabled={pending}
-          onChange={(event) => updateField("description", event.target.value)}
-        />
+      <section aria-labelledby="owner-basic-heading" className={styles.sectionCard}>
+        <div className={styles.sectionHeading}>
+          <span className={styles.sectionIcon} data-step="1">
+            <Icon name="home" className="h-5 w-5" />
+          </span>
+          <div>
+            <small>Bước 1</small>
+            <h2 id="owner-basic-heading">Thông tin chỗ ở</h2>
+            <p>Giúp người thuê hiểu nhanh đây là loại phòng nào và có phù hợp hay không.</p>
+          </div>
+        </div>
+        <div className={styles.sectionBody}>
+          <SelectField
+            id="owner-property-type"
+            name="propertyTypeCode"
+            label="Loại phòng"
+            value={form.propertyTypeCode}
+            error={combinedErrors.propertyTypeCode}
+            disabled={pending}
+            onChange={(event) => updateField("propertyTypeCode", event.target.value)}
+          >
+            <option value="">Chọn loại chỗ ở</option>
+            {retainedProperty ? (
+              <option value={retainedProperty.code} disabled>
+                {retainedProperty.label}
+                {propertyTypes.status === "success" ? " — không còn cho chọn mới" : " — giá trị hiện tại"}
+              </option>
+            ) : null}
+            {propertyTypes.data.map((propertyType) => (
+              <option key={propertyType.code} value={propertyType.code}>
+                {localizedLabel(propertyType.code, propertyType.label, propertyTypeLabels)}
+              </option>
+            ))}
+          </SelectField>
+          {propertyTypes.status === "loading" ? (
+            <p role="status" className={styles.lookupNote}>
+              Đang tải loại chỗ ở…
+            </p>
+          ) : null}
+          {propertyTypes.status === "error" ? (
+            <div className={styles.lookupError} role="alert">
+              <span>Không thể tải các loại phòng đang cho chọn.</span>
+              <Button variant="secondary" onClick={onRetryPropertyTypes}>
+                Thử lại loại phòng
+              </Button>
+            </div>
+          ) : null}
+          <InputField
+            id="owner-title"
+            name="title"
+            label="Tiêu đề"
+            leadingIcon={<Icon name="note" className="h-4 w-4" />}
+            hint={`${form.title.length}/160 ký tự · Nên nêu loại phòng, khu vực và điểm nổi bật.`}
+            maxLength={160}
+            value={form.title}
+            error={combinedErrors.title}
+            disabled={pending}
+            onChange={(event) => updateField("title", event.target.value)}
+          />
+          <TextareaField
+            id="owner-description"
+            name="description"
+            label="Mô tả"
+            hint={`${form.description.length}/5000 ký tự · Mô tả nội thất, giờ giấc, chi phí khác và đối tượng phù hợp.`}
+            maxLength={5000}
+            className={styles.description}
+            value={form.description}
+            error={combinedErrors.description}
+            disabled={pending}
+            onChange={(event) => updateField("description", event.target.value)}
+          />
+        </div>
       </section>
 
-      <section aria-labelledby="owner-price-heading" className="rm-editor-section rm-form-section">
-        <h2 id="owner-price-heading">Giá &amp; diện tích</h2>
-        <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+      <section aria-labelledby="owner-price-heading" className={styles.sectionCard}>
+        <div className={styles.sectionHeading}>
+          <span className={styles.sectionIcon} data-step="2">
+            <Icon name="ruler" className="h-5 w-5" />
+          </span>
+          <div>
+            <small>Bước 2</small>
+            <h2 id="owner-price-heading">Giá và thông số</h2>
+            <p>Các con số quan trọng được đặt cùng một chỗ để nhập nhanh và dễ soát lại.</p>
+          </div>
+        </div>
+        <div className={`${styles.sectionBody} ${styles.metricsGrid}`}>
           <InputField
             id="owner-rent"
             name="monthlyRent"
             label="Giá thuê mỗi tháng"
-            type="number"
+            leadingIcon={<Icon name="key" className="h-4 w-4" />}
+            hint={formatCurrencyHint(form.monthlyRent)}
+            type="text"
             inputMode="numeric"
-            min="1"
-            step="1"
-            value={form.monthlyRent}
+            autoComplete="off"
+            maxLength={15}
+            placeholder="3.500.000"
+            value={formatCurrencyInput(form.monthlyRent)}
             error={combinedErrors.monthlyRent}
             disabled={pending}
-            onChange={(event) => updateField("monthlyRent", event.target.value)}
+            onChange={(event) => updateField("monthlyRent", currencyDigits(event.target.value))}
           />
           <InputField
             id="owner-area"
             name="roomAreaSqm"
             label="Diện tích (m²)"
+            leadingIcon={<Icon name="ruler" className="h-4 w-4" />}
             type="number"
             inputMode="decimal"
             min="0.01"
@@ -456,6 +630,7 @@ export function OwnerListingEditor({
             id="owner-max-occupants"
             name="maxOccupants"
             label="Sức chứa tối đa"
+            leadingIcon={<Icon name="users" className="h-4 w-4" />}
             hint="Để trống nếu chưa xác định. Từ 1 đến 20 người."
             type="number"
             inputMode="numeric"
@@ -470,172 +645,154 @@ export function OwnerListingEditor({
         </div>
       </section>
 
-      <section aria-labelledby="owner-location-heading" className="rm-editor-section rm-form-section">
-        <h2 id="owner-location-heading">Địa chỉ &amp; vị trí</h2>
-        <InputField
-          id="owner-address"
-          name="addressText"
-          label="Địa chỉ chính xác"
-          maxLength={500}
-          value={form.addressText}
-          error={combinedErrors.addressText}
-          disabled={pending}
-          onChange={(event) => updateField("addressText", event.target.value)}
-        />
-        <InputField
-          id="owner-area-name"
-          name="areaName"
-          label="Tên khu vực"
-          maxLength={120}
-          value={form.areaName}
-          error={combinedErrors.areaName}
-          disabled={pending}
-          onChange={(event) => updateField("areaName", event.target.value)}
-        />
-        <div className="grid gap-5 sm:grid-cols-2">
-          <InputField
-            id="owner-latitude"
-            name="latitude"
-            label="Vĩ độ"
-            type="number"
-            inputMode="decimal"
-            step="any"
-            value={form.latitude}
-            error={combinedErrors.latitude}
+      <section aria-labelledby="owner-amenities-heading" className={styles.sectionCard}>
+        <div className={styles.sectionHeading}>
+          <span className={styles.sectionIcon} data-step="3">
+            <Icon name="sparkles" className="h-5 w-5" />
+          </span>
+          <div>
+            <small>Bước 3</small>
+            <h2 id="owner-amenities-heading">Tiện ích</h2>
+            <p>Chỉ chọn những tiện ích đang có để người thuê lọc và ra quyết định chính xác.</p>
+          </div>
+        </div>
+        <div className={`${styles.sectionBody} ${styles.amenityGrid}`}>
+          <CheckboxGroup
+            id="owner-amenities"
+            legend="Tiện ích hiện có"
+            error={combinedErrors.amenityCodes}
             disabled={pending}
-            onChange={(event) => updateField("latitude", event.target.value)}
-          />
-          <InputField
-            id="owner-longitude"
-            name="longitude"
-            label="Kinh độ"
-            type="number"
-            inputMode="decimal"
-            step="any"
-            value={form.longitude}
-            error={combinedErrors.longitude}
+          >
+            {amenities.data.map((amenity) => (
+              <CheckboxField
+                key={amenity.code}
+                id={`owner-amenity-${amenity.code}`}
+                name="amenityCodes"
+                label={localizedLabel(amenity.code, amenity.label, amenityLabels)}
+                value={amenity.code}
+                checked={form.amenityCodes.includes(amenity.code)}
+                onChange={(event) => updateAmenity(amenity.code, event.target.checked)}
+              />
+            ))}
+            {retainedAmenities.map((amenity) => (
+              <CheckboxField
+                key={amenity.code}
+                id={`owner-amenity-retired-${amenity.code}`}
+                name="amenityCodes"
+                label={`${amenity.label}${amenities.status === "success" ? " — đang dùng, không còn cho chọn mới" : " — giá trị hiện tại"}`}
+                value={amenity.code}
+                checked={form.amenityCodes.includes(amenity.code)}
+                onChange={(event) => updateAmenity(amenity.code, event.target.checked)}
+              />
+            ))}
+            {amenities.status === "success" && amenities.data.length === 0 && retainedAmenities.length === 0 ? (
+              <p className={styles.lookupNote}>Hiện không có tiện ích để chọn.</p>
+            ) : null}
+          </CheckboxGroup>
+          {amenities.status === "loading" ? (
+            <p role="status" className={styles.lookupNote}>
+              Đang tải tiện ích…
+            </p>
+          ) : null}
+          {amenities.status === "error" ? (
+            <div className={styles.lookupError} role="alert">
+              <span>Không thể tải các tiện ích đang cho chọn.</span>
+              <Button variant="secondary" onClick={onRetryAmenities}>
+                Thử lại tiện ích
+              </Button>
+            </div>
+          ) : null}
+        </div>
+      </section>
+
+      <section aria-labelledby="owner-location-heading" className={styles.sectionCard}>
+        <div className={styles.sectionHeading}>
+          <span className={styles.sectionIcon} data-step="4">
+            <Icon name="pin" className="h-5 w-5" />
+          </span>
+          <div>
+            <small>Bước 4</small>
+            <h2 id="owner-location-heading">Địa chỉ và vị trí</h2>
+            <p>Nhập địa chỉ, kiểm tra ghim trên bản đồ rồi xác nhận trước khi lưu.</p>
+          </div>
+        </div>
+        <div className={styles.sectionBody}>
+          <div className={styles.locationFields}>
+            <InputField
+              id="owner-address"
+              name="addressText"
+              label="Số nhà, đường, tòa nhà"
+              leadingIcon={<Icon name="pin" className="h-4 w-4" />}
+              hint="Ví dụ: 101 Nguyễn Huệ hoặc Tòa nhà A, đường Nguyễn Huệ. GPS có thể tự điền để bạn chỉnh lại."
+              maxLength={500}
+              value={form.addressText}
+              error={combinedErrors.addressText}
+              disabled={pending}
+              onChange={(event) => updateAddress(event.target.value)}
+            />
+            <InputField
+              id="owner-area-name"
+              name="areaName"
+              label="Phường/xã, tỉnh/thành phố"
+              leadingIcon={<Icon name="map" className="h-4 w-4" />}
+              hint="Theo địa chỉ hành chính mới, ví dụ: Phường Sài Gòn, TP.HCM."
+              maxLength={120}
+              value={form.areaName}
+              error={combinedErrors.areaName}
+              disabled={pending}
+              onChange={(event) => updateField("areaName", event.target.value)}
+            />
+          </div>
+          <OwnerLocationControls
+            addressText={form.addressText}
+            areaName={form.areaName}
+            latitude={form.latitude}
+            longitude={form.longitude}
+            confirmed={locationConfirmed}
+            error={combinedErrors.latitude ?? combinedErrors.longitude}
             disabled={pending}
-            onChange={(event) => updateField("longitude", event.target.value)}
+            onCoordinatesChange={updateCoordinates}
+            onCurrentLocationResolved={updateCurrentLocation}
+            onConfirmationChange={(confirmed) => {
+              setLocationConfirmed(confirmed);
+              setFeedback(emptyFeedback);
+              onEdit();
+            }}
           />
         </div>
-        <OwnerLocationControls
-          addressText={form.addressText}
-          latitude={form.latitude}
-          longitude={form.longitude}
-          disabled={pending}
-          onCoordinatesChange={updateCoordinates}
-        />
       </section>
 
-      <section aria-labelledby="owner-lookup-heading" className="rm-editor-section rm-form-section">
-        <h2 id="owner-lookup-heading">Loại phòng &amp; tiện ích</h2>
-        <SelectField
-          id="owner-property-type"
-          name="propertyTypeCode"
-          label="Loại phòng"
-          value={form.propertyTypeCode}
-          error={combinedErrors.propertyTypeCode}
-          disabled={pending}
-          onChange={(event) => updateField("propertyTypeCode", event.target.value)}
-        >
-          <option value="">Chưa chọn loại</option>
-          {retainedProperty ? (
-            <option value={retainedProperty.code} disabled>
-              {retainedProperty.label}
-              {propertyTypes.status === "success" ? " — không còn cho chọn mới" : " — giá trị hiện tại"}
-            </option>
-          ) : null}
-          {propertyTypes.data.map((propertyType) => (
-            <option key={propertyType.code} value={propertyType.code}>
-              {propertyType.label}
-            </option>
-          ))}
-        </SelectField>
-        {propertyTypes.status === "loading" ? (
-          <p role="status" className="text-sm text-slate-600">
-            Đang tải loại phòng…
+      <div className={styles.feedbackStack}>
+        {feedback.formMessage || externalFeedback?.formMessage ? (
+          <p role="alert" className={styles.errorMessage}>
+            {feedback.formMessage ?? externalFeedback?.formMessage}
+            {feedback.requestId || externalFeedback?.requestId
+              ? ` Mã yêu cầu: ${feedback.requestId ?? externalFeedback?.requestId}`
+              : ""}
           </p>
         ) : null}
-        {propertyTypes.status === "error" ? (
-          <div className="flex flex-wrap items-center gap-3 text-sm text-red-700" role="alert">
-            <span>Không thể tải các loại phòng đang cho chọn.</span>
-            <Button variant="secondary" onClick={onRetryPropertyTypes}>
-              Thử lại loại phòng
-            </Button>
-          </div>
-        ) : null}
-
-        <CheckboxGroup id="owner-amenities" legend="Tiện ích" error={combinedErrors.amenityCodes} disabled={pending}>
-          {amenities.data.map((amenity) => (
-            <CheckboxField
-              key={amenity.code}
-              id={`owner-amenity-${amenity.code}`}
-              name="amenityCodes"
-              label={amenity.label}
-              value={amenity.code}
-              checked={form.amenityCodes.includes(amenity.code)}
-              onChange={(event) => updateAmenity(amenity.code, event.target.checked)}
-            />
-          ))}
-          {retainedAmenities.map((amenity) => (
-            <CheckboxField
-              key={amenity.code}
-              id={`owner-amenity-retired-${amenity.code}`}
-              name="amenityCodes"
-              label={`${amenity.label}${
-                amenities.status === "success" ? " — đang dùng, không còn cho chọn mới" : " — giá trị hiện tại"
-              }`}
-              value={amenity.code}
-              checked={form.amenityCodes.includes(amenity.code)}
-              onChange={(event) => updateAmenity(amenity.code, event.target.checked)}
-            />
-          ))}
-          {amenities.status === "success" && amenities.data.length === 0 && retainedAmenities.length === 0 ? (
-            <p className="text-sm text-slate-600">Hiện không có tiện ích để chọn.</p>
-          ) : null}
-        </CheckboxGroup>
-        {amenities.status === "loading" ? (
-          <p role="status" className="text-sm text-slate-600">
-            Đang tải tiện ích…
+        {feedback.success ? (
+          <p aria-live="polite" className={styles.successMessage}>
+            {feedback.success}
           </p>
         ) : null}
-        {amenities.status === "error" ? (
-          <div className="flex flex-wrap items-center gap-3 text-sm text-red-700" role="alert">
-            <span>Không thể tải các tiện ích đang cho chọn.</span>
-            <Button variant="secondary" onClick={onRetryAmenities}>
-              Thử lại tiện ích
-            </Button>
-          </div>
-        ) : null}
-      </section>
-
-      {feedback.formMessage || externalFeedback?.formMessage ? (
-        <p role="alert" className="rounded-control border border-red-200 bg-red-50 p-4 text-sm text-red-950">
-          {feedback.formMessage ?? externalFeedback?.formMessage}
-          {feedback.requestId || externalFeedback?.requestId
-            ? ` Mã yêu cầu: ${feedback.requestId ?? externalFeedback?.requestId}`
-            : ""}
-        </p>
-      ) : null}
-      {feedback.success ? (
-        <p aria-live="polite" className="rounded-control bg-rent-primary-subtle p-3 text-sm font-medium text-teal-900">
-          {feedback.success}
-        </p>
-      ) : null}
-      {dirty || pending ? (
-        <p className="rounded-control border border-amber-200 bg-amber-50 p-3 text-sm text-amber-950">
-          Bạn có thay đổi chưa lưu. Hãy lưu hoặc hoàn tác trước.
-        </p>
-      ) : null}
-
-      <div className="rm-workspace-action-bar border-t border-border bg-surface-subtle/60 p-5 sm:p-6">
-        <Button type="submit" pending={pending} pendingLabel="Đang lưu…" disabled={!dirty}>
-          Lưu thay đổi
-        </Button>
-        <Button type="button" variant="secondary" disabled={!dirty || pending} onClick={revert}>
-          Hoàn tác thay đổi
-        </Button>
       </div>
+
+      {dirty || pending ? (
+        <div className={styles.saveBar}>
+          <div>
+            <strong>Bạn có thay đổi chưa lưu</strong>
+            <span>Lưu nội dung trước khi quản lý ảnh hoặc gửi duyệt.</span>
+          </div>
+          <Button type="button" variant="secondary" disabled={pending} onClick={revert}>
+            Hoàn tác thay đổi
+          </Button>
+          <Button type="submit" pending={pending} pendingLabel="Đang lưu…">
+            <Icon name="check" className="h-4 w-4" />
+            Lưu thay đổi
+          </Button>
+        </div>
+      ) : null}
     </form>
   );
 }

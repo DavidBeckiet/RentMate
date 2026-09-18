@@ -114,7 +114,13 @@ function RentalConversation({ id, landlord, onRead }: { id: number; landlord: bo
   );
 }
 
-export function MessageInbox({ landlord = false, roommateOnly = false }: { landlord?: boolean; roommateOnly?: boolean }) {
+export function MessageInbox({
+  landlord = false,
+  roommateOnly = false
+}: {
+  landlord?: boolean;
+  roommateOnly?: boolean;
+}) {
   const [mounted, setMounted] = useState(false);
   useEffect(() => setMounted(true), []);
   const { status, user, refresh } = useAuth();
@@ -147,9 +153,7 @@ export function MessageInbox({ landlord = false, roommateOnly = false }: { landl
       : null;
   const selectedKind = params.has("roommate") ? "ROOMMATE" : "RENTAL";
   const selected =
-    selectedId &&
-    (!landlord || selectedKind === "RENTAL") &&
-    (!roommateOnly || selectedKind === "ROOMMATE")
+    selectedId && (!landlord || selectedKind === "RENTAL") && (!roommateOnly || selectedKind === "ROOMMATE")
       ? `${selectedKind.toLowerCase()}:${selectedId}`
       : null;
   const allowed =
@@ -178,18 +182,18 @@ export function MessageInbox({ landlord = false, roommateOnly = false }: { landl
     const sources: { label: string; run: () => Promise<void> }[] = roommateOnly
       ? []
       : [
-      {
-        label: "Thuê phòng",
-        run: () =>
-          loadPages(
-            (page) =>
-              landlord
-                ? api.contact.listLandlordInquiries({ page, pageSize: 100 }, controller.signal)
-                : api.contact.listTenantInquiries({ page, pageSize: 100 }, controller.signal),
-            controller.signal,
-            (items) => append(items.map((item) => rentalThread(item, landlord)))
-          )
-      }
+          {
+            label: "Thuê phòng",
+            run: () =>
+              loadPages(
+                (page) =>
+                  landlord
+                    ? api.contact.listLandlordInquiries({ page, pageSize: 100 }, controller.signal)
+                    : api.contact.listTenantInquiries({ page, pageSize: 100 }, controller.signal),
+                controller.signal,
+                (items) => append(items.map((item) => rentalThread(item, landlord)))
+              )
+          }
         ];
     if (!landlord)
       for (const direction of ["INCOMING", "OUTGOING"] as const)
@@ -256,6 +260,14 @@ export function MessageInbox({ landlord = false, roommateOnly = false }: { landl
         .sort((a, b) => Date.parse(b.updatedAt) - Date.parse(a.updatedAt) || a.key.localeCompare(b.key)),
     [threads, kind, query, unreadOnly]
   );
+  const inboxEmpty = !selected && loadedFor === user?.id && !loading && !errors.length && threads.length === 0;
+  const unreadTotal = threads.reduce((total, thread) => total + thread.unread, 0);
+  const resetFilters = () => {
+    setQuery("");
+    setKind(roommateOnly ? "ROOMMATE" : "ALL");
+    setUnreadOnly(false);
+    setPage(1);
+  };
   const open = (thread: Thread | null) => {
     const next = new URLSearchParams();
     if (query) next.set("q", query);
@@ -281,173 +293,337 @@ export function MessageInbox({ landlord = false, roommateOnly = false }: { landl
       </section>
     );
   return (
-    <section className={styles.inbox} aria-label={roommateOnly ? "Tin nhắn ở ghép" : "Tin nhắn"}>
+    <section
+      className={styles.inbox}
+      data-workspace={landlord ? "landlord" : undefined}
+      aria-label={roommateOnly ? "Tin nhắn ở ghép" : "Tin nhắn"}
+    >
       <header className={styles.title}>
-        <div>
-          <h1>{roommateOnly ? "Tin nhắn ở ghép" : "Tin nhắn"}</h1>
-          <p>
-            {roommateOnly
-              ? "Tiếp tục trò chuyện với những người bạn đã kết nối."
-              : landlord
-                ? "Trao đổi với người thuê, ngay tại đây."
-                : "Thuê phòng và tìm bạn ở ghép, trong cùng một hộp thư."}
-          </p>
-        </div>
-        <Button variant="ghost" onClick={() => setReload((v) => v + 1)} disabled={loading}>
-          Làm mới
-        </Button>
-      </header>
-      <div ref={frameRef} className={styles.frame} data-selected={Boolean(selected)}>
-        <aside className={styles.threadPane} aria-label="Danh sách cuộc trò chuyện">
-          <div className={styles.filters}>
-            <label className={styles.search}>
-              <Icon name="search" className="h-4 w-4" />
-              <input
-                aria-label="Tìm cuộc trò chuyện"
-                placeholder="Tìm tên hoặc tiêu đề phòng…"
-                value={query}
-                onChange={(event) => {
-                  setQuery(event.target.value);
-                  setPage(1);
-                }}
-              />
-            </label>
-            {!roommateOnly ? (
-              <div className={styles.tabs} role="group" aria-label="Loại trò chuyện">
-                {(["ALL", "RENTAL", ...(!landlord ? ["ROOMMATE"] : [])] as Kind[]).map((value) => (
-                <button
-                  type="button"
-                  key={value}
-                  aria-pressed={kind === value}
-                  onClick={() => {
-                    setKind(value);
-                    setPage(1);
-                  }}
-                >
-                  {value === "ALL" ? "Tất cả" : value === "RENTAL" ? "Thuê phòng" : "Ở ghép"}
-                  </button>
-                ))}
-              </div>
-            ) : null}
-            <label className={styles.unreadFilter}>
-              <input
-                type="checkbox"
-                checked={unreadOnly}
-                onChange={(event) => {
-                  setUnreadOnly(event.target.checked);
-                  setPage(1);
-                }}
-              />{" "}
-              Chưa đọc
-            </label>
+        <div className={styles.titleLead}>
+          <span className={styles.titleIcon} aria-hidden="true">
+            <Icon name="message" className="h-5 w-5" />
+          </span>
+          <div>
+            <span className={styles.eyebrow}>Trung tâm trao đổi</span>
+            <h1>{roommateOnly ? "Tin nhắn ở ghép" : "Tin nhắn"}</h1>
+            <p>
+              {roommateOnly
+                ? "Tiếp tục trò chuyện với những người bạn đã kết nối."
+                : landlord
+                  ? "Theo dõi yêu cầu và trao đổi với người thuê tại một nơi."
+                  : "Thuê phòng và tìm bạn ở ghép, trong cùng một hộp thư."}
+            </p>
           </div>
-          <div className={styles.threadList}>
-            {loading ? (
-              <p role="status" className={styles.notice}>
-                Đang tải các cuộc trò chuyện…
-              </p>
-            ) : null}
-            {errors.length ? (
-              <div className={styles.notice} role="alert">
-                Chưa tải được: {errors.join(", ")}.
-                <button type="button" onClick={() => setReload((v) => v + 1)}>
-                  Thử lại
-                </button>
-              </div>
-            ) : null}
-            {loadedFor === user?.id
-              ? visible.slice((page - 1) * 20, page * 20).map((thread) => (
-                  <button
-                    key={thread.key}
-                    type="button"
-                    className={styles.thread}
-                    aria-pressed={selected === thread.key}
-                    onClick={() => open(thread)}
-                  >
-                    <span className={styles.avatar} aria-hidden="true">
-                      {thread.kind === "ROOMMATE" ? (
-                        thread.title
-                          .trim()
-                          .split(/\s+/)
-                          .slice(-2)
-                          .map((word) => word[0])
-                          .join("")
-                      ) : (
-                        <Icon name="home" className="h-5 w-5" />
-                      )}
-                    </span>
-                    <span className={styles.threadCopy}>
-                      <span className={styles.threadTitle}>{thread.title}</span>
-                      <span className={styles.threadSubtitle}>
-                        {thread.kind === "ROOMMATE" ? "Ở ghép" : "Thuê phòng"} · {thread.subtitle}
-                      </span>
-                      <span className={styles.preview}>{thread.preview}</span>
-                      <time>{date.format(new Date(thread.updatedAt))}</time>
-                    </span>
-                    {thread.unread > 0 ? (
-                      <span className={styles.unread} aria-label={`${thread.unread} tin chưa đọc`}>
-                        {thread.unread > 99 ? "99+" : thread.unread}
-                      </span>
-                    ) : null}
-                  </button>
-                ))
-              : null}
-            {!loading && !visible.length ? (
-              <p className={styles.notice}>
-                {query || unreadOnly || kind !== "ALL"
-                  ? "Không có cuộc trò chuyện phù hợp với bộ lọc."
+        </div>
+        <div className={styles.titleActions}>
+          <span className={styles.inboxStatus}>
+            <span aria-hidden="true" />
+            {loading
+              ? "Đang đồng bộ"
+              : unreadTotal > 0
+                ? `${unreadTotal} tin chưa đọc`
+                : threads.length > 0
+                  ? `${threads.length} cuộc trò chuyện`
+                  : "Sẵn sàng nhận tin"}
+          </span>
+          <Button variant="secondary" size="sm" onClick={() => setReload((v) => v + 1)} disabled={loading}>
+            <Icon name="refresh" className="h-4 w-4" />
+            Làm mới
+          </Button>
+        </div>
+      </header>
+      <div
+        ref={frameRef}
+        className={styles.frame}
+        data-selected={Boolean(selected)}
+        data-empty={inboxEmpty || undefined}
+      >
+        {inboxEmpty ? (
+          <div className={styles.emptyInbox}>
+            <div className={styles.emptyInboxCopy}>
+              <span className={styles.emptyBadge}>
+                <Icon name={landlord ? "home" : "sparkles"} className="h-4 w-4" />
+                {landlord ? "Hộp thư chủ trọ" : "Bắt đầu kết nối"}
+              </span>
+              <h2>{landlord ? "Hộp thư đang chờ cuộc trò chuyện đầu tiên" : "Bạn chưa có cuộc trò chuyện nào"}</h2>
+              <p>
+                {landlord
+                  ? "Khi người thuê gửi yêu cầu từ tin đang hiển thị, cuộc trò chuyện sẽ tự động xuất hiện tại đây."
                   : roommateOnly
                     ? "Khi bạn kết nối với một người ở ghép, cuộc trò chuyện sẽ xuất hiện tại đây."
-                    : "Bạn chưa có cuộc trò chuyện nào."}
+                    : "Hãy chọn một phòng phù hợp và gửi yêu cầu để bắt đầu trao đổi trực tiếp."}
               </p>
-            ) : null}
-          </div>
-          {visible.length > 20 ? (
-            <nav className={styles.listPages} aria-label="Phân trang tin nhắn">
-              <button disabled={page <= 1} onClick={() => setPage((p) => p - 1)}>
-                Trang trước
-              </button>
-              <span>
-                {page}/{Math.ceil(visible.length / 20)}
-              </span>
-              <button disabled={page * 20 >= visible.length} onClick={() => setPage((p) => p + 1)}>
-                Trang sau
-              </button>
-            </nav>
-          ) : null}
-        </aside>
-        <section className={styles.conversationPane} aria-label="Cuộc trò chuyện đang mở">
-          {selected && selectedId ? (
-            <>
-              <button className={styles.back} onClick={() => open(null)}>
-                <Icon name="arrow" className="h-4 w-4 rotate-180" /> Danh sách tin nhắn
-              </button>
-              <div className="min-h-0 flex-1">
-                {selectedKind === "ROOMMATE" ? (
-                  <RoommateConversationPage
-                    key={`${user.id}:${selectedId}`}
-                    interestId={String(selectedId)}
-                    embedded
-                    onRead={markSelectedRead}
-                  />
-                ) : (
-                  <RentalConversation
-                    key={`${user.id}:${selectedId}`}
-                    id={selectedId}
-                    landlord={landlord}
-                    onRead={markSelectedRead}
-                  />
-                )}
+              <div className={styles.emptyActions}>
+                <Link
+                  href={landlord ? "/landlord" : roommateOnly ? "/roommates" : "/search"}
+                  className={styles.emptyPrimary}
+                >
+                  <Icon name={landlord ? "home" : "search"} className="h-4 w-4" />
+                  {landlord ? "Xem tin đang quản lý" : roommateOnly ? "Tìm người ở ghép" : "Khám phá phòng"}
+                </Link>
+                <button type="button" className={styles.emptyRefresh} onClick={() => setReload((v) => v + 1)}>
+                  <Icon name="refresh" className="h-4 w-4" />
+                  Kiểm tra tin mới
+                </button>
               </div>
-            </>
-          ) : (
-            <div className={styles.empty}>
-              <Icon name="message" className="h-10 w-10" />
-              <h2>Chọn một cuộc trò chuyện</h2>
-              <p>Tin nhắn và thông tin trao đổi sẽ xuất hiện ở đây.</p>
+              <div className={styles.emptyBenefits}>
+                <div>
+                  <span className={styles.benefitIcon} data-tone="green">
+                    <Icon name="bell" className="h-4 w-4" />
+                  </span>
+                  <span>
+                    <strong>{roommateOnly ? "Không bỏ lỡ lời chào" : "Không bỏ lỡ yêu cầu"}</strong>
+                    <small>Tin chưa đọc luôn được đánh dấu rõ ràng.</small>
+                  </span>
+                </div>
+                <div>
+                  <span className={styles.benefitIcon} data-tone="blue">
+                    <Icon name="message" className="h-4 w-4" />
+                  </span>
+                  <span>
+                    <strong>Trao đổi tập trung</strong>
+                    <small>
+                      {roommateOnly
+                        ? "Mỗi cuộc trò chuyện gắn với đúng người bạn quan tâm."
+                        : "Mỗi cuộc trò chuyện gắn đúng với tin phòng."}
+                    </small>
+                  </span>
+                </div>
+                <div>
+                  <span className={styles.benefitIcon} data-tone="amber">
+                    <Icon name="shield" className="h-4 w-4" />
+                  </span>
+                  <span>
+                    <strong>An toàn và riêng tư</strong>
+                    <small>Thông tin trao đổi được giữ trong RentMate.</small>
+                  </span>
+                </div>
+              </div>
             </div>
-          )}
-        </section>
+            <div className={styles.emptyVisual} aria-hidden="true">
+              <span className={styles.visualOrb} />
+              <div className={styles.previewWindow}>
+                <div className={styles.previewHeader}>
+                  <span className={styles.previewAvatar}>
+                    <Icon name={roommateOnly ? "users" : "home"} className="h-4 w-4" />
+                  </span>
+                  <span>
+                    <strong>{roommateOnly ? "Minh Anh" : "Phòng studio của bạn"}</strong>
+                    <small>
+                      <i /> {roommateOnly ? "Đang tìm ở ghép" : "Đang hiển thị"}
+                    </small>
+                  </span>
+                  <Icon name="message" className="h-5 w-5" />
+                </div>
+                <div className={styles.previewBody}>
+                  <div className={styles.previewDay}>Hôm nay</div>
+                  <div className={styles.previewIncoming}>
+                    <span>T</span>
+                    <p>
+                      {roommateOnly
+                        ? "Chào bạn, mình cũng đang tìm phòng ở Quận 3."
+                        : "Chào anh/chị, phòng này còn trống không ạ?"}
+                    </p>
+                  </div>
+                  <div className={styles.previewOutgoing}>
+                    {roommateOnly ? "Chào bạn, ngân sách của tụi mình khá hợp đó!" : "Chào bạn, phòng vẫn còn nhé!"}
+                  </div>
+                  <div className={styles.previewTyping}>
+                    <i />
+                    <i />
+                    <i />
+                  </div>
+                </div>
+                <div className={styles.previewComposer}>
+                  <span>Nhập tin nhắn...</span>
+                  <b>
+                    <Icon name="send" className="h-4 w-4" />
+                  </b>
+                </div>
+              </div>
+              <div className={styles.newMessageCard}>
+                <span>
+                  <Icon name="bell" className="h-4 w-4" />
+                </span>
+                <p>
+                  <strong>{roommateOnly ? "Lời chào mới" : "Yêu cầu mới"}</strong>
+                  <small>Bạn sẽ thấy ngay tại đây</small>
+                </p>
+                <b>1</b>
+              </div>
+            </div>
+          </div>
+        ) : (
+          <>
+            <aside className={styles.threadPane} aria-label="Danh sách cuộc trò chuyện">
+              <div className={styles.filters}>
+                <label className={styles.search}>
+                  <Icon name="search" className="h-4 w-4" />
+                  <input
+                    aria-label="Tìm cuộc trò chuyện"
+                    placeholder={roommateOnly ? "Tìm tên người ở ghép…" : "Tìm tên hoặc tiêu đề phòng…"}
+                    value={query}
+                    onChange={(event) => {
+                      setQuery(event.target.value);
+                      setPage(1);
+                    }}
+                  />
+                </label>
+                {!roommateOnly ? (
+                  <div className={styles.tabs} role="group" aria-label="Loại trò chuyện">
+                    {(["ALL", "RENTAL", ...(!landlord ? ["ROOMMATE"] : [])] as Kind[]).map((value) => (
+                      <button
+                        type="button"
+                        key={value}
+                        aria-pressed={kind === value}
+                        onClick={() => {
+                          setKind(value);
+                          setPage(1);
+                        }}
+                      >
+                        {value === "ALL" ? "Tất cả" : value === "RENTAL" ? "Thuê phòng" : "Ở ghép"}
+                      </button>
+                    ))}
+                  </div>
+                ) : null}
+                <label className={styles.unreadFilter}>
+                  <input
+                    type="checkbox"
+                    checked={unreadOnly}
+                    onChange={(event) => {
+                      setUnreadOnly(event.target.checked);
+                      setPage(1);
+                    }}
+                  />{" "}
+                  Chưa đọc
+                </label>
+              </div>
+              <div className={styles.threadList}>
+                {loading ? (
+                  <p role="status" className={styles.notice}>
+                    Đang tải các cuộc trò chuyện…
+                  </p>
+                ) : null}
+                {errors.length ? (
+                  <div className={styles.notice} role="alert">
+                    Chưa tải được: {errors.join(", ")}.
+                    <button type="button" onClick={() => setReload((v) => v + 1)}>
+                      Thử lại
+                    </button>
+                  </div>
+                ) : null}
+                {loadedFor === user?.id
+                  ? visible.slice((page - 1) * 20, page * 20).map((thread) => (
+                      <button
+                        key={thread.key}
+                        type="button"
+                        className={styles.thread}
+                        aria-pressed={selected === thread.key}
+                        onClick={() => open(thread)}
+                      >
+                        <span className={styles.avatar} aria-hidden="true">
+                          {thread.kind === "ROOMMATE" ? (
+                            thread.title
+                              .trim()
+                              .split(/\s+/)
+                              .slice(-2)
+                              .map((word) => word[0])
+                              .join("")
+                          ) : (
+                            <Icon name="home" className="h-5 w-5" />
+                          )}
+                        </span>
+                        <span className={styles.threadCopy}>
+                          <span className={styles.threadTitle}>{thread.title}</span>
+                          <span className={styles.threadSubtitle}>
+                            {thread.kind === "ROOMMATE" ? "Ở ghép" : "Thuê phòng"} · {thread.subtitle}
+                          </span>
+                          <span className={styles.preview}>{thread.preview}</span>
+                          <time>{date.format(new Date(thread.updatedAt))}</time>
+                        </span>
+                        {thread.unread > 0 ? (
+                          <span className={styles.unread} aria-label={`${thread.unread} tin chưa đọc`}>
+                            {thread.unread > 99 ? "99+" : thread.unread}
+                          </span>
+                        ) : null}
+                      </button>
+                    ))
+                  : null}
+                {!loading && threads.length > 0 && !visible.length ? (
+                  <div className={styles.filteredEmpty}>
+                    <span>
+                      <Icon name="search" className="h-5 w-5" />
+                    </span>
+                    <strong>Không tìm thấy cuộc trò chuyện</strong>
+                    <p>Không có cuộc trò chuyện phù hợp với bộ lọc.</p>
+                    <button type="button" onClick={resetFilters}>
+                      Xóa bộ lọc
+                    </button>
+                  </div>
+                ) : null}
+              </div>
+              {visible.length > 20 ? (
+                <nav className={styles.listPages} aria-label="Phân trang tin nhắn">
+                  <button disabled={page <= 1} onClick={() => setPage((p) => p - 1)}>
+                    Trang trước
+                  </button>
+                  <span>
+                    {page}/{Math.ceil(visible.length / 20)}
+                  </span>
+                  <button disabled={page * 20 >= visible.length} onClick={() => setPage((p) => p + 1)}>
+                    Trang sau
+                  </button>
+                </nav>
+              ) : null}
+            </aside>
+            <section className={styles.conversationPane} aria-label="Cuộc trò chuyện đang mở">
+              {selected && selectedId ? (
+                <>
+                  <button className={styles.back} onClick={() => open(null)}>
+                    <Icon name="arrow" className="h-4 w-4 rotate-180" /> Danh sách tin nhắn
+                  </button>
+                  <div className="min-h-0 flex-1">
+                    {selectedKind === "ROOMMATE" ? (
+                      <RoommateConversationPage
+                        key={`${user.id}:${selectedId}`}
+                        interestId={String(selectedId)}
+                        embedded
+                        onRead={markSelectedRead}
+                      />
+                    ) : (
+                      <RentalConversation
+                        key={`${user.id}:${selectedId}`}
+                        id={selectedId}
+                        landlord={landlord}
+                        onRead={markSelectedRead}
+                      />
+                    )}
+                  </div>
+                </>
+              ) : (
+                <div className={styles.empty}>
+                  <div className={styles.emptyIcon}>
+                    <Icon name="message" className="h-7 w-7" />
+                  </div>
+                  <span className={styles.emptyKicker}>Không gian trao đổi</span>
+                  <h2>Chọn một cuộc trò chuyện</h2>
+                  <p>Chọn một người ở danh sách bên trái để xem nội dung và tiếp tục trao đổi.</p>
+                  <div className={styles.emptyHint}>
+                    <Icon name="shield" className="h-4 w-4" />
+                    {roommateOnly
+                      ? "Thông tin riêng tư chỉ được chia sẻ khi bạn chủ động"
+                      : "Mỗi cuộc trò chuyện được gắn với đúng tin phòng"}
+                  </div>
+                  <div className={styles.emptyBubbles} aria-hidden="true">
+                    <span />
+                    <span />
+                    <span />
+                  </div>
+                </div>
+              )}
+            </section>
+          </>
+        )}
       </div>
     </section>
   );

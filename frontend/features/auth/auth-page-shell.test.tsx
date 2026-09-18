@@ -103,6 +103,19 @@ describe("AuthPageShell", () => {
     await waitFor(() => expect(navigationMocks.replace).toHaveBeenCalledWith("/"));
   });
 
+  it("redirects an authenticated landlord to the rental management workspace", async () => {
+    useAuthMock.mockReturnValue(
+      authValue({
+        status: "authenticated",
+        user: { ...tenant, id: 2, role: "LANDLORD", email: "landlord@example.com", phone: "+84901234567" }
+      })
+    );
+    renderShell();
+
+    expect(screen.queryByRole("form")).not.toBeInTheDocument();
+    await waitFor(() => expect(navigationMocks.replace).toHaveBeenCalledWith("/landlord"));
+  });
+
   it("supports an admin-only entry mode and gives a wrong-role account safe guidance", async () => {
     useAuthMock.mockReturnValue(authValue({ status: "authenticated", user: tenant }));
     render(

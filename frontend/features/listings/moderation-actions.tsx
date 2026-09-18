@@ -1,11 +1,13 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useCallback, useRef, useState } from "react";
 import { Button } from "../../components/ui/button";
+import { Dialog } from "../../components/ui/dialog";
 import { ErrorState } from "../../components/ui/feedback-states";
 import { TextareaField } from "../../components/ui/form-controls";
 import { api, ApiError } from "../../lib/api/client";
 import type { AdminListingDetail, ModerationAction } from "../../types/api";
+import styles from "./admin-listing-detail.module.css";
 
 const actionLabels: Record<ModerationAction, string> = {
   APPROVE: "Duyệt tin",
@@ -22,13 +24,39 @@ const actionsByStatus = {
   INACTIVE: []
 } as const;
 
+const actionDialogContent: Record<
+  ModerationAction,
+  Readonly<{ title: string; description: string; confirmLabel: string }>
+> = {
+  APPROVE: {
+    title: "Duyệt tin này?",
+    description: "Tin sẽ chuyển sang trạng thái Đã duyệt. Trạng thái này chưa đảm bảo tin đang hiển thị công khai.",
+    confirmLabel: "Duyệt tin"
+  },
+  REJECT: {
+    title: "Từ chối tin này?",
+    description: "Tin sẽ chuyển sang trạng thái Bị từ chối. Chủ trọ cần chỉnh sửa và gửi lại tin để được kiểm duyệt.",
+    confirmLabel: "Từ chối tin"
+  },
+  HIDE: {
+    title: "Ẩn tin này?",
+    description: "Tin sẽ chuyển sang trạng thái Đã ẩn và không còn đủ điều kiện hiển thị công khai.",
+    confirmLabel: "Ẩn tin"
+  },
+  RESTORE: {
+    title: "Khôi phục tin này?",
+    description:
+      "Tin sẽ chuyển từ Đã ẩn sang Đã duyệt. Tin chỉ có thể hiển thị công khai khi các điều kiện khác cũng được đáp ứng.",
+    confirmLabel: "Khôi phục tin"
+  }
+};
+
 export interface ModerationActionsProps {
   readonly detail: AdminListingDetail;
-  readonly onReloadDetail: () => Promise<void>;
-  readonly onRefreshHistory: (resetToFirstPage: boolean) => void;
+  readonly onReloadCanonical: (resetHistory: boolean) => Promise<boolean>;
 }
 
-export function ModerationActions({ detail, onReloadDetail, onRefreshHistory }: ModerationActionsProps) {
+export function ModerationActions({ detail, onReloadCanonical }: ModerationActionsProps) {
   const [selectedAction, setSelectedAction] = useState<ModerationAction | null>(null);
   const [reason, setReason] = useState("");
   const [reasonError, setReasonError] = useState<string | undefined>();
@@ -37,13 +65,14 @@ export function ModerationActions({ detail, onReloadDetail, onRefreshHistory }: 
   const [requestId, setRequestId] = useState<string | null>(null);
   const [recoveryRequired, setRecoveryRequired] = useState(false);
   const inFlight = useRef(false);
+  const actionTriggerRef = useRef<HTMLButtonElement>(null);
   const availableActions = actionsByStatus[detail.status] as readonly ModerationAction[];
+  const selectedActionRequiresReason = selectedAction === "REJECT" || selectedAction === "HIDE";
 
   const submit = async () => {
     if (!selectedAction || inFlight.current) return;
-    const normalizedReason = reason.trim();
-    const requiresReason = selectedAction === "REJECT" || selectedAction === "HIDE";
-    if (requiresReason && normalizedReason.length === 0) {
+    const normalizedReason = selectedActionRequiresReason ? reason.trim() : "";
+    if (selectedActionRequiresReason && normalizedReason.length === 0) {
       setReasonError("Vui lòng nhập lý do.");
       return;
     }
@@ -60,28 +89,55 @@ export function ModerationActions({ detail, onReloadDetail, onRefreshHistory }: 
         action: selectedAction,
         ...(normalizedReason ? { reason: normalizedReason } : {})
       });
-      await onReloadDetail();
+      setRecoveryRequired(true);
+      const canonicalReloaded = await onReloadCanonical(true);
       setSelectedAction(null);
       setReason("");
       setReasonError(undefined);
-      setMessage(
-        !detail.landlord.isActive && selectedAction === "APPROVE"
-          ? "Đã duyệt tin. Tin vẫn chưa xuất hiện công khai vì tài khoản người cho thuê đang ngừng hoạt động."
-          : "Hành động kiểm duyệt đã được ghi nhận."
-      );
-      onRefreshHistory(true);
+      if (canonicalReloaded) {
+        setRecoveryRequired(false);
+        setMessage(
+          !detail.landlord.isActive && selectedAction === "APPROVE"
+            ? "Đã duyệt tin. Tin vẫn chưa xuất hiện công khai vì tài khoản người cho thuê đang ngừng hoạt động."
+            : "Hành động kiểm duyệt đã được ghi nhận."
+        );
+      } else {
+        setMessage(
+          "Hành động đã được gửi nhưng chưa thể tải đủ trạng thái và lịch sử chính thức. Hãy tải lại trước khi thao tác tiếp."
+        );
+      }
     } catch (error) {
       const apiError = error instanceof ApiError ? error : null;
       setRequestId(apiError?.requestId ?? null);
       if (apiError?.status === 409) {
-        setMessage("Trạng thái tin đã thay đổi. Dữ liệu mới nhất đang được tải lại; hành động không được gửi lại.");
-        await onReloadDetail();
-        onRefreshHistory(false);
+        setSelectedAction(null);
+        setReason("");
+        setReasonError(undefined);
+        setRecoveryRequired(true);
+        const canonicalReloaded = await onReloadCanonical(false);
+        if (canonicalReloaded) {
+          setRecoveryRequired(false);
+          setMessage("Trạng thái tin đã thay đổi. Dữ liệu mới nhất đã được tải lại; hành động không được gửi lại.");
+        } else {
+          setMessage(
+            "Trạng thái tin đã thay đổi nhưng chưa thể tải đủ trạng thái và lịch sử. Hãy tải lại trước khi thao tác tiếp."
+          );
+        }
       } else if (apiError?.code === "NETWORK_ERROR" || apiError?.category === "network") {
+        setSelectedAction(null);
+        setReason("");
+        setReasonError(undefined);
         setRecoveryRequired(true);
         setMessage(
-          "Không xác định được hành động đã được áp dụng hay chưa. Hãy tải lại trạng thái và lịch sử trước khi thao tác tiếp."
+          "Không xác định được hành động đã được áp dụng hay chưa. Đang tải lại trạng thái và lịch sử trước khi cho phép thao tác tiếp."
         );
+        const canonicalReloaded = await onReloadCanonical(false);
+        if (canonicalReloaded) {
+          setRecoveryRequired(false);
+          setMessage("Đã tải lại trạng thái và lịch sử mới nhất. Hãy xem lại hồ sơ trước khi quyết định tiếp.");
+        } else {
+          setMessage("Không thể tải lại trạng thái tin. Hãy tải lại trạng thái và lịch sử trước khi thao tác tiếp.");
+        }
       } else if (apiError?.status === 422) {
         const reasonDetail = apiError.details.find((item) => item.field === "reason");
         if (reasonDetail) setReasonError(reasonDetail.message ?? "Lý do không hợp lệ.");
@@ -102,50 +158,112 @@ export function ModerationActions({ detail, onReloadDetail, onRefreshHistory }: 
   };
 
   const recover = async () => {
-    await onReloadDetail();
-    onRefreshHistory(false);
-    setRecoveryRequired(false);
-    setMessage(null);
+    if (inFlight.current) return;
+    inFlight.current = true;
+    setPending(true);
+    try {
+      const canonicalReloaded = await onReloadCanonical(false);
+      setRecoveryRequired(!canonicalReloaded);
+      setMessage(
+        canonicalReloaded
+          ? "Đã tải lại trạng thái và lịch sử mới nhất. Hãy xem lại hồ sơ trước khi quyết định tiếp."
+          : "Không thể tải lại đủ trạng thái và lịch sử. Hãy thử lại trước khi thao tác tiếp."
+      );
+    } catch {
+      setRecoveryRequired(true);
+      setMessage("Không thể tải lại đủ trạng thái và lịch sử. Hãy thử lại trước khi thao tác tiếp.");
+    } finally {
+      inFlight.current = false;
+      setPending(false);
+    }
   };
 
-  return (
-    <section aria-labelledby="moderation-actions-heading" className="rm-admin-decision-panel space-y-4">
-      <div>
-        <h2 id="moderation-actions-heading" className="rm-admin-decision-title">
-          Hành động kiểm duyệt
+  const dialog = selectedAction ? actionDialogContent[selectedAction] : null;
+  const handleDialogClose = useCallback(() => {
+    if (!inFlight.current) setSelectedAction(null);
+  }, []);
+
+  if (availableActions.length === 0) {
+    return (
+      <section aria-labelledby="moderation-outcome-heading" className={styles.readOnlyOutcome}>
+        <p className={styles.sectionKicker}>Kết quả kiểm duyệt</p>
+        <h2 id="moderation-outcome-heading">
+          {detail.status === "REJECTED" ? "Tin bị từ chối" : "Tin đang ngừng hoạt động"}
         </h2>
-        <p className="mt-1 text-sm text-rent-secondary">Mỗi hành động sẽ được ghi vào lịch sử bất biến.</p>
+        <p>
+          {detail.status === "REJECTED"
+            ? "Tin cần được chỉnh sửa và gửi lại trước khi kiểm duyệt tiếp."
+            : "Tin không có quyết định kiểm duyệt tiếp theo ở trạng thái này."}
+        </p>
+        {detail.currentModerationReason ? (
+          <p className={styles.readOnlyReason}>
+            <strong>Lý do gần nhất:</strong> {detail.currentModerationReason}
+          </p>
+        ) : null}
+        {message ? (
+          <p role="status" className={styles.successMessage}>
+            {message}
+          </p>
+        ) : null}
+      </section>
+    );
+  }
+
+  return (
+    <section aria-labelledby="moderation-actions-heading" className={styles.actions}>
+      <div className={styles.actionsHeader}>
+        <h3 id="moderation-actions-heading">Quyết định</h3>
+        <p>Hành động sẽ được ghi vào lịch sử kiểm duyệt.</p>
       </div>
-      {availableActions.length === 0 ? (
-        <p className="text-sm text-slate-600">Không có hành động kiểm duyệt phù hợp với trạng thái hiện tại.</p>
-      ) : (
-        <div className="flex flex-wrap gap-3">
-          {availableActions.map((action) => (
-            <Button
-              key={action}
-              variant={action === "REJECT" || action === "HIDE" ? "danger" : "primary"}
-              disabled={pending || recoveryRequired}
-              onClick={() => {
-                setSelectedAction(action);
-                setReason("");
-                setReasonError(undefined);
-                setMessage(null);
-              }}
-            >
-              {actionLabels[action]}
-            </Button>
-          ))}
-        </div>
-      )}
-      {selectedAction ? (
-        <div className="rm-admin-evidence rm-admin-evidence--attention mt-0">
-          <h3 className="font-semibold text-amber-950">Xác nhận: {actionLabels[selectedAction]}</h3>
-          <div className="mt-4">
+      <div className={styles.actionButtons}>
+        {availableActions.map((action) => (
+          <Button
+            key={action}
+            ref={actionTriggerRef}
+            variant={action === "REJECT" || action === "HIDE" ? "danger" : "primary"}
+            disabled={pending || recoveryRequired}
+            aria-haspopup="dialog"
+            onClick={(event) => {
+              actionTriggerRef.current = event.currentTarget;
+              setSelectedAction(action);
+              setReason("");
+              setReasonError(undefined);
+              setMessage(null);
+            }}
+          >
+            {actionLabels[action]}
+          </Button>
+        ))}
+      </div>
+      {selectedAction && dialog ? (
+        <Dialog
+          open
+          title={dialog.title}
+          description={dialog.description}
+          triggerRef={actionTriggerRef}
+          onClose={handleDialogClose}
+          actions={
+            <>
+              <Button variant="secondary" disabled={pending} onClick={() => setSelectedAction(null)}>
+                Hủy
+              </Button>
+              <Button
+                variant={selectedAction === "REJECT" || selectedAction === "HIDE" ? "danger" : "primary"}
+                pending={pending}
+                pendingLabel="Đang xử lý…"
+                onClick={() => void submit()}
+              >
+                {dialog.confirmLabel}
+              </Button>
+            </>
+          }
+        >
+          {selectedActionRequiresReason ? (
             <TextareaField
               id="moderation-reason"
               name="reason"
               label="Lý do"
-              required={selectedAction === "REJECT" || selectedAction === "HIDE"}
+              required
               value={reason}
               error={reasonError}
               hint="Tối đa 1000 ký tự."
@@ -154,30 +272,22 @@ export function ModerationActions({ detail, onReloadDetail, onRefreshHistory }: 
                 setReasonError(undefined);
               }}
             />
-          </div>
-          <div className="mt-4 flex flex-wrap gap-3">
-            <Button
-              variant={selectedAction === "REJECT" || selectedAction === "HIDE" ? "danger" : "primary"}
-              pending={pending}
-              onClick={() => void submit()}
-            >
-              Xác nhận hành động
-            </Button>
-            <Button variant="secondary" disabled={pending} onClick={() => setSelectedAction(null)}>
-              Hủy
-            </Button>
-          </div>
-        </div>
+          ) : null}
+        </Dialog>
       ) : null}
       {message ? (
         recoveryRequired ? (
           <ErrorState
             message={message}
             requestId={requestId}
-            action={<Button onClick={() => void recover()}>Tải lại trạng thái và lịch sử</Button>}
+            action={
+              <Button disabled={pending} onClick={() => void recover()}>
+                Tải lại trạng thái và lịch sử
+              </Button>
+            }
           />
         ) : (
-          <div role="status" className="rounded-control border border-teal-200 bg-teal-50 p-4 text-sm text-teal-950">
+          <div role="status" className={styles.successMessage}>
             {message}
           </div>
         )

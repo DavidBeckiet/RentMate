@@ -30,4 +30,22 @@ describe("listings API", () => {
       }
     ]);
   });
+
+  it("maps reverse geocoding coordinates to the landlord-only endpoint", async () => {
+    const { calls, transport } = recordingTransport();
+    const signal = new AbortController().signal;
+
+    await createListingsApi(transport).reverseGeocode({ latitude: 10.776531, longitude: 106.700982 }, signal);
+
+    expect(calls).toEqual([
+      {
+        path: "/api/v1/geocoding/reverse",
+        options: {
+          method: "POST",
+          json: { latitude: 10.776531, longitude: 106.700982 },
+          signal
+        }
+      }
+    ]);
+  });
 });

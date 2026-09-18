@@ -116,22 +116,47 @@ test("hides non-public report targets", async () => {
   );
 });
 
-test("enforces the exact admin transition flow and returns history", async () => {
+test("resolves an open report directly, records history and rejects a stale decision", async () => {
   const subject = harness();
   const created = await subject.service.create(tenant, 51, { category: "IMAGE_INCORRECT", details: null });
-  const investigating = await subject.service.updateStatus(admin, created.id, { status: "INVESTIGATING", note: null });
-  assert.equal(investigating.status, "INVESTIGATING");
   const resolved = await subject.service.updateStatus(admin, created.id, {
     status: "RESOLVED",
-    note: "Đã đối chiếu và xử lý."
+    note: "Đã xem xét bằng chứng."
   });
   assert.equal(resolved.status, "RESOLVED");
   assert.deepEqual(
     resolved.events.map((event) => event.newStatus),
-    ["OPEN", "INVESTIGATING", "RESOLVED"] satisfies ReportStatus[]
+    ["OPEN", "RESOLVED"] satisfies ReportStatus[]
   );
+  assert.equal(resolved.events[1]?.previousStatus, "OPEN");
   await assert.rejects(
     () => subject.service.updateStatus(admin, created.id, { status: "DISMISSED", note: "Không hợp lệ." }),
     /not allowed/i
   );
+});
+
+test("dismisses an open report and completes either decision from a legacy investigating report", async () => {
+  const subject = harness();
+  const dismissedReport = await subject.service.create(tenant, 51, { category: "FRAUD", details: null });
+  const dismissed = await subject.service.updateStatus(admin, dismissedReport.id, {
+    status: "DISMISSED",
+    note: "Không có căn cứ."
+  });
+  assert.equal(dismissed.events[1]?.previousStatus, "OPEN");
+
+  const legacyResolved = await subject.service.create(tenant, 52, { category: "FRAUD", details: null });
+  subject.reports.set(legacyResolved.id, { ...legacyResolved, status: "INVESTIGATING" });
+  const resolved = await subject.service.updateStatus(admin, legacyResolved.id, {
+    status: "RESOLVED",
+    note: "Đã hoàn tất xem xét."
+  });
+  assert.equal(resolved.events.at(-1)?.previousStatus, "INVESTIGATING");
+
+  const legacyDismissed = await subject.service.create(tenant, 53, { category: "FRAUD", details: null });
+  subject.reports.set(legacyDismissed.id, { ...legacyDismissed, status: "INVESTIGATING" });
+  const closed = await subject.service.updateStatus(admin, legacyDismissed.id, {
+    status: "DISMISSED",
+    note: "Không cần xử lý thêm."
+  });
+  assert.equal(closed.events.at(-1)?.previousStatus, "INVESTIGATING");
 });

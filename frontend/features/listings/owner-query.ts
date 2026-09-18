@@ -2,6 +2,7 @@ import type { ListingBusinessStatus, ListingStatus, OwnedListingQuery } from "..
 
 export const ownerListingStatuses = ["DRAFT", "PENDING", "APPROVED", "REJECTED", "HIDDEN", "INACTIVE"] as const;
 export const ownerBusinessStatuses = ["AVAILABLE", "PAUSED", "RENTED", "UNKNOWN"] as const;
+export const ownerDefaultPageSize = 6;
 
 export interface OwnerQueryState {
   readonly status?: ListingStatus;
@@ -109,6 +110,6 @@ export function toOwnedListingQuery(state: OwnerQueryState): OwnedListingQuery {
     ...(state.status === undefined ? {} : { status: state.status }),
     ...(state.businessStatus === undefined ? {} : { businessStatus: state.businessStatus }),
     page: state.page,
-    ...(state.pageSize === undefined ? {} : { pageSize: state.pageSize })
+    pageSize: state.pageSize ?? ownerDefaultPageSize
   };
 }

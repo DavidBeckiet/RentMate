@@ -80,12 +80,67 @@ const tenantPrimaryItems: readonly NavigationItem[] = [
   }
 ];
 
+export const roommateNavigationItems: readonly NavigationItem[] = [
+  {
+    key: "roommate-discover",
+    label: "Khám phá",
+    href: "/roommates",
+    icon: "compass",
+    exactPaths: ["/roommates"],
+    pathPrefixes: ["/roommates/requests/"]
+  },
+  {
+    key: "roommate-request",
+    label: "Nhu cầu của tôi",
+    href: "/roommates/my-request",
+    icon: "note",
+    exactPaths: ["/roommates/my-request"]
+  },
+  {
+    key: "roommate-interests",
+    label: "Quan tâm",
+    href: "/roommates/interests",
+    icon: "heart",
+    exactPaths: ["/roommates/interests"]
+  },
+  {
+    key: "roommate-connections",
+    label: "Kết nối",
+    href: "/roommates/connection",
+    icon: "users",
+    exactPaths: ["/roommates/connection"]
+  },
+  {
+    key: "roommate-messages",
+    label: "Tin nhắn",
+    href: "/roommates/messages",
+    icon: "message",
+    exactPaths: ["/roommates/messages"],
+    pathPrefixes: ["/roommates/conversations/"]
+  }
+];
+
+export const roommateManagementItems: readonly NavigationItem[] = [
+  {
+    key: "roommate-profile",
+    label: "Hồ sơ ở ghép",
+    href: "/roommates/profile",
+    icon: "user",
+    exactPaths: ["/roommates/profile"]
+  },
+  {
+    key: "roommate-blocked",
+    label: "Đã chặn",
+    href: "/roommates/blocked",
+    icon: "lock",
+    exactPaths: ["/roommates/blocked", "/roommates/blocks"]
+  }
+];
+
 const landlordMarketplaceItems: readonly NavigationItem[] = [
-  marketplaceItems[0],
-  marketplaceItems[1],
   {
     key: "landlord-workspace",
-    label: "Không gian cho thuê",
+    label: "Quản lý cho thuê",
     href: "/landlord",
     icon: "building",
     pathPrefixes: ["/landlord"]
@@ -138,7 +193,7 @@ export const tenantSecondaryItems: readonly NavigationItem[] = [
 export const landlordNavigationItems: readonly NavigationItem[] = [
   {
     key: "landlord-listings",
-    label: "Tin đăng",
+    label: "Tin cho thuê",
     href: "/landlord",
     icon: "building",
     exactPaths: ["/landlord"],
@@ -153,14 +208,14 @@ export const landlordNavigationItems: readonly NavigationItem[] = [
   },
   {
     key: "landlord-leads",
-    label: "Leads",
+    label: "Khách quan tâm",
     href: "/landlord/leads",
     icon: "users",
     pathPrefixes: ["/landlord/leads"]
   },
   {
     key: "landlord-analytics",
-    label: "Analytics",
+    label: "Phân tích",
     href: "/landlord/analytics",
     icon: "chart",
     pathPrefixes: ["/landlord/analytics"]

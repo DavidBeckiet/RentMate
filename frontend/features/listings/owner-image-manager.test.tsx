@@ -223,7 +223,7 @@ describe("OwnerImageManager", () => {
     [413, "PAYLOAD_TOO_LARGE", "Ảnh vượt quá giới hạn 5 MiB."],
     [415, "UNSUPPORTED_MEDIA_TYPE", "Ảnh phải là JPEG, PNG hoặc WebP hợp lệ."],
     [422, "IMAGE_LIMIT_EXCEEDED", "Đã đạt giới hạn 8 ảnh."],
-    [502, "IMAGE_PROVIDER_ERROR", "Dịch vụ lưu ảnh tạm thời không khả dụng."],
+    [503, "PROVIDER_UNAVAILABLE", "Dịch vụ lưu ảnh chưa sẵn sàng."],
     [401, "UNAUTHENTICATED", "Phiên đăng nhập không còn hợp lệ"],
     [403, "FORBIDDEN", "không có quyền quản lý ảnh"],
     [404, "NOT_FOUND", "không tồn tại hay bạn không thể truy cập"]

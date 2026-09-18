@@ -1,9 +1,14 @@
 import { describe, expect, it } from "vitest";
 import {
   adminNavigationItems,
+  adminOperationsNavigationItems,
+  adminReportNavigationItems,
+  adminSupportNavigationItems,
   consumerNavigationItems,
   isNavigationItemActive,
   landlordNavigationItems,
+  roommateManagementItems,
+  roommateNavigationItems,
   resolveShellKind,
   tenantSecondaryItems
 } from "./navigation-model";
@@ -19,6 +24,12 @@ describe("actor-aware navigation model", () => {
       "/inquiries",
       "/notifications",
       "/roommates",
+      "/roommates/my-request",
+      "/roommates/interests",
+      "/roommates/connection",
+      "/roommates/messages",
+      "/roommates/profile",
+      "/roommates/blocked",
       "/help",
       "/landlord",
       "/landlord/inquiries",
@@ -26,6 +37,7 @@ describe("actor-aware navigation model", () => {
       "/landlord/analytics",
       "/landlord/profile",
       "/admin",
+      "/admin/listings",
       "/admin/users",
       "/admin/reports",
       "/admin/roommate-reports",
@@ -41,6 +53,8 @@ describe("actor-aware navigation model", () => {
       ...consumerNavigationItems("landlord"),
       ...consumerNavigationItems("admin"),
       ...consumerNavigationItems("anonymous"),
+      ...roommateNavigationItems,
+      ...roommateManagementItems,
       ...landlordNavigationItems,
       ...adminNavigationItems
     ]) {
@@ -48,11 +62,17 @@ describe("actor-aware navigation model", () => {
     }
   });
 
-  it("keeps home in the shared header and reserves notifications for the account area", () => {
-    for (const actor of ["anonymous", "tenant", "landlord", "admin"] as const) {
+  it("keeps discovery primary for visitors while giving landlords a focused management entry", () => {
+    for (const actor of ["anonymous", "tenant", "admin"] as const) {
       expect(consumerNavigationItems(actor).some((item) => item.key === "home")).toBe(true);
       expect(consumerNavigationItems(actor).some((item) => item.key === "notifications")).toBe(false);
     }
+
+    expect(consumerNavigationItems("landlord").map((item) => item.key)).toEqual(["landlord-workspace"]);
+    expect(consumerNavigationItems("landlord")[0]).toMatchObject({
+      label: "Quản lý cho thuê",
+      href: "/landlord"
+    });
   });
 
   it("keeps tenant primary navigation focused on the main journeys", () => {
@@ -68,6 +88,16 @@ describe("actor-aware navigation model", () => {
       "recently-viewed",
       "saved-searches",
       "compare"
+    ]);
+  });
+
+  it("keeps global tenant navigation stable inside feature workspaces", () => {
+    expect(consumerNavigationItems("tenant").map((item) => item.key)).toEqual([
+      "home",
+      "search",
+      "near-me",
+      "roommates",
+      "inquiries"
     ]);
   });
 
@@ -90,7 +120,27 @@ describe("actor-aware navigation model", () => {
   it("marks nested detail routes through explicit active patterns", () => {
     const landlordListings = landlordNavigationItems.find((item) => item.key === "landlord-listings");
     const adminListings = adminNavigationItems.find((item) => item.key === "admin-listings");
+    const adminOverview = adminNavigationItems.find((item) => item.key === "admin-overview");
     expect(landlordListings && isNavigationItemActive(landlordListings, "/landlord/listings/42")).toBe(true);
     expect(adminListings && isNavigationItemActive(adminListings, "/admin/listings/42")).toBe(true);
+    expect(adminListings && isNavigationItemActive(adminListings, "/admin")).toBe(false);
+    expect(adminOverview && isNavigationItemActive(adminOverview, "/admin")).toBe(true);
+  });
+
+  it("groups every admin route once with Vietnamese report labels", () => {
+    const groupedItems = [
+      ...adminOperationsNavigationItems,
+      ...adminSupportNavigationItems,
+      ...adminReportNavigationItems
+    ];
+    expect(groupedItems).toEqual(adminNavigationItems);
+    expect(new Set(groupedItems.map((item) => item.href)).size).toBe(groupedItems.length);
+    expect(adminReportNavigationItems.map((item) => item.label)).toEqual(["Tin đăng", "Liên hệ", "Ở ghép", "Đánh giá"]);
+    expect(adminOperationsNavigationItems.map((item) => item.label)).toEqual([
+      "Tổng quan",
+      "Kiểm duyệt tin",
+      "Người dùng",
+      "Xác minh chủ trọ"
+    ]);
   });
 });

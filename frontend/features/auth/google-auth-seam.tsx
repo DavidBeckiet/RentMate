@@ -25,6 +25,29 @@ const googleErrorMessages: Readonly<Record<string, string>> = {
   failed: "Không thể hoàn tất đăng nhập bằng Google. Vui lòng thử lại."
 };
 
+function GoogleMark() {
+  return (
+    <svg viewBox="0 0 24 24" focusable="false" aria-hidden="true">
+      <path
+        fill="#4285F4"
+        d="M21.35 12.2c0-.64-.06-1.25-.16-1.84H12v3.48h5.25a4.49 4.49 0 0 1-1.95 2.94v2.9h3.16c1.85-1.7 2.89-4.22 2.89-7.48Z"
+      />
+      <path
+        fill="#34A853"
+        d="M12 21.72c2.64 0 4.85-.87 6.46-2.36l-3.16-2.9c-.88.59-2 .94-3.3.94-2.55 0-4.71-1.72-5.48-4.03H3.26v3c1.6 3.18 4.9 5.35 8.74 5.35Z"
+      />
+      <path
+        fill="#FBBC05"
+        d="M6.52 13.37A5.72 5.72 0 0 1 6.22 12c0-.48.1-.94.3-1.37v-3H3.26A9.72 9.72 0 0 0 2.22 12c0 1.57.38 3.05 1.04 4.37l3.26-3Z"
+      />
+      <path
+        fill="#EA4335"
+        d="M12 6.6c1.44 0 2.73.5 3.75 1.47l2.78-2.78C16.84 3.72 14.64 2.28 12 2.28c-3.84 0-7.14 2.2-8.74 5.35l3.26 3C7.29 8.32 9.45 6.6 12 6.6Z"
+      />
+    </svg>
+  );
+}
+
 function startError(error: unknown): string {
   if (error instanceof ApiError && error.code === "GOOGLE_AUTH_NOT_CONFIGURED") {
     return googleErrorMessages["not-configured"]!;
@@ -106,7 +129,7 @@ export function GoogleAuthSeam({
           aria-hidden="true"
           className="rm-google-mark grid h-6 w-6 place-items-center rounded-full font-sans text-ui-sm font-bold"
         >
-          G
+          <GoogleMark />
         </span>
         {label}
       </Button>

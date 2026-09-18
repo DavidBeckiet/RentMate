@@ -67,7 +67,7 @@ export function LandlordProfile() {
           </p>
         </div>
         <div className="rounded-card border border-info/20 bg-surface/80 px-4 py-3 text-ui-sm">
-          <p className="font-semibold text-foreground">Không gian cho thuê</p>
+          <p className="font-semibold text-foreground">Quản lý cho thuê</p>
           <p className="mt-1 text-ui-xs text-muted-foreground">
             Thông tin xác minh được hiển thị theo trạng thái thực tế.
           </p>

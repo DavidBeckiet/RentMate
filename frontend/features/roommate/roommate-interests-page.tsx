@@ -177,7 +177,7 @@ function InterestCard({
                         <ul className="mt-2 list-disc space-y-1 pl-5 text-ui-sm font-semibold leading-6">
                           <li>Hai bạn sẽ có một kết nối tìm roommate hiện tại.</li>
                           <li>
-                            Yêu cầu này chuyển sang trạng thái đã ghép; các tương tác đang chờ khác có thể kết thúc.
+                            Nhu cầu này chuyển sang trạng thái đã ghép; các tương tác đang chờ khác có thể kết thúc.
                           </li>
                           <li>Đây không phải đặt chỗ, phê duyệt của chủ nhà hoặc bảo đảm thuê nhà.</li>
                         </ul>
@@ -306,10 +306,10 @@ function InterestsContent() {
   return (
     <div className={`rm-roommate-page ${styles.page}`}>
       <RoommatePageHeader
-        title="Lời quan tâm"
-        description="Gặp người cùng nhu cầu. Trò chuyện trước, kết nối khi thấy phù hợp."
+        title="Quan tâm"
+        description="Xem ai muốn làm quen với bạn và theo dõi những lời chào bạn đã gửi."
         action={
-          <Link className={styles.inboxLink} href="/inquiries?kind=ROOMMATE">
+          <Link className={styles.inboxLink} href="/roommates/messages">
             <Icon name="message" /> Mở tin nhắn <Icon name="arrowUpRight" />
           </Link>
         }
@@ -384,18 +384,18 @@ function InterestsContent() {
         ) : null}
         {state === "success" && result && result.data.length === 0 ? (
           <EmptyState
-            title={tab === "incoming" ? "Chưa có lời quan tâm" : "Bạn chưa gửi lời quan tâm nào"}
+            title={tab === "incoming" ? "Chưa có ai bày tỏ quan tâm" : "Bạn chưa quan tâm hồ sơ nào"}
             description={
               tab === "incoming"
-                ? "Các lời quan tâm mới sẽ xuất hiện tại đây."
-                : "Duyệt yêu cầu đang mở để gửi lời nhắn mở đầu."
+                ? "Hoàn thiện nhu cầu của bạn để mọi người dễ tìm thấy và bắt đầu làm quen."
+                : "Khám phá người đang tìm ở ghép và gửi một lời chào chân thành."
             }
             action={
               <Link
                 className="font-bold underline decoration-2 underline-offset-4"
                 href={tab === "incoming" ? "/roommates/my-request" : "/roommates"}
               >
-                {tab === "incoming" ? "Xem yêu cầu của tôi" : "Khám phá yêu cầu ở ghép"}
+                {tab === "incoming" ? "Xem nhu cầu của tôi" : "Khám phá người ở ghép"}
               </Link>
             }
           />

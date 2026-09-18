@@ -3,19 +3,31 @@
 import { useEffect, useRef, useState } from "react";
 import { MapBase, type MapPoint } from "../../components/map/map-base";
 import { Button } from "../../components/ui/button";
+import { Icon } from "../../components/ui/icon";
 import { api, ApiError } from "../../lib/api/client";
 import { useAuth } from "../../lib/auth/auth-provider";
 import type { GeocodingCandidate } from "../../types/api";
+import styles from "./owner-location-controls.module.css";
 
 const fallbackCenter: MapPoint = Object.freeze({ latitude: 10.776, longitude: 106.7 });
 const maximumAddressCodePoints = 500;
 
 interface OwnerLocationControlsProps {
   readonly addressText: string;
+  readonly areaName: string;
   readonly latitude: string;
   readonly longitude: string;
+  readonly confirmed: boolean;
+  readonly error?: string;
   readonly disabled?: boolean;
   readonly onCoordinatesChange: (latitude: string, longitude: string) => void;
+  readonly onCurrentLocationResolved: (
+    addressText: string,
+    areaName: string,
+    latitude: string,
+    longitude: string
+  ) => void;
+  readonly onConfirmationChange: (confirmed: boolean) => void;
 }
 
 interface LocationFeedback {
@@ -63,7 +75,7 @@ function geocodeError(error: unknown): LocationFeedback {
       requestId: error.requestId
     };
   }
-  if (error.status === 502) {
+  if (error.code === "PROVIDER_UNAVAILABLE" || error.status === 502 || error.status === 503) {
     return {
       kind: "error",
       message: "Dịch vụ định vị tạm thời không khả dụng.",
@@ -83,27 +95,57 @@ function geocodeError(error: unknown): LocationFeedback {
   return { kind: "error", message: "Không thể tìm vị trí lúc này. Hãy thử lại sau.", requestId: error.requestId };
 }
 
+function currentLocationError(code: number): string {
+  if (code === 1) return "Bạn chưa cho phép truy cập vị trí. Hãy cấp quyền trong trình duyệt hoặc đặt ghim trên bản đồ.";
+  if (code === 2) return "Thiết bị chưa xác định được vị trí. Hãy thử lại ở nơi có tín hiệu tốt hơn.";
+  if (code === 3) return "Yêu cầu lấy vị trí đã hết thời gian. Hãy thử lại hoặc đặt ghim trên bản đồ.";
+  return "Không thể lấy vị trí hiện tại. Hãy thử lại hoặc đặt ghim trên bản đồ.";
+}
+
 export function OwnerLocationControls({
   addressText,
+  areaName,
   latitude,
   longitude,
+  confirmed,
+  error,
   disabled = false,
-  onCoordinatesChange
+  onCoordinatesChange,
+  onCurrentLocationResolved,
+  onConfirmationChange
 }: OwnerLocationControlsProps) {
   const { refresh } = useAuth();
   const [candidates, setCandidates] = useState<readonly GeocodingCandidate[]>([]);
   const [pending, setPending] = useState(false);
+  const [currentLocationPending, setCurrentLocationPending] = useState(false);
+  const [accuracyMeters, setAccuracyMeters] = useState<number | null>(null);
   const [feedback, setFeedback] = useState<LocationFeedback | null>(null);
   const pendingRef = useRef(false);
+  const currentLocationPendingRef = useRef(false);
+  const mountedRef = useRef(true);
+  const addressRef = useRef(addressText);
+  const resolvedAddressRef = useRef<string | null>(null);
   const controllerRef = useRef<AbortController | null>(null);
   const point = draftPoint(latitude, longitude);
 
-  useEffect(
-    () => () => {
+  useEffect(() => {
+    mountedRef.current = true;
+    return () => {
+      mountedRef.current = false;
       controllerRef.current?.abort();
-    },
-    []
-  );
+    };
+  }, []);
+
+  useEffect(() => {
+    addressRef.current = addressText;
+    if (resolvedAddressRef.current === addressText) {
+      resolvedAddressRef.current = null;
+      return;
+    }
+    setCandidates([]);
+    setFeedback(null);
+    setAccuracyMeters(null);
+  }, [addressText]);
 
   const findLocation = async () => {
     if (pendingRef.current || disabled) return;
@@ -149,39 +191,212 @@ export function OwnerLocationControls({
 
   const selectPoint = (selected: MapPoint) => {
     if (disabled) return;
+    setAccuracyMeters(null);
+    onConfirmationChange(false);
     onCoordinatesChange(String(selected.latitude), String(selected.longitude));
   };
 
+  const resolveCurrentAddress = async (selected: MapPoint) => {
+    const controller = new AbortController();
+    const addressBeforeLookup = addressRef.current;
+    controllerRef.current = controller;
+    onConfirmationChange(false);
+    onCoordinatesChange(String(selected.latitude), String(selected.longitude));
+
+    try {
+      const result = await api.listings.reverseGeocode(selected, controller.signal);
+      if (controller.signal.aborted || !mountedRef.current) return;
+      if (!result) {
+        setFeedback({
+          kind: "empty",
+          message: "Đã đặt ghim nhưng chưa tìm được địa chỉ gần vị trí này. Bạn có thể nhập địa chỉ thủ công."
+        });
+        return;
+      }
+
+      if (addressRef.current !== addressBeforeLookup) {
+        setFeedback({
+          kind: "empty",
+          message: "Đã đặt ghim. Địa chỉ bạn vừa chỉnh được giữ nguyên nên hệ thống không ghi đè bằng gợi ý GPS."
+        });
+        return;
+      }
+
+      resolvedAddressRef.current = result.addressText === addressText ? null : result.addressText;
+      onCurrentLocationResolved(
+        result.addressText,
+        result.areaName,
+        String(selected.latitude),
+        String(selected.longitude)
+      );
+      setFeedback({
+        kind: "success",
+        message: "Đã tự điền địa chỉ và khu vực từ vị trí hiện tại. Hãy kiểm tra lại trước khi lưu."
+      });
+    } catch (caught: unknown) {
+      if (controller.signal.aborted || !mountedRef.current) return;
+      const mapped = geocodeError(caught);
+      setFeedback({
+        ...mapped,
+        message:
+          caught instanceof ApiError && caught.status === 422
+            ? "Vị trí hiện tại không hợp lệ. Hãy đặt ghim trên bản đồ."
+            : mapped.message
+      });
+      if (caught instanceof ApiError && caught.status === 401) await refresh().catch(() => undefined);
+    } finally {
+      if (!controller.signal.aborted && controllerRef.current === controller && mountedRef.current) {
+        currentLocationPendingRef.current = false;
+        setCurrentLocationPending(false);
+      }
+    }
+  };
+
+  const useCurrentLocation = () => {
+    if (disabled || currentLocationPendingRef.current) return;
+    setCandidates([]);
+    setFeedback(null);
+
+    if (!("geolocation" in navigator) || !navigator.geolocation) {
+      setFeedback({
+        kind: "error",
+        message: "Trình duyệt này không hỗ trợ lấy vị trí hiện tại. Hãy đặt ghim trực tiếp trên bản đồ."
+      });
+      return;
+    }
+
+    currentLocationPendingRef.current = true;
+    setCurrentLocationPending(true);
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        if (!mountedRef.current) return;
+        const selected = {
+          latitude: Number(position.coords.latitude.toFixed(6)),
+          longitude: Number(position.coords.longitude.toFixed(6))
+        };
+        if (
+          !Number.isFinite(selected.latitude) ||
+          !Number.isFinite(selected.longitude) ||
+          selected.latitude < -90 ||
+          selected.latitude > 90 ||
+          selected.longitude < -180 ||
+          selected.longitude > 180
+        ) {
+          currentLocationPendingRef.current = false;
+          setCurrentLocationPending(false);
+          setFeedback({ kind: "error", message: "Thiết bị trả về vị trí không hợp lệ. Hãy đặt ghim trên bản đồ." });
+          return;
+        }
+        setAccuracyMeters(
+          Number.isFinite(position.coords.accuracy) && position.coords.accuracy >= 0
+            ? Math.max(1, Math.round(position.coords.accuracy))
+            : null
+        );
+        void resolveCurrentAddress(selected);
+      },
+      (locationError) => {
+        if (!mountedRef.current) return;
+        currentLocationPendingRef.current = false;
+        setCurrentLocationPending(false);
+        setFeedback({ kind: "error", message: currentLocationError(locationError.code) });
+      },
+      { enableHighAccuracy: true, timeout: 12_000, maximumAge: 60_000 }
+    );
+  };
+
+  const hasAddress = addressText.trim().length > 0;
+  const hasArea = areaName.trim().length > 0;
+  const canConfirm = point !== null && hasAddress && hasArea;
+
   return (
-    <div className="space-y-5 border-t border-rent-line pt-5">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div>
-          <h3 className="font-semibold text-rent-ink">Tìm và điều chỉnh vị trí</h3>
-          <p className="mt-1 text-sm text-rent-secondary">
-            Tìm theo địa chỉ chỉ chạy khi bạn bấm nút. Bạn vẫn có thể đặt hoặc kéo ghim thủ công.
-          </p>
+    <div className={styles.locationAssistant}>
+      <div className={styles.locationHeader}>
+        <div className={styles.locationIntro}>
+          <span className={styles.locationIcon}>
+            <Icon name="pin" className="h-5 w-5" />
+          </span>
+          <div>
+            <h3>Tìm và ghim vị trí</h3>
+            <p>Bạn không cần biết hoặc nhập kinh độ, vĩ độ. RentMate sẽ lưu tọa độ từ kết quả bạn chọn.</p>
+          </div>
         </div>
-        <Button
-          type="button"
-          variant="secondary"
-          pending={pending}
-          pendingLabel="Đang tìm…"
-          disabled={disabled}
-          onClick={() => void findLocation()}
-        >
-          Tìm vị trí từ địa chỉ
-        </Button>
+        <div className={styles.locationActions}>
+          <Button
+            type="button"
+            aria-label="Dùng vị trí hiện tại"
+            variant="secondary"
+            pending={currentLocationPending}
+            pendingLabel="Đang tìm địa chỉ…"
+            disabled={disabled || pending}
+            onClick={useCurrentLocation}
+          >
+            <Icon name="target" className="h-4 w-4" />
+            Dùng vị trí hiện tại
+          </Button>
+          <Button
+            type="button"
+            aria-label="Tìm vị trí từ địa chỉ"
+            variant="secondary"
+            pending={pending}
+            pendingLabel="Đang tìm…"
+            disabled={disabled || currentLocationPending}
+            onClick={() => void findLocation()}
+          >
+            <Icon name="search" className="h-4 w-4" />
+            Tìm từ địa chỉ
+          </Button>
+        </div>
       </div>
+
+      <div className={styles.locationSteps} aria-label="Tiến độ xác nhận địa chỉ">
+        <div className={hasAddress && hasArea ? styles.stepComplete : styles.stepCurrent}>
+          <span>{hasAddress && hasArea ? <Icon name="check" className="h-3.5 w-3.5" /> : "1"}</span>
+          <div>
+            <strong>Địa chỉ</strong>
+            <small>{hasAddress && hasArea ? "Đã có thông tin" : "Điền địa chỉ và khu vực"}</small>
+          </div>
+        </div>
+        <div className={point ? styles.stepComplete : styles.stepWaiting}>
+          <span>{point ? <Icon name="check" className="h-3.5 w-3.5" /> : "2"}</span>
+          <div>
+            <strong>Ghim bản đồ</strong>
+            <small>{point ? "Đã chọn vị trí" : "Chưa đặt ghim"}</small>
+          </div>
+        </div>
+        <div className={confirmed ? styles.stepComplete : canConfirm ? styles.stepCurrent : styles.stepWaiting}>
+          <span>{confirmed ? <Icon name="check" className="h-3.5 w-3.5" /> : "3"}</span>
+          <div>
+            <strong>Xác nhận</strong>
+            <small>{confirmed ? "Đã hoàn tất" : "Kiểm tra lần cuối"}</small>
+          </div>
+        </div>
+      </div>
+
+      {accuracyMeters !== null ? (
+        <div className={accuracyMeters <= 100 ? styles.accuracyGood : styles.accuracyWarning} role="status">
+          <Icon name="target" className="h-4 w-4 shrink-0" />
+          <span>
+            GPS chính xác trong khoảng <strong>{accuracyMeters} m</strong>.
+            {accuracyMeters > 100 ? " Hãy phóng to bản đồ và chỉnh lại ghim." : " Bạn vẫn nên kiểm tra đúng cổng hoặc tòa nhà."}
+          </span>
+        </div>
+      ) : null}
+
+      {error ? (
+        <p role="alert" className={styles.fieldError}>
+          {error}
+        </p>
+      ) : null}
 
       {feedback ? (
         <p
           role={feedback.kind === "error" ? "alert" : "status"}
-          className={`rounded-control border p-3 text-sm ${
+          className={`${styles.feedback} ${
             feedback.kind === "error"
-              ? "border-red-200 bg-red-50 text-red-950"
+              ? styles.feedbackError
               : feedback.kind === "empty"
-                ? "border-amber-200 bg-amber-50 text-amber-950"
-                : "border-teal-200 bg-teal-50 text-teal-950"
+                ? styles.feedbackEmpty
+                : styles.feedbackSuccess
           }`}
         >
           {feedback.message}
@@ -190,15 +405,15 @@ export function OwnerLocationControls({
       ) : null}
 
       {candidates.length > 0 ? (
-        <fieldset className="space-y-2">
-          <legend className="text-sm font-semibold text-rent-ink">Kết quả địa chỉ</legend>
-          <ul className="space-y-2">
+        <fieldset className={styles.results}>
+          <legend>Kết quả phù hợp</legend>
+          <ul>
             {candidates.map((candidate, index) => (
               <li key={`${candidate.latitude}:${candidate.longitude}:${index}`}>
                 <button
                   type="button"
                   disabled={disabled || pending}
-                  className="min-h-11 w-full rounded-control border border-rent-line bg-white px-4 py-3 text-left text-sm text-rent-ink transition-colors hover:border-teal-600 hover:bg-rent-primary-subtle focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-700 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60"
+                  className={styles.resultButton}
                   onClick={() => selectPoint(candidate)}
                 >
                   {candidate.displayName}
@@ -209,16 +424,24 @@ export function OwnerLocationControls({
         </fieldset>
       ) : null}
 
-      <div className="space-y-2">
-        <p className="text-sm text-rent-secondary">
-          {point
-            ? "Kéo ghim hoặc bấm một điểm khác trên bản đồ để chỉnh tọa độ chính xác."
-            : "Bấm trên bản đồ để đặt ghim, hoặc nhập trực tiếp cặp tọa độ ở trên."}
-        </p>
+      <div className={styles.mapPanel}>
+        <div className={styles.mapCaption}>
+          <div>
+            <strong>Kiểm tra điểm ghim</strong>
+            <p>Kéo ghim tới đúng cổng hoặc tòa nhà. Người thuê chỉ thấy vị trí gần đúng.</p>
+          </div>
+          {confirmed ? (
+            <span className={styles.confirmedBadge}>
+              <Icon name="check" className="h-4 w-4" />
+              Đã xác nhận
+            </span>
+          ) : null}
+        </div>
         <MapBase
           ariaLabel="Bản đồ điều chỉnh vị trí chính xác của tin"
           center={point ?? fallbackCenter}
           zoom={point ? 16 : 11}
+          className="h-64 w-full sm:h-72"
           markers={
             point
               ? [
@@ -234,6 +457,35 @@ export function OwnerLocationControls({
           onMapClick={disabled ? undefined : selectPoint}
           onMarkerMove={disabled ? undefined : (_id, selected) => selectPoint(selected)}
         />
+      </div>
+
+      <div className={confirmed ? styles.confirmationComplete : styles.confirmationPending}>
+        <span className={styles.confirmationIcon}>
+          <Icon name={confirmed ? "check" : "pin"} className="h-5 w-5" />
+        </span>
+        <div>
+          <strong>{confirmed ? "Địa chỉ và vị trí đã khớp" : "Xác nhận trước khi lưu"}</strong>
+          <p>
+            {confirmed
+              ? "Nếu chỉnh địa chỉ hoặc di chuyển ghim, bạn sẽ cần xác nhận lại."
+              : canConfirm
+                ? "Đối chiếu địa chỉ với điểm ghim trên bản đồ, sau đó xác nhận."
+                : "Hãy điền đủ địa chỉ, khu vực và đặt một điểm ghim trên bản đồ."}
+          </p>
+        </div>
+        {!confirmed ? (
+          <Button
+            type="button"
+            disabled={disabled || !canConfirm}
+            onClick={() => {
+              onConfirmationChange(true);
+              setFeedback({ kind: "success", message: "Đã xác nhận địa chỉ và vị trí. Bạn có thể lưu thay đổi." });
+            }}
+          >
+            <Icon name="check" className="h-4 w-4" />
+            Xác nhận địa chỉ & vị trí
+          </Button>
+        ) : null}
       </div>
     </div>
   );

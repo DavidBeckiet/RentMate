@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   ownerListingStatuses,
   ownerBusinessStatuses,
+  ownerDefaultPageSize,
   ownerListingsUrl,
   parseOwnerQuery,
   serializeOwnerQuery,
@@ -32,10 +33,14 @@ describe("owner-query", () => {
     expect(toOwnedListingQuery(parsed.state)).toEqual({ page: 1, pageSize: 40 });
   });
 
+  it("uses six listings per page when the URL does not specify a page size", () => {
+    expect(toOwnedListingQuery({ page: 1 })).toEqual({ page: 1, pageSize: ownerDefaultPageSize });
+  });
+
   it("serializes keys in stable filter/page/pageSize order", () => {
-    expect(serializeOwnerQuery({ status: "APPROVED", businessStatus: "AVAILABLE", page: 2, pageSize: 40 }).toString()).toBe(
-      "status=APPROVED&businessStatus=AVAILABLE&page=2&pageSize=40"
-    );
+    expect(
+      serializeOwnerQuery({ status: "APPROVED", businessStatus: "AVAILABLE", page: 2, pageSize: 40 }).toString()
+    ).toBe("status=APPROVED&businessStatus=AVAILABLE&page=2&pageSize=40");
     expect(withOwnerPage({ status: "APPROVED", businessStatus: "AVAILABLE", page: 1, pageSize: 40 }, 3)).toEqual({
       status: "APPROVED",
       businessStatus: "AVAILABLE",
@@ -64,7 +69,8 @@ describe("owner-query", () => {
     expect(toOwnedListingQuery({ status: "APPROVED", businessStatus: "RENTED", page: 2 })).toEqual({
       status: "APPROVED",
       businessStatus: "RENTED",
-      page: 2
+      page: 2,
+      pageSize: ownerDefaultPageSize
     });
   });
 

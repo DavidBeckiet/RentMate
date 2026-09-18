@@ -1,0 +1,360 @@
+.editor {
+  display: grid;
+  gap: 1rem;
+  min-width: 0;
+}
+
+.sectionCard {
+  position: relative;
+  overflow: hidden;
+  border: 1px solid rgb(var(--color-border));
+  border-radius: 1.125rem;
+  background: rgb(var(--color-surface));
+  box-shadow: var(--shadow-surface);
+  animation: sectionReveal 480ms cubic-bezier(0.22, 1, 0.36, 1) backwards;
+  transition:
+    transform 220ms ease,
+    border-color 220ms ease,
+    box-shadow 220ms ease;
+}
+
+.sectionCard:nth-of-type(2) {
+  animation-delay: 60ms;
+}
+
+.sectionCard:nth-of-type(3) {
+  animation-delay: 120ms;
+}
+
+.sectionCard:nth-of-type(4) {
+  animation-delay: 180ms;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .sectionCard:hover {
+    transform: translateY(-2px);
+    border-color: color-mix(in srgb, rgb(var(--color-primary)) 28%, rgb(var(--color-border)));
+    box-shadow: 0 16px 38px rgb(31 41 55 / 9%);
+  }
+}
+
+.sectionHeading {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.875rem;
+  padding: 1.15rem 1.25rem;
+  border-bottom: 1px solid rgb(var(--color-border));
+  background: color-mix(in srgb, rgb(var(--color-surface-subtle)) 76%, white);
+}
+
+.sectionIcon {
+  --icon-accent: rgb(var(--color-primary-hover));
+  --icon-soft: rgb(var(--color-primary-subtle));
+
+  position: relative;
+  display: grid;
+  width: 2.55rem;
+  height: 2.55rem;
+  flex: 0 0 auto;
+  place-items: center;
+  overflow: hidden;
+  border: 1px solid color-mix(in srgb, var(--icon-accent) 24%, transparent);
+  border-radius: 0.85rem;
+  color: var(--icon-accent);
+  background: linear-gradient(145deg, white, var(--icon-soft));
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / 75%);
+}
+
+.sectionIcon[data-step="1"] {
+  --icon-accent: #2563eb;
+  --icon-soft: #eff6ff;
+}
+
+.sectionIcon[data-step="2"] {
+  --icon-accent: #d97706;
+  --icon-soft: #fff7ed;
+}
+
+.sectionIcon[data-step="3"] {
+  --icon-accent: #7c3aed;
+  --icon-soft: #f5f3ff;
+}
+
+.sectionIcon[data-step="4"] {
+  --icon-accent: #0f8a7b;
+  --icon-soft: #ecfdf5;
+}
+
+.sectionCard:nth-of-type(1) .sectionBody :global(.group > span) {
+  color: #2563eb;
+}
+
+.sectionCard:nth-of-type(2) .sectionBody :global(.group > span) {
+  color: #d97706;
+}
+
+.sectionCard:nth-of-type(4) .sectionBody :global(.group > span) {
+  color: #0f8a7b;
+}
+
+.sectionIcon::after {
+  content: attr(data-step);
+  position: absolute;
+  right: -0.1rem;
+  bottom: -0.1rem;
+  display: grid;
+  width: 1rem;
+  height: 1rem;
+  place-items: center;
+  border-radius: 999px 0.2rem 0 0;
+  color: white;
+  background: var(--icon-accent);
+  font-size: 0.55rem;
+  font-weight: 800;
+}
+
+.sectionHeading small {
+  display: block;
+  margin-bottom: 0.15rem;
+  color: rgb(var(--color-primary));
+  font-size: 0.62rem;
+  font-weight: 800;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+}
+
+.sectionHeading h2 {
+  color: rgb(var(--color-foreground));
+  font-family: var(--font-be-vietnam-pro), sans-serif;
+  font-size: 1.05rem;
+  font-weight: 800;
+  line-height: 1.35;
+}
+
+.sectionHeading p {
+  margin-top: 0.2rem;
+  color: rgb(var(--color-muted-foreground));
+  font-size: 0.8125rem;
+  line-height: 1.5;
+}
+
+.sectionBody {
+  display: grid;
+  gap: 1.15rem;
+  padding: 1.25rem;
+}
+
+.description {
+  min-height: 9rem;
+}
+
+.metricsGrid,
+.locationFields {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.metricsGrid > :first-child {
+  grid-column: 1 / -1;
+}
+
+.amenityGrid fieldset > div {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.5rem;
+  margin-top: 0.6rem;
+}
+
+.amenityGrid fieldset > div > div {
+  padding: 0.45rem 0.7rem;
+  border: 1px solid rgb(var(--color-border));
+  border-radius: 0.75rem;
+  background: rgb(var(--color-surface-subtle));
+  transition:
+    transform 160ms ease,
+    border-color 160ms ease,
+    background-color 160ms ease;
+}
+
+.amenityGrid fieldset > div > div:has(input:checked) {
+  border-color: color-mix(in srgb, rgb(var(--color-primary)) 38%, rgb(var(--color-border)));
+  background: rgb(var(--color-primary-subtle));
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .amenityGrid fieldset > div > div:hover {
+    transform: translateY(-1px);
+    border-color: color-mix(in srgb, rgb(var(--color-primary)) 32%, rgb(var(--color-border)));
+  }
+}
+
+.amenityGrid fieldset label {
+  min-height: 2.25rem;
+  align-items: center;
+}
+
+.amenityGrid fieldset input {
+  margin-top: 0;
+}
+
+.locationFields {
+  display: grid;
+  gap: 1rem;
+}
+
+.lookupNote {
+  color: rgb(var(--color-muted-foreground));
+  font-size: 0.8125rem;
+}
+
+.lookupError {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+  color: rgb(var(--color-danger));
+  font-size: 0.8125rem;
+}
+
+.warning,
+.errorMessage,
+.successMessage {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.8rem 0.9rem;
+  border: 1px solid;
+  border-radius: 0.8rem;
+  font-size: 0.8125rem;
+}
+
+.warning {
+  border-color: #f2d39a;
+  color: #7a4a0b;
+  background: #fff9eb;
+}
+
+.errorMessage {
+  border-color: #fecaca;
+  color: #991b1b;
+  background: #fef2f2;
+}
+
+.successMessage {
+  border-color: #99d8cb;
+  color: #0d5f55;
+  background: #effbf8;
+}
+
+.feedbackStack:empty {
+  display: none;
+}
+
+.saveBar {
+  position: sticky;
+  z-index: 12;
+  bottom: 0.75rem;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.8rem;
+  border: 1px solid color-mix(in srgb, rgb(var(--color-primary)) 28%, rgb(var(--color-border)));
+  border-radius: 1rem;
+  background: rgb(var(--color-surface));
+  box-shadow: 0 16px 40px rgb(31 41 55 / 18%);
+  animation: saveBarReveal 520ms 220ms cubic-bezier(0.22, 1, 0.36, 1) backwards;
+}
+
+@keyframes sectionReveal {
+  from {
+    transform: translateY(14px);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+@keyframes saveBarReveal {
+  from {
+    transform: translateY(10px) scale(0.985);
+  }
+  to {
+    transform: translateY(0) scale(1);
+  }
+}
+
+.saveBar > div {
+  min-width: 0;
+  margin-right: auto;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sectionCard,
+  .saveBar {
+    animation: none;
+  }
+
+  .sectionCard,
+  .amenityGrid fieldset > div > div {
+    transition: none;
+  }
+}
+
+.saveBar strong,
+.saveBar span {
+  display: block;
+}
+
+.saveBar strong {
+  color: rgb(var(--color-foreground));
+  font-size: 0.8125rem;
+}
+
+.saveBar span {
+  margin-top: 0.1rem;
+  color: rgb(var(--color-muted-foreground));
+  font-size: 0.75rem;
+}
+
+@media (max-width: 639px) {
+  .sectionHeading,
+  .sectionBody {
+    padding: 1rem;
+  }
+
+  .metricsGrid,
+  .locationFields {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .amenityGrid fieldset > div {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.4rem;
+  }
+
+  .amenityGrid fieldset > div > div {
+    padding-inline: 0.5rem;
+  }
+
+  .amenityGrid fieldset label {
+    font-size: 0.75rem;
+  }
+
+  .metricsGrid > :first-child {
+    grid-column: auto;
+  }
+
+  .saveBar {
+    bottom: 5.25rem;
+    flex-wrap: nowrap;
+  }
+
+  .saveBar > div {
+    display: none;
+  }
+
+  .saveBar > button {
+    flex: 1 1 8rem;
+  }
+}

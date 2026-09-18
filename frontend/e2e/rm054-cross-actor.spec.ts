@@ -33,7 +33,7 @@ test.describe("RM-054 cross-actor browser flows", () => {
     const adminPage = await adminContext.newPage();
     await login(adminPage, rm054Admin);
     await adminPage.goto("/admin");
-    await expect(adminPage.getByRole("heading", { name: "Hàng đợi kiểm duyệt" })).toBeVisible();
+    await expect(adminPage.getByRole("heading", { name: "Kiểm duyệt tin" })).toBeVisible();
     await expect(adminPage.getByText(title, { exact: true })).toBeVisible();
     await adminPage.getByRole("link", { name: "Xem chi tiết" }).click();
     await expect(adminPage).toHaveURL(new RegExp(`/admin/listings/${listingId}$`));

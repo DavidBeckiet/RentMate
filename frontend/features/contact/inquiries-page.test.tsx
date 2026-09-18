@@ -145,7 +145,9 @@ describe("Unified message inbox", () => {
       logout: vi.fn()
     });
     render(<InquiriesPage landlord />);
-    await screen.findByText("Bạn chưa có cuộc trò chuyện nào.");
+    await screen.findByText("Hộp thư đang chờ cuộc trò chuyện đầu tiên");
+    expect(screen.getByRole("link", { name: "Xem tin đang quản lý" })).toHaveAttribute("href", "/landlord");
+    expect(screen.queryByText("Chọn một cuộc trò chuyện")).not.toBeInTheDocument();
     expect(mocks.landlord).toHaveBeenCalled();
     expect(mocks.tenant).not.toHaveBeenCalled();
     expect(mocks.interests).not.toHaveBeenCalled();

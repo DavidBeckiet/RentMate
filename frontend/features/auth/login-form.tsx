@@ -84,7 +84,7 @@ export interface LoginFormProps {
   readonly successDestination?: string;
 }
 
-export function LoginForm({ requiredRole, successDestination = "/" }: LoginFormProps = {}) {
+export function LoginForm({ requiredRole, successDestination }: LoginFormProps = {}) {
   const router = useRouter();
   const { refresh } = useAuth();
   const [email, setEmail] = useState("");
@@ -145,7 +145,7 @@ export function LoginForm({ requiredRole, successDestination = "/" }: LoginFormP
         });
         return;
       }
-      router.replace(successDestination);
+      router.replace(successDestination ?? (profile.role === "LANDLORD" ? "/landlord" : "/"));
     } catch (error) {
       const nextFeedback = feedbackFor(error);
       setFeedback(nextFeedback);

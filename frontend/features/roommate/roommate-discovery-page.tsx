@@ -4,9 +4,8 @@ import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useMemo, useRef, useState, type FormEvent, type MouseEvent } from "react";
 import { MotionConfig, motion } from "framer-motion";
-import { CalendarDays, MapPin, CigaretteOff, PawPrint, Moon, MessageCircle } from "lucide-react";
+import { CalendarDays, MapPin, CigaretteOff, PawPrint, Moon } from "lucide-react";
 import { Button } from "../../components/ui/button";
-import { Card } from "../../components/ui/card";
 import { EmptyState, ErrorState } from "../../components/ui/feedback-states";
 import { InputField, SelectField } from "../../components/ui/form-controls";
 import { Icon } from "../../components/ui/icon";
@@ -16,7 +15,7 @@ import { cx } from "../../components/ui/class-names";
 import styles from "./roommate-discovery.module.css";
 import { DiscoveryFilters } from "./roommate-discovery-filters";
 import { api, ApiError } from "../../lib/api/client";
-import { formatAreaLabel } from "../../lib/area";
+import { areaSuggestionMatches, formatAreaLabel, rentMateAreaCatalog } from "../../lib/area";
 import { useAuth } from "../../lib/auth/auth-provider";
 import type {
   ApiPage,
@@ -34,7 +33,7 @@ import {
   roommatePetLabels,
   roommateSleepScheduleLabels
 } from "./roommate-content";
-import { RoommateAvatar, RoommatePageHeader, RoommateStatusPill, RoommateTenantBoundary } from "./roommate-shared";
+import { RoommateAvatar, RoommateStatusPill, RoommateTenantBoundary } from "./roommate-shared";
 import {
   roommateCompatibilityDimensionLabels,
   roommateCompatibilityCategoryLabels,
@@ -140,6 +139,7 @@ const initialForm: DiscoveryForm = {
 const safeIntegerPattern = /^[1-9][0-9]*$/;
 const datePattern = /^\d{4}-\d{2}-\d{2}$/;
 const maximumBudget = 999_999_999_999;
+const areaOptions = rentMateAreaCatalog.map((area) => area.label);
 
 function safePositiveInteger(value: string | null): number | null {
   if (!value || !safeIntegerPattern.test(value)) return null;
@@ -310,84 +310,92 @@ function DiscoveryCard({
   const cardRevealProps = revealMotionProps(revealEnabled);
   return (
     <motion.article
-      className={cx(
-        "rm-roommate-card rm-roommate-discovery-card",
-        styles.personCard,
-        cardVariant,
-        featured && styles.featuredCard
-      )}
+      className={cx(styles.profileRow, cardVariant, featured && styles.featuredCard)}
       {...cardRevealProps}
       data-card-variant={isLinked ? "linked" : "open"}
       data-featured={featured ? "true" : undefined}
       variants={revealVariants}
-      whileHover={{ y: -2 }}
-      transition={{ duration: 0.22, ease: "easeOut" }}
+      whileHover={{ y: -1 }}
+      transition={{ duration: 0.18, ease: "easeOut" }}
     >
-      {isLinked && request.listing ? (
-        <div className={styles.cardMedia}>
-          <MediaImage
-            src={request.listing.coverImage.url}
-            alt={request.listing.coverImage.altText ?? `Ảnh của ${request.listing.title}`}
-            fill
-            sizes="(min-width: 1280px) 42vw, (min-width: 768px) 70vw, 100vw"
-            className={styles.cardMediaImage}
-            fallback={
-              <div role="img" aria-label={`Ảnh của ${request.listing.title}`} className={styles.cardMediaFallback}>
-                <Icon name="home" className="h-8 w-8" />
-                <span>Hình ảnh phòng</span>
-              </div>
-            }
-          />
-          <div className={styles.cardMediaOverlay}>
-            <span>
-              <Icon name="home" className="h-3.5 w-3.5" /> Phòng đang cân nhắc
+      <div className={styles.profileVisual} data-listing={isLinked || undefined}>
+        {isLinked && request.listing ? (
+          <>
+            <MediaImage
+              src={request.listing.coverImage.url}
+              alt={request.listing.coverImage.altText ?? `Ảnh của ${request.listing.title}`}
+              fill
+              sizes="112px"
+              className={styles.profileVisualImage}
+              fallback={
+                <div
+                  role="img"
+                  aria-label={`Ảnh của ${request.listing.title}`}
+                  className={styles.profileVisualFallback}
+                >
+                  <Icon name="home" className="h-6 w-6" />
+                </div>
+              }
+            />
+            <span className={styles.listingAvatar} data-tone={request.id % 4}>
+              <RoommateAvatar displayName={displayName} size="sm" />
             </span>
+          </>
+        ) : (
+          <span className={styles.directoryAvatar} data-tone={request.id % 4}>
+            <RoommateAvatar displayName={displayName} size="lg" />
+          </span>
+        )}
+      </div>
+      <div className={styles.profileMain}>
+        <div className={styles.profileTopline}>
+          <p className={styles.intentLabel}>
+            <Icon name={isLinked ? "home" : "users"} className="h-3.5 w-3.5" />
+            {isLinked ? "Đã có phòng đang cân nhắc" : "Cùng tìm phòng phù hợp"}
+          </p>
+          <div className={styles.profileBadges}>
+            {profile?.emailVerified || profile?.phoneVerified ? (
+              <span className={styles.verifiedChip}>
+                <Icon name="shield" className="h-3.5 w-3.5" /> Đã xác minh
+              </span>
+            ) : null}
+            {request.status !== "OPEN" ? (
+              <RoommateStatusPill status={request.status} label={roommateRequestStatusLabels[request.status]} />
+            ) : null}
           </div>
         </div>
-      ) : null}
-      <div className="rm-roommate-card-body">
-        <header className="flex items-start justify-between gap-3">
-          <div className="flex min-w-0 items-center gap-3">
-            <span className={styles.avatarFrame} data-tone={request.id % 4}>
-              <RoommateAvatar displayName={displayName} />
-            </span>
-            <div className="min-w-0">
-              <p className={styles.intentLabel}>
-                <Icon name={isLinked ? "home" : "users"} className="h-3.5 w-3.5" />
-                {isLinked ? "Đã có phòng đang cân nhắc" : "Cùng tìm phòng phù hợp"}
-              </p>
-              <h2 className="mt-1 truncate font-display text-heading-sm font-bold text-foreground">{displayName}</h2>
-            </div>
-          </div>
-          <RoommateStatusPill status={request.status} label={roommateRequestStatusLabels[request.status]} />
-        </header>
-        {profile?.emailVerified || profile?.phoneVerified ? (
-          <div className={styles.identityMeta}>
-            <span className={cx("rm-roommate-chip", styles.verifiedChip)}>
-              <Icon name="shield" className="h-3.5 w-3.5" /> Đã xác minh
-            </span>
-          </div>
-        ) : null}
+        <h2 className={styles.profileName}>{displayName}</h2>
         {intro ? (
-          <div className={styles.introBlock}>
-            <p className="rm-roommate-discovery-intro">{intro}</p>
-          </div>
-        ) : null}
+          <p className={styles.profileIntro}>{intro}</p>
+        ) : (
+          <p className={styles.introFallback}>Hãy mở hồ sơ để tìm hiểu thêm về người bạn cùng nhà này.</p>
+        )}
         {lifestyle.length > 0 ? (
-          <ul className={styles.lifestyleGroup} aria-label="Phong cách sống">
+          <ul className={styles.profileChips} aria-label="Phong cách sống">
             {lifestyle.map((item) => (
-              <li className="rm-roommate-chip" key={item.label}>
-                <item.icon size={14} aria-hidden="true" />
+              <li key={item.label}>
+                <item.icon size={13} aria-hidden="true" />
                 <span className="sr-only">{item.label}: </span>
                 {item.value}
               </li>
             ))}
           </ul>
         ) : null}
-        <dl className={cx("rm-roommate-discovery-facts", styles.factsGrid)}>
+        <DiscoveryCompatibility request={request} />
+        {request.listing ? (
+          <Link className={styles.profileListing} href={`/listings/${request.listing.id}`}>
+            <Icon name="home" className="h-3.5 w-3.5" />
+            <span>{request.listing.title}</span>
+            <small>{formatRoommateMoney(request.listing.monthlyRent)}/tháng</small>
+            <Icon name="arrow" className="h-3.5 w-3.5" />
+          </Link>
+        ) : null}
+      </div>
+      <aside className={styles.profileAside} aria-label={`Thông tin chính của ${displayName}`}>
+        <dl className={styles.profileFacts}>
           <div>
             <dt>
-              <Icon name="ruler" className="h-3.5 w-3.5" /> Ngân sách mỗi người
+              <Icon name="ruler" className="h-3.5 w-3.5" /> Ngân sách
             </dt>
             <dd>
               {new Intl.NumberFormat("vi-VN", { maximumFractionDigits: 6 }).format(
@@ -402,7 +410,7 @@ function DiscoveryCard({
           </div>
           <div>
             <dt>
-              <Icon name="map" className="h-3.5 w-3.5" /> Khu vực quan tâm
+              <Icon name="map" className="h-3.5 w-3.5" /> Khu vực
             </dt>
             <dd>
               {request.listing
@@ -410,46 +418,33 @@ function DiscoveryCard({
                 : request.preferredAreaKeys.map(formatAreaLabel).join(" · ")}
             </dd>
           </div>
+          <div>
+            <dt>
+              <Icon name="key" className="h-3.5 w-3.5" /> Chuyển vào
+            </dt>
+            <dd>
+              {formatRoommateDate(request.moveInFrom)} – {formatRoommateDate(request.moveInUntil)}
+            </dd>
+          </div>
         </dl>
-        <DiscoveryCompatibility request={request} />
-        {request.listing ? (
-          <div className={cx("rm-roommate-discovery-listing", styles.listingContext)}>
-            <div className="min-w-0">
-              <p className={styles.microLabel}>Phòng đang cân nhắc</p>
-              <p className="mt-1 truncate font-semibold text-foreground">{request.listing.title}</p>
-              <p className="mt-1 text-ui-xs text-muted-foreground">
-                {formatAreaLabel(request.listing.areaName)} · {formatRoommateMoney(request.listing.monthlyRent)}/tháng
-              </p>
-            </div>
-            <Link
-              className="shrink-0 text-ui-xs font-bold text-primary underline decoration-1 underline-offset-4"
-              href={`/listings/${request.listing.id}`}
-            >
-              Xem tin đăng
-            </Link>
-          </div>
-        ) : null}
-        <footer className="flex flex-wrap items-center justify-between gap-3 border-t border-border pt-3">
-          <div className={styles.cardActions}>
-            <Link
-              href={`/roommates/requests/${request.id}#roommate-interest-heading`}
-              className={styles.contactAction}
-              aria-label={`Gửi lời quan tâm tới ${displayName}`}
-              title="Gửi lời quan tâm"
-            >
-              <MessageCircle size={19} aria-hidden="true" />
-            </Link>
-            <Link
-              className="inline-flex min-h-11 items-center gap-2 rounded-control bg-primary px-4 text-ui-sm font-bold text-primary-foreground shadow-surface transition-[background-color,transform] duration-fast hover:-translate-y-0.5 hover:bg-primary-hover"
-              href={`/roommates/requests/${request.id}`}
-              scroll
-              onClick={resetRequestDetailScroll}
-            >
-              Xem yêu cầu <Icon name="arrow" className="h-4 w-4" />
-            </Link>
-          </div>
-        </footer>
-      </div>
+        <div className={styles.profileActions}>
+          <Link
+            className={styles.detailAction}
+            href={`/roommates/requests/${request.id}`}
+            scroll
+            onClick={resetRequestDetailScroll}
+          >
+            Xem hồ sơ <Icon name="arrow" className="h-4 w-4" />
+          </Link>
+          <Link
+            href={`/roommates/requests/${request.id}#roommate-interest-heading`}
+            className={styles.contactAction}
+            aria-label={`Bày tỏ quan tâm tới ${displayName}`}
+          >
+            <Icon name="heart" className="h-4 w-4" />
+          </Link>
+        </div>
+      </aside>
     </motion.article>
   );
 }
@@ -498,18 +493,28 @@ function RecommendationCard({
 }
 function DiscoveryCardSkeleton() {
   return (
-    <div className="rm-roommate-card rm-roommate-card-static space-y-4 p-5" aria-hidden="true">
-      <div className="flex items-center gap-3">
-        <Skeleton rounded="card" className="h-12 w-12" />
-        <div className="space-y-2">
-          <Skeleton className="h-3 w-28" />
-          <Skeleton className="h-5 w-40" />
+    <div className={`rm-roommate-card rm-roommate-card-static ${styles.cardSkeleton}`} aria-hidden="true">
+      <Skeleton rounded="card" className={styles.skeletonMedia} />
+      <div className={styles.skeletonContent}>
+        <div className="flex items-center gap-3">
+          <Skeleton rounded="card" className="h-11 w-11 shrink-0" />
+          <div className="w-full max-w-52 space-y-2">
+            <Skeleton className="h-3 w-24" />
+            <Skeleton className="h-5 w-full" />
+          </div>
         </div>
+        <Skeleton className="h-16 w-full" />
+        <div className="flex flex-wrap gap-2">
+          <Skeleton className="h-7 w-24" />
+          <Skeleton className="h-7 w-20" />
+          <Skeleton className="h-7 w-28" />
+        </div>
+        <Skeleton className="mt-auto h-14 w-full" />
       </div>
-      <Skeleton className="h-16 w-full" />
-      <div className="grid grid-cols-2 gap-2">
-        <Skeleton className="h-14" />
-        <Skeleton className="h-14" />
+      <div className={styles.skeletonAside}>
+        <Skeleton className="h-16 w-full" />
+        <Skeleton className="h-12 w-full" />
+        <Skeleton className="h-12 w-full" />
       </div>
     </div>
   );
@@ -619,7 +624,7 @@ function DiscoveryContent() {
     return () => controller.abort();
   }, [tenantReady, user?.id]);
   const navigate = (nextForm: DiscoveryForm, page: number) =>
-    router.push(discoveryUrl(pathname, searchParams, nextForm, page));
+    router.push(discoveryUrl(pathname, searchParams, nextForm, page), { scroll: false });
   const changePage = (page: number) => {
     scrollAfterNavigation.current = searchParamKey;
     navigate(appliedForm, page);
@@ -691,231 +696,135 @@ function DiscoveryContent() {
   return (
     <MotionConfig reducedMotion="user">
       <div className={`rm-roommate-page ${styles.page}`}>
-        <motion.div className={styles.heroReveal} {...revealProps}>
-          <RoommatePageHeader
-            title="Cùng nhà. Cùng nhịp sống."
-            description="Tìm người ở ghép hợp nhu cầu, bắt đầu từ một cuộc trò chuyện."
-          />
-        </motion.div>
-        {nextStep ? (
-          <motion.section className={styles.nextStep} aria-labelledby="roommate-next-step-title" {...revealProps}>
-            <div className={styles.nextStepCopy}>
-              <p className="rm-roommate-section-label">Bước tiếp theo</p>
-              <h2 id="roommate-next-step-title">
-                {nextStep === "profile"
-                  ? "Hoàn thiện hồ sơ ở ghép"
-                  : nextStep === "interests"
-                    ? "Xem lời quan tâm đang chờ"
-                    : nextStep === "request"
-                      ? "Yêu cầu của bạn đang mở"
-                      : "Bạn đã sẵn sàng tìm người ở ghép"}
-              </h2>
+        <motion.section className={styles.matchCockpit} aria-labelledby="roommate-search-heading" {...revealProps}>
+          <span className={styles.cockpitGlow} aria-hidden="true" />
+          <span className={styles.cockpitOrbit} aria-hidden="true" />
+          <div className={styles.cockpitOverview}>
+            <div className={styles.cockpitCopy}>
+              <p className={styles.cockpitEyebrow}>
+                <Icon name="users" className="h-4 w-4" /> RENTMATE MATCH
+              </p>
+              <h1 id="roommate-search-heading">
+                Ở đúng nơi.
+                <span>Gặp đúng người.</span>
+              </h1>
               <p>
-                {nextStep === "profile"
-                  ? "Chia sẻ thói quen sống để mọi người hiểu bạn hơn trước khi kết nối."
-                  : nextStep === "interests"
-                    ? "Có người muốn tìm hiểu thêm về nhu cầu ở ghép của bạn."
-                    : nextStep === "request"
-                      ? "Xem lại khu vực, ngân sách và thời gian chuyển vào bạn đã chia sẻ."
-                      : "Cho mọi người biết khu vực, ngân sách và thời gian bạn đang tìm."}
+                Bắt đầu từ nơi bạn muốn sống, rồi đối chiếu ngân sách và nhịp sinh hoạt để tìm một người cùng nhà thật
+                sự phù hợp.
               </p>
             </div>
-            <Link
-              className={styles.nextStepAction}
-              href={
-                nextStep === "profile"
-                  ? "/roommates/profile"
-                  : nextStep === "interests"
-                    ? "/roommates/interests"
-                    : "/roommates/my-request"
-              }
-            >
-              {nextStep === "profile"
-                ? "Hoàn thiện hồ sơ"
-                : nextStep === "interests"
-                  ? "Xem lời quan tâm"
-                  : nextStep === "request"
-                    ? "Xem yêu cầu"
-                    : "Tạo yêu cầu"}
-              <Icon name="arrow" className="h-4 w-4" />
-            </Link>
-          </motion.section>
-        ) : null}
-        <DiscoveryFilters count={activeFilters.length} hasFilters={hasFilters} onReset={reset}>
-          <form id="discovery-filter-form" className={styles.filterForm} onSubmit={submit}>
-            <div className={styles.filterHeading}>
-              <div className="flex items-center gap-3">
-                <span className="grid h-10 w-10 place-items-center rounded-full bg-primary-subtle text-primary-hover">
-                  <Icon name="sliders" className="h-5 w-5" />
-                </span>
-                <div>
-                  <h2 className="font-display text-heading-sm font-bold text-foreground">Lọc yêu cầu ở ghép</h2>
-                </div>
-              </div>
-            </div>
-            <div>
-              <InputField
-                id="roommate-discovery-area"
-                name="area"
-                label="Khu vực"
-                leadingIcon={<MapPin size={18} aria-hidden="true" />}
-                value={form.area}
-                maxLength={120}
-                placeholder="Ví dụ: Quận 3"
-                onChange={(event) => setForm((current) => ({ ...current, area: event.target.value }))}
-              />
-            </div>
-            <fieldset className={styles.range}>
-              <legend>Ngân sách mỗi người · đ/tháng</legend>
-              <div className={styles.budgetSlider}>
-                <div className={styles.sliderTrack} aria-hidden="true">
-                  <span
-                    style={{
-                      left: `${(sliderLow / sliderMax) * 100}%`,
-                      right: `${100 - (sliderHigh / sliderMax) * 100}%`
-                    }}
-                  />
-                </div>
-                <input
-                  aria-label="Ngân sách tối thiểu"
-                  type="range"
-                  min={0}
-                  max={sliderMax}
-                  step={sliderLow % 100000 === 0 ? 100000 : 1}
-                  value={sliderLow}
-                  onChange={(event) =>
-                    setForm((current) => ({
-                      ...current,
-                      budgetMinPerPerson: String(Math.min(Number(event.target.value), sliderHigh)).replace(/^0$/, "")
-                    }))
-                  }
-                />
-                <input
-                  aria-label="Ngân sách tối đa"
-                  type="range"
-                  min={0}
-                  max={sliderMax}
-                  step={sliderHigh % 100000 === 0 ? 100000 : 1}
-                  value={sliderHigh}
-                  onChange={(event) =>
-                    setForm((current) => ({
-                      ...current,
-                      budgetMaxPerPerson: String(Math.max(100000, sliderLow, Number(event.target.value)))
-                    }))
-                  }
-                />
-              </div>
-              <details className={styles.budgetEditor}>
-                <summary aria-label="Nhập ngân sách chính xác" className={styles.budgetSummary}>
-                  <span>{form.budgetMinPerPerson ? formatRoommateMoney(sliderLow) : "Không giới hạn"}</span>
-                  <span aria-hidden="true"> — </span>
-                  <span>{form.budgetMaxPerPerson ? formatRoommateMoney(sliderHigh) : "Không giới hạn"}</span>
-                </summary>
-                <div className={styles.rangeInputs}>
-                  <InputField
-                    id="roommate-discovery-budget-min"
-                    name="budgetMinPerPerson"
-                    label="Từ"
-                    type="number"
-                    min="1"
-                    inputMode="numeric"
-                    placeholder="Không giới hạn"
-                    value={form.budgetMinPerPerson}
-                    onChange={(event) => setForm((current) => ({ ...current, budgetMinPerPerson: event.target.value }))}
-                  />
-                  <InputField
-                    id="roommate-discovery-budget-max"
-                    name="budgetMaxPerPerson"
-                    label="Đến"
-                    type="number"
-                    min="1"
-                    inputMode="numeric"
-                    placeholder="Không giới hạn"
-                    value={form.budgetMaxPerPerson}
-                    onChange={(event) => setForm((current) => ({ ...current, budgetMaxPerPerson: event.target.value }))}
-                  />
-                </div>
-              </details>
-              <p className={styles.sliderHint}>Kéo để chọn, bấm mức tiền để nhập chính xác.</p>
-            </fieldset>
-            <div>
-              <SelectField
-                id="roommate-discovery-listing-mode"
-                name="listingMode"
-                label="Hình thức tìm phòng"
-                value={form.listingMode}
-                onChange={(event) =>
-                  setForm((current) => ({
-                    ...current,
-                    listingMode: event.target.value as DiscoveryForm["listingMode"]
-                  }))
+            <div className={styles.cockpitSide}>
+              <p className={styles.cockpitSideLabel}>Ba tín hiệu để bắt đầu</p>
+              <ul className={styles.matchSignals} aria-label="Tiêu chí ghép đôi">
+                <li>
+                  <Icon name="pin" className="h-4 w-4" />
+                  <span>Khu vực phù hợp</span>
+                  <strong>01</strong>
+                </li>
+                <li>
+                  <Icon name="ruler" className="h-4 w-4" />
+                  <span>Ngân sách rõ ràng</span>
+                  <strong>02</strong>
+                </li>
+                <li>
+                  <Icon name="heart" className="h-4 w-4" />
+                  <span>Nhịp sống tương thích</span>
+                  <strong>03</strong>
+                </li>
+              </ul>
+              <Link
+                className={styles.cockpitAction}
+                aria-label={
+                  nextStep === "profile"
+                    ? "Hoàn thiện hồ sơ"
+                    : nextStep === "interests"
+                      ? "Xem lời quan tâm"
+                      : nextStep === "request"
+                        ? "Xem nhu cầu"
+                        : "Đăng nhu cầu"
+                }
+                href={
+                  nextStep === "profile"
+                    ? "/roommates/profile"
+                    : nextStep === "interests"
+                      ? "/roommates/interests"
+                      : "/roommates/my-request"
                 }
               >
-                <option value="ALL">Tất cả</option>
-                <option value="LINKED">Đã có phòng đang cân nhắc</option>
-                <option value="UNLINKED">Cùng tìm phòng phù hợp</option>
-              </SelectField>
+                <span>
+                  <small>
+                    {nextStep === "profile"
+                      ? "Hồ sơ chưa hoàn chỉnh"
+                      : nextStep === "interests"
+                        ? "Bạn có lời quan tâm"
+                        : "Không gian của bạn"}
+                  </small>
+                  <strong>
+                    {nextStep === "profile"
+                      ? "Hoàn thiện để được tìm thấy"
+                      : nextStep === "interests"
+                        ? "Xem ai muốn kết nối"
+                        : nextStep === "request"
+                          ? "Xem nhu cầu đã đăng"
+                          : "Đăng nhu cầu ở ghép"}
+                  </strong>
+                </span>
+                <Icon name="arrow" className="h-4 w-4" />
+              </Link>
             </div>
-            <details
-              className={styles.moreFilters}
-              key={`${appliedForm.moveInFrom}:${appliedForm.moveInUntil}`}
-              open={Boolean(appliedForm.moveInFrom || appliedForm.moveInUntil)}
-            >
-              <summary>Bộ lọc thêm{form.moveInFrom || form.moveInUntil ? " · Có lọc ngày" : ""}</summary>
-              <fieldset className={styles.range}>
-                <legend>Thời gian dự kiến chuyển vào</legend>
-                <div className={styles.rangeInputs}>
-                  <InputField
-                    id="roommate-discovery-move-from"
-                    name="moveInFrom"
-                    label="Từ ngày"
-                    type="date"
-                    leadingIcon={<CalendarDays size={16} aria-hidden="true" />}
-                    value={form.moveInFrom}
-                    onChange={(event) => setForm((current) => ({ ...current, moveInFrom: event.target.value }))}
-                  />
-                  <InputField
-                    id="roommate-discovery-move-until"
-                    name="moveInUntil"
-                    label="Đến ngày"
-                    type="date"
-                    leadingIcon={<CalendarDays size={16} aria-hidden="true" />}
-                    value={form.moveInUntil}
-                    onChange={(event) => setForm((current) => ({ ...current, moveInUntil: event.target.value }))}
-                  />
-                </div>
-              </fieldset>
-            </details>
-            <div className={styles.filterActions}>
-              <Button type="submit" className="w-full sm:w-auto">
-                Lọc yêu cầu
-              </Button>
-              {hasFilters ? (
-                <button type="button" className={styles.resetFilters} onClick={reset}>
-                  Xóa bộ lọc
-                </button>
-              ) : null}
+          </div>
+          <div className={styles.cockpitCommand}>
+            <div className={styles.commandIntro}>
+              <span className={styles.commandIndex}>BƯỚC 01</span>
+              <div>
+                <strong>Chọn khu vực ưu tiên</strong>
+                <p>Địa chỉ chi tiết luôn được giữ riêng tư.</p>
+              </div>
+              {state === "success" && result ? <span>{result.data.length} hồ sơ</span> : null}
             </div>
-          </form>
-        </DiscoveryFilters>
-        {recommendationCapability ? (
-          <motion.div className={styles.aiSlot} {...revealProps}>
-            <Card className={`rm-roommate-ai-panel rm-roommate-card-static ${styles.ai}`}>
-              <div className="space-y-5" role="region" aria-label="Gợi ý người ở ghép bằng AI">
-                <div className="flex flex-wrap items-center justify-between gap-3">
-                  <div>
-                    <p className="rm-roommate-ai-label">
-                      <Icon name="sparkles" className="h-4 w-4" /> Gợi ý riêng
-                    </p>
-                    <h2 className="mt-3 font-display text-heading-md font-bold text-foreground">
-                      Gợi ý người ở ghép bằng AI
-                    </h2>
-                    <p className="mt-1 text-ui-sm leading-6 text-muted-foreground">
-                      Nhận một số gợi ý dựa trên nhu cầu và phong cách sống bạn đã cung cấp.
-                    </p>
-                  </div>
-                  <Button
+            <DiscoveryFilters
+              count={activeFilters.length}
+              hasFilters={hasFilters}
+              onReset={reset}
+              primaryControl={
+                <form className={styles.locationSearch} onSubmit={submit} role="search">
+                  <label htmlFor="roommate-discovery-area">
+                    <span className={styles.locationSearchIcon} aria-hidden="true">
+                      <MapPin size={19} />
+                    </span>
+                    <span className={styles.locationSearchCopy}>
+                      <span>Khu vực muốn ở</span>
+                      <input
+                        id="roommate-discovery-area"
+                        name="area"
+                        aria-label="Khu vực"
+                        list="roommate-area-options"
+                        value={form.area}
+                        maxLength={120}
+                        autoComplete="off"
+                        placeholder="Chọn quận hoặc khu vực"
+                        onChange={(event) => setForm((current) => ({ ...current, area: event.target.value }))}
+                      />
+                    </span>
+                  </label>
+                  <datalist id="roommate-area-options">
+                    {areaOptions
+                      .filter((area) => !form.area.trim() || areaSuggestionMatches(area, form.area))
+                      .map((area) => (
+                        <option key={area} value={area} />
+                      ))}
+                  </datalist>
+                  <button type="submit" className={styles.locationSearchSubmit}>
+                    <Icon name="search" className="h-4 w-4" />
+                    Tìm
+                  </button>
+                </form>
+              }
+              secondaryAction={
+                recommendationCapability ? (
+                  <button
                     type="button"
+                    className={styles.aiToggle}
                     aria-expanded={recommendationOpen}
                     onClick={() => {
                       const next = !recommendationOpen;
@@ -923,85 +832,248 @@ function DiscoveryContent() {
                       if (next && recommendationState === "idle") loadRecommendations();
                     }}
                   >
+                    <Icon name="sparkles" className="h-4 w-4" />
                     {recommendationOpen ? "Ẩn gợi ý" : "Gợi ý cho tôi"}
-                  </Button>
-                </div>
-                {recommendationOpen && recommendationState === "loading" ? (
-                  <div className="grid gap-4 xl:grid-cols-2" role="status" aria-label="Đang tạo gợi ý bằng AI">
-                    <DiscoveryCardSkeleton />
-                    <DiscoveryCardSkeleton />
+                  </button>
+                ) : null
+              }
+            >
+              <form id="discovery-filter-form" className={styles.filterForm} onSubmit={submit}>
+                <div className={styles.filterHeading}>
+                  <div className="flex items-center gap-3">
+                    <span className="grid h-10 w-10 place-items-center rounded-full bg-primary-subtle text-primary-hover">
+                      <Icon name="sliders" className="h-5 w-5" />
+                    </span>
+                    <div>
+                      <h2 className="font-display text-heading-sm font-bold text-foreground">Tìm người phù hợp</h2>
+                    </div>
                   </div>
-                ) : null}
-                {recommendationOpen && recommendationState === "error" ? (
-                  <ErrorState
-                    tone="neutral"
-                    title={
-                      recommendationError?.status === 429 ? "Gợi ý AI đang tạm giới hạn" : "Hiện chưa thể tạo gợi ý AI"
+                </div>
+                <fieldset className={styles.range}>
+                  <legend>Ngân sách mỗi người · đ/tháng</legend>
+                  <div className={styles.budgetSlider}>
+                    <div className={styles.sliderTrack} aria-hidden="true">
+                      <span
+                        style={{
+                          left: `${(sliderLow / sliderMax) * 100}%`,
+                          right: `${100 - (sliderHigh / sliderMax) * 100}%`
+                        }}
+                      />
+                    </div>
+                    <input
+                      aria-label="Ngân sách tối thiểu"
+                      type="range"
+                      min={0}
+                      max={sliderMax}
+                      step={sliderLow % 100000 === 0 ? 100000 : 1}
+                      value={sliderLow}
+                      onChange={(event) =>
+                        setForm((current) => ({
+                          ...current,
+                          budgetMinPerPerson: String(Math.min(Number(event.target.value), sliderHigh)).replace(
+                            /^0$/,
+                            ""
+                          )
+                        }))
+                      }
+                    />
+                    <input
+                      aria-label="Ngân sách tối đa"
+                      type="range"
+                      min={0}
+                      max={sliderMax}
+                      step={sliderHigh % 100000 === 0 ? 100000 : 1}
+                      value={sliderHigh}
+                      onChange={(event) =>
+                        setForm((current) => ({
+                          ...current,
+                          budgetMaxPerPerson: String(Math.max(100000, sliderLow, Number(event.target.value)))
+                        }))
+                      }
+                    />
+                  </div>
+                  <details className={styles.budgetEditor}>
+                    <summary aria-label="Nhập ngân sách chính xác" className={styles.budgetSummary}>
+                      <span>{form.budgetMinPerPerson ? formatRoommateMoney(sliderLow) : "Không giới hạn"}</span>
+                      <span aria-hidden="true"> — </span>
+                      <span>{form.budgetMaxPerPerson ? formatRoommateMoney(sliderHigh) : "Không giới hạn"}</span>
+                    </summary>
+                    <div className={styles.rangeInputs}>
+                      <InputField
+                        id="roommate-discovery-budget-min"
+                        name="budgetMinPerPerson"
+                        label="Từ"
+                        type="number"
+                        min="1"
+                        inputMode="numeric"
+                        placeholder="Không giới hạn"
+                        value={form.budgetMinPerPerson}
+                        onChange={(event) =>
+                          setForm((current) => ({ ...current, budgetMinPerPerson: event.target.value }))
+                        }
+                      />
+                      <InputField
+                        id="roommate-discovery-budget-max"
+                        name="budgetMaxPerPerson"
+                        label="Đến"
+                        type="number"
+                        min="1"
+                        inputMode="numeric"
+                        placeholder="Không giới hạn"
+                        value={form.budgetMaxPerPerson}
+                        onChange={(event) =>
+                          setForm((current) => ({ ...current, budgetMaxPerPerson: event.target.value }))
+                        }
+                      />
+                    </div>
+                  </details>
+                  <p className={styles.sliderHint}>Kéo để chọn, bấm mức tiền để nhập chính xác.</p>
+                </fieldset>
+                <div>
+                  <SelectField
+                    id="roommate-discovery-listing-mode"
+                    name="listingMode"
+                    label="Hình thức tìm phòng"
+                    value={form.listingMode}
+                    onChange={(event) =>
+                      setForm((current) => ({
+                        ...current,
+                        listingMode: event.target.value as DiscoveryForm["listingMode"]
+                      }))
                     }
-                    message={
-                      recommendationError?.status === 429
-                        ? "Vui lòng thử lại sau."
-                        : "Bạn vẫn có thể tiếp tục xem danh sách bên dưới."
-                    }
-                    action={<Button onClick={loadRecommendations}>Thử lại</Button>}
-                  />
-                ) : null}
-                {recommendationOpen &&
-                recommendationState === "success" &&
-                recommendationResult?.reason === "INSUFFICIENT_SEMANTIC_EVIDENCE" ? (
-                  <EmptyState
-                    title="Chưa có gợi ý phù hợp từ AI lúc này"
-                    description="Bạn vẫn có thể tiếp tục xem danh sách bên dưới."
-                    action={
-                      <Link
-                        className="font-bold underline decoration-2 underline-offset-4"
-                        href="/roommates/my-request"
-                      >
-                        Chỉnh sửa nhu cầu ở ghép
-                      </Link>
-                    }
-                  />
-                ) : null}
-                {recommendationOpen &&
-                recommendationState === "success" &&
-                recommendationResult &&
-                recommendationResult.items.filter((item) => !dismissedRecommendationIds.has(item.request.id)).length >
-                  0 ? (
-                  <motion.div className="grid gap-5 xl:grid-cols-2" {...staggerProps}>
-                    {recommendationResult.items
-                      .filter((item) => !dismissedRecommendationIds.has(item.request.id))
-                      .map((item) => (
-                        <RecommendationCard
-                          key={item.request.id}
-                          item={item}
-                          revealEnabled={scrollRevealEnabled}
-                          onDismiss={() =>
-                            setDismissedRecommendationIds((current) => new Set([...current, item.request.id]))
-                          }
-                        />
-                      ))}
-                  </motion.div>
-                ) : null}
-                {recommendationOpen &&
-                recommendationState === "success" &&
-                recommendationResult &&
-                recommendationResult.items.length === 0 ? (
-                  <EmptyState
-                    title="Chưa có gợi ý phù hợp lúc này"
-                    description="Bạn vẫn có thể tiếp tục xem danh sách bên dưới."
-                  />
-                ) : null}
-                {recommendationOpen ? (
-                  <Link
-                    className="inline-flex min-h-11 items-center font-bold underline decoration-2 underline-offset-4"
-                    href="/roommates/my-request"
                   >
-                    Chỉnh sửa nhu cầu ở ghép
-                  </Link>
-                ) : null}
+                    <option value="ALL">Tất cả</option>
+                    <option value="LINKED">Đã có phòng đang cân nhắc</option>
+                    <option value="UNLINKED">Cùng tìm phòng phù hợp</option>
+                  </SelectField>
+                </div>
+                <details
+                  className={styles.moreFilters}
+                  key={`${appliedForm.moveInFrom}:${appliedForm.moveInUntil}`}
+                  open={Boolean(appliedForm.moveInFrom || appliedForm.moveInUntil)}
+                >
+                  <summary>Bộ lọc thêm{form.moveInFrom || form.moveInUntil ? " · Có lọc ngày" : ""}</summary>
+                  <fieldset className={styles.range}>
+                    <legend>Thời gian dự kiến chuyển vào</legend>
+                    <div className={styles.rangeInputs}>
+                      <InputField
+                        id="roommate-discovery-move-from"
+                        name="moveInFrom"
+                        label="Từ ngày"
+                        type="date"
+                        leadingIcon={<CalendarDays size={16} aria-hidden="true" />}
+                        value={form.moveInFrom}
+                        onChange={(event) => setForm((current) => ({ ...current, moveInFrom: event.target.value }))}
+                      />
+                      <InputField
+                        id="roommate-discovery-move-until"
+                        name="moveInUntil"
+                        label="Đến ngày"
+                        type="date"
+                        leadingIcon={<CalendarDays size={16} aria-hidden="true" />}
+                        value={form.moveInUntil}
+                        onChange={(event) => setForm((current) => ({ ...current, moveInUntil: event.target.value }))}
+                      />
+                    </div>
+                  </fieldset>
+                </details>
+              </form>
+            </DiscoveryFilters>
+            <div className={styles.cockpitFooter}>
+              <div className={styles.quickAreas}>
+                <span>Khu vực phổ biến</span>
+                {areaOptions.slice(0, 5).map((area) => (
+                  <button
+                    key={area}
+                    type="button"
+                    aria-pressed={form.area === area}
+                    onClick={() => {
+                      const next = { ...form, area };
+                      setForm(next);
+                      navigate(next, 1);
+                    }}
+                  >
+                    {area}
+                  </button>
+                ))}
               </div>
-            </Card>
-          </motion.div>
+              <details className={styles.locationHelp}>
+                <summary>RentMate hiểu “khu vực” thế nào?</summary>
+                <p>
+                  Khu vực dùng để lọc hồ sơ phù hợp. Địa chỉ chi tiết không hiển thị công khai và các từ như “gần
+                  trường” chưa được tính theo khoảng cách thực tế.
+                </p>
+              </details>
+            </div>
+          </div>
+        </motion.section>
+        {recommendationCapability && recommendationOpen ? (
+          <motion.section
+            className={styles.aiExpanded}
+            role="region"
+            aria-label="Gợi ý người ở ghép bằng AI"
+            {...revealProps}
+          >
+            <div className={styles.aiExpandedHeader}>
+              <div>
+                <p className="rm-roommate-ai-label">
+                  <Icon name="sparkles" className="h-4 w-4" /> Gợi ý cho riêng bạn
+                </p>
+                <p>Dựa trên nhu cầu và phong cách sống đã chia sẻ; đây là điểm bắt đầu cho cuộc trò chuyện.</p>
+              </div>
+              <Link href="/roommates/my-request">Chỉnh nhu cầu</Link>
+            </div>
+            {recommendationState === "loading" ? (
+              <div className={styles.resultsList} role="status" aria-label="Đang tạo gợi ý bằng AI">
+                <DiscoveryCardSkeleton />
+                <DiscoveryCardSkeleton />
+              </div>
+            ) : null}
+            {recommendationState === "error" ? (
+              <ErrorState
+                tone="neutral"
+                title={
+                  recommendationError?.status === 429 ? "Gợi ý AI đang tạm giới hạn" : "Hiện chưa thể tạo gợi ý AI"
+                }
+                message={
+                  recommendationError?.status === 429
+                    ? "Vui lòng thử lại sau."
+                    : "Bạn vẫn có thể tiếp tục xem danh sách bên dưới."
+                }
+                action={<Button onClick={loadRecommendations}>Thử lại</Button>}
+              />
+            ) : null}
+            {recommendationState === "success" && recommendationResult?.reason === "INSUFFICIENT_SEMANTIC_EVIDENCE" ? (
+              <EmptyState
+                title="Chưa có gợi ý phù hợp từ AI lúc này"
+                description="Bạn vẫn có thể tiếp tục xem danh sách bên dưới."
+              />
+            ) : null}
+            {recommendationState === "success" &&
+            recommendationResult &&
+            recommendationResult.items.filter((item) => !dismissedRecommendationIds.has(item.request.id)).length > 0 ? (
+              <motion.div className={styles.resultsList} {...staggerProps}>
+                {recommendationResult.items
+                  .filter((item) => !dismissedRecommendationIds.has(item.request.id))
+                  .map((item) => (
+                    <RecommendationCard
+                      key={item.request.id}
+                      item={item}
+                      revealEnabled={scrollRevealEnabled}
+                      onDismiss={() =>
+                        setDismissedRecommendationIds((current) => new Set([...current, item.request.id]))
+                      }
+                    />
+                  ))}
+              </motion.div>
+            ) : null}
+            {recommendationState === "success" && recommendationResult && recommendationResult.items.length === 0 ? (
+              <EmptyState
+                title="Chưa có gợi ý phù hợp lúc này"
+                description="Bạn vẫn có thể tiếp tục xem danh sách bên dưới."
+              />
+            ) : null}
+          </motion.section>
         ) : null}
         <motion.section
           ref={resultsRef}
@@ -1010,17 +1082,20 @@ function DiscoveryContent() {
           {...revealProps}
         >
           <div className={styles.resultsHeading}>
-            <h2
-              id="roommate-normal-discovery-heading"
-              tabIndex={-1}
-              className="mt-1 font-display text-heading-lg font-bold text-foreground"
-            >
-              Các yêu cầu đang mở
-            </h2>
+            <div>
+              <p className={styles.resultsEyebrow}>DANH BẠ HỒ SƠ</p>
+              <h2
+                id="roommate-normal-discovery-heading"
+                tabIndex={-1}
+                className="mt-1 font-display text-heading-lg font-bold text-foreground"
+              >
+                Tìm người phù hợp với kế hoạch của bạn
+              </h2>
+            </div>
             <div className={styles.resultMeta}>
               <p className="text-ui-sm text-muted-foreground" role="status" aria-live="polite">
                 {state === "success" && result
-                  ? `${result.data.length} yêu cầu trên trang này`
+                  ? `${result.data.length} hồ sơ trên trang này`
                   : state === "error"
                     ? "Chưa tải được kết quả"
                     : "Đang tìm người bạn cùng nhà…"}
@@ -1029,6 +1104,26 @@ function DiscoveryContent() {
                 <CalendarDays size={14} aria-hidden="true" /> Mới nhất trước
               </span>
             </div>
+          </div>
+          <div className={styles.modeTabs} role="group" aria-label="Xem nhanh theo hình thức">
+            {[
+              { value: "ALL", label: "Tất cả hồ sơ" },
+              { value: "LINKED", label: "Đã có phòng" },
+              { value: "UNLINKED", label: "Cùng tìm phòng" }
+            ].map((mode) => (
+              <button
+                key={mode.value}
+                type="button"
+                aria-pressed={appliedForm.listingMode === mode.value}
+                onClick={() => {
+                  const next = { ...appliedForm, listingMode: mode.value as DiscoveryForm["listingMode"] };
+                  setForm(next);
+                  navigate(next, 1);
+                }}
+              >
+                {mode.label}
+              </button>
+            ))}
           </div>
           {activeFilters.length > 0 ? (
             <div className={styles.activeFilters} role="group" aria-label="Bộ lọc đang áp dụng">
@@ -1054,7 +1149,7 @@ function DiscoveryContent() {
             </div>
           ) : null}
           {state === "idle" || state === "loading" ? (
-            <div className="grid gap-5 xl:grid-cols-2" role="status" aria-label="Đang tìm yêu cầu ở ghép">
+            <div className={styles.resultsList} role="status" aria-label="Đang tìm người ở ghép">
               {Array.from({ length: 6 }, (_, index) => (
                 <DiscoveryCardSkeleton key={index} />
               ))}
@@ -1068,23 +1163,36 @@ function DiscoveryContent() {
             />
           ) : null}
           {state === "success" && result?.data.length === 0 ? (
-            <EmptyState
-              title="Chưa tìm thấy yêu cầu phù hợp"
-              description="Thử điều chỉnh khu vực, ngân sách hoặc thời gian dự kiến chuyển vào."
-              action={
-                activeFilters.length > 0 ? (
-                  <Button onClick={reset}>Xóa điều kiện lọc</Button>
-                ) : (
-                  <Link className="font-bold underline decoration-2 underline-offset-4" href="/roommates/my-request">
-                    Tạo yêu cầu của bạn
-                  </Link>
-                )
-              }
-            />
+            <div className={styles.discoveryEmpty}>
+              <EmptyState
+                title="Chưa tìm thấy người phù hợp"
+                description="Thử điều chỉnh khu vực, ngân sách hoặc thời gian dự kiến chuyển vào."
+                action={
+                  activeFilters.length > 0 ? (
+                    <Button onClick={reset}>Xóa điều kiện lọc</Button>
+                  ) : (
+                    <Link className={styles.emptyAction} href="/roommates/my-request">
+                      <Icon name="plus" className="h-4 w-4" /> Đăng nhu cầu của bạn
+                    </Link>
+                  )
+                }
+              />
+              <div className={styles.emptySuggestions} aria-label="Gợi ý để bắt đầu">
+                <span>
+                  <Icon name="user" className="h-4 w-4" /> Hồ sơ chân thật
+                </span>
+                <span>
+                  <Icon name="map" className="h-4 w-4" /> Nhu cầu rõ ràng
+                </span>
+                <span>
+                  <Icon name="message" className="h-4 w-4" /> Lời chào tử tế
+                </span>
+              </div>
+            </div>
           ) : null}
           {state === "success" && result && result.data.length > 0 ? (
             <div className="space-y-5">
-              <motion.div className={`grid gap-5 xl:grid-cols-2 ${styles.resultsGrid}`} {...staggerProps}>
+              <motion.div className={styles.resultsList} {...staggerProps}>
                 {result.data.map((request) => (
                   <DiscoveryCard
                     key={request.id}
@@ -1095,7 +1203,7 @@ function DiscoveryContent() {
                 ))}
               </motion.div>
               {result.pagination.page > 1 || result.pagination.hasNextPage ? (
-                <nav className={styles.pagination} aria-label="Phân trang yêu cầu ở ghép">
+                <nav className={styles.pagination} aria-label="Phân trang người đang tìm ở ghép">
                   <button
                     type="button"
                     aria-label="Trang trước"

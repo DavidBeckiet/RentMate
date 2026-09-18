@@ -29,8 +29,12 @@ describe("AccountMenu", () => {
     );
     fireEvent.click(screen.getByRole("button", { name: /Nguyễn Văn An/ }));
     const menu = screen.getByRole("menu", { name: "Tài khoản" });
-    expect(within(menu).getByRole("menuitem", { name: "Hồ sơ" })).toHaveAttribute("href", "/landlord/profile");
-    expect(within(menu).getByRole("menuitem", { name: "Không gian cho thuê" })).toHaveAttribute("href", "/landlord");
+    expect(within(menu).getByRole("menuitem", { name: "Quản lý cho thuê" })).toHaveAttribute("href", "/landlord");
+    expect(within(menu).getByRole("menuitem", { name: "Hồ sơ & xác minh" })).toHaveAttribute(
+      "href",
+      "/landlord/profile"
+    );
+    expect(within(menu).getByRole("menuitem", { name: "Xem trang người thuê" })).toHaveAttribute("href", "/search");
     fireEvent.pointerDown(screen.getByRole("button", { name: "Outside" }));
     expect(screen.queryByRole("menu")).not.toBeInTheDocument();
   });

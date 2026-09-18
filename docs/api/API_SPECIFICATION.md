@@ -1011,7 +1011,8 @@ Only `phone` is accepted. Tenant/admin may set it to `null`; landlord may not.
 - **Authentication/role:** Active `LANDLORD`.
 - **Query:** `status` (optional listing status), `page`, `pageSize`. No other query fields.
 - **Ordering:** `updatedAt DESC`, then `id DESC`.
-- **Success:** `200 OK` with paginated owner listing summaries.
+- **Success:** `200 OK` with paginated owner listing summaries and top-level `metadata.hasEverApprovedListing`.
+- **Metadata:** `hasEverApprovedListing` is computed owner-wide from append-only moderation history (`new_status = APPROVED`) for any owned listing. It is independent of pagination, listing filters, current listing/business status, and availability state.
 - **Important errors:** `401`; `403`; `422`.
 - **Privacy:** Query is scoped by the authenticated landlord ID.
 - **Idempotency:** Safe and idempotent.

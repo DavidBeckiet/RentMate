@@ -50,7 +50,7 @@ describe("GoogleLandlordCompletionForm", () => {
     fireEvent.click(screen.getByRole("button", { name: "Hoàn tất đăng ký" }));
     await waitFor(() => expect(apiMocks.completeGoogleLandlord).toHaveBeenCalledWith({ phone: "+84912345678" }));
     expect(authMocks.refresh).toHaveBeenCalledTimes(1);
-    expect(navigationMocks.replace).toHaveBeenCalledWith("/");
+    expect(navigationMocks.replace).toHaveBeenCalledWith("/landlord");
   });
 
   it("offers a safe restart when the one-time onboarding ticket is gone", async () => {

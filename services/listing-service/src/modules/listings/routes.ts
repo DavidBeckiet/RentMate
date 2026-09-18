@@ -16,7 +16,9 @@ import {
 } from "../../../../shared/src/runtime/shared/middleware/rate-limit.js";
 import {
   createForwardGeocodingHandler,
-  createForwardGeocodingValidationPreflightHandler
+  createForwardGeocodingValidationPreflightHandler,
+  createReverseGeocodingHandler,
+  createReverseGeocodingValidationPreflightHandler
 } from "./controllers/geocoding-controller.js";
 import type { GeocodingService } from "./services/geocoding-service.js";
 import { createListingDraftHandler } from "./controllers/listing-create-controller.js";
@@ -254,5 +256,14 @@ export function registerListingsRoutes(router: Router, dependencies: ListingsRou
     geocodingUserRateLimiter,
     nominatimProviderRateLimiter,
     createForwardGeocodingHandler(dependencies.geocodingService)
+  );
+  router.post(
+    "/geocoding/reverse",
+    dependencies.authenticationMiddleware,
+    dependencies.landlordRoleMiddleware,
+    createReverseGeocodingValidationPreflightHandler(),
+    geocodingUserRateLimiter,
+    nominatimProviderRateLimiter,
+    createReverseGeocodingHandler(dependencies.geocodingService)
   );
 }

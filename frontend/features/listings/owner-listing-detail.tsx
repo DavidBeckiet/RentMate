@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Button } from "../../components/ui/button";
 import { ErrorState, LoadingState } from "../../components/ui/feedback-states";
+import { Icon } from "../../components/ui/icon";
 import { BusinessStatusBadge, ListingStatusBadge } from "../../components/ui/status-badge";
 import { api, ApiError } from "../../lib/api/client";
 import { useAuth } from "../../lib/auth/auth-provider";
@@ -211,25 +212,38 @@ export function OwnerListingDetail({ listingId }: { readonly listingId: string }
   const title = detail.title ?? "Chưa có tiêu đề";
   const reasonLabel = detail.status === "REJECTED" ? "Lý do từ chối" : detail.status === "HIDDEN" ? "Lý do ẩn" : null;
   const blocked = editorDirty || editorBusy || imageBusy || imageOrderDirty;
+  const completionItems = [
+    { label: "Tiêu đề và mô tả", complete: Boolean(detail.title?.trim() && detail.description?.trim()) },
+    {
+      label: "Giá, diện tích và loại phòng",
+      complete: detail.monthlyRent !== null && detail.roomAreaSqm !== null && detail.propertyType !== null
+    },
+    {
+      label: "Địa chỉ và ghim bản đồ",
+      complete: Boolean(
+        detail.addressText?.trim() && detail.areaName?.trim() && detail.latitude !== null && detail.longitude !== null
+      )
+    },
+    { label: "Ít nhất một ảnh", complete: detail.images.length > 0 }
+  ];
+  const completedItems = completionItems.filter((item) => item.complete).length;
+  const completionPercent = Math.round((completedItems / completionItems.length) * 100);
 
   return (
-    <article className={`${styles.ownerDetail} rm-workspace rm-workspace-page space-y-8`}>
-      <header className="rm-workspace-hero" data-tone={detail.status === "REJECTED" ? "attention" : "info"}>
-        <Link
-          href="/landlord"
-          className="text-sm font-semibold text-primary-hover underline decoration-2 underline-offset-4"
-        >
-          ← Quay lại tin của tôi
+    <article className={`${styles.ownerDetail} rm-workspace rm-workspace-page`}>
+      <header className={styles.hero} data-tone={detail.status === "REJECTED" ? "attention" : "info"}>
+        <Icon name="building" className={styles.heroWatermark} />
+        <Link href="/landlord" className={styles.backLink}>
+          <Icon name="arrow" className={styles.backIcon} />
+          Tin của tôi
         </Link>
-        <div className="flex flex-wrap items-start justify-between gap-4">
+        <div className={styles.heroContent}>
           <div>
-            <p className="rm-workspace-eyebrow">Chỉnh sửa tin đăng</p>
-            <h1 className="rm-workspace-title mt-3">{title}</h1>
-            <p className="mt-3 text-sm text-muted-foreground">
-              Cập nhật lần cuối: {new Date(detail.updatedAt).toLocaleString("vi-VN")}
-            </p>
+            <p className={styles.eyebrow}>Trung tâm đăng tin</p>
+            <h1>{title}</h1>
+            <p className={styles.updatedAt}>Lưu lần cuối {new Date(detail.updatedAt).toLocaleString("vi-VN")}</p>
           </div>
-          <div className="flex flex-wrap justify-end gap-2">
+          <div className={styles.badges}>
             <ListingStatusBadge status={detail.status} />
             <BusinessStatusBadge status={detail.businessStatus} />
           </div>
@@ -242,38 +256,87 @@ export function OwnerListingDetail({ listingId }: { readonly listingId: string }
         ) : null}
       </header>
 
-      <OwnerListingEditor
-        detail={detail}
-        propertyTypes={propertyTypes}
-        amenities={amenities}
-        externalFeedback={editorFeedback}
-        onDetailChange={replaceDetail}
-        onDirtyChange={setEditorDirty}
-        onBusyChange={setEditorBusy}
-        onEdit={() => setEditorFeedback(null)}
-        onRetryPropertyTypes={() => setPropertyVersion((version) => version + 1)}
-        onRetryAmenities={() => setAmenityVersion((version) => version + 1)}
-      />
+      <nav className={styles.sectionNav} aria-label="Các phần của tin đăng">
+        <a href="#listing-content">
+          <Icon name="note" className="h-4 w-4" />
+          Nội dung
+        </a>
+        <a href="#listing-images">
+          <Icon name="eye" className="h-4 w-4" />
+          Hình ảnh
+        </a>
+        <a href="#listing-publishing">
+          <Icon name="send" className="h-4 w-4" />
+          Đăng tin
+        </a>
+      </nav>
 
-      <OwnerBusinessStatusControl detail={detail} disabled={blocked} onDetailChange={replaceDetail} />
+      <div className={styles.detailGrid}>
+        <main className={styles.mainColumn}>
+          <div id="listing-content" className={styles.anchorTarget}>
+            <OwnerListingEditor
+              detail={detail}
+              propertyTypes={propertyTypes}
+              amenities={amenities}
+              externalFeedback={editorFeedback}
+              onDetailChange={replaceDetail}
+              onDirtyChange={setEditorDirty}
+              onBusyChange={setEditorBusy}
+              onEdit={() => setEditorFeedback(null)}
+              onRetryPropertyTypes={() => setPropertyVersion((version) => version + 1)}
+              onRetryAmenities={() => setAmenityVersion((version) => version + 1)}
+            />
+          </div>
 
-      <OwnerListingAvailabilityControl detail={detail} disabled={blocked} onDetailChange={replaceDetail} />
+          <div id="listing-images" className={styles.anchorTarget}>
+            <OwnerImageManager
+              detail={detail}
+              contentBlocked={editorDirty || editorBusy}
+              onCanonicalChange={replaceDetail}
+              onBusyChange={setImageBusy}
+              onOrderDirtyChange={setImageOrderDirty}
+            />
+          </div>
+        </main>
 
-      <OwnerImageManager
-        detail={detail}
-        contentBlocked={editorDirty || editorBusy}
-        onCanonicalChange={replaceDetail}
-        onBusyChange={setImageBusy}
-        onOrderDirtyChange={setImageOrderDirty}
-      />
+        <aside id="listing-publishing" className={`${styles.sideColumn} ${styles.anchorTarget}`}>
+          <section className={styles.completionCard} aria-labelledby="completion-heading">
+            <div className={styles.completionHeader}>
+              <div>
+                <p className={styles.sideEyebrow}>Mức độ hoàn thiện</p>
+                <h2 id="completion-heading">Sẵn sàng đăng tin</h2>
+              </div>
+              <strong>{completionPercent}%</strong>
+            </div>
+            <div className={styles.progressTrack} aria-label={`Đã hoàn thành ${completionPercent}%`}>
+              <span style={{ width: `${completionPercent}%` }} />
+            </div>
+            <ul className={styles.completionList}>
+              {completionItems.map((item) => (
+                <li key={item.label} data-complete={item.complete}>
+                  <Icon name={item.complete ? "check" : "minus"} className="h-4 w-4" />
+                  {item.label}
+                </li>
+              ))}
+            </ul>
+            <p>
+              {completedItems === completionItems.length
+                ? "Tin đã đủ nội dung cốt lõi."
+                : `Còn ${completionItems.length - completedItems} mục cần hoàn thiện.`}
+            </p>
+          </section>
 
-      <OwnerLifecycleActions
-        detail={detail}
-        blocked={blocked}
-        onDetailChange={replaceDetail}
-        onEditorFeedback={setEditorFeedback}
-        onRefresh={refreshDetail}
-      />
+          <OwnerBusinessStatusControl detail={detail} disabled={blocked} onDetailChange={replaceDetail} />
+          <OwnerListingAvailabilityControl detail={detail} disabled={blocked} onDetailChange={replaceDetail} />
+          <OwnerLifecycleActions
+            detail={detail}
+            blocked={blocked}
+            onDetailChange={replaceDetail}
+            onEditorFeedback={setEditorFeedback}
+            onRefresh={refreshDetail}
+          />
+        </aside>
+      </div>
     </article>
   );
 }

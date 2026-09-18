@@ -139,7 +139,7 @@ test.describe("current architecture: authentication and marketplace acceptance",
     const adminContext = await createAuthenticatedContext(browser, seededAccounts.admin);
     const admin = await adminContext.newPage();
     await admin.goto("/admin");
-    await expect(admin.getByRole("heading", { name: "Hàng đợi kiểm duyệt", exact: true })).toBeVisible();
+    await expect(admin.getByRole("heading", { name: "Kiểm duyệt tin", exact: true })).toBeVisible();
     await Promise.all([invalidContext.close(), tenantContext.close(), landlordContext.close(), adminContext.close()]);
   });
 });

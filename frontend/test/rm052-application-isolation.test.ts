@@ -10,7 +10,8 @@ const production = [
   "features/listings/admin-listing-detail.tsx",
   "features/listings/moderation-history.tsx",
   "features/listings/moderation-actions.tsx",
-  "features/auth/admin-users-page.tsx"
+  "features/auth/admin-users-page.tsx",
+  "features/auth/admin-user-detail.tsx"
 ] as const;
 const read = (path: string) => readFileSync(join(root, path), "utf8");
 
@@ -34,14 +35,15 @@ describe("RM-052 application isolation", () => {
 
   it("keeps moderation and activation explicit without optimistic or automatic retry machinery", () => {
     const actions = read("features/listings/moderation-actions.tsx");
-    const users = read("features/auth/admin-users-page.tsx");
-    expect(actions).toContain("Xác nhận hành động");
-    expect(users).toContain("Xác nhận thay đổi");
+    const users = read("features/auth/admin-user-detail.tsx");
+    expect(actions).toContain('title: "Duyệt tin này?"');
+    expect(actions).toContain('aria-haspopup="dialog"');
+    expect(users).toContain("title={`${actionLabel(detail)} tài khoản?`}");
     expect(`${actions}\n${users}`).not.toMatch(/setInterval|backoff|retryCount|optimistic/i);
-    expect(users).toContain("{ isActive: !candidate.isActive }");
+    expect(users).toContain("{ isActive: !detail.isActive }");
     expect(actions).toContain("apiError?.status === 409");
     expect(actions).toContain('apiError?.code === "NETWORK_ERROR"');
-    expect(actions).toContain("onRefreshHistory(false)");
+    expect(actions).toContain("onReloadCanonical(false)");
   });
 
   it("registers only the focused RM-052 suite without dependency drift", () => {

@@ -40,9 +40,9 @@ test("normalizes valid review and moderation inputs", () => {
     pageSize: 20,
     offset: 0
   });
-  assert.deepEqual(validateUpdateReviewReportStatusBody({ status: "investigating", note: null }), {
-    status: "INVESTIGATING",
-    note: null
+  assert.deepEqual(validateUpdateReviewReportStatusBody({ status: "resolved", note: "  Đã xem xét.  " }), {
+    status: "RESOLVED",
+    note: "Đã xem xét."
   });
 });
 
@@ -71,4 +71,5 @@ test("rejects invalid ratings, short comments, pending moderation and unknown fi
   assert.throws(() => validateAdminReviewQuery({ tenantId: "1" }), /invalid data/i);
   assert.throws(() => validateCreateReviewReportBody({ category: "UNKNOWN" }), /invalid data/i);
   assert.throws(() => validateUpdateReviewReportStatusBody({ status: "RESOLVED", note: null }), /invalid data/i);
+  assert.throws(() => validateUpdateReviewReportStatusBody({ status: "INVESTIGATING" }), /invalid data/i);
 });

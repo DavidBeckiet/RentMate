@@ -129,7 +129,9 @@ function SupportRequestForm() {
   if (authStatus === "anonymous") {
     return (
       <div className="space-y-3">
-        <p className="text-sm leading-6 text-slate-700">Bạn cần đăng nhập để RentMate biết nơi gửi phản hồi.</p>
+        <p className="text-sm leading-6 text-slate-700">
+          Bạn cần đăng nhập để gửi yêu cầu hỗ trợ cho đội ngũ RentMate.
+        </p>
         <Link
           href="/login"
           className="inline-flex min-h-11 items-center border-2 border-heroDark-950 bg-rent-surface px-4 font-display text-sm font-bold shadow-glass-sm transition-transform hover:-translate-y-0.5 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-rent-coral"
@@ -158,7 +160,7 @@ function SupportRequestForm() {
     return (
       <div className="space-y-4" role="status">
         <p className="text-sm font-bold text-teal-900">
-          Đã gửi yêu cầu hỗ trợ #{createdId}. Đội ngũ RentMate sẽ xem và phản hồi trong ứng dụng.
+          Đã nhận yêu cầu hỗ trợ #{createdId}. Đội ngũ RentMate sẽ xem xét nội dung bạn gửi.
         </p>
         <Button
           variant="secondary"
@@ -339,8 +341,8 @@ export function HelpCenter() {
               Gửi yêu cầu cho đội ngũ RentMate
             </h2>
             <p className="mt-3 text-sm leading-6 text-slate-700">
-              Nếu FAQ chưa giải đáp được vấn đề của bạn, hãy gửi yêu cầu hỗ trợ để đội ngũ tiếp nhận và phản hồi trong
-              ứng dụng.
+              Nếu FAQ chưa giải đáp được vấn đề của bạn, hãy gửi yêu cầu hỗ trợ để đội ngũ RentMate tiếp nhận và xem
+              xét.
             </p>
             <Link
               href="#support-request"
@@ -364,7 +366,7 @@ export function HelpCenter() {
             Gửi vấn đề cho RentMate
           </h2>
           <p className="mt-3 text-sm leading-6 text-rent-secondary">
-            Chọn đúng chủ đề và mô tả ngắn gọn. Yêu cầu sẽ được đưa vào hàng đợi để admin tiếp nhận.
+            Chọn đúng chủ đề và mô tả ngắn gọn. Đội ngũ RentMate sẽ tiếp nhận và xem xét yêu cầu của bạn.
           </p>
         </div>
         <div className="mt-6 max-w-3xl">

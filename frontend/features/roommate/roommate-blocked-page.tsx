@@ -82,7 +82,7 @@ function BlockedListContent() {
     <div className="rm-roommate-page space-y-6">
       <RoommatePageHeader
         title="Đã chặn"
-        description="Quản lý các tương tác ở ghép bạn đã chặn. Bỏ chặn không khôi phục lời quan tâm, kết nối hoặc yêu cầu cũ."
+        description="Quản lý các tương tác ở ghép bạn đã chặn. Bỏ chặn không khôi phục lời quan tâm, kết nối hoặc nhu cầu cũ."
       />
       {state === "loading" ? <LoadingState message="Đang tải danh sách đã chặn…" /> : null}
       {state === "error" ? (
@@ -116,7 +116,7 @@ function BlockedListContent() {
               const memberSince = formatMemberSince(block.counterpart.memberSince);
               const displayName = block.counterpart.displayName ?? "Tài khoản đã chặn";
               const sourceLabel =
-                block.unblockAction.kind === "REQUEST" ? "Chặn từ yêu cầu ở ghép" : "Chặn từ lời quan tâm";
+                block.unblockAction.kind === "REQUEST" ? "Chặn từ nhu cầu ở ghép" : "Chặn từ lời quan tâm";
               return (
                 <Card key={key} className="rm-roommate-card-static space-y-4">
                   <div className="flex items-start gap-3">

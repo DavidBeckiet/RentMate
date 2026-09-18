@@ -556,73 +556,9 @@ summary {
     color: rgb(var(--color-primary-hover));
   }
 
-  .rm-landlord-shell {
-    background: rgb(var(--color-background));
-  }
-
-  .rm-landlord-sidebar {
-    border-right-color: rgb(255 255 255 / 0.12);
-    background: rgb(var(--color-brand-dark));
-    padding: 1.25rem;
-  }
-
-  .rm-landlord-sidebar .rm-workspace-side-label {
-    color: rgb(255 255 255 / 0.56);
-    font-size: 0.6875rem;
-    font-weight: 800;
-    letter-spacing: 0.14em;
-    text-transform: uppercase;
-  }
-
-  .rm-landlord-sidebar .rm-workspace-side-title {
-    color: rgb(255 255 255);
-    font-family: var(--font-be-vietnam-pro), sans-serif;
-    font-size: 1.1rem;
-    font-weight: 700;
-    letter-spacing: -0.025em;
-  }
-
-  .rm-landlord-sidebar .rm-workspace-nav {
-    margin-top: 1.5rem;
-  }
-
-  .rm-landlord-sidebar .rm-workspace-nav a {
-    min-height: 2.875rem;
-    border-color: transparent;
-    color: rgb(255 255 255 / 0.74);
-  }
-
-  .rm-landlord-sidebar .rm-workspace-nav a:hover {
-    background: rgb(255 255 255 / 0.1);
-    color: rgb(255 255 255);
-  }
-
-  .rm-landlord-sidebar .rm-workspace-nav a[aria-current="page"] {
-    background: rgb(var(--color-accent));
-    box-shadow: 0 5px 14px rgb(0 0 0 / 0.12);
-    color: rgb(var(--color-foreground));
-  }
-
-  .rm-workspace-topbar {
-    background: rgb(var(--color-surface) / 0.94);
-    -webkit-backdrop-filter: blur(14px);
-    backdrop-filter: blur(14px);
-  }
-
-  .rm-landlord-drawer .rm-workspace-nav a {
-    border-color: transparent;
-    color: rgb(var(--color-foreground));
-  }
-
-  .rm-landlord-drawer .rm-workspace-nav a:hover,
-  .rm-landlord-drawer .rm-workspace-nav a[aria-current="page"] {
+  .rm-admin-drawer .rm-admin-navigation-toggle[data-active="true"] {
     background: rgb(var(--color-primary-subtle));
     color: rgb(var(--color-primary-hover));
-  }
-
-  .rm-workspace-main {
-    width: 100%;
-    max-width: 96rem;
   }
 
   .rm-workspace-page {

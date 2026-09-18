@@ -4,7 +4,7 @@ import { useState } from "react";
 import type { AuthContextValue } from "../../lib/auth/auth-provider";
 import type { ListingContentBody, OwnerListingDetail, UserProfile } from "../../types/api";
 
-const apiMocks = vi.hoisted(() => ({ updateOwned: vi.fn(), forwardGeocode: vi.fn() }));
+const apiMocks = vi.hoisted(() => ({ updateOwned: vi.fn(), forwardGeocode: vi.fn(), reverseGeocode: vi.fn() }));
 const useAuthMock = vi.hoisted(() => vi.fn<() => AuthContextValue>());
 
 vi.mock("../../lib/api/client", async () => {
@@ -119,6 +119,7 @@ describe("OwnerListingEditor", () => {
     refresh.mockReset();
     refresh.mockResolvedValue();
     useAuthMock.mockReturnValue({ status: "authenticated", user: landlord, error: null, refresh, logout: vi.fn() });
+    Object.defineProperty(navigator, "geolocation", { configurable: true, value: undefined });
   });
 
   it("allows a fully nullable draft and sends blank dirty values as null", async () => {
@@ -139,10 +140,8 @@ describe("OwnerListingEditor", () => {
     change("Tiêu đề", "   ");
     change("Giá thuê mỗi tháng", "");
     change("Diện tích (m²)", "");
-    change("Địa chỉ chính xác", "");
-    change("Tên khu vực", "");
-    change("Vĩ độ", "");
-    change("Kinh độ", "");
+    change("Số nhà, đường, tòa nhà", "");
+    change("Phường/xã, tỉnh/thành phố", "");
     fireEvent.change(screen.getByLabelText("Loại phòng"), { target: { value: "" } });
     save();
     await waitFor(() => expect(apiMocks.updateOwned).toHaveBeenCalledOnce());
@@ -174,7 +173,6 @@ describe("OwnerListingEditor", () => {
 
   it.each([
     ["0", "Giá thuê phải là số nguyên dương"],
-    ["1.5", "Giá thuê phải là số nguyên dương"],
     ["1000000000000", "Giá thuê phải là số nguyên dương"]
   ])("validates rent %s without turning zero into null", (value, message) => {
     render(<Harness />);
@@ -182,6 +180,19 @@ describe("OwnerListingEditor", () => {
     save();
     expect(screen.getByText(new RegExp(message))).toBeInTheDocument();
     expect(apiMocks.updateOwned).not.toHaveBeenCalled();
+  });
+
+  it("formats the monthly rent while keeping an integer payload", async () => {
+    apiMocks.updateOwned.mockResolvedValue(detail({ monthlyRent: 3_500_000 }));
+    render(<Harness initial={detail({ monthlyRent: null })} />);
+
+    change("Giá thuê mỗi tháng", "3500000");
+    expect(screen.getByLabelText("Giá thuê mỗi tháng")).toHaveValue("3.500.000");
+    expect(screen.getByText(/khoảng 3,5 triệu đồng/)).toBeInTheDocument();
+    save();
+
+    await waitFor(() => expect(apiMocks.updateOwned).toHaveBeenCalledOnce());
+    expect(apiMocks.updateOwned.mock.calls[0][1]).toEqual({ monthlyRent: 3_500_000 });
   });
 
   it.each(["0", "1.234", "1000000"])("validates area %s", (value) => {
@@ -215,31 +226,19 @@ describe("OwnerListingEditor", () => {
     expect(apiMocks.updateOwned).not.toHaveBeenCalled();
   });
 
-  it("requires a coordinate pair and includes both when either coordinate is dirty", async () => {
-    const view = render(<Harness />);
-    change("Vĩ độ", "");
-    save();
-    expect(screen.getAllByText(/phải được nhập hoặc để trống cùng nhau/)).toHaveLength(2);
-    expect(apiMocks.updateOwned).not.toHaveBeenCalled();
-
-    view.unmount();
-    apiMocks.updateOwned.mockResolvedValue(detail({ latitude: 10.8 }));
+  it("hides technical coordinates and clears the saved pin when the address changes", async () => {
+    apiMocks.updateOwned.mockResolvedValue(detail({ addressText: "102 Nguyễn Huệ", latitude: null, longitude: null }));
     render(<Harness />);
-    change("Vĩ độ", "10.8");
+    expect(screen.queryByLabelText("Vĩ độ")).not.toBeInTheDocument();
+    expect(screen.queryByLabelText("Kinh độ")).not.toBeInTheDocument();
+    change("Số nhà, đường, tòa nhà", "102 Nguyễn Huệ");
     save();
     await waitFor(() => expect(apiMocks.updateOwned).toHaveBeenCalledOnce());
-    expect(apiMocks.updateOwned.mock.calls[0][1]).toEqual({ latitude: 10.8, longitude: 106.7 });
-  });
-
-  it.each([
-    ["Vĩ độ", "91", "Vĩ độ phải nằm trong khoảng"],
-    ["Kinh độ", "-181", "Kinh độ phải nằm trong khoảng"]
-  ])("validates coordinate range for %s", (label, value, message) => {
-    render(<Harness />);
-    change(label, value);
-    save();
-    expect(screen.getByText(new RegExp(message))).toBeInTheDocument();
-    expect(apiMocks.updateOwned).not.toHaveBeenCalled();
+    expect(apiMocks.updateOwned.mock.calls[0][1]).toEqual({
+      addressText: "102 Nguyễn Huệ",
+      latitude: null,
+      longitude: null
+    });
   });
 
   it("sends the complete intended amenity set and preserves retained retired associations", async () => {
@@ -336,7 +335,7 @@ describe("OwnerListingEditor", () => {
     expect(screen.getByText(/Bạn có thay đổi chưa lưu/)).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "Hoàn tác thay đổi" }));
     expect(screen.getByLabelText("Tiêu đề")).toHaveValue("Studio");
-    expect(screen.getByRole("button", { name: "Lưu thay đổi" })).toBeDisabled();
+    expect(screen.queryByRole("button", { name: "Lưu thay đổi" })).not.toBeInTheDocument();
     expect(apiMocks.updateOwned).not.toHaveBeenCalled();
   });
 
@@ -349,17 +348,17 @@ describe("OwnerListingEditor", () => {
     );
     render(<Harness />);
     change("Tiêu đề", "Nháp chưa lưu");
-    change("Địa chỉ chính xác", "  102 Nguyễn Huệ  ");
+    change("Số nhà, đường, tòa nhà", "  102 Nguyễn Huệ  ");
     expect(apiMocks.forwardGeocode).not.toHaveBeenCalled();
     expect(apiMocks.updateOwned).not.toHaveBeenCalled();
     fireEvent.click(screen.getByRole("button", { name: "Tìm vị trí từ địa chỉ" }));
     await waitFor(() => expect(apiMocks.forwardGeocode).toHaveBeenCalledOnce());
     expect(apiMocks.forwardGeocode.mock.calls[0][0]).toEqual({ addressText: "102 Nguyễn Huệ" });
     fireEvent.click(await screen.findByRole("button", { name: "102 Nguyễn Huệ, Quận 1" }));
-    expect(screen.getByLabelText("Địa chỉ chính xác")).toHaveValue("  102 Nguyễn Huệ  ");
-    expect(screen.getByLabelText("Vĩ độ")).toHaveValue(10.775);
-    expect(screen.getByLabelText("Kinh độ")).toHaveValue(106.704);
+    expect(screen.getByLabelText("Số nhà, đường, tòa nhà")).toHaveValue("  102 Nguyễn Huệ  ");
+    expect(screen.getByText("Đã chọn vị trí")).toBeInTheDocument();
     expect(apiMocks.updateOwned).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByRole("button", { name: "Xác nhận địa chỉ & vị trí" }));
     save();
     await waitFor(() => expect(apiMocks.updateOwned).toHaveBeenCalledOnce());
     expect(apiMocks.updateOwned.mock.calls[0][1]).toMatchObject({
@@ -370,17 +369,59 @@ describe("OwnerListingEditor", () => {
     });
   });
 
-  it("uses map click and marker drag to update the same coordinate fields without geocoding or autosave", () => {
+  it("fills address, area, and coordinates from the current location and persists them only on save", async () => {
+    const resolvedAddress = "25 Nguyễn Bỉnh Khiêm, Phường Bến Nghé, Quận 1, Thành phố Hồ Chí Minh";
+    const resolvedArea = "Phường Bến Nghé, Thành phố Hồ Chí Minh";
+    apiMocks.reverseGeocode.mockResolvedValue({ addressText: resolvedAddress, areaName: resolvedArea });
+    apiMocks.updateOwned.mockResolvedValue(
+      detail({
+        addressText: resolvedAddress,
+        areaName: resolvedArea,
+        latitude: 10.787001,
+        longitude: 106.705002
+      })
+    );
+    Object.defineProperty(navigator, "geolocation", {
+      configurable: true,
+      value: {
+        getCurrentPosition: (success: PositionCallback) =>
+          success({ coords: { latitude: 10.7870009, longitude: 106.7050019 } } as GeolocationPosition)
+      }
+    });
+    render(<Harness />);
+
+    fireEvent.click(screen.getByRole("button", { name: "Dùng vị trí hiện tại" }));
+
+    await waitFor(() => expect(screen.getByLabelText("Số nhà, đường, tòa nhà")).toHaveValue(resolvedAddress));
+    expect(screen.getByLabelText("Phường/xã, tỉnh/thành phố")).toHaveValue(resolvedArea);
+    expect(apiMocks.updateOwned).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByRole("button", { name: "Xác nhận địa chỉ & vị trí" }));
+    save();
+    await waitFor(() => expect(apiMocks.updateOwned).toHaveBeenCalledOnce());
+    expect(apiMocks.updateOwned.mock.calls[0][1]).toEqual({
+      addressText: resolvedAddress,
+      areaName: resolvedArea,
+      latitude: 10.787001,
+      longitude: 106.705002
+    });
+  });
+
+  it("uses map click and marker drag to update hidden coordinates without geocoding or autosave", async () => {
+    apiMocks.updateOwned.mockResolvedValue(detail({ latitude: 10.82, longitude: 106.72 }));
     render(<Harness />);
     fireEvent.click(screen.getByRole("button", { name: "Đặt ghim kiểm thử" }));
-    expect(screen.getByLabelText("Vĩ độ")).toHaveValue(10.81);
-    expect(screen.getByLabelText("Kinh độ")).toHaveValue(106.71);
+    expect(screen.getByText("Đã chọn vị trí")).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "Kéo ghim kiểm thử" }));
-    expect(screen.getByLabelText("Vĩ độ")).toHaveValue(10.82);
-    expect(screen.getByLabelText("Kinh độ")).toHaveValue(106.72);
     expect(screen.getByText(/Bạn có thay đổi chưa lưu/)).toBeInTheDocument();
     expect(apiMocks.forwardGeocode).not.toHaveBeenCalled();
     expect(apiMocks.updateOwned).not.toHaveBeenCalled();
+    save();
+    expect(screen.getByRole("alert")).toHaveTextContent("xác nhận địa chỉ & vị trí trước khi lưu");
+    expect(apiMocks.updateOwned).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByRole("button", { name: "Xác nhận địa chỉ & vị trí" }));
+    save();
+    await waitFor(() => expect(apiMocks.updateOwned).toHaveBeenCalledOnce());
+    expect(apiMocks.updateOwned.mock.calls[0][1]).toEqual({ latitude: 10.82, longitude: 106.72 });
   });
 
   it("keeps all unsaved editor fields usable after a geocoding provider failure", async () => {
@@ -389,15 +430,12 @@ describe("OwnerListingEditor", () => {
     );
     render(<Harness />);
     change("Tiêu đề", "Nháp còn nguyên");
-    change("Địa chỉ chính xác", "Địa chỉ đang sửa");
-    change("Vĩ độ", "10.9");
-    change("Kinh độ", "106.9");
+    change("Số nhà, đường, tòa nhà", "Địa chỉ đang sửa");
     fireEvent.click(screen.getByRole("button", { name: "Tìm vị trí từ địa chỉ" }));
     expect(await screen.findByRole("alert")).toHaveTextContent("Dịch vụ định vị tạm thời không khả dụng.");
     expect(screen.getByLabelText("Tiêu đề")).toHaveValue("Nháp còn nguyên");
-    expect(screen.getByLabelText("Địa chỉ chính xác")).toHaveValue("Địa chỉ đang sửa");
-    expect(screen.getByLabelText("Vĩ độ")).toHaveValue(10.9);
-    expect(screen.getByLabelText("Kinh độ")).toHaveValue(106.9);
+    expect(screen.getByLabelText("Số nhà, đường, tòa nhà")).toHaveValue("Địa chỉ đang sửa");
+    expect(screen.getByText("Chưa đặt ghim")).toBeInTheDocument();
     expect(apiMocks.updateOwned).not.toHaveBeenCalled();
   });
 });

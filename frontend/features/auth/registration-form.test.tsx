@@ -121,7 +121,7 @@ describe("RegistrationForm", () => {
     expect(body).not.toHaveProperty("role");
     expect(apiMocks.registerTenant).not.toHaveBeenCalled();
     expect(authMocks.refresh).toHaveBeenCalledTimes(1);
-    expect(navigationMocks.replace).toHaveBeenCalledWith("/");
+    expect(navigationMocks.replace).toHaveBeenCalledWith("/landlord");
   });
 
   it("maps backend validation details and clears the relevant error after correction", async () => {

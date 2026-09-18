@@ -4,10 +4,16 @@ import { sendObject } from "../../../../../shared/src/runtime/shared/http/respon
 import { authenticationRequiredMessage } from "../../../../../shared/src/runtime/shared/middleware/authentication.js";
 import { validateQueryKeys } from "../../../../../shared/src/runtime/shared/validation/request.js";
 import type { GeocodingService } from "../services/geocoding-service.js";
-import { validateForwardGeocodingInput, type ForwardGeocodingInput } from "../validations/geocoding-validation.js";
+import {
+  validateForwardGeocodingInput,
+  validateReverseGeocodingInput,
+  type ForwardGeocodingInput,
+  type ReverseGeocodingInput
+} from "../validations/geocoding-validation.js";
 
 interface GeocodingLocals {
   forwardGeocodingInput?: ForwardGeocodingInput;
+  reverseGeocodingInput?: ReverseGeocodingInput;
 }
 
 function requirePrincipal(request: Request): NonNullable<Request["auth"]> {
@@ -42,6 +48,30 @@ export function createForwardGeocodingHandler(service: GeocodingService): Reques
           longitude: candidate.longitude
         }))
       );
+    })().catch(next);
+  };
+}
+
+export function createReverseGeocodingValidationPreflightHandler(): RequestHandler {
+  return (request, response, next): void => {
+    try {
+      validateQueryKeys(request.query, []);
+      (response.locals as GeocodingLocals).reverseGeocodingInput = validateReverseGeocodingInput(request.body);
+      next();
+    } catch (error) {
+      next(error);
+    }
+  };
+}
+
+export function createReverseGeocodingHandler(service: GeocodingService): RequestHandler {
+  return (request, response, next): void => {
+    void (async () => {
+      const principal = requirePrincipal(request);
+      const input = (response.locals as GeocodingLocals).reverseGeocodingInput;
+      if (!input) throw new Error("Reverse-geocoding validation preflight is unavailable.");
+      const result = await service.reverseGeocode(principal, input);
+      sendObject(response, result);
     })().catch(next);
   };
 }

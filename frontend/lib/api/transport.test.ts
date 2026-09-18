@@ -18,4 +18,31 @@ describe("API transport Gateway boundary", () => {
       expect.objectContaining({ method: "GET", credentials: "include" })
     );
   });
+
+  it("preserves optional top-level page metadata without changing ordinary page envelopes", async () => {
+    const fetcher = vi
+      .fn<typeof fetch>()
+      .mockResolvedValueOnce(
+        Response.json({
+          data: [{ id: 42 }],
+          pagination: { page: 1, pageSize: 20, hasNextPage: false },
+          metadata: { hasEverApprovedListing: true }
+        })
+      )
+      .mockResolvedValueOnce(
+        Response.json({ data: [{ id: 7 }], pagination: { page: 1, pageSize: 10, hasNextPage: false } })
+      );
+    const transport = createTransport({ fetcher });
+
+    const ownerPage = await transport.page<{ id: number }, { hasEverApprovedListing: boolean }>(
+      "/api/v1/landlord/listings"
+    );
+    const ordinaryPage = await transport.page<{ id: number }>("/api/v1/listings");
+
+    expect(ownerPage.metadata).toEqual({ hasEverApprovedListing: true });
+    expect(ordinaryPage).toEqual({
+      data: [{ id: 7 }],
+      pagination: { page: 1, pageSize: 10, hasNextPage: false }
+    });
+  });
 });

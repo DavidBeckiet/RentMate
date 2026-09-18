@@ -5,8 +5,11 @@
 }
 
 .page :global(.rm-roommate-hero) {
-  background: rgb(var(--color-primary-subtle));
-  box-shadow: none;
+  border-color: rgb(var(--color-primary) / 0.16);
+  background:
+    radial-gradient(circle at 88% 15%, rgb(120 103 184 / 0.17), transparent 25%),
+    linear-gradient(115deg, rgb(var(--color-primary-subtle) / 0.82), rgb(var(--color-surface)) 72%);
+  box-shadow: 0 16px 40px rgb(var(--color-primary) / 0.06);
 }
 
 .page :global(.rm-roommate-hero-title) {
@@ -25,7 +28,8 @@
   min-width: 0;
   padding: 0;
   overflow: hidden;
-  box-shadow: none;
+  border-color: rgb(var(--color-primary) / 0.14);
+  box-shadow: 0 18px 42px rgb(var(--color-foreground) / 0.055);
 }
 
 .form {
@@ -36,7 +40,8 @@
 .status {
   margin: 24px 28px 0;
   padding: 12px 16px;
-  border-radius: 10px;
+  border: 1px solid rgb(var(--color-border));
+  border-radius: 14px;
   background: rgb(var(--color-surface-subtle));
   color: rgb(var(--color-muted-foreground));
   font-size: 13px;
@@ -46,12 +51,17 @@
 .status[data-tone="accent"] {
   color: rgb(var(--color-primary-hover));
   background: rgb(var(--color-primary-subtle));
+  border-color: rgb(var(--color-primary) / 0.18);
 }
 
 .section {
   display: grid;
   gap: 16px;
   padding: 24px 28px;
+}
+
+.section:nth-of-type(2) {
+  background: linear-gradient(110deg, rgb(var(--color-surface-subtle) / 0.68), transparent 70%);
 }
 
 .preferenceGroups {
@@ -94,6 +104,7 @@
 .choice:has(input:checked) {
   color: rgb(var(--color-primary-hover));
   font-weight: 650;
+  box-shadow: 0 7px 18px rgb(var(--color-primary) / 0.08);
 }
 .choice:focus-within {
   outline: 2px solid rgb(var(--color-primary));
@@ -167,7 +178,8 @@
   border: 1px solid rgb(var(--color-border));
   border-radius: 20px;
   background: rgb(var(--color-surface));
-  box-shadow: 0 4px 20px rgb(var(--color-foreground) / 0.04);
+  background: radial-gradient(circle at 100% 0, rgb(235 111 88 / 0.12), transparent 30%), rgb(var(--color-surface));
+  box-shadow: 0 14px 34px rgb(var(--color-foreground) / 0.06);
 }
 
 .verification {

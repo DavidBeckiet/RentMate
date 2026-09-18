@@ -76,7 +76,7 @@ describe("LandlordLeadsPage", () => {
     const future = new Date(Date.now() + 2 * 24 * 60 * 60 * 1_000);
     const inputValue = toDateTimeLocalValue(future);
     fireEvent.change(screen.getByLabelText("Thời gian nhắc"), { target: { value: inputValue } });
-    expect(screen.getByText(/không gửi push notification/i)).toBeInTheDocument();
+    expect(screen.getByText(/không gửi thông báo đẩy/i)).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "Lưu nhắc việc" }));
 
     await waitFor(() => expect(apiMocks.saveReminder).toHaveBeenCalledWith(7, new Date(inputValue).toISOString()));
@@ -89,6 +89,7 @@ describe("LandlordLeadsPage", () => {
     expect(apiMocks.list).toHaveBeenCalledWith({ view: "NEEDS_REPLY", page: 1, pageSize: 20 }, expect.any(AbortSignal));
     expect(screen.getByText("Chưa đọc")).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "+84901234567" })).toHaveAttribute("href", "tel:+84901234567");
+    expect(document.body).not.toHaveTextContent(/\blead\b|\binquiry\b/i);
 
     fireEvent.click(screen.getByRole("button", { name: "Thêm ghi chú" }));
     fireEvent.change(screen.getByLabelText("Ghi chú nội bộ"), { target: { value: "Gọi lại sau 18 giờ." } });

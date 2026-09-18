@@ -48,6 +48,7 @@ function setup(status: "APPROVED" | "INACTIVE") {
   };
   const ownerReadRepository: OwnerListingReadRepository = {
     findOwnerListingPage: async () => [],
+    hasEverApprovedListing: async () => false,
     findOwnerListingDetailBase: async () => ({ ...base, status: currentStatus }),
     findAmenitiesForListing: async () => [],
     findImagesForListing: async () => [],

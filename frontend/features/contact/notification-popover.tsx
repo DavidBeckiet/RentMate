@@ -25,7 +25,7 @@ import {
   useNotificationUnreadCount
 } from "./notification-unread-store";
 
-export function NotificationPopover({ pathname }: Readonly<{ pathname: string }>) {
+export function NotificationPopover({ pathname, compact = false }: Readonly<{ pathname: string; compact?: boolean }>) {
   const { user } = useAuth();
   const userId = user?.id ?? null;
   const router = useRouter();
@@ -170,7 +170,7 @@ export function NotificationPopover({ pathname }: Readonly<{ pathname: string }>
   };
 
   return (
-    <div className="relative" ref={containerRef}>
+    <div className={cx("relative", compact && "flex justify-center")} ref={containerRef}>
       <Link
         href="/notifications"
         aria-label={notificationAccessibleLabel(unreadCount)}
@@ -183,7 +183,8 @@ export function NotificationPopover({ pathname }: Readonly<{ pathname: string }>
         }}
         className={cx(
           buttonClassName("ghost", "sm"),
-          "relative w-11 px-0 transition-colors",
+          "relative px-0 transition-colors",
+          compact ? "h-12 w-12 rounded-2xl border-transparent bg-transparent" : "w-11",
           (isOpen || pathname === "/notifications") && "bg-primary-subtle text-primary-hover"
         )}
       >
@@ -195,7 +196,10 @@ export function NotificationPopover({ pathname }: Readonly<{ pathname: string }>
         <div
           role="dialog"
           aria-label="Thông báo gần đây"
-          className="absolute right-0 top-full z-50 mt-2 w-[22rem] max-w-[calc(100vw-2rem)] overflow-hidden rounded-2xl border border-border bg-surface shadow-overlay sm:w-96"
+          className={cx(
+            "absolute z-50 w-[22rem] max-w-[calc(100vw-2rem)] overflow-hidden rounded-2xl border border-border bg-surface shadow-overlay sm:w-96",
+            compact ? "bottom-0 left-full ml-3" : "right-0 top-full mt-2"
+          )}
           style={{ animation: "rm-fade-scale 180ms var(--rm-ease-out) both" }}
         >
           <header className="flex items-center justify-between border-b border-border bg-surface-subtle/70 px-4 py-3">

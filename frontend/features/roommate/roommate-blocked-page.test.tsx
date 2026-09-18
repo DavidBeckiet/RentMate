@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { AuthContextValue } from "../../lib/auth/auth-provider";
 import { roommateOwnedBlock, tenantUser } from "./test-roommate-fixtures";
@@ -49,7 +49,7 @@ describe("RoommateBlockedPage", () => {
     render(<RoommateBlockedPage />);
 
     expect(await screen.findByRole("heading", { name: "Minh" })).toBeInTheDocument();
-    expect(screen.getByText("Chặn từ yêu cầu ở ghép")).toBeInTheDocument();
+    expect(screen.getByText("Chặn từ nhu cầu ở ghép")).toBeInTheDocument();
     expect(screen.queryByText("42")).not.toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "Bỏ chặn" }));
     expect(apiMocks.unblockRequest).not.toHaveBeenCalled();
@@ -113,6 +113,7 @@ describe("RoommateBlockedPage", () => {
     fireEvent.click(screen.getByRole("button", { name: "Trước" }));
     expect(await screen.findByRole("button", { name: "Thử lại" })).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "Đã chặn" })).toBeInTheDocument();
-    expect(screen.getByRole("navigation", { name: "Điều hướng không gian ở ghép" })).toBeInTheDocument();
+    const navigation = screen.getByRole("navigation", { name: "Điều hướng ở ghép" });
+    expect(within(navigation).getByRole("link", { name: "Đã chặn" })).toHaveAttribute("aria-current", "page");
   });
 });

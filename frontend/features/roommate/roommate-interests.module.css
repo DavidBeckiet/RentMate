@@ -6,8 +6,10 @@
 .page :global(.rm-roommate-hero) {
   overflow: hidden;
   border-color: rgb(var(--color-primary) / 0.14);
-  background: linear-gradient(110deg, rgb(var(--color-primary-subtle) / 0.6), rgb(var(--color-surface)) 80%);
-  box-shadow: none;
+  background:
+    radial-gradient(circle at 88% 8%, rgb(235 111 88 / 0.17), transparent 25%),
+    linear-gradient(110deg, rgb(var(--color-primary-subtle) / 0.72), rgb(var(--color-surface)) 76%);
+  box-shadow: 0 16px 40px rgb(var(--color-primary) / 0.06);
 }
 .page :global(.rm-roommate-hero-content) {
   padding: clamp(20px, 2vw, 28px);
@@ -124,6 +126,8 @@
 }
 .card {
   min-width: 0;
+  border-color: rgb(var(--color-primary) / 0.12);
+  box-shadow: 0 14px 34px rgb(var(--color-foreground) / 0.055);
 }
 .cardBody {
   padding: 20px;

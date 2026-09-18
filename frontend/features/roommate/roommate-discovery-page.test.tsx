@@ -68,8 +68,11 @@ describe("RoommateDiscoveryPage", () => {
     });
     render(<RoommateDiscoveryPage />);
 
-    expect(await screen.findByRole("heading", { name: "Xem lời quan tâm đang chờ" })).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: "Xem lời quan tâm" })).toHaveAttribute("href", "/roommates/interests");
+    expect(await screen.findByRole("link", { name: "Xem lời quan tâm" })).toHaveAttribute(
+      "href",
+      "/roommates/interests"
+    );
+    expect(screen.queryByText("Dành cho bạn")).not.toBeInTheDocument();
     expect(screen.queryByRole("link", { name: "Cập nhật yêu cầu" })).not.toBeInTheDocument();
     expect(apiMocks.listInterests).toHaveBeenCalledWith(
       { direction: "INCOMING", status: "PENDING", page: 1, pageSize: 1 },
@@ -85,16 +88,16 @@ describe("RoommateDiscoveryPage", () => {
     });
     render(<RoommateDiscoveryPage />);
 
-    expect(await screen.findByRole("heading", { name: "Hoàn thiện hồ sơ ở ghép" })).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: "Hoàn thiện hồ sơ" })).toHaveAttribute("href", "/roommates/profile");
+    expect(await screen.findByRole("link", { name: "Hoàn thiện hồ sơ" })).toHaveAttribute("href", "/roommates/profile");
     expect(screen.queryByRole("link", { name: "Xem lời quan tâm" })).not.toBeInTheDocument();
   });
 
   it("offers request creation when there is no pending next step", async () => {
     render(<RoommateDiscoveryPage />);
 
-    expect(await screen.findByRole("heading", { name: "Bạn đã sẵn sàng tìm người ở ghép" })).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: "Tạo yêu cầu" })).toHaveAttribute("href", "/roommates/my-request");
+    const actions = await screen.findAllByRole("link", { name: "Đăng nhu cầu" });
+    expect(actions).toHaveLength(1);
+    expect(actions[0]).toHaveAttribute("href", "/roommates/my-request");
   });
 
   it("removes only the selected applied filter and returns to page one", async () => {
@@ -102,7 +105,10 @@ describe("RoommateDiscoveryPage", () => {
     render(<RoommateDiscoveryPage />);
     await screen.findByRole("heading", { name: "Bạn cùng phòng" });
     fireEvent.click(screen.getByRole("button", { name: "Bỏ lọc: Quận 3" }));
-    expect(navigationMocks.push).toHaveBeenLastCalledWith("/roommates?budgetMinPerPerson=2000000&listingMode=UNLINKED");
+    expect(navigationMocks.push).toHaveBeenLastCalledWith(
+      "/roommates?budgetMinPerPerson=2000000&listingMode=UNLINKED",
+      { scroll: false }
+    );
     expect(screen.getByLabelText("Khu vực")).toHaveValue("");
   });
 
@@ -128,38 +134,54 @@ describe("RoommateDiscoveryPage", () => {
     );
     expect(screen.getAllByText("Cùng tìm phòng phù hợp")).toHaveLength(2);
     expect(screen.queryByText("Chưa chọn phòng cụ thể")).not.toBeInTheDocument();
-    expect(screen.queryByText("Chuyển vào")).not.toBeInTheDocument();
+    expect(screen.getByText("Chuyển vào")).toBeInTheDocument();
     expect(screen.queryByText(/Thành viên từ|Mở từ|Lời nhắn từ người đăng/)).not.toBeInTheDocument();
     expect(screen.queryByText("tenant@example.com")).not.toBeInTheDocument();
     expect(screen.queryByText(/106\.682|10\.782/)).not.toBeInTheDocument();
     expect(screen.queryByText(/V1 \+ V2/)).not.toBeInTheDocument();
-    expect(screen.queryByRole("navigation", { name: "Phân trang yêu cầu ở ghép" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("navigation", { name: "Phân trang người đang tìm ở ghép" })).not.toBeInTheDocument();
   });
 
   it("writes applied filters and pagination to the URL while keeping draft input separate", async () => {
     render(<RoommateDiscoveryPage />);
     await screen.findByRole("heading", { name: "Bạn cùng phòng" });
+    fireEvent.click(screen.getByRole("button", { name: "Bộ lọc" }));
     fireEvent.change(screen.getByLabelText("Khu vực"), { target: { value: "binh thanh" } });
     fireEvent.change(screen.getByLabelText("Hình thức tìm phòng"), { target: { value: "UNLINKED" } });
-    fireEvent.click(screen.getByRole("button", { name: "Lọc yêu cầu" }));
+    fireEvent.click(screen.getByRole("button", { name: "Xem kết quả" }));
     expect(navigationMocks.push).toHaveBeenLastCalledWith(
-      "/roommates?area=B%C3%ACnh+Th%E1%BA%A1nh&listingMode=UNLINKED"
+      "/roommates?area=B%C3%ACnh+Th%E1%BA%A1nh&listingMode=UNLINKED",
+      { scroll: false }
     );
   });
 
-  it("keeps optional filters collapsed and resets draft filters", async () => {
+  it("switches discovery mode directly from the profile directory", async () => {
     render(<RoommateDiscoveryPage />);
     await screen.findByRole("heading", { name: "Bạn cùng phòng" });
+
+    fireEvent.change(screen.getByLabelText("Khu vực"), { target: { value: "Quận 7" } });
+    fireEvent.click(screen.getByRole("button", { name: "Đã có phòng" }));
+
+    expect(navigationMocks.push).toHaveBeenLastCalledWith("/roommates?listingMode=LINKED", { scroll: false });
+  });
+
+  it("keeps optional filters collapsed and resets draft filters", async () => {
+    const { rerender } = render(<RoommateDiscoveryPage />);
+    await screen.findByRole("heading", { name: "Bạn cùng phòng" });
     expect(screen.queryByRole("button", { name: "Xóa bộ lọc" })).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Bộ lọc" }));
     const budget = screen.getByLabelText("Nhập ngân sách chính xác").closest("details");
     const dates = screen.getByText("Bộ lọc thêm").closest("details");
     expect(budget).not.toHaveAttribute("open");
     expect(dates).not.toHaveAttribute("open");
     fireEvent.change(screen.getByLabelText("Ngân sách tối thiểu"), { target: { value: "2000000" } });
-    fireEvent.click(screen.getByRole("button", { name: "Lọc yêu cầu" }));
-    expect(navigationMocks.push).toHaveBeenLastCalledWith("/roommates?budgetMinPerPerson=2000000");
+    fireEvent.click(screen.getByRole("button", { name: "Xem kết quả" }));
+    expect(navigationMocks.push).toHaveBeenLastCalledWith("/roommates?budgetMinPerPerson=2000000", { scroll: false });
+    navigationMocks.search = "budgetMinPerPerson=2000000";
+    rerender(<RoommateDiscoveryPage />);
+    fireEvent.click(screen.getByRole("button", { name: "Bộ lọc (1)" }));
     fireEvent.click(screen.getByRole("button", { name: "Xóa bộ lọc" }));
-    expect(navigationMocks.push).toHaveBeenLastCalledWith("/roommates");
+    expect(navigationMocks.push).toHaveBeenLastCalledWith("/roommates", { scroll: false });
     expect(screen.getByLabelText("Ngân sách tối thiểu")).toHaveValue("0");
     expect(screen.queryByRole("button", { name: "Xóa bộ lọc" })).not.toBeInTheDocument();
   });
@@ -168,14 +190,16 @@ describe("RoommateDiscoveryPage", () => {
     navigationMocks.search = "moveInFrom=2026-10-01";
     render(<RoommateDiscoveryPage />);
     await screen.findByRole("heading", { name: "Bạn cùng phòng" });
+    fireEvent.click(screen.getByRole("button", { name: "Bộ lọc (1)" }));
     expect(screen.getByText("Bộ lọc thêm · Có lọc ngày").closest("details")).toHaveAttribute("open");
     expect(screen.getByLabelText("Từ ngày")).toHaveValue("2026-10-01");
     fireEvent.click(screen.getByLabelText("Nhập ngân sách chính xác"));
     expect(screen.getByLabelText("Nhập ngân sách chính xác").closest("details")).toHaveAttribute("open");
     fireEvent.change(screen.getByLabelText("Từ", { exact: true }), { target: { value: "2350000" } });
-    fireEvent.click(screen.getByRole("button", { name: "Lọc yêu cầu" }));
+    fireEvent.click(screen.getByRole("button", { name: "Xem kết quả" }));
     expect(navigationMocks.push).toHaveBeenLastCalledWith(
-      "/roommates?budgetMinPerPerson=2350000&moveInFrom=2026-10-01"
+      "/roommates?budgetMinPerPerson=2350000&moveInFrom=2026-10-01",
+      { scroll: false }
     );
   });
 

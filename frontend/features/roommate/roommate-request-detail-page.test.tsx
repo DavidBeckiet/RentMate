@@ -64,8 +64,8 @@ describe("RoommateRequestDetailPage", () => {
     apiMocks.createInterest.mockResolvedValue(roommateInterest({ id: 91, direction: "OUTGOING" }));
     render(<RoommateRequestDetailPage requestId="42" />);
 
-    expect(await screen.findByRole("heading", { name: "Chi tiết yêu cầu ở ghép" })).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: "Kết nối với người đăng" })).toHaveAttribute("href", "#roommate-next-step");
+    expect(await screen.findByRole("heading", { name: "Hồ sơ người tìm ở ghép" })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Bày tỏ quan tâm" })).toHaveAttribute("href", "#roommate-next-step");
     expect(screen.getByRole("heading", { name: "Bạn sẽ cùng tìm một nơi như thế nào?" })).toBeInTheDocument();
     expect(screen.getByText("Những điều nên kiểm tra trước khi ở ghép").closest("details")).not.toHaveAttribute("open");
     expect(
@@ -375,7 +375,7 @@ describe("RoommateRequestDetailPage", () => {
 
     expect(await screen.findByText("✓ Đã gửi báo cáo")).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Báo cáo hồ sơ" })).not.toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Báo cáo yêu cầu" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Báo cáo nhu cầu" })).toBeInTheDocument();
   });
 
   it("uses one controlled report dialog with target-specific titles and immediate acknowledgement", async () => {
@@ -386,11 +386,11 @@ describe("RoommateRequestDetailPage", () => {
     expect(await screen.findByRole("button", { name: "Báo cáo hồ sơ" })).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "Báo cáo hồ sơ" }));
     expect(await screen.findByRole("heading", { name: "Báo cáo hồ sơ ở ghép" })).toBeInTheDocument();
-    expect(screen.queryByRole("heading", { name: "Báo cáo yêu cầu ở ghép" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("heading", { name: "Báo cáo nhu cầu ở ghép" })).not.toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "Đóng hộp thoại" }));
 
-    fireEvent.click(screen.getByRole("button", { name: "Báo cáo yêu cầu" }));
-    expect(await screen.findByRole("heading", { name: "Báo cáo yêu cầu ở ghép" })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Báo cáo nhu cầu" }));
+    expect(await screen.findByRole("heading", { name: "Báo cáo nhu cầu ở ghép" })).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "Gửi báo cáo" }));
 
     await waitFor(() =>

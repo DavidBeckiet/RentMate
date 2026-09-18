@@ -22,9 +22,9 @@ export function RoommateRequestListingSummary({
           </span>
           <p className="rm-roommate-section-label">Phòng đang cân nhắc · không bắt buộc</p>
         </div>
-        <h2 className="font-display text-ui-base font-bold text-foreground">Bạn chưa gắn phòng nào vào yêu cầu này.</h2>
+        <h2 className="font-display text-ui-base font-bold text-foreground">Bạn chưa gắn phòng nào vào nhu cầu này.</h2>
         <p className="text-ui-sm leading-6 text-muted-foreground">
-          Yêu cầu vẫn đầy đủ. Bạn có thể cùng người ở ghép tìm phòng sau, hoặc chọn một tin cụ thể để tiện trao đổi.
+          Nhu cầu vẫn đầy đủ. Bạn có thể cùng người ở ghép tìm phòng sau, hoặc chọn một tin cụ thể để tiện trao đổi.
         </p>
       </Card>
     );
@@ -41,7 +41,7 @@ export function RoommateRequestListingSummary({
           Tin phòng đã liên kết không còn hiển thị.
         </h2>
         <p className="text-ui-sm leading-6 text-muted-foreground">
-          RentMate giữ lại ngữ cảnh hiện có nhưng không thể tải chi tiết tin. Nếu yêu cầu còn mở, bạn có thể liên kết
+          RentMate giữ lại ngữ cảnh hiện có nhưng không thể tải chi tiết tin. Nếu nhu cầu còn mở, bạn có thể liên kết
           một phòng khác.
         </p>
         {onChangeListing ? (
@@ -119,7 +119,7 @@ export function RoommateRequestListingSummary({
       </div>
       <p className="rm-roommate-callout text-ui-sm leading-6 text-muted-foreground">
         {unavailable
-          ? "Tin này không còn công khai. Thông tin hiện có được giữ lại làm bối cảnh; bạn có thể thay bằng phòng khác nếu yêu cầu vẫn mở."
+          ? "Tin này không còn công khai. Thông tin hiện có được giữ lại làm bối cảnh; bạn có thể thay bằng phòng khác nếu nhu cầu vẫn mở."
           : "Phòng được liên kết chỉ làm bối cảnh trao đổi; thao tác này không giữ chỗ hay xác nhận thuê."}
       </p>
     </Card>

@@ -42,7 +42,11 @@ function fields(overrides: Partial<ListingAvailabilityFields> = {}): ListingAvai
 test("resolves current, reminder due and auto-paused availability states from the confirmation clock", () => {
   assert.equal(
     resolveListingAvailabilitySnapshot(
-      { status: "APPROVED", businessStatus: "AVAILABLE", ...fields({ availabilityConfirmedAt: new Date("2026-08-01T00:00:00.000Z") }) },
+      {
+        status: "APPROVED",
+        businessStatus: "AVAILABLE",
+        ...fields({ availabilityConfirmedAt: new Date("2026-08-01T00:00:00.000Z") })
+      },
       now
     ).availabilityStatus,
     "CURRENT"
@@ -106,6 +110,7 @@ test("confirms an owned unknown or auto-paused listing and rejects a manual paus
   };
   const ownerReadRepository: OwnerListingReadRepository = {
     findOwnerListingPage: async () => [],
+    hasEverApprovedListing: async () => false,
     findOwnerListingDetailBase: async () => ownerBase({ businessStatus: "AVAILABLE" }),
     findAmenitiesForListing: async () => [],
     findImagesForListing: async () => [],
@@ -177,7 +182,5 @@ test("delivers availability jobs and marks them after Engagement accepts the not
   assert.equal(await scheduler.runOnce(), 1);
   assert.equal(await scheduler.runOnce(), 0);
   assert.deepEqual(delivered, [job]);
-  assert.deepEqual(notified, [
-    { landlordId: 30, listingId: 42, kind: "REMINDER_DUE", dedupeKey: job.dedupeKey }
-  ]);
+  assert.deepEqual(notified, [{ landlordId: 30, listingId: 42, kind: "REMINDER_DUE", dedupeKey: job.dedupeKey }]);
 });

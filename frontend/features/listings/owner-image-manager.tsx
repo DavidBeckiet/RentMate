@@ -4,6 +4,7 @@ import Image from "next/image";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Button } from "../../components/ui/button";
 import { InputField } from "../../components/ui/form-controls";
+import { Icon } from "../../components/ui/icon";
 import { api, ApiError } from "../../lib/api/client";
 import { useAuth } from "../../lib/auth/auth-provider";
 import type { OwnerImage, OwnerListingDetail } from "../../types/api";
@@ -103,12 +104,12 @@ function mutationError(error: unknown, operation: "upload" | "delete" | "reorder
       requestId: error.requestId
     };
   }
-  if (error.status === 502) {
+  if (error.code === "PROVIDER_UNAVAILABLE" || error.status === 502 || error.status === 503) {
     return {
       kind: "error",
       message:
         operation === "upload"
-          ? "Dịch vụ lưu ảnh tạm thời không khả dụng."
+          ? "Dịch vụ lưu ảnh chưa sẵn sàng. Vui lòng thử lại sau hoặc liên hệ quản trị hệ thống."
           : "Không thể hoàn tất thao tác ảnh lúc này.",
       requestId: error.requestId
     };
@@ -387,11 +388,19 @@ export function OwnerImageManager({
     <section aria-labelledby="owner-images-heading" className="rm-workspace-card space-y-6 p-5 sm:p-6">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <h2 id="owner-images-heading" className="rm-workspace-section-title">
-            Ảnh của tin
-          </h2>
+          <div className="flex items-center gap-3">
+            <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl border border-sky-200 bg-sky-50 text-sky-700 shadow-sm">
+              <Icon name="eye" className="h-5 w-5" />
+            </span>
+            <h2 id="owner-images-heading" className="rm-workspace-section-title">
+              Hình ảnh chỗ ở
+            </h2>
+          </div>
           <p className="rm-workspace-section-description">
             {canonicalImages.length}/{maximumImageCount} ảnh · ảnh đầu tiên là ảnh bìa
+          </p>
+          <p className="mt-2 max-w-xl text-xs leading-5 text-muted-foreground">
+            Ưu tiên ảnh ngang, đủ sáng và đúng thực tế. Hãy đưa ảnh thể hiện rõ nhất lên đầu làm ảnh bìa.
           </p>
         </div>
         {warning ? <p className="max-w-xl text-sm text-amber-900">{warning}</p> : null}
@@ -432,7 +441,10 @@ export function OwnerImageManager({
       ) : null}
 
       <div className="rm-image-upload-panel space-y-4 rounded-control border border-dashed border-primary/35 bg-primary-subtle/45 p-5">
-        <h3 className="font-display text-lg font-bold text-foreground">Thêm ảnh</h3>
+        <h3 className="flex items-center gap-2 font-display text-lg font-bold text-foreground">
+          <Icon name="plus" className="h-5 w-5 text-primary" />
+          Thêm ảnh
+        </h3>
         <div className="grid gap-4 sm:grid-cols-2">
           <div className="space-y-2">
             <label htmlFor="owner-image-file" className="block text-sm font-medium text-slate-900">
@@ -472,6 +484,7 @@ export function OwnerImageManager({
           disabled={mutationBlocked || canonicalImages.length >= maximumImageCount || !selectedFile}
           onClick={() => upload(selectedFile, altText, false)}
         >
+          <Icon name="plus" className="h-4 w-4" />
           Tải ảnh lên
         </Button>
       </div>

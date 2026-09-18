@@ -27,7 +27,10 @@ vi.mock("next/navigation", () => ({
 }));
 vi.mock("../../lib/api/client", async () => {
   const actual = await vi.importActual<typeof import("../../lib/api/client")>("../../lib/api/client");
-  return { ...actual, api: { roommates: apiMocks, listings: listingMocks, favorites: favoritesMocks, lookups: lookupMocks } };
+  return {
+    ...actual,
+    api: { roommates: apiMocks, listings: listingMocks, favorites: favoritesMocks, lookups: lookupMocks }
+  };
 });
 vi.mock("../../lib/auth/auth-provider", () => ({ useAuth: useAuthMock }));
 
@@ -79,7 +82,7 @@ describe("RoommateRequestPage", () => {
     apiMocks.createRequest.mockResolvedValue(roommateRequest());
     render(<RoommateRequestPage />);
 
-    await screen.findByRole("heading", { name: "Tạo yêu cầu tìm người ở ghép" });
+    await screen.findByRole("heading", { name: "Đăng nhu cầu tìm người ở ghép" });
     fireEvent.change(screen.getByLabelText("Khu vực quan tâm (bắt buộc)"), { target: { value: "Quận 3, Bình Thạnh" } });
     const minimumBudget = screen.getByLabelText("Ngân sách tối thiểu mỗi người (bắt buộc)");
     fireEvent.change(minimumBudget, { target: { value: "3000000" } });
@@ -87,7 +90,7 @@ describe("RoommateRequestPage", () => {
     fireEvent.change(screen.getByLabelText("Ngân sách tối đa mỗi người (bắt buộc)"), { target: { value: "5000000" } });
     fireEvent.click(screen.getByLabelText("Một ngày cụ thể"));
     fireEvent.change(screen.getByLabelText("Ngày dự kiến chuyển vào (bắt buộc)"), { target: { value: "2026-10-10" } });
-    fireEvent.click(screen.getByRole("button", { name: "Tạo yêu cầu" }));
+    fireEvent.click(screen.getByRole("button", { name: "Đăng nhu cầu" }));
 
     await waitFor(() =>
       expect(apiMocks.createRequest).toHaveBeenCalledWith(
@@ -101,7 +104,7 @@ describe("RoommateRequestPage", () => {
         })
       )
     );
-    expect(await screen.findByText("Yêu cầu đã được tạo.")).toBeInTheDocument();
+    expect(await screen.findByText("Nhu cầu ở ghép đã được đăng.")).toBeInTheDocument();
   });
 
   it("creates a linked Flow A request from an eligible Listing Detail CTA context", async () => {
@@ -122,7 +125,7 @@ describe("RoommateRequestPage", () => {
     fireEvent.change(screen.getByLabelText("Ngân sách tối đa mỗi người (bắt buộc)"), {
       target: { value: "5000000" }
     });
-    fireEvent.click(screen.getByRole("button", { name: "Tạo yêu cầu" }));
+    fireEvent.click(screen.getByRole("button", { name: "Đăng nhu cầu" }));
 
     await waitFor(() =>
       expect(apiMocks.createRequest).toHaveBeenCalledWith(
@@ -134,7 +137,7 @@ describe("RoommateRequestPage", () => {
 
   it("uses search as a fallback source without submitting the outer request form", async () => {
     render(<RoommateRequestPage />);
-    await screen.findByRole("heading", { name: "Tạo yêu cầu tìm người ở ghép" });
+    await screen.findByRole("heading", { name: "Đăng nhu cầu tìm người ở ghép" });
     fireEvent.click(screen.getByRole("button", { name: /Đã có phòng muốn cân nhắc/ }));
     fireEvent.click(screen.getByRole("button", { name: "Chọn phòng" }));
 
@@ -167,7 +170,7 @@ describe("RoommateRequestPage", () => {
     render(<RoommateRequestPage />);
 
     expect(await screen.findByText(/Bạn vừa chọn phòng từ trang chi tiết/)).toBeInTheDocument();
-    fireEvent.click(screen.getByRole("button", { name: "Gắn phòng này vào yêu cầu" }));
+    fireEvent.click(screen.getByRole("button", { name: "Gắn phòng này vào nhu cầu" }));
 
     await waitFor(() => expect(apiMocks.linkListing).toHaveBeenCalledWith(42, 23));
     expect(apiMocks.createRequest).not.toHaveBeenCalled();
@@ -194,7 +197,7 @@ describe("RoommateRequestPage", () => {
     );
     render(<RoommateRequestPage />);
 
-    fireEvent.click(await screen.findByRole("button", { name: "Chỉnh sửa yêu cầu" }));
+    fireEvent.click(await screen.findByRole("button", { name: "Chỉnh sửa nhu cầu" }));
     fireEvent.click(screen.getByRole("button", { name: "Chọn phòng khác" }));
     await screen.findByRole("heading", { name: "Chọn phòng để cùng cân nhắc" });
     await screen.findByText("Phòng mới");
@@ -235,12 +238,12 @@ describe("RoommateRequestPage", () => {
 
     expect(await screen.findByText("Phòng không còn khả dụng")).toBeInTheDocument();
     expect(screen.queryByText("Chọn hoặc thay đổi phòng")).not.toBeInTheDocument();
-    fireEvent.click(screen.getByRole("button", { name: "Chỉnh sửa yêu cầu" }));
+    fireEvent.click(screen.getByRole("button", { name: "Chỉnh sửa nhu cầu" }));
     fireEvent.click(screen.getByRole("button", { name: "Gỡ phòng đã chọn" }));
     await waitFor(() => expect(apiMocks.unlinkListing).toHaveBeenCalledWith(42));
 
-    fireEvent.click(screen.getByRole("button", { name: "Đóng yêu cầu" }));
-    fireEvent.click(screen.getByRole("button", { name: "Xác nhận đóng yêu cầu" }));
+    fireEvent.click(screen.getByRole("button", { name: "Đóng nhu cầu" }));
+    fireEvent.click(screen.getByRole("button", { name: "Xác nhận đóng nhu cầu" }));
     await waitFor(() => expect(apiMocks.cancelRequest).toHaveBeenCalledWith(42));
   });
 
@@ -249,7 +252,7 @@ describe("RoommateRequestPage", () => {
       new ApiError({ status: 404, code: "RESOURCE_NOT_FOUND", message: "private", category: "backend" })
     );
     render(<RoommateRequestPage />);
-    expect(await screen.findByRole("heading", { name: "Hoàn thành hồ sơ trước khi tạo yêu cầu" })).toBeInTheDocument();
+    expect(await screen.findByRole("heading", { name: "Hoàn thành hồ sơ trước khi đăng nhu cầu" })).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Thiết lập hồ sơ ở ghép" })).toHaveAttribute("href", "/roommates/profile");
     expect(apiMocks.createRequest).not.toHaveBeenCalled();
   });
@@ -267,11 +270,11 @@ describe("RoommateRequestPage", () => {
     apiMocks.renewRequest.mockResolvedValue(roommateRequest({ status: "OPEN", expiresAt: "2026-10-20T00:00:00.000Z" }));
     render(<RoommateRequestPage />);
 
-    expect(await screen.findByRole("button", { name: "Gia hạn yêu cầu" })).toBeInTheDocument();
-    fireEvent.click(screen.getByRole("button", { name: "Gia hạn yêu cầu" }));
+    expect(await screen.findByRole("button", { name: "Gia hạn nhu cầu" })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Gia hạn nhu cầu" }));
     await waitFor(() => expect(apiMocks.renewRequest).toHaveBeenCalledWith(42));
     expect(
-      await screen.findByText("Yêu cầu đã được gia hạn thêm 30 ngày. Các lời quan tâm cũ không được khôi phục.")
+      await screen.findByText("Nhu cầu đã được gia hạn thêm 30 ngày. Các lời quan tâm cũ không được khôi phục.")
     ).toBeInTheDocument();
   });
 
@@ -289,7 +292,7 @@ describe("RoommateRequestPage", () => {
 
     render(<RoommateRequestPage />);
 
-    expect(await screen.findByRole("heading", { name: /Tạo yêu cầu tìm người ở ghép/u })).toBeInTheDocument();
-    expect(screen.getByRole("heading", { name: /Lịch sử yêu cầu/u })).toBeInTheDocument();
+    expect(await screen.findByRole("heading", { name: /Đăng nhu cầu tìm người ở ghép/u })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: /Lịch sử nhu cầu/u })).toBeInTheDocument();
   });
 });

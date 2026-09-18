@@ -234,6 +234,11 @@ export interface GeocodingCandidate {
   readonly longitude: number;
 }
 
+export interface ReverseGeocodingResult {
+  readonly addressText: string;
+  readonly areaName: string;
+}
+
 export interface Pagination {
   readonly page: number;
   readonly pageSize: number;
@@ -244,6 +249,14 @@ export interface ApiPage<T> {
   readonly data: readonly T[];
   readonly pagination: Pagination;
 }
+
+export interface OwnerListingListMetadata {
+  readonly hasEverApprovedListing: boolean;
+}
+
+export type OwnerListingPage = ApiPage<OwnerListingSummary> & {
+  readonly metadata?: OwnerListingListMetadata;
+};
 
 export interface ApiErrorDetail {
   readonly field: string;
@@ -364,6 +377,11 @@ export interface ReorderImagesBody {
 
 export interface ForwardGeocodeBody {
   readonly addressText: string;
+}
+
+export interface ReverseGeocodeBody {
+  readonly latitude: number;
+  readonly longitude: number;
 }
 
 export interface AdminListingQuery extends PaginationQuery {
@@ -888,6 +906,16 @@ export interface AnalyticsListingRank {
   readonly emailClicks: number;
 }
 
+export interface AnalyticsPreviousPeriod {
+  readonly sinceAt: string;
+  readonly untilAt: string;
+  readonly inquiries: number;
+  readonly views: number;
+  readonly favorites: number;
+  readonly callClicks: number;
+  readonly emailClicks: number;
+}
+
 export interface LandlordAnalytics {
   readonly period: AnalyticsPeriod;
   readonly sinceAt: string;
@@ -905,6 +933,7 @@ export interface LandlordAnalytics {
   readonly favorites: number;
   readonly callClicks: number;
   readonly emailClicks: number;
+  readonly previousPeriod: AnalyticsPreviousPeriod;
   readonly daily: readonly AnalyticsDailyPoint[];
   readonly topListings: readonly AnalyticsListingRank[];
 }

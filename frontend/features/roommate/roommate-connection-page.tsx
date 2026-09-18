@@ -82,8 +82,8 @@ function ConnectionContent() {
   return (
     <div className="rm-roommate-page space-y-6">
       <RoommatePageHeader
-        title="Kết nối tìm roommate hiện tại"
-        description="Kết nối này chỉ giúp hai người tiếp tục trao đổi. RentMate không giữ chỗ, không thu tiền và không bảo đảm giao dịch."
+        title="Kết nối hiện tại"
+        description="Không gian riêng để hai bạn tiếp tục tìm hiểu và thống nhất kế hoạch ở chung."
       />
       {state === "loading" ? <LoadingState message="Đang tải kết nối ở ghép…" /> : null}
       {state === "error" ? (
@@ -95,11 +95,11 @@ function ConnectionContent() {
       ) : null}
       {state === "empty" || (state === "success" && !connection) ? (
         <EmptyState
-          title="Bạn chưa có kết nối ở ghép hiện tại"
-          description="Duyệt yêu cầu đang mở hoặc quản lý các lời quan tâm để bắt đầu khi bạn đã sẵn sàng."
+          title="Bạn chưa kết nối với ai"
+          description="Khám phá hồ sơ phù hợp, gửi lời quan tâm và trò chuyện trước khi hai bên cùng đồng ý."
           action={
             <Link className="font-bold underline decoration-2 underline-offset-4" href="/roommates">
-              Khám phá yêu cầu
+              Khám phá người ở ghép
             </Link>
           }
         />
@@ -150,7 +150,7 @@ function ConnectionContent() {
             <Card className="rm-roommate-card-static space-y-3" aria-label="Kết thúc kết nối ở ghép">
               <h2 className="font-display text-ui-base font-bold">Kết thúc kết nối</h2>
               <p className="text-ui-sm leading-6 text-muted-foreground">
-                Kết thúc kết nối không mở lại yêu cầu hoặc lời quan tâm cũ. Nếu muốn tìm tiếp, bạn cần bắt đầu một quy
+                Kết thúc kết nối không mở lại nhu cầu hoặc lời quan tâm cũ. Nếu muốn tìm tiếp, bạn cần bắt đầu một quy
                 trình Roommate mới hợp lệ sau khi kết nối hiện tại đã kết thúc.
               </p>
               {leaveError && !confirmLeave ? (
@@ -168,7 +168,7 @@ function ConnectionContent() {
                   <div className="space-y-4">
                     <div className="rm-roommate-callout" data-tone="warning">
                       <p className="text-ui-sm font-semibold leading-6">
-                        Kết nối này sẽ kết thúc. Yêu cầu và lời quan tâm cũ không được mở lại hoặc khôi phục; hai bên
+                        Kết nối này sẽ kết thúc. Nhu cầu và lời quan tâm cũ không được mở lại hoặc khôi phục; hai bên
                         chỉ có thể tương tác lại qua một quy trình Roommate mới hợp lệ.
                       </p>
                     </div>

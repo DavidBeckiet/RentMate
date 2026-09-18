@@ -27,6 +27,14 @@ const admin: UserProfile = {
   updatedAt: "2026-08-01T00:00:00.000Z"
 };
 
+const landlord: UserProfile = {
+  ...admin,
+  id: 8,
+  role: "LANDLORD",
+  email: "landlord@example.com",
+  phone: "+84901234567"
+};
+
 function fillLogin(email = " ADMIN@Example.COM ", password = "  pass word  ") {
   fireEvent.change(screen.getByLabelText("Email (bắt buộc)"), { target: { value: email } });
   fireEvent.change(screen.getByLabelText("Mật khẩu (bắt buộc)"), { target: { value: password } });
@@ -53,6 +61,17 @@ describe("LoginForm", () => {
     expect(apiMocks.login).toHaveBeenCalledWith({ email: "admin@example.com", password: "  pass word  " });
     expect(authMocks.refresh).toHaveBeenCalledTimes(1);
     expect(navigationMocks.replace).toHaveBeenCalledWith("/");
+  });
+
+  it("takes a landlord directly to the rental management workspace", async () => {
+    apiMocks.login.mockResolvedValue(landlord);
+    authMocks.refresh.mockResolvedValue();
+    render(<LoginForm />);
+
+    fillLogin("landlord@example.com", "password");
+    fireEvent.click(screen.getByRole("button", { name: "Đăng nhập" }));
+
+    await waitFor(() => expect(navigationMocks.replace).toHaveBeenCalledWith("/landlord"));
   });
 
   it("enforces the optional admin entry role after login without changing the shared default", async () => {

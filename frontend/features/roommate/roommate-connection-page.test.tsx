@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { AuthContextValue } from "../../lib/auth/auth-provider";
 import { roommateProfile, roommateRequest, tenantUser } from "./test-roommate-fixtures";
@@ -37,7 +37,7 @@ describe("RoommateConnectionPage", () => {
       request: roommateRequest({ status: "MATCHED" })
     });
     render(<RoommateConnectionPage />);
-    expect(await screen.findByRole("heading", { name: "Kết nối tìm roommate hiện tại" })).toBeInTheDocument();
+    expect(await screen.findByRole("heading", { name: "Kết nối hiện tại" })).toBeInTheDocument();
     expect(
       screen.getByText(
         "Không chia sẻ OTP, mật khẩu hoặc thông tin tài chính. Thận trọng với yêu cầu chuyển tiền hoặc đặt cọc."
@@ -62,7 +62,7 @@ describe("RoommateConnectionPage", () => {
       new ApiError({ status: 404, code: "RESOURCE_NOT_FOUND", message: "private", category: "backend" })
     );
     render(<RoommateConnectionPage />);
-    expect(await screen.findByRole("heading", { name: "Bạn chưa có kết nối ở ghép hiện tại" })).toBeInTheDocument();
+    expect(await screen.findByRole("heading", { name: "Bạn chưa kết nối với ai" })).toBeInTheDocument();
     expect(screen.queryByText("private")).not.toBeInTheDocument();
   });
 
@@ -77,8 +77,9 @@ describe("RoommateConnectionPage", () => {
     );
 
     expect(await screen.findByRole("button", { name: "Thử lại" })).toBeInTheDocument();
-    expect(screen.getByRole("heading", { name: "Kết nối tìm roommate hiện tại" })).toBeInTheDocument();
-    expect(screen.getByRole("navigation", { name: "Điều hướng không gian ở ghép" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Kết nối hiện tại" })).toBeInTheDocument();
+    const navigation = screen.getByRole("navigation", { name: "Điều hướng ở ghép" });
+    expect(within(navigation).getByRole("link", { name: "Kết nối" })).toHaveAttribute("aria-current", "page");
   });
 
   it("requires confirmation before leaving the current connection", async () => {
@@ -96,6 +97,6 @@ describe("RoommateConnectionPage", () => {
     expect(apiMocks.leaveInterest).not.toHaveBeenCalled();
     fireEvent.click(screen.getByRole("button", { name: "Xác nhận kết thúc" }));
     await waitFor(() => expect(apiMocks.leaveInterest).toHaveBeenCalledWith(91));
-    expect(await screen.findByRole("heading", { name: "Bạn chưa có kết nối ở ghép hiện tại" })).toBeInTheDocument();
+    expect(await screen.findByRole("heading", { name: "Bạn chưa kết nối với ai" })).toBeInTheDocument();
   });
 });

@@ -23,6 +23,16 @@ export interface AnalyticsListingRank {
   readonly emailClicks: number;
 }
 
+export interface AnalyticsPreviousPeriod {
+  readonly sinceAt: string;
+  readonly untilAt: string;
+  readonly inquiries: number;
+  readonly views: number;
+  readonly favorites: number;
+  readonly callClicks: number;
+  readonly emailClicks: number;
+}
+
 export interface LandlordAnalyticsSnapshot {
   readonly sinceAt: string;
   readonly measuredAt: string;
@@ -37,6 +47,7 @@ export interface LandlordAnalyticsSnapshot {
   readonly favorites: number;
   readonly callClicks: number;
   readonly emailClicks: number;
+  readonly previousPeriod: AnalyticsPreviousPeriod;
   readonly daily: readonly AnalyticsDailyPoint[];
   readonly topListings: readonly AnalyticsListingRank[];
 }
@@ -55,6 +66,13 @@ interface AnalyticsRow extends QueryResultRow {
   favorites: unknown;
   call_clicks: unknown;
   email_clicks: unknown;
+  previous_since_at: unknown;
+  previous_until_at: unknown;
+  previous_inquiries: unknown;
+  previous_views: unknown;
+  previous_favorites: unknown;
+  previous_call_clicks: unknown;
+  previous_email_clicks: unknown;
   daily: unknown;
   top_listings: unknown;
 }
@@ -138,6 +156,15 @@ function mapSnapshot(row: Readonly<AnalyticsRow>): LandlordAnalyticsSnapshot {
     favorites: nonnegativeInteger(row.favorites, "analytics.favorites"),
     callClicks: nonnegativeInteger(row.call_clicks, "analytics.callClicks"),
     emailClicks: nonnegativeInteger(row.email_clicks, "analytics.emailClicks"),
+    previousPeriod: Object.freeze({
+      sinceAt: timestamp(row.previous_since_at, "analytics.previousPeriod.sinceAt"),
+      untilAt: timestamp(row.previous_until_at, "analytics.previousPeriod.untilAt"),
+      inquiries: nonnegativeInteger(row.previous_inquiries, "analytics.previousPeriod.inquiries"),
+      views: nonnegativeInteger(row.previous_views, "analytics.previousPeriod.views"),
+      favorites: nonnegativeInteger(row.previous_favorites, "analytics.previousPeriod.favorites"),
+      callClicks: nonnegativeInteger(row.previous_call_clicks, "analytics.previousPeriod.callClicks"),
+      emailClicks: nonnegativeInteger(row.previous_email_clicks, "analytics.previousPeriod.emailClicks")
+    }),
     daily: mapDaily(row.daily),
     topListings: mapTopListings(row.top_listings)
   });
@@ -171,10 +198,15 @@ export function createAnalyticsRepository(): AnalyticsRepository {
       return queryExactlyOne<AnalyticsRow, LandlordAnalyticsSnapshot>(
         executor,
         {
-          text: `WITH params AS (
+          text: `WITH analytics_clock AS (
               SELECT CURRENT_TIMESTAMP AS measured_at,
-                ((date_trunc('day', CURRENT_TIMESTAMP AT TIME ZONE 'UTC')
-                  - make_interval(days => $2::integer - 1)) AT TIME ZONE 'UTC') AS since_at
+                ((date_trunc('day', CURRENT_TIMESTAMP AT TIME ZONE 'Asia/Ho_Chi_Minh')
+                  - make_interval(days => $2::integer - 1)) AT TIME ZONE 'Asia/Ho_Chi_Minh') AS since_at
+            ),
+            params AS (
+              SELECT measured_at, since_at,
+                since_at - make_interval(days => $2::integer) AS previous_since_at
+              FROM analytics_clock
             ),
             period_inquiries AS MATERIALIZED (
               SELECT i.id, i.tenant_id, i.listing_id, i.status, i.created_at
@@ -196,17 +228,31 @@ export function createAnalyticsRepository(): AnalyticsRepository {
                 AND created_at >= (SELECT since_at FROM params)
                 AND created_at <= (SELECT measured_at FROM params)
             ),
+            previous_inquiries AS MATERIALIZED (
+              SELECT i.id
+              FROM listing_inquiries AS i CROSS JOIN params AS p
+              WHERE i.landlord_id = $1
+                AND i.created_at >= p.previous_since_at
+                AND i.created_at < p.since_at
+            ),
+            previous_events AS MATERIALIZED (
+              SELECT event_type
+              FROM listing_analytics_events CROSS JOIN params AS p
+              WHERE landlord_id = $1
+                AND created_at >= p.previous_since_at
+                AND created_at < p.since_at
+            ),
             daily_rows AS (
               SELECT to_char(day_value, 'YYYY-MM-DD') AS date,
                 (SELECT count(*)::integer FROM period_inquiries AS pi
-                  WHERE (pi.created_at AT TIME ZONE 'UTC')::date = day_value::date) AS inquiries,
+                  WHERE (pi.created_at AT TIME ZONE 'Asia/Ho_Chi_Minh')::date = day_value::date) AS inquiries,
                 (SELECT count(*)::integer FROM first_replies AS fr
                   WHERE fr.first_reply_at IS NOT NULL
-                    AND (fr.first_reply_at AT TIME ZONE 'UTC')::date = day_value::date) AS first_responses
+                    AND (fr.first_reply_at AT TIME ZONE 'Asia/Ho_Chi_Minh')::date = day_value::date) AS first_responses
               FROM params AS p,
                 generate_series(
-                  (p.since_at AT TIME ZONE 'UTC')::date,
-                  (p.measured_at AT TIME ZONE 'UTC')::date,
+                  (p.since_at AT TIME ZONE 'Asia/Ho_Chi_Minh')::date,
+                  (p.measured_at AT TIME ZONE 'Asia/Ho_Chi_Minh')::date,
                   interval '1 day'
                 ) AS day_value
               ORDER BY day_value ASC
@@ -218,6 +264,15 @@ export function createAnalyticsRepository(): AnalyticsRepository {
                 count(*) FILTER (WHERE event_type = 'CALL_CLICK')::integer AS call_clicks,
                 count(*) FILTER (WHERE event_type = 'EMAIL_CLICK')::integer AS email_clicks
               FROM period_events
+            ),
+            previous_totals AS (
+              SELECT
+                (SELECT count(*)::integer FROM previous_inquiries) AS inquiries,
+                count(*) FILTER (WHERE event_type = 'VIEW')::integer AS views,
+                count(*) FILTER (WHERE event_type = 'FAVORITE')::integer AS favorites,
+                count(*) FILTER (WHERE event_type = 'CALL_CLICK')::integer AS call_clicks,
+                count(*) FILTER (WHERE event_type = 'EMAIL_CLICK')::integer AS email_clicks
+              FROM previous_events
             ),
             listing_activity AS (
               SELECT listing_id,
@@ -247,7 +302,10 @@ export function createAnalyticsRepository(): AnalyticsRepository {
                 sum(email_clicks)::integer AS email_clicks
               FROM listing_activity
               GROUP BY listing_id
-              ORDER BY (sum(inquiries) + sum(views) + sum(favorites) + sum(call_clicks) + sum(email_clicks)) DESC,
+              ORDER BY sum(inquiries) DESC,
+                (sum(call_clicks) + sum(email_clicks)) DESC,
+                sum(favorites) DESC,
+                sum(views) DESC,
                 listing_id ASC
               LIMIT 5
             ),
@@ -276,6 +334,13 @@ export function createAnalyticsRepository(): AnalyticsRepository {
               (SELECT favorites FROM event_totals) AS favorites,
               (SELECT call_clicks FROM event_totals) AS call_clicks,
               (SELECT email_clicks FROM event_totals) AS email_clicks,
+              p.previous_since_at,
+              p.since_at AS previous_until_at,
+              (SELECT inquiries FROM previous_totals) AS previous_inquiries,
+              (SELECT views FROM previous_totals) AS previous_views,
+              (SELECT favorites FROM previous_totals) AS previous_favorites,
+              (SELECT call_clicks FROM previous_totals) AS previous_call_clicks,
+              (SELECT email_clicks FROM previous_totals) AS previous_email_clicks,
               (SELECT COALESCE(jsonb_agg(jsonb_build_object(
                 'date', date, 'inquiries', inquiries, 'firstResponses', first_responses
               ) ORDER BY date), '[]'::jsonb) FROM daily_rows) AS daily,
@@ -286,12 +351,13 @@ export function createAnalyticsRepository(): AnalyticsRepository {
                 'favorites', favorites,
                 'callClicks', call_clicks,
                 'emailClicks', email_clicks
-              ) ORDER BY (inquiries + views + favorites + call_clicks + email_clicks) DESC, listing_id ASC), '[]'::jsonb)
+              ) ORDER BY inquiries DESC, (call_clicks + email_clicks) DESC, favorites DESC, views DESC,
+                listing_id ASC), '[]'::jsonb)
                 FROM top_listing_rows) AS top_listings
             FROM params AS p
             LEFT JOIN period_inquiries AS pi ON TRUE
             LEFT JOIN first_replies AS fr ON fr.inquiry_id = pi.id
-            GROUP BY p.since_at, p.measured_at`,
+            GROUP BY p.since_at, p.previous_since_at, p.measured_at`,
           values: [landlordId, days]
         },
         mapSnapshot

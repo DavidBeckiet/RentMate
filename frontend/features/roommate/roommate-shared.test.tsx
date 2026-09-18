@@ -6,9 +6,7 @@ import { roommateRequest } from "./test-roommate-fixtures";
 
 const apiMocks = vi.hoisted(() => ({ blockRequest: vi.fn(), reportRequest: vi.fn() }));
 const useAuthMock = vi.hoisted(() => vi.fn<() => AuthContextValue>());
-const navigationMocks = vi.hoisted(() => ({ pathname: vi.fn(() => "/roommates") }));
 
-vi.mock("next/navigation", () => ({ usePathname: navigationMocks.pathname }));
 vi.mock("../../lib/api/client", async () => {
   const actual = await vi.importActual<typeof import("../../lib/api/client")>("../../lib/api/client");
   return { ...actual, api: { roommates: apiMocks } };
@@ -19,7 +17,6 @@ import {
   RoommateBlockControl,
   RoommateListingContext,
   RoommateReportControl,
-  RoommateSubnav,
   RoommateTenantBoundary
 } from "./roommate-shared";
 
@@ -59,7 +56,6 @@ describe("roommate safety controls", () => {
     apiMocks.blockRequest.mockReset();
     apiMocks.reportRequest.mockReset();
     useAuthMock.mockReturnValue(authenticatedAuthValue());
-    navigationMocks.pathname.mockReturnValue("/roommates");
   });
 
   it("keeps protected roommate content behind a loading shell during server render", () => {
@@ -108,18 +104,6 @@ describe("roommate safety controls", () => {
     expect(await screen.findByRole("status")).toHaveTextContent("Bạn đã chặn tương tác này.");
   });
 
-  it("marks the current Roommate navigation destination for assistive technology", () => {
-    navigationMocks.pathname.mockReturnValue("/roommates/conversations/91");
-    render(<RoommateSubnav />);
-
-    const messageLinks = screen.getAllByRole("link", { name: "Tin nhắn" });
-    expect(messageLinks).toHaveLength(2);
-    messageLinks.forEach((link) => expect(link).toHaveAttribute("aria-current", "page"));
-    screen.getAllByRole("link", { name: "Khám phá" }).forEach((link) => {
-      expect(link).not.toHaveAttribute("aria-current");
-    });
-  });
-
   it("submits a request report with explicit target and category", async () => {
     apiMocks.reportRequest.mockResolvedValue({ id: 1, status: "OPEN" });
     render(<RoommateReportControl target="ROOMMATE_REQUEST" requestId={42} />);
@@ -153,6 +137,6 @@ describe("roommate safety controls", () => {
     expect(
       screen.getByText("Phòng này chỉ còn là thông tin tham khảo; kết nối ở ghép không tự làm thay đổi tin đăng.")
     ).toBeInTheDocument();
-    expect(screen.queryByText(/gỡ liên kết hoặc hủy yêu cầu/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/gỡ liên kết hoặc đóng nhu cầu/i)).not.toBeInTheDocument();
   });
 });

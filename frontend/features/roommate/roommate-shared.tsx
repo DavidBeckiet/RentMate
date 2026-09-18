@@ -31,8 +31,6 @@ import {
 } from "./roommate-content";
 import { RoommateVerificationBadges } from "./roommate-v2";
 
-export { RoommateWorkspaceNav as RoommateSubnav } from "./roommate-workspace";
-
 export function RoommateTenantBoundary({ children }: Readonly<{ children: ReactNode }>) {
   const { status, user, error, refresh } = useAuth();
   const [mounted, setMounted] = useState(false);
@@ -241,7 +239,7 @@ export function RoommateListingContext({ request }: Readonly<{ request: Roommate
       <Card subtle className="rm-roommate-card-static">
         <h2 className="font-display text-ui-base font-bold text-foreground">Chưa chọn phòng cụ thể</h2>
         <p className="mt-2 text-ui-sm leading-6 text-muted-foreground">
-          Yêu cầu này tìm người để cùng tiếp tục tìm phòng phù hợp trên RentMate.
+          Người đăng muốn tìm bạn đồng hành để cùng chọn một phòng phù hợp trên RentMate.
         </p>
       </Card>
     );
@@ -255,7 +253,7 @@ export function RoommateListingContext({ request }: Readonly<{ request: Roommate
           <p className="mt-2 text-ui-sm leading-6 text-muted-foreground">
             {request.status === "MATCHED"
               ? "Phòng này chỉ còn là thông tin tham khảo; kết nối ở ghép không tự làm thay đổi tin đăng."
-              : "Không thể xác nhận phòng này cho tương tác mới. Nếu đây là yêu cầu của bạn, hãy gỡ liên kết hoặc hủy yêu cầu."}
+              : "Không thể xác nhận phòng này cho tương tác mới. Nếu đây là nhu cầu của bạn, hãy gỡ liên kết hoặc đóng nhu cầu."}
           </p>
         </div>
       </Card>
@@ -416,13 +414,13 @@ export function RoommateReportControl({
     target === "ROOMMATE_PROFILE"
       ? "Báo cáo hồ sơ ở ghép"
       : target === "ROOMMATE_REQUEST"
-        ? "Báo cáo yêu cầu ở ghép"
+        ? "Báo cáo nhu cầu ở ghép"
         : "Báo cáo nội dung ở ghép";
   const fallbackDescription =
     target === "ROOMMATE_PROFILE"
       ? "Gửi thông tin về hồ sơ này tới RentMate để xem xét. Báo cáo không tự động chặn người này."
       : target === "ROOMMATE_REQUEST"
-        ? "Gửi thông tin về yêu cầu này tới RentMate để xem xét. Báo cáo không tự động chặn người đăng."
+        ? "Gửi thông tin về nhu cầu này tới RentMate để xem xét. Báo cáo không tự động chặn người đăng."
         : "Báo cáo được gửi tới đội ngũ an toàn để xem xét. Báo cáo không tự động chặn người này.";
   return (
     <Dialog

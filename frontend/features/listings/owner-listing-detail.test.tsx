@@ -163,9 +163,11 @@ describe("OwnerListingDetail", () => {
     render(<OwnerListingDetail listingId="42" />);
     expect(apiMocks.getOwned).toHaveBeenCalledWith(42, expect.any(AbortSignal));
     expect(await screen.findByRole("heading", { level: 1, name: "Studio chính chủ" })).toBeInTheDocument();
-    expect(screen.getByLabelText("Địa chỉ chính xác")).toHaveValue("101 Nguyễn Huệ, Quận 1");
-    expect(screen.getByLabelText("Vĩ độ")).toHaveValue(10.7731);
-    expect(screen.getByLabelText("Kinh độ")).toHaveValue(106.7032);
+    expect(screen.getByLabelText("Số nhà, đường, tòa nhà")).toHaveValue("101 Nguyễn Huệ, Quận 1");
+    expect(screen.queryByLabelText("Vĩ độ")).not.toBeInTheDocument();
+    expect(screen.queryByLabelText("Kinh độ")).not.toBeInTheDocument();
+    expect(screen.getByText("Đã chọn vị trí")).toBeInTheDocument();
+    expect(screen.getAllByText("Đã xác nhận").length).toBeGreaterThan(0);
     expect(screen.getByRole("region", { name: "Bản đồ điều chỉnh vị trí chính xác của tin" })).toBeInTheDocument();
     expect(screen.queryByText(/vị trí xấp xỉ/i)).not.toBeInTheDocument();
     expect(screen.getAllByRole("img").map((image) => image.getAttribute("aria-label"))).toEqual([

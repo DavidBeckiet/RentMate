@@ -1,4 +1,9 @@
-import { queryMany, queryOptional } from "../../../../../shared/src/runtime/db/repository-primitives.js";
+import {
+  queryExactlyOne,
+  queryMany,
+  queryOptional
+} from "../../../../../shared/src/runtime/db/repository-primitives.js";
+import type { QueryResultRow } from "pg";
 import type { SqlExecutor } from "../../../../../shared/src/runtime/db/sql-executor.js";
 import type { ListingBusinessStatus } from "../../../../../shared/listing-business-status.js";
 import {
@@ -30,6 +35,7 @@ export interface OwnerListingPageInput {
 
 export interface OwnerListingReadRepository {
   readonly findOwnerListingPage: (input: OwnerListingPageInput) => Promise<readonly OwnerListingSummary[]>;
+  readonly hasEverApprovedListing: (landlordId: number) => Promise<boolean>;
   readonly findOwnerListingDetailBase: (
     listingId: number,
     landlordId: number
@@ -40,6 +46,17 @@ export interface OwnerListingReadRepository {
     listingId: number,
     status: CurrentModerationReasonStatus
   ) => Promise<string | null>;
+}
+
+interface HasEverApprovedListingRow extends QueryResultRow {
+  readonly has_ever_approved_listing: boolean;
+}
+
+function mapHasEverApprovedListing(row: Readonly<HasEverApprovedListingRow>): boolean {
+  if (typeof row.has_ever_approved_listing !== "boolean") {
+    throw new Error("Owner listing approval history query returned an invalid boolean.");
+  }
+  return row.has_ever_approved_listing;
 }
 
 export function createOwnerListingReadRepository(executor: SqlExecutor): OwnerListingReadRepository {
@@ -130,6 +147,26 @@ export function createOwnerListingReadRepository(executor: SqlExecutor): OwnerLi
           },
           mapOwnerListingSummaryRow
         )
+      );
+    },
+
+    async hasEverApprovedListing(landlordId: number): Promise<boolean> {
+      return queryExactlyOne<HasEverApprovedListingRow, boolean>(
+        executor,
+        {
+          text: `
+            SELECT EXISTS (
+              SELECT 1
+              FROM listings AS owned_listing
+              JOIN moderation_history AS history
+                ON history.listing_id = owned_listing.id
+              WHERE owned_listing.landlord_id = $1
+                AND history.new_status = 'APPROVED'
+            ) AS has_ever_approved_listing
+          `,
+          values: [landlordId]
+        },
+        mapHasEverApprovedListing
       );
     },
 

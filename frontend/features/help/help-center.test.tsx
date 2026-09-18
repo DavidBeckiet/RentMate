@@ -83,11 +83,15 @@ describe("HelpCenter", () => {
       })
     );
     expect(await screen.findByRole("status")).toHaveTextContent("#17");
+    expect(screen.getByRole("status")).toHaveTextContent("sẽ xem xét nội dung bạn gửi");
+    expect(screen.getByRole("status")).not.toHaveTextContent("phản hồi trong ứng dụng");
   });
 
   it("keeps the support form behind login for anonymous visitors", () => {
     useAuthMock.mockReturnValue(authValue({ status: "anonymous", user: null }));
     render(<HelpCenter />);
+
+    expect(screen.getByText("Bạn cần đăng nhập để gửi yêu cầu hỗ trợ cho đội ngũ RentMate.")).toBeInTheDocument();
 
     expect(screen.getByRole("link", { name: "Đăng nhập để gửi yêu cầu" })).toHaveAttribute("href", "/login");
     expect(screen.queryByLabelText("Tiêu đề")).not.toBeInTheDocument();

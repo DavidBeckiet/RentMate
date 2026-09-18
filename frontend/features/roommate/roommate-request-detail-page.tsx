@@ -158,7 +158,7 @@ function InterestComposer({ requestId }: Readonly<{ requestId: number }>) {
       ) : existingId ? (
         <div className="space-y-3">
           <p className="text-ui-sm text-muted-foreground">
-            Bạn đã kết nối qua yêu cầu này. Tiếp tục nhắn trong cuộc trò chuyện hiện có.
+            Bạn đã kết nối qua nhu cầu này. Tiếp tục nhắn trong cuộc trò chuyện hiện có.
           </p>
           <Button onClick={() => openRoommateChat(existingId, router.push)}>
             <Icon name="message" className="h-4 w-4" /> Tiếp tục trò chuyện
@@ -452,7 +452,7 @@ function RequestDetailContent({ requestId }: Readonly<{ requestId: number }>) {
   }, [requestId, retryKey, tenantReady]);
 
   if (state === "loading")
-    return <LoadingState message="Đang tải yêu cầu ở ghép…" className="rm-roommate-card-static" />;
+    return <LoadingState message="Đang tải nhu cầu ở ghép…" className="rm-roommate-card-static" />;
   if (state === "error" || !request) {
     const unavailable = error?.status === 404;
     return (
@@ -504,22 +504,22 @@ function RequestDetailContent({ requestId }: Readonly<{ requestId: number }>) {
 
   return (
     <div className={styles.page}>
-      <nav className={styles.breadcrumb} aria-label="Điều hướng yêu cầu ở ghép">
+      <nav className={styles.breadcrumb} aria-label="Điều hướng nhu cầu ở ghép">
         <Link href="/roommates">
           <Icon name="arrow" className="h-4 w-4 rotate-180" /> Khám phá ở ghép
         </Link>
         <span aria-hidden="true">/</span>
-        <span>Chi tiết yêu cầu</span>
+        <span>Hồ sơ & nhu cầu</span>
       </nav>
       <header className={styles.hero}>
         <div>
           <p className="rm-roommate-section-label">Tìm người cùng chia sẻ không gian sống</p>
-          <h1>Chi tiết yêu cầu ở ghép</h1>
+          <h1>Hồ sơ người tìm ở ghép</h1>
           <p>Tìm hiểu người đăng, xem nhu cầu và bắt đầu trao đổi khi bạn thấy phù hợp.</p>
         </div>
         <a href="#roommate-next-step" className={styles.primaryLink}>
           <Icon name={isOwner ? "sliders" : "message"} className="h-4 w-4" />
-          {isOwner ? "Quản lý yêu cầu" : canStartInterest ? "Kết nối với người đăng" : "Xem trạng thái kết nối"}
+          {isOwner ? "Quản lý nhu cầu" : canStartInterest ? "Bày tỏ quan tâm" : "Xem trạng thái kết nối"}
         </a>
       </header>
       <div className={styles.layout}>
@@ -545,7 +545,7 @@ function RequestDetailContent({ requestId }: Readonly<{ requestId: number }>) {
           </section>
 
           <section className={styles.section} aria-label="Người bạn có thể ở ghép cùng">
-            <p className="rm-roommate-section-label">02 · Người đăng yêu cầu</p>
+            <p className="rm-roommate-section-label">02 · Người bạn có thể ở cùng</p>
             <div className={styles.profile}>
               <RoommateProfileSummary profile={request.profile} heading="Hồ sơ người đăng" />
             </div>
@@ -585,13 +585,13 @@ function RequestDetailContent({ requestId }: Readonly<{ requestId: number }>) {
           <div id="roommate-next-step" className={styles.nextStep}>
             {isOwner ? (
               <Card className="space-y-3">
-                <h2 className="font-display text-heading-sm font-bold">Quản lý yêu cầu</h2>
+                <h2 className="font-display text-heading-sm font-bold">Quản lý nhu cầu</h2>
                 <div className="grid gap-2 sm:flex sm:flex-wrap">
                   <Link
                     className="inline-flex min-h-11 items-center rounded-control bg-primary px-4 text-ui-sm font-bold text-primary-foreground shadow-surface hover:bg-primary-hover"
                     href="/roommates/my-request"
                   >
-                    Chỉnh sửa yêu cầu
+                    Chỉnh sửa nhu cầu
                   </Link>
                   {request.status === "OPEN" ? (
                     <Link
@@ -623,8 +623,8 @@ function RequestDetailContent({ requestId }: Readonly<{ requestId: number }>) {
                 title="Không thể gửi lời quan tâm lúc này"
                 description={
                   request.signals.listingCurrentlyAvailable === false
-                    ? "Phòng trong yêu cầu này hiện không còn khả dụng cho tương tác mới."
-                    : "Yêu cầu này không còn mở hoặc hồ sơ hiện không khả dụng."
+                    ? "Phòng được nhắc đến hiện không còn khả dụng cho tương tác mới."
+                    : "Nhu cầu này không còn mở hoặc hồ sơ hiện không khả dụng."
                 }
               />
             )}
@@ -667,7 +667,7 @@ function RequestDetailContent({ requestId }: Readonly<{ requestId: number }>) {
                     <RoommateReportControl
                       target="ROOMMATE_REQUEST"
                       requestId={request.id}
-                      label="Báo cáo yêu cầu"
+                      label="Báo cáo nhu cầu"
                       hasReported={reporting.requestHasReported}
                       open={activeReportTarget === "REQUEST"}
                       onOpenChange={(open) => setActiveReportTarget(open ? "REQUEST" : null)}
@@ -699,7 +699,7 @@ export function RoommateRequestDetailPage({ requestId }: Readonly<{ requestId: s
       {parsedId ? (
         <RequestDetailContent requestId={parsedId} />
       ) : (
-        <ErrorState message="Yêu cầu ở ghép hiện không còn khả dụng." />
+        <ErrorState message="Nhu cầu ở ghép hiện không còn khả dụng." />
       )}
     </RoommateTenantBoundary>
   );

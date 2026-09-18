@@ -85,21 +85,22 @@ export function OwnerBusinessStatusControl({
   };
 
   return (
-    <section className="rm-workspace-card p-5 sm:p-6" aria-labelledby="business-status-heading">
-      <div className="flex flex-wrap items-start justify-between gap-4">
+    <section className="rm-workspace-card p-4" aria-labelledby="business-status-heading">
+      <div>
         <div>
-          <p className="rm-workspace-eyebrow">Trạng thái kinh doanh</p>
-          <h2 id="business-status-heading" className="rm-workspace-section-title mt-1">
-            Cho người thuê biết tin còn nhận phòng không
+          <p className="text-xs font-bold uppercase tracking-[0.08em] text-primary">Trạng thái kinh doanh</p>
+          <h2 id="business-status-heading" className="mt-1 font-display text-base font-bold leading-6 text-foreground">
+            Tình trạng cho thuê
           </h2>
         </div>
-        <p className="text-sm text-rent-secondary">Độc lập với trạng thái duyệt tin</p>
+        <p className="mt-1 text-xs leading-5 text-rent-secondary">Hiển thị độc lập với trạng thái duyệt tin.</p>
       </div>
-      <div className="mt-5 grid gap-4 sm:grid-cols-[minmax(0,18rem)_auto] sm:items-end">
+      <div className="mt-4 grid grid-cols-[minmax(0,1fr)_auto] items-end gap-2">
         <SelectField
           id="owner-business-status"
           name="businessStatus"
           label="Tình trạng phòng"
+          className="min-h-11 py-2 text-sm"
           value={value}
           disabled={disabled || pending}
           onChange={(event) => {
@@ -117,12 +118,13 @@ export function OwnerBusinessStatusControl({
         <Button
           type="button"
           variant="secondary"
+          size="sm"
           pending={pending}
           pendingLabel="Đang cập nhật…"
           disabled={disabled || value === detail.businessStatus}
           onClick={() => void save()}
         >
-          Cập nhật trạng thái
+          Cập nhật
         </Button>
       </div>
       {feedback ? (
@@ -135,9 +137,8 @@ export function OwnerBusinessStatusControl({
           {success}
         </p>
       ) : null}
-      <p className="mt-3 text-sm text-rent-secondary">
-        Tin <strong>Còn phòng</strong> hoặc <strong>Chưa xác định</strong> mới hiển thị trên sàn. Tin tạm dừng hoặc đã
-        thuê sẽ được ẩn khỏi tenant.
+      <p className="mt-3 text-xs leading-5 text-rent-secondary">
+        Chỉ tin <strong>Còn phòng</strong> hoặc <strong>Chưa xác định</strong> được hiển thị với người thuê.
       </p>
     </section>
   );

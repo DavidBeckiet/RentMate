@@ -141,7 +141,7 @@ export function RegistrationForm({ mode }: { readonly mode: RegistrationMode }) 
         await api.auth.registerLandlord(validation.value.body);
       }
       await refresh();
-      router.replace("/");
+      router.replace(mode === "landlord" ? "/landlord" : "/");
     } catch (error) {
       const nextFeedback = feedbackFor(error);
       setFeedback(nextFeedback);

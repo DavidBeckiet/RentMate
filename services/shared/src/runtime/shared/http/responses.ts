@@ -8,6 +8,8 @@ export interface PaginationMetadata {
   readonly hasNextPage: boolean;
 }
 
+export type PaginatedResponseMetadata = Readonly<Record<string, unknown>>;
+
 export function sendObject<ResponseData>(
   response: Response,
   data: ResponseData,
@@ -20,7 +22,8 @@ export function sendPaginated<ResponseData>(
   response: Response,
   data: readonly ResponseData[],
   pagination: PaginationMetadata,
-  status: ObjectSuccessStatus = 200
+  status: ObjectSuccessStatus = 200,
+  metadata?: PaginatedResponseMetadata
 ): void {
   response.status(status).json({
     data,
@@ -28,7 +31,8 @@ export function sendPaginated<ResponseData>(
       page: pagination.page,
       pageSize: pagination.pageSize,
       hasNextPage: pagination.hasNextPage
-    }
+    },
+    ...(metadata === undefined ? {} : { metadata })
   });
 }
 

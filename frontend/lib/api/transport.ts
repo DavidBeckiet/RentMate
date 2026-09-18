@@ -43,7 +43,10 @@ export interface TransportRequestOptions {
 export interface ApiTransport {
   readonly raw: <T>(path: string, options?: TransportRequestOptions) => Promise<T>;
   readonly object: <T>(path: string, options?: TransportRequestOptions) => Promise<T>;
-  readonly page: <T>(path: string, options?: TransportRequestOptions) => Promise<ApiPage<T>>;
+  readonly page: <T, Metadata extends object = never>(
+    path: string,
+    options?: TransportRequestOptions
+  ) => Promise<ApiPage<T> & { readonly metadata?: Metadata }>;
   readonly void: (path: string, options?: TransportRequestOptions) => Promise<void>;
 }
 
@@ -182,7 +185,7 @@ export function createTransport(options: CreateTransportOptions = {}): ApiTransp
       return payload.data as T;
     },
 
-    async page<T>(path: string, requestOptions?: TransportRequestOptions) {
+    async page<T, Metadata extends object = never>(path: string, requestOptions?: TransportRequestOptions) {
       const response = await request(path, requestOptions);
       const payload = await parseJson(response);
       if (!isRecord(payload) || !Array.isArray(payload.data) || !isRecord(payload.pagination)) {
@@ -194,7 +197,12 @@ export function createTransport(options: CreateTransportOptions = {}): ApiTransp
         throw unexpectedResponse(response.status);
       }
 
-      return { data: payload.data as readonly T[], pagination: { page, pageSize, hasNextPage } };
+      const result: ApiPage<T> & { readonly metadata?: Metadata } = {
+        data: payload.data as readonly T[],
+        pagination: { page, pageSize, hasNextPage },
+        ...(isRecord(payload.metadata) ? { metadata: payload.metadata as Metadata } : {})
+      };
+      return result;
     },
 
     async void(path, requestOptions) {

@@ -23,6 +23,14 @@ const item = (id: number) => ({
   createdAt: `2026-08-0${id}T00:00:00Z`
 });
 
+function deferred<T>() {
+  let resolve!: (value: T) => void;
+  const promise = new Promise<T>((done) => {
+    resolve = done;
+  });
+  return { promise, resolve };
+}
+
 describe("ModerationHistory", () => {
   beforeEach(() => {
     apiMocks.listHistory.mockReset();
@@ -32,7 +40,7 @@ describe("ModerationHistory", () => {
   });
 
   it("uses history-specific URL state and preserves server order", async () => {
-    navigation.query = "historyPage=2&historyPageSize=40";
+    navigation.query = "returnStatus=APPROVED&returnPage=3&historyPage=2&historyPageSize=40";
     apiMocks.listHistory.mockResolvedValue({
       data: [item(2), item(1)],
       pagination: { page: 2, pageSize: 40, hasNextPage: true }
@@ -45,7 +53,9 @@ describe("ModerationHistory", () => {
       expect.arrayContaining([expect.stringContaining("#2"), expect.stringContaining("#1")])
     );
     fireEvent.click(screen.getByRole("button", { name: "Trang sau" }));
-    expect(navigation.push).toHaveBeenCalledWith("/admin/listings/7?historyPage=3&historyPageSize=40");
+    expect(navigation.push).toHaveBeenCalledWith(
+      "/admin/listings/7?returnStatus=APPROVED&returnPage=3&historyPage=3&historyPageSize=40"
+    );
   });
 
   it("rejects malformed history state locally", () => {
@@ -68,5 +78,30 @@ describe("ModerationHistory", () => {
     navigation.query = "";
     view.rerender(<ModerationHistory listingId={7} refreshInstruction={{ token: 1, page: 1 }} />);
     await waitFor(() => expect(apiMocks.listHistory).toHaveBeenLastCalledWith(7, { page: 1 }, expect.any(AbortSignal)));
+    expect(screen.queryByRole("navigation", { name: "Phân trang lịch sử kiểm duyệt" })).not.toBeInTheDocument();
+  });
+
+  it("resolves a canonical refresh only after the history request succeeds", async () => {
+    const response = deferred<{
+      data: ReturnType<typeof item>[];
+      pagination: { page: number; pageSize: number; hasNextPage: boolean };
+    }>();
+    const resolveRefresh = vi.fn();
+    apiMocks.listHistory.mockReturnValueOnce(response.promise);
+    render(<ModerationHistory listingId={7} refreshInstruction={{ token: 1, resolve: resolveRefresh }} />);
+
+    await waitFor(() => expect(apiMocks.listHistory).toHaveBeenCalledWith(7, { page: 1 }, expect.any(AbortSignal)));
+    expect(resolveRefresh).not.toHaveBeenCalled();
+    response.resolve({ data: [item(1)], pagination: { page: 1, pageSize: 20, hasNextPage: false } });
+    await waitFor(() => expect(resolveRefresh).toHaveBeenCalledWith(true));
+  });
+
+  it("resolves a canonical refresh as failed when the history request fails", async () => {
+    const resolveRefresh = vi.fn();
+    apiMocks.listHistory.mockRejectedValueOnce(new Error("offline"));
+    render(<ModerationHistory listingId={7} refreshInstruction={{ token: 1, resolve: resolveRefresh }} />);
+
+    await waitFor(() => expect(resolveRefresh).toHaveBeenCalledWith(false));
+    expect(screen.getByRole("alert")).toHaveTextContent("Không thể tải lịch sử kiểm duyệt.");
   });
 });

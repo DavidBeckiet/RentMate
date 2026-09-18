@@ -6,8 +6,14 @@ export interface NominatimCandidate {
   readonly longitude: number;
 }
 
+export interface NominatimReverseResult {
+  readonly addressText: string;
+  readonly areaName: string;
+}
+
 export interface NominatimClient {
   readonly forwardGeocode: (addressText: string) => Promise<readonly NominatimCandidate[]>;
+  readonly reverseGeocode: (latitude: number, longitude: number) => Promise<NominatimReverseResult | null>;
 }
 
 type FetchImplementation = typeof fetch;
@@ -107,8 +113,48 @@ function normalizeResponse(value: unknown): readonly NominatimCandidate[] {
   return Object.freeze(value.slice(0, 5).map(normalizeCandidate));
 }
 
+function normalizedAddressPart(address: Readonly<Record<string, unknown>>, keys: readonly string[]): string | null {
+  for (const key of keys) {
+    const value = address[key];
+    if (typeof value === "string" && value.trim().length > 0) return value.trim();
+  }
+  return null;
+}
+
+function truncateCodePoints(value: string, maximumLength: number): string {
+  return [...value].slice(0, maximumLength).join("").trim();
+}
+
+function normalizeReverseResponse(value: unknown): NominatimReverseResult | null {
+  if (!isPlainObject(value)) throw new NominatimClientError();
+  if (typeof value.error === "string") return null;
+
+  const displayName = value.display_name;
+  if (typeof displayName !== "string" || displayName.trim().length === 0) throw new NominatimClientError();
+  if (!isPlainObject(value.address)) throw new NominatimClientError();
+
+  const address = value.address;
+  const areaParts = [
+    normalizedAddressPart(address, ["neighbourhood", "quarter", "suburb", "residential", "village", "town"]),
+    normalizedAddressPart(address, ["city", "municipality", "province", "state"])
+  ].filter((part): part is string => part !== null);
+  const uniqueAreaParts = areaParts.filter(
+    (part, index) => areaParts.findIndex((candidate) => candidate.localeCompare(part, "vi", { sensitivity: "base" }) === 0) === index
+  );
+  const areaName = truncateCodePoints(uniqueAreaParts.join(", ") || displayName.trim(), 120);
+  if (!areaName) throw new NominatimClientError();
+
+  return Object.freeze({
+    addressText: truncateCodePoints(displayName.trim(), 500),
+    areaName
+  });
+}
+
 export const unavailableNominatimClient = Object.freeze<NominatimClient>({
   async forwardGeocode(): Promise<readonly NominatimCandidate[]> {
+    throw new NominatimClientError();
+  },
+  async reverseGeocode(): Promise<NominatimReverseResult | null> {
     throw new NominatimClientError();
   }
 });
@@ -136,6 +182,30 @@ export function createNominatimClient(configuration: NominatimClientConfiguratio
         });
         if (!response.ok) throw new NominatimClientError();
         return normalizeResponse(await response.json());
+      } catch {
+        throw new NominatimClientError();
+      }
+    },
+
+    async reverseGeocode(latitude: number, longitude: number): Promise<NominatimReverseResult | null> {
+      const url = new URL("reverse", `${baseUrl}/`);
+      url.searchParams.set("lat", String(latitude));
+      url.searchParams.set("lon", String(longitude));
+      url.searchParams.set("format", "jsonv2");
+      url.searchParams.set("addressdetails", "1");
+      url.searchParams.set("layer", "address");
+      url.searchParams.set("accept-language", "vi");
+
+      try {
+        const response = await fetchImpl(url, {
+          method: "GET",
+          headers: {
+            "User-Agent": userAgent
+          },
+          signal: AbortSignal.timeout(timeoutMs)
+        });
+        if (!response.ok) throw new NominatimClientError();
+        return normalizeReverseResponse(await response.json());
       } catch {
         throw new NominatimClientError();
       }

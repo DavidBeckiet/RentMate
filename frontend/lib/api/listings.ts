@@ -15,8 +15,11 @@ import type {
   PublicListingSearchQuery,
   PublicListingSummary,
   ReorderImagesBody,
+  ReverseGeocodeBody,
+  ReverseGeocodingResult,
   UploadImageInput,
-  ListingReportReceipt
+  ListingReportReceipt,
+  OwnerListingPage
 } from "../../types/api";
 import type { ApiTransport } from "./transport";
 
@@ -56,8 +59,11 @@ export function createListingsApi(transport: ApiTransport) {
     duplicate: (listingId: number, signal?: AbortSignal): Promise<OwnerListingDetail> =>
       transport.object(`/api/v1/landlord/listings/${listingId}/duplicate`, { method: "POST", signal }),
 
-    listOwned: (query: OwnedListingQuery = {}, signal?: AbortSignal): Promise<ApiPage<OwnerListingSummary>> =>
-      transport.page("/api/v1/landlord/listings", { query, signal }),
+    listOwned: (query: OwnedListingQuery = {}, signal?: AbortSignal): Promise<OwnerListingPage> =>
+      transport.page<OwnerListingSummary, NonNullable<OwnerListingPage["metadata"]>>("/api/v1/landlord/listings", {
+        query,
+        signal
+      }),
 
     getOwned: (listingId: number, signal?: AbortSignal): Promise<OwnerListingDetail> =>
       transport.object(`/api/v1/landlord/listings/${listingId}`, { signal }),
@@ -108,6 +114,9 @@ export function createListingsApi(transport: ApiTransport) {
       transport.object(`/api/v1/landlord/listings/${listingId}/images/order`, { method: "PUT", json: body, signal }),
 
     forwardGeocode: (body: ForwardGeocodeBody, signal?: AbortSignal): Promise<readonly GeocodingCandidate[]> =>
-      transport.object("/api/v1/geocoding/forward", { method: "POST", json: body, signal })
+      transport.object("/api/v1/geocoding/forward", { method: "POST", json: body, signal }),
+
+    reverseGeocode: (body: ReverseGeocodeBody, signal?: AbortSignal): Promise<ReverseGeocodingResult | null> =>
+      transport.object("/api/v1/geocoding/reverse", { method: "POST", json: body, signal })
   } as const;
 }

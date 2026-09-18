@@ -14,6 +14,7 @@ export interface PaginatedOwnerListingSummaries {
   readonly page: number;
   readonly pageSize: number;
   readonly hasNextPage: boolean;
+  readonly hasEverApprovedListing: boolean;
 }
 
 export interface OwnerListingReadService {
@@ -37,20 +38,24 @@ export function createOwnerListingReadService(repository: OwnerListingReadReposi
       query: OwnerListingCollectionQuery
     ): Promise<PaginatedOwnerListingSummaries> {
       requireLandlord(principal);
-      const rows = await repository.findOwnerListingPage({
-        landlordId: principal.userId,
-        status: query.status,
-        businessStatus: query.businessStatus,
-        limit: query.pageSize + 1,
-        offset: query.offset
-      });
+      const [rows, hasEverApprovedListing] = await Promise.all([
+        repository.findOwnerListingPage({
+          landlordId: principal.userId,
+          status: query.status,
+          businessStatus: query.businessStatus,
+          limit: query.pageSize + 1,
+          offset: query.offset
+        }),
+        repository.hasEverApprovedListing(principal.userId)
+      ]);
       const hasNextPage = rows.length > query.pageSize;
       const summaries = Object.freeze(rows.slice(0, query.pageSize));
       return Object.freeze({
         summaries,
         page: query.page,
         pageSize: query.pageSize,
-        hasNextPage
+        hasNextPage,
+        hasEverApprovedListing
       });
     },
 

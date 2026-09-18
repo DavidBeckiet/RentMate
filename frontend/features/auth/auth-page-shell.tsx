@@ -89,7 +89,7 @@ export function AuthPageShell({
   contextAction,
   variant = "login",
   requiredRole,
-  successDestination = "/",
+  successDestination,
   wrongRoleMessage = "Tài khoản này không thể truy cập trang đăng nhập này."
 }: AuthPageShellProps) {
   const router = useRouter();
@@ -105,7 +105,7 @@ export function AuthPageShell({
 
   useEffect(() => {
     if (status === "authenticated" && user && (!requiredRole || user.role === requiredRole)) {
-      router.replace(successDestination);
+      router.replace(successDestination ?? (user.role === "LANDLORD" ? "/landlord" : "/"));
     }
   }, [requiredRole, router, status, successDestination, user]);
 

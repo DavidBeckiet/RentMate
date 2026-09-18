@@ -106,7 +106,7 @@ export function GoogleLandlordCompletionForm() {
     try {
       await api.auth.completeGoogleLandlord({ phone: normalizedPhone });
       await refresh();
-      router.replace("/");
+      router.replace("/landlord");
     } catch (error) {
       setFeedback(feedbackFor(error));
     } finally {

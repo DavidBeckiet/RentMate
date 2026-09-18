@@ -607,10 +607,9 @@ test("dedupes reports, projects caller-owned acknowledgement, retains minimal ev
   assert.equal("subjectId" in (detail?.events?.[0] ?? {}), false);
   assert.equal(detail?.evidenceSnapshot?.body, "Please pay a deposit first.");
 
-  await safetyService.updateAdminReportStatus(admin, messageReportId, { status: "INVESTIGATING", note: null });
   const resolved = await safetyService.updateAdminReportStatus(admin, messageReportId, {
     status: "RESOLVED",
-    note: "Reviewed and resolved."
+    note: "Review completed."
   });
   assert.equal(resolved?.status, "RESOLVED");
   assert.equal(
@@ -620,7 +619,38 @@ test("dedupes reports, projects caller-owned acknowledgement, retains minimal ev
         [messageReportId]
       )
     ).event_count,
-    "5"
+    "4"
+  );
+
+  await transaction(async (executor) => {
+    for (const reportId of [profileReport.id, requestReport.id]) {
+      await executor.query({
+        text: "UPDATE contact_reports SET status = 'INVESTIGATING', assigned_admin_id = $2 WHERE id = $1",
+        values: [reportId, admin.userId]
+      });
+      await executor.query({
+        text: "INSERT INTO contact_report_events (report_id, actor_id, actor_role, previous_status, new_status, note) VALUES ($1, $2, 'ADMIN', 'OPEN', 'INVESTIGATING', $3)",
+        values: [reportId, admin.userId, "Legacy review started."]
+      });
+    }
+  });
+  assert.equal(
+    (
+      await safetyService.updateAdminReportStatus(admin, requestReport.id, {
+        status: "RESOLVED",
+        note: "Review completed."
+      })
+    )?.status,
+    "RESOLVED"
+  );
+  assert.equal(
+    (
+      await safetyService.updateAdminReportStatus(admin, profileReport.id, {
+        status: "DISMISSED",
+        note: "No further action."
+      })
+    )?.status,
+    "DISMISSED"
   );
 });
 

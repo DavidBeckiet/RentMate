@@ -94,9 +94,9 @@ test("validates roommate report targets, categories, details, and admin filters"
     note: null,
     reportId: 9
   });
-  assert.deepEqual(validateUpdateRoommateReportStatusBody({ status: "investigating", note: null }), {
-    status: "INVESTIGATING",
-    note: null
+  assert.deepEqual(validateUpdateRoommateReportStatusBody({ status: "dismissed", note: "  Không cần xử lý.  " }), {
+    status: "DISMISSED",
+    note: "Không cần xử lý."
   });
   assert.deepEqual(validateRoommateBlockPageQuery({ page: "2", pageSize: "10" }), {
     page: 2,
@@ -128,5 +128,6 @@ test("rejects target fields on interest/message reports and unsafe report data",
     /invalid data/i
   );
   assert.throws(() => validateUpdateRoommateReportStatusBody({ status: "RESOLVED" }), /invalid data/i);
+  assert.throws(() => validateUpdateRoommateReportStatusBody({ status: "INVESTIGATING" }), /invalid data/i);
   assert.throws(() => validateRoommateBlockPageQuery({ status: "OPEN" }), /invalid data/i);
 });

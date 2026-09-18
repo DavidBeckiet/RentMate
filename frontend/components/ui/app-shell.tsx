@@ -36,6 +36,8 @@ import { NotificationUnreadBadge, notificationAccessibleLabel } from "./notifica
 import { PageTransition } from "./page-transition";
 import { RentMateMark } from "./rentmate-mark";
 import { Skeleton } from "./skeleton";
+import { useLandlordCommandBar, LandlordCommandBarProvider } from "./landlord-command-bar";
+import landlordStyles from "./landlord-workspace-shell.module.css";
 
 const desktopNavLink =
   "relative inline-flex min-h-11 items-center gap-2 rounded-control border border-transparent px-3.5 font-sans text-ui-sm font-semibold text-foreground transition-[background-color,border-color,color,transform] duration-fast ease-standard hover:-translate-y-0.5 hover:bg-surface-subtle hover:text-primary-hover aria-[current=page]:bg-primary-subtle aria-[current=page]:text-primary-hover";
@@ -83,7 +85,8 @@ function NavigationLinks({
   className,
   linkClassName,
   comparisonCount = 0,
-  onNavigate
+  onNavigate,
+  compact = false
 }: Readonly<{
   items: readonly NavigationItem[];
   pathname: string;
@@ -91,13 +94,21 @@ function NavigationLinks({
   linkClassName: string;
   comparisonCount?: number;
   onNavigate?: () => void;
+  compact?: boolean;
 }>) {
   return (
     <div className={className}>
       {items.map((item) => {
         const current = isNavigationItemActive(item, pathname) ? "page" : undefined;
         return (
-          <Link key={item.key} href={item.href} aria-current={current} className={linkClassName} onClick={onNavigate}>
+          <Link
+            key={item.key}
+            href={item.href}
+            aria-current={current}
+            title={compact ? item.label : undefined}
+            className={linkClassName}
+            onClick={onNavigate}
+          >
             <Icon name={item.icon} className="h-5 w-5 shrink-0" />
             <span className="min-w-0 flex-1">{item.label}</span>
             {item.key === "compare" && comparisonCount > 0 ? (
@@ -207,8 +218,8 @@ function AccountSummary({ user, inverse = false }: Readonly<{ user: UserProfile;
   );
 }
 
-function NotificationLink({ pathname }: Readonly<{ pathname: string }>) {
-  return <NotificationPopover pathname={pathname} />;
+function NotificationLink({ pathname, compact = false }: Readonly<{ pathname: string; compact?: boolean }>) {
+  return <NotificationPopover pathname={pathname} compact={compact} />;
 }
 
 function MobileNotificationLink({ userId, onNavigate }: Readonly<{ userId: number; onNavigate: () => void }>) {
@@ -310,14 +321,14 @@ const tenantMobileNavigationItems: readonly NavigationItem[] = [
   }
 ];
 
-function TenantMobileNav({ pathname }: Readonly<{ pathname: string }>) {
+function TenantMobileNav({ pathname, items }: Readonly<{ pathname: string; items: readonly NavigationItem[] }>) {
   return (
     <nav
       aria-label="Điều hướng nhanh trên di động"
       className="rm-mobile-nav fixed inset-x-0 bottom-0 z-sticky border-t border-border/80 bg-surface/95 px-2 pt-1.5 pb-[max(0.5rem,env(safe-area-inset-bottom,0px))] shadow-raised backdrop-blur-md lg:hidden"
     >
       <div className="mx-auto flex max-w-lg items-stretch justify-between gap-1">
-        {tenantMobileNavigationItems.map((item) => {
+        {items.map((item) => {
           const current = isNavigationItemActive(item, pathname) ? "page" : undefined;
           return (
             <Link
@@ -357,6 +368,7 @@ function ConsumerShell({
   useEffect(() => closeMenu(), [closeMenu, pathname]);
 
   const fullBleed = pathname === "/" || pathname === "/search" || pathname === "/near-me";
+  const wideRoommateDiscovery = pathname === "/roommates";
   const listingDetail = /^\/listings\/[^/]+$/.test(pathname);
   const showTenantMobileNav =
     actor === "tenant" && !pathname.startsWith("/inquiries/") && !pathname.startsWith("/roommates/conversations/");
@@ -414,15 +426,20 @@ function ConsumerShell({
         className={cx(
           fullBleed
             ? "min-w-0 flex-1"
-            : cx("rm-page-container min-w-0 flex-1", listingDetail ? "py-4 sm:py-6" : "py-8 sm:py-12"),
-          showTenantMobileNav && (fullBleed ? "pb-24 lg:pb-0" : "pb-24 sm:pb-24 lg:pb-12")
+            : cx(
+                wideRoommateDiscovery
+                  ? "box-border w-full min-w-0 max-w-none flex-1"
+                  : "rm-page-container min-w-0 flex-1",
+                listingDetail ? "py-4 sm:py-6" : !wideRoommateDiscovery && "py-8 sm:py-12"
+              ),
+          showTenantMobileNav && (fullBleed || wideRoommateDiscovery ? "pb-24 lg:pb-0" : "pb-24 sm:pb-24 lg:pb-12")
         )}
       >
-        <PageTransition>{children}</PageTransition>
+        <PageTransition className={wideRoommateDiscovery ? "w-full max-w-none" : undefined}>{children}</PageTransition>
       </main>
 
       <PublicFooter actor={actor} />
-      {showTenantMobileNav ? <TenantMobileNav pathname={pathname} /> : null}
+      {showTenantMobileNav ? <TenantMobileNav pathname={pathname} items={tenantMobileNavigationItems} /> : null}
 
       <NavigationOverlay open={menuOpen} title="Điều hướng RentMate" triggerRef={triggerRef} onClose={closeMenu}>
         <nav id="consumer-mobile-navigation" aria-label="Điều hướng marketplace trên di động" className="mt-4">
@@ -495,7 +512,206 @@ function ConsumerShell({
   );
 }
 
-function WorkspaceShell({
+function WorkspaceShell(props: SharedShellProps & Readonly<{ actor: WorkspaceActor }>) {
+  return props.actor === "landlord" ? (
+    <LandlordWorkspaceShell {...props} actor="landlord" />
+  ) : (
+    <AdminWorkspaceShell {...props} actor="admin" />
+  );
+}
+
+function LandlordWorkspaceShell({
+  children,
+  pathname,
+  authStatus,
+  user,
+  authError,
+  logoutPending,
+  onLogout,
+  onRefresh
+}: SharedShellProps & Readonly<{ actor: "landlord" }>) {
+  const [menuOpen, setMenuOpen] = useState(false);
+  const triggerRef = useRef<HTMLButtonElement>(null);
+  const closeMenu = useCallback(() => setMenuOpen(false), []);
+  const ready = authStatus === "authenticated" && user?.role === "LANDLORD";
+  const commandBar = useLandlordCommandBar();
+
+  useEffect(() => closeMenu(), [closeMenu, pathname]);
+
+  return (
+    <div className={landlordStyles.shell} data-landlord-workspace>
+      <SkipLink />
+      <aside className={landlordStyles.sidebar}>
+        <div className={landlordStyles.sidebarBrand}>
+          <Brand compact href="/landlord" label="RentMate — về quản lý cho thuê" />
+        </div>
+        <nav aria-label="Điều hướng quản lý cho thuê" className={landlordStyles.sidebarNav}>
+          {ready ? (
+            <NavigationLinks
+              items={landlordNavigationItems}
+              pathname={pathname}
+              className={landlordStyles.sidebarNavList}
+              linkClassName={landlordStyles.sidebarLink}
+              compact
+            />
+          ) : (
+            <div aria-label="Đang kiểm tra quyền truy cập" className={landlordStyles.sidebarLoading}>
+              {[0, 1, 2, 3, 4].map((item) => (
+                <Skeleton key={item} className="h-12 w-12 rounded-2xl" />
+              ))}
+            </div>
+          )}
+        </nav>
+        <div className={landlordStyles.sidebarBottom}>
+          {ready ? (
+            <div className={landlordStyles.sidebarNotification}>
+              <NotificationLink pathname={pathname} compact />
+            </div>
+          ) : null}
+          {ready && user ? <AccountMenu user={user} logoutPending={logoutPending} onLogout={onLogout} compact /> : null}
+        </div>
+      </aside>
+
+      <div className={landlordStyles.content}>
+        <header className={landlordStyles.header}>
+          <div className={landlordStyles.headerInner}>
+            <div className={landlordStyles.headerContext}>
+              <span className={landlordStyles.headerSpaceBadge}>
+                <span className={landlordStyles.headerDot} aria-hidden="true" />
+                Kho phòng
+              </span>
+              <strong>
+                {commandBar?.inventoryCount === undefined
+                  ? "Quản lý cho thuê"
+                  : `Quản lý ${commandBar.inventoryCount} phòng cho thuê`}
+              </strong>
+              {commandBar?.occupancyRate !== undefined && commandBar.occupancyRate !== null ? (
+                <span className={landlordStyles.occupancyPill}>
+                  <span className={landlordStyles.occupancyDot} aria-hidden="true" />
+                  Lấp đầy: <b>{commandBar.occupancyRate.toLocaleString("vi-VN", { maximumFractionDigits: 1 })}%</b>
+                </span>
+              ) : null}
+            </div>
+            {ready && commandBar ? (
+              <div className={landlordStyles.headerCommandBar}>
+                {commandBar.searchEnabled ? (
+                  <label className={landlordStyles.headerSearch} htmlFor="landlord-command-search">
+                    <Icon name="search" aria-hidden="true" />
+                    <span className="sr-only">Tìm tin theo tên, khu vực hoặc loại phòng</span>
+                    <input
+                      id="landlord-command-search"
+                      type="search"
+                      value={commandBar.searchValue}
+                      placeholder="Tìm kiếm phòng, khu vực…"
+                      autoComplete="off"
+                      onChange={(event) => commandBar.onSearchChange(event.target.value)}
+                    />
+                    {commandBar.searchValue ? (
+                      <button type="button" aria-label="Xóa tìm kiếm" onClick={() => commandBar.onSearchChange("")}>
+                        <Icon name="close" aria-hidden="true" />
+                      </button>
+                    ) : null}
+                  </label>
+                ) : null}
+                <Button
+                  className={landlordStyles.headerAddButton}
+                  pending={commandBar.createPending}
+                  pendingLabel="Đang tạo…"
+                  onClick={commandBar.onCreate}
+                >
+                  <Icon name="plus" aria-hidden="true" />
+                  Đăng phòng mới
+                </Button>
+              </div>
+            ) : null}
+            <div className={landlordStyles.mobileHeaderActions}>
+              {ready ? <NotificationLink pathname={pathname} /> : null}
+              <IconButton
+                ref={triggerRef}
+                label="Mở thêm mục quản lý cho thuê"
+                variant="ghost"
+                className="lg:hidden"
+                disabled={!ready}
+                aria-expanded={menuOpen}
+                aria-controls="landlord-mobile-navigation"
+                onClick={() => setMenuOpen(true)}
+              >
+                <Icon name="menu" />
+              </IconButton>
+            </div>
+          </div>
+        </header>
+
+        <AuthFeedback status={authStatus} logoutFailed={authError} onRefresh={onRefresh} />
+
+        <main id="main-content" className={landlordStyles.main}>
+          <PageTransition>{children}</PageTransition>
+        </main>
+      </div>
+
+      {ready ? (
+        <nav aria-label="Điều hướng nhanh trên di động" className={landlordStyles.mobileNav}>
+          <div className="mx-auto grid max-w-xl grid-cols-4 gap-1">
+            {landlordNavigationItems.slice(0, 3).map((item) => (
+              <Link
+                key={item.key}
+                href={item.href}
+                aria-label={item.label + " trên di động"}
+                aria-current={isNavigationItemActive(item, pathname) ? "page" : undefined}
+                className="flex min-h-12 min-w-0 flex-col items-center justify-center gap-1 rounded-xl px-1 py-1 text-[10px] font-semibold leading-3.5 text-[#728078] transition-colors hover:bg-[#f0f3eb] hover:text-[#285c44] aria-[current=page]:bg-[#e9f0e4] aria-[current=page]:text-[#285c44]"
+              >
+                <Icon name={item.icon} className="h-5 w-5 shrink-0" />
+                <span className="max-w-full truncate">{item.key === "landlord-leads" ? "Khách" : item.label}</span>
+              </Link>
+            ))}
+            <button
+              type="button"
+              aria-label="Mở thêm mục trên di động"
+              aria-expanded={menuOpen}
+              aria-controls="landlord-mobile-navigation"
+              className="flex min-h-12 min-w-0 flex-col items-center justify-center gap-1 rounded-xl px-1 py-1 text-[10px] font-semibold leading-3.5 text-[#728078] transition-colors hover:bg-[#f0f3eb] hover:text-[#285c44]"
+              onClick={() => setMenuOpen(true)}
+            >
+              <Icon name="menu" className="h-5 w-5 shrink-0" />
+              <span>Khác</span>
+            </button>
+          </div>
+        </nav>
+      ) : null}
+
+      <NavigationOverlay open={menuOpen} title="Quản lý cho thuê" triggerRef={triggerRef} onClose={closeMenu}>
+        <nav
+          id="landlord-mobile-navigation"
+          aria-label="Điều hướng quản lý cho thuê trên di động"
+          className="mt-3 space-y-1"
+        >
+          <NavigationLinks
+            items={landlordNavigationItems}
+            pathname={pathname}
+            linkClassName={drawerNavLink}
+            onNavigate={closeMenu}
+          />
+          {user ? <MobileNotificationLink userId={user.id} onNavigate={closeMenu} /> : null}
+          <Link href="/search" className={drawerNavLink} onClick={closeMenu}>
+            <Icon name="eye" />
+            <span className="min-w-0 flex-1">Xem trang người thuê</span>
+          </Link>
+        </nav>
+        {user ? (
+          <div className="mt-auto space-y-3 border-t border-border pt-4">
+            <AccountSummary user={user} />
+            <Button variant="outline" className="w-full" pending={logoutPending} onClick={onLogout}>
+              <Icon name="logout" />
+              Đăng xuất
+            </Button>
+          </div>
+        ) : null}
+      </NavigationOverlay>
+    </div>
+  );
+}
+
+function AdminWorkspaceShell({
   children,
   pathname,
   actor,
@@ -675,7 +891,7 @@ function RestrictedShell({ children, user }: Readonly<{ children: ReactNode; use
   const destination = user?.role === "LANDLORD" ? "/landlord" : user?.role === "ADMIN" ? "/admin" : "/search";
   const label =
     user?.role === "LANDLORD"
-      ? "Về không gian cho thuê"
+      ? "Về quản lý cho thuê"
       : user?.role === "ADMIN"
         ? "Về khu vực quản trị"
         : "Về marketplace";
@@ -703,7 +919,7 @@ function PublicFooter({ actor }: Readonly<{ actor: NavigationActor }>) {
     actor === "tenant"
       ? { href: "/saved-searches", label: "Bộ lọc đã lưu" }
       : actor === "landlord"
-        ? { href: "/landlord", label: "Không gian cho thuê" }
+        ? { href: "/landlord", label: "Quản lý cho thuê" }
         : actor === "admin"
           ? { href: "/admin", label: "Khu vực quản trị" }
           : null;
@@ -825,7 +1041,13 @@ export function AppShell({ children }: Readonly<{ children: ReactNode }>) {
   } as const;
 
   if (shellKind === "auth") return <AuthShell {...sharedProps} />;
-  if (shellKind === "landlord") return <WorkspaceShell {...sharedProps} actor="landlord" />;
+  if (shellKind === "landlord") {
+    return (
+      <LandlordCommandBarProvider>
+        <WorkspaceShell {...sharedProps} actor="landlord" />
+      </LandlordCommandBarProvider>
+    );
+  }
   if (shellKind === "admin") return <WorkspaceShell {...sharedProps} actor="admin" />;
   if (shellKind === "restricted") return <RestrictedShell user={visibleUser}>{children}</RestrictedShell>;
   return (

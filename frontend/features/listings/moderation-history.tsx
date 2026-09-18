@@ -7,11 +7,14 @@ import { EmptyState, ErrorState, LoadingState } from "../../components/ui/feedba
 import { Icon } from "../../components/ui/icon";
 import { Pagination } from "../../components/ui/pagination";
 import { api, ApiError } from "../../lib/api/client";
-import type { ApiPage, ModerationHistoryItem } from "../../types/api";
+import type { ApiPage, ListingStatus, ModerationHistoryItem } from "../../types/api";
+import { appendAdminListingReturnQuery } from "./admin-listing-query";
+import styles from "./admin-listing-detail.module.css";
 
 export interface HistoryRefreshInstruction {
   readonly token: number;
   readonly page?: number;
+  readonly resolve?: (succeeded: boolean) => void;
 }
 
 interface HistoryQuery {
@@ -37,8 +40,18 @@ function parseHistoryQuery(parameters: URLSearchParams): HistoryQuery | null {
   }
 }
 
-function historyUrl(listingId: number, query: HistoryQuery): string {
+const statusLabels: Record<ListingStatus, string> = {
+  DRAFT: "Bản nháp",
+  PENDING: "Chờ duyệt",
+  APPROVED: "Đã duyệt",
+  REJECTED: "Bị từ chối",
+  HIDDEN: "Đã ẩn",
+  INACTIVE: "Ngừng hoạt động"
+};
+
+function historyUrl(listingId: number, query: HistoryQuery, currentParameters: URLSearchParams): string {
   const parameters = new URLSearchParams();
+  appendAdminListingReturnQuery(parameters, currentParameters);
   if (query.page > 1) parameters.set("historyPage", String(query.page));
   if (query.pageSize !== undefined) parameters.set("historyPageSize", String(query.pageSize));
   const suffix = parameters.toString();
@@ -66,6 +79,7 @@ export function ModerationHistory({
   const [retryVersion, setRetryVersion] = useState(0);
   const requestId = useRef(0);
   const consumedInstruction = useRef(0);
+  const pendingRefresh = useRef<((succeeded: boolean) => void) | null>(null);
   const queryIdentity = parsed ? JSON.stringify(parsed) : "invalid";
 
   useEffect(() => {
@@ -76,8 +90,9 @@ export function ModerationHistory({
         : undefined;
     if (refreshInstruction && refreshInstruction.token > consumedInstruction.current) {
       consumedInstruction.current = refreshInstruction.token;
+      pendingRefresh.current = refreshInstruction.resolve ?? null;
       if (instructedPage !== undefined && instructedPage !== parsed.page) {
-        replace(historyUrl(listingId, { ...parsed, page: instructedPage }));
+        replace(historyUrl(listingId, { ...parsed, page: instructedPage }, new URLSearchParams(rawQuery)));
         return;
       }
     }
@@ -88,21 +103,31 @@ export function ModerationHistory({
     void api.admin
       .listHistory(listingId, query, controller.signal)
       .then((result) => {
-        if (!controller.signal.aborted && currentRequest === requestId.current) setState({ status: "success", result });
+        if (!controller.signal.aborted && currentRequest === requestId.current) {
+          setState({ status: "success", result });
+          pendingRefresh.current?.(true);
+          pendingRefresh.current = null;
+        }
       })
       .catch((error: unknown) => {
-        if (!controller.signal.aborted && currentRequest === requestId.current)
+        if (!controller.signal.aborted && currentRequest === requestId.current) {
           setState({ status: "error", error: error instanceof ApiError ? error : null });
+          pendingRefresh.current?.(false);
+          pendingRefresh.current = null;
+        }
       });
     return () => controller.abort();
-  }, [listingId, parsed, queryIdentity, refreshInstruction, retryVersion, replace]);
+  }, [listingId, parsed, queryIdentity, rawQuery, refreshInstruction, retryVersion, replace]);
 
   if (!parsed) return <ErrorState message="Liên kết lịch sử kiểm duyệt không hợp lệ." />;
   return (
-    <section aria-labelledby="moderation-history-heading" className="space-y-4 border-t border-rent-line pt-8">
-      <h2 id="moderation-history-heading" className="text-2xl font-semibold text-rent-ink">
-        Lịch sử kiểm duyệt
-      </h2>
+    <section aria-labelledby="moderation-history-heading" className={styles.historySection}>
+      <header className={styles.historyHeader}>
+        <p className={styles.sectionKicker}>Dấu vết quyết định</p>
+        <h2 id="moderation-history-heading" className={styles.sectionTitle}>
+          Lịch sử kiểm duyệt
+        </h2>
+      </header>
       {state.status === "idle" || state.status === "loading" ? (
         <LoadingState message="Đang tải lịch sử kiểm duyệt…" />
       ) : null}
@@ -117,33 +142,46 @@ export function ModerationHistory({
         <EmptyState title="Chưa có lịch sử kiểm duyệt" />
       ) : null}
       {state.status === "success" && state.result.data.length > 0 ? (
-        <ol className="space-y-3 border-l border-rent-line pl-4 sm:pl-5">
+        <ol className={styles.historyList}>
           {state.result.data.map((item) => (
-            <li key={item.id} className="relative rounded-card border border-rent-line bg-white p-4 sm:p-5">
-              <span
-                aria-hidden="true"
-                className="absolute -left-[1.35rem] top-6 h-2.5 w-2.5 rounded-full border-2 border-white bg-teal-700 sm:-left-[1.6rem]"
-              />
-              <p className="flex items-center gap-2 font-display font-bold text-rent-ink">
-                {item.previousStatus} <Icon name="arrow" className="h-4 w-4" /> {item.newStatus}
+            <li key={item.id} className={styles.historyItem}>
+              <p className={styles.historyTransition}>
+                <span className={styles.historyStatusFrom}>{statusLabels[item.previousStatus]}</span>
+                <Icon name="arrow" className={styles.historyArrow} />
+                <span className={styles.historyStatusTo}>{statusLabels[item.newStatus]}</span>
               </p>
-              <p className="mt-1 text-sm text-rent-secondary">
+              <p className={styles.historyMeta}>
                 Quản trị viên #{item.adminId} · {new Date(item.createdAt).toLocaleString("vi-VN")}
               </p>
-              {item.reason ? (
-                <p className="mt-3 whitespace-pre-wrap text-sm text-rent-secondary">{item.reason}</p>
-              ) : null}
+              {item.reason ? <p className={styles.historyReason}>{item.reason}</p> : null}
             </li>
           ))}
         </ol>
       ) : null}
-      {state.status === "success" ? (
+      {state.status === "success" && (state.result.pagination.page > 1 || state.result.pagination.hasNextPage) ? (
         <Pagination
           ariaLabel="Phân trang lịch sử kiểm duyệt"
           page={state.result.pagination.page}
           hasNextPage={state.result.pagination.hasNextPage}
-          onPrevious={() => router.push(historyUrl(listingId, { ...parsed, page: state.result.pagination.page - 1 }))}
-          onNext={() => router.push(historyUrl(listingId, { ...parsed, page: state.result.pagination.page + 1 }))}
+          onPrevious={() =>
+            router.push(
+              historyUrl(
+                listingId,
+                { ...parsed, page: state.result.pagination.page - 1 },
+                new URLSearchParams(rawQuery)
+              )
+            )
+          }
+          onNext={() =>
+            router.push(
+              historyUrl(
+                listingId,
+                { ...parsed, page: state.result.pagination.page + 1 },
+                new URLSearchParams(rawQuery)
+              )
+            )
+          }
+          variant="moderation"
         />
       ) : null}
     </section>
