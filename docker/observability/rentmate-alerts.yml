@@ -1,0 +1,36 @@
+groups:
+  - name: rentmate-local-readiness
+    rules:
+      - alert: RentMateTelemetryCollectorUnavailable
+        expr: up{job="rentmate-otel-collector"} == 0
+        for: 2m
+        labels:
+          severity: critical
+        annotations:
+          summary: RentMate telemetry collector is unavailable
+          runbook: docs/operations/INCIDENT_RESPONSE_RUNBOOK.md
+
+      - alert: RentMateHighServerErrorRatio
+        expr: |
+          sum(rate(rentmate_service_http_server_request_count_total{http_response_status_code=~"5.."}[5m]))
+          /
+          clamp_min(sum(rate(rentmate_service_http_server_request_count_total[5m])), 0.001) > 0.05
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: RentMate service 5xx ratio exceeds 5 percent
+          runbook: docs/operations/INCIDENT_RESPONSE_RUNBOOK.md
+
+      - alert: RentMateHighP95Latency
+        expr: |
+          histogram_quantile(
+            0.95,
+            sum by (le) (rate(rentmate_service_http_server_request_duration_seconds_bucket[5m]))
+          ) > 1
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: RentMate service p95 latency exceeds one second
+          runbook: docs/operations/INCIDENT_RESPONSE_RUNBOOK.md

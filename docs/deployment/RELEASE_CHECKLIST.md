@@ -32,7 +32,7 @@ Leave unknown production values blank. A checked repository rehearsal is not a p
 - [ ] `FRONTEND_ORIGIN` is the exact HTTPS frontend origin.
 - [ ] `NEXT_PUBLIC_API_BASE_URL` is the exact non-local HTTPS API origin selected before frontend build.
 - [ ] `COOKIE_SECURE=true`; JWT/image/search policy constants retain frozen values.
-- [ ] `npm.cmd run deploy:validate` passes; evidence reference: ______________________________
+- [ ] `npm.cmd run legacy:deploy:validate` passes; evidence reference: ______________________________
 
 ## Backup
 
@@ -58,7 +58,7 @@ Leave unknown production values blank. A checked repository rehearsal is not a p
 
 ## Schema verification
 
-- [ ] `npm.cmd run db:verify` passes with two enums, eight product tables, expected constraints/indexes, and seeds.
+- [ ] `npm.cmd run legacy:db:verify` passes with two enums, eight product tables, expected constraints/indexes, and seeds.
 - [ ] External deployment record advanced only after successful verification.
 - [ ] Verification evidence/reference: ______________________________
 

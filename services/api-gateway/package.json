@@ -7,7 +7,7 @@
     "node": ">=22.15.1 <23"
   },
   "scripts": {
-    "start": "node server.mjs",
+    "start": "node --import ../shared/observability/register.mjs server.mjs",
     "test": "node --test test/*.test.mjs"
   }
 }

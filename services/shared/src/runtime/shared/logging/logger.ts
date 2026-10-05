@@ -41,6 +41,8 @@ export function createLogger(minimumLevel: LogLevel): Logger {
     const entry = JSON.stringify({
       timestamp: new Date().toISOString(),
       level,
+      service: process.env.OTEL_SERVICE_NAME ?? process.env.SERVICE_NAME ?? "rentmate-service",
+      environment: process.env.DEPLOYMENT_ENVIRONMENT ?? process.env.NODE_ENV ?? "development",
       message,
       ...sanitizeContext(context)
     });

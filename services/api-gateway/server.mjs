@@ -1,6 +1,8 @@
+import { randomUUID } from "node:crypto";
 import http from "node:http";
 import https from "node:https";
 import { fileURLToPath } from "node:url";
+import { withGatewayRequestTelemetry } from "../shared/observability/gateway-telemetry.mjs";
 
 const hopByHopHeaders = new Set([
   "connection",
@@ -15,6 +17,28 @@ const hopByHopHeaders = new Set([
 
 const corsMethods = "GET, HEAD, POST, PUT, PATCH, DELETE, OPTIONS";
 const corsHeaders = "Content-Type";
+
+function writeLog(level, message, context = {}) {
+  const writer = level === "error" ? console.error : level === "warn" ? console.warn : console.log;
+  writer(
+    JSON.stringify({
+      timestamp: new Date().toISOString(),
+      level,
+      service: process.env.OTEL_SERVICE_NAME ?? "api-gateway",
+      environment: process.env.DEPLOYMENT_ENVIRONMENT ?? process.env.NODE_ENV ?? "development",
+      message,
+      ...context
+    })
+  );
+}
+
+function resolveRequestId(request) {
+  const candidate = request.headers["x-request-id"];
+  if (typeof candidate === "string" && /^[A-Za-z0-9][A-Za-z0-9._:-]{7,127}$/.test(candidate)) {
+    return candidate;
+  }
+  return `req_${randomUUID().replaceAll("-", "")}`;
+}
 
 function readPort(value, fallback) {
   const port = Number(value ?? fallback);
@@ -62,19 +86,16 @@ function normalizeOrigin(value, name) {
 }
 
 export function createRouteTable(environment = process.env) {
-  const backendUrl = normalizeBaseUrl(environment.BACKEND_URL ?? "http://localhost:4000", "BACKEND_URL");
   const frontendOrigin = normalizeOrigin(environment.FRONTEND_ORIGIN ?? "http://localhost:3000", "FRONTEND_ORIGIN");
-  const optionalUrl = (key) => {
-    const value = environment[key]?.trim();
-    return value ? normalizeBaseUrl(value, key) : null;
-  };
 
   return Object.freeze({
-    backend: backendUrl,
     frontendOrigin,
-    identity: optionalUrl("IDENTITY_SERVICE_URL"),
-    listing: optionalUrl("LISTING_SERVICE_URL"),
-    engagement: optionalUrl("ENGAGEMENT_SERVICE_URL"),
+    identity: normalizeBaseUrl(environment.IDENTITY_SERVICE_URL ?? "http://localhost:4100", "IDENTITY_SERVICE_URL"),
+    listing: normalizeBaseUrl(environment.LISTING_SERVICE_URL ?? "http://localhost:4200", "LISTING_SERVICE_URL"),
+    engagement: normalizeBaseUrl(
+      environment.ENGAGEMENT_SERVICE_URL ?? "http://localhost:4300",
+      "ENGAGEMENT_SERVICE_URL"
+    ),
     internalServiceToken: environment.SERVICE_INTERNAL_TOKEN?.trim() || null,
     upstreamTimeoutMs: readTimeout(environment.GATEWAY_UPSTREAM_TIMEOUT_MS, 10_000)
   });
@@ -142,10 +163,10 @@ export function resolveUpstream(pathname, routes) {
   ) {
     return routes.engagement;
   }
-  return routes.backend;
+  return null;
 }
 
-function copyRequestHeaders(request, upstream, internalServiceToken) {
+function copyRequestHeaders(request, upstream, internalServiceToken, traceparent) {
   const headers = {};
   for (const [name, value] of Object.entries(request.headers)) {
     if (value !== undefined && name !== "host" && !hopByHopHeaders.has(name)) {
@@ -158,6 +179,9 @@ function copyRequestHeaders(request, upstream, internalServiceToken) {
   headers["x-forwarded-proto"] = "http";
   if (internalServiceToken) {
     headers["x-rentmate-internal-token"] = internalServiceToken;
+  }
+  if (traceparent) {
+    headers.traceparent = traceparent;
   }
   return headers;
 }
@@ -199,14 +223,23 @@ function sendGatewayError(response, statusCode, code, message) {
   response.end(JSON.stringify({ error: { code, message } }));
 }
 
-function proxyRequest(request, response, upstream, internalServiceToken, upstreamTimeoutMs, streamingResponse) {
+function proxyRequest(
+  request,
+  response,
+  upstream,
+  internalServiceToken,
+  upstreamTimeoutMs,
+  streamingResponse,
+  requestId,
+  traceparent
+) {
   const target = new URL(request.url ?? "/", upstream);
   const transport = target.protocol === "https:" ? https : http;
   const proxy = transport.request(
     target,
     {
       method: request.method,
-      headers: copyRequestHeaders(request, upstream, internalServiceToken)
+      headers: copyRequestHeaders(request, upstream, internalServiceToken, traceparent)
     },
     (upstreamResponse) => {
       if (streamingResponse) proxy.setTimeout(0);
@@ -216,11 +249,17 @@ function proxyRequest(request, response, upstream, internalServiceToken, upstrea
   );
 
   proxy.setTimeout(upstreamTimeoutMs, () => {
+    writeLog("warn", "Gateway upstream request timed out", { requestId, upstream: upstream.host });
     proxy.destroy(new Error("Gateway upstream request timed out."));
     sendGatewayError(response, 504, "UPSTREAM_TIMEOUT", "The requested service did not respond in time.");
   });
 
-  proxy.on("error", () => {
+  proxy.on("error", (error) => {
+    writeLog("warn", "Gateway upstream request failed", {
+      requestId,
+      upstream: upstream.host,
+      errorType: error instanceof Error ? error.name : "UnknownError"
+    });
     sendGatewayError(response, 502, "UPSTREAM_UNAVAILABLE", "The requested service is unavailable.");
   });
   if (streamingResponse) {
@@ -234,40 +273,73 @@ export function createGatewayServer(environment = process.env) {
   const routes = createRouteTable(environment);
   const server = http.createServer((request, response) => {
     const pathname = new URL(request.url ?? "/", "http://gateway.local").pathname;
-    const origin = request.headers.origin;
-    const originAllowed = !origin || setCorsHeaders(request, response, routes.frontendOrigin);
+    return withGatewayRequestTelemetry(request.method ?? "GET", pathname, (telemetry) => {
+      const requestId = resolveRequestId(request);
+      request.headers["x-request-id"] = requestId;
+      response.setHeader("X-Request-Id", requestId);
+      let requestCompleted = false;
+      const completeRequest = () => {
+        if (requestCompleted) return;
+        requestCompleted = true;
+        const durationMs = telemetry.end(response.statusCode);
+        writeLog("info", "Gateway request completed", {
+          requestId,
+          traceId: telemetry.traceId,
+          spanId: telemetry.spanId,
+          method: request.method ?? "GET",
+          path: pathname.replace(/\/[0-9]+(?=\/|$)/g, "/:id").slice(0, 160),
+          status: response.statusCode,
+          durationMs
+        });
+      };
+      response.once("finish", completeRequest);
+      response.once("close", completeRequest);
+      const origin = request.headers.origin;
+      const originAllowed = !origin || setCorsHeaders(request, response, routes.frontendOrigin);
 
-    if (!originAllowed && (request.method === "OPTIONS" || isUnsafeMethod(request.method ?? "GET"))) {
-      sendGatewayError(response, 403, "ORIGIN_NOT_ALLOWED", "The request origin is not allowed.");
-      return;
-    }
-
-    if (request.method === "OPTIONS") {
-      if (originAllowed) {
-        response.writeHead(204);
-        response.end();
-      } else {
+      if (!originAllowed && (request.method === "OPTIONS" || isUnsafeMethod(request.method ?? "GET"))) {
         sendGatewayError(response, 403, "ORIGIN_NOT_ALLOWED", "The request origin is not allowed.");
+        return;
       }
-      return;
-    }
 
-    if (!pathname.startsWith("/api/")) {
-      sendGatewayError(response, 404, "NOT_FOUND", "The requested route was not found.");
-      return;
-    }
+      if (request.method === "OPTIONS") {
+        if (originAllowed) {
+          response.writeHead(204);
+          response.end();
+        } else {
+          sendGatewayError(response, 403, "ORIGIN_NOT_ALLOWED", "The request origin is not allowed.");
+        }
+        return;
+      }
 
-    const upstream = resolveUpstream(pathname, routes);
-    const isServiceUpstream = upstream !== routes.backend;
-    const streamingResponse = /^\/api\/v1\/(?:inquiries\/[1-9][0-9]*|notifications)\/events$/.test(pathname);
-    proxyRequest(
-      request,
-      response,
-      upstream,
-      isServiceUpstream ? routes.internalServiceToken : null,
-      routes.upstreamTimeoutMs,
-      streamingResponse
-    );
+      if (!pathname.startsWith("/api/")) {
+        sendGatewayError(response, 404, "NOT_FOUND", "The requested route was not found.");
+        return;
+      }
+
+      if (request.method === "GET" && pathname === "/api/health") {
+        response.writeHead(200, { "content-type": "application/json; charset=utf-8" });
+        response.end(JSON.stringify({ status: "ok" }));
+        return;
+      }
+
+      const upstream = resolveUpstream(pathname, routes);
+      if (!upstream) {
+        sendGatewayError(response, 404, "NOT_FOUND", "The requested route was not found.");
+        return;
+      }
+      const streamingResponse = /^\/api\/v1\/(?:inquiries\/[1-9][0-9]*|notifications)\/events$/.test(pathname);
+      proxyRequest(
+        request,
+        response,
+        upstream,
+        routes.internalServiceToken,
+        routes.upstreamTimeoutMs,
+        streamingResponse,
+        requestId,
+        telemetry.traceparent
+      );
+    });
   });
 
   return server;
@@ -277,8 +349,25 @@ export function startGateway(environment = process.env) {
   const port = readPort(environment.GATEWAY_PORT, 4001);
   const server = createGatewayServer(environment);
   server.listen(port, () => {
-    process.stdout.write(`RentMate API Gateway listening on http://localhost:${port}\n`);
+    writeLog("info", "RentMate API Gateway started", { port });
   });
+  let shutdownStarted = false;
+  const shutdown = (signal) => {
+    if (shutdownStarted) return;
+    shutdownStarted = true;
+    writeLog("info", "Gateway shutdown started", { signal });
+    server.close((error) => {
+      if (error) {
+        writeLog("error", "Gateway shutdown failed", { signal, errorType: error.name });
+        process.exitCode = 1;
+        return;
+      }
+      writeLog("info", "Gateway shutdown completed", { signal });
+    });
+    server.closeIdleConnections?.();
+  };
+  process.once("SIGINT", shutdown);
+  process.once("SIGTERM", shutdown);
   return server;
 }
 

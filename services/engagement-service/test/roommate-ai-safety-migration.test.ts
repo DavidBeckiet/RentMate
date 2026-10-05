@@ -9,8 +9,8 @@ const migrationsDirectory = path.resolve(path.dirname(fileURLToPath(import.meta.
 
 test("V3 safety migration is one forward Engagement table with only bounded metadata", async () => {
   const migrations = await createMigrationRunner("Engagement").discover(migrationsDirectory);
-  assert.equal(migrations.at(-1)?.version, 20);
-  assert.equal(migrations.at(-1)?.filename, "0020_roommate_ai_safety_analyses.sql");
+  const safetyMigration = migrations.find((migration) => migration.version === 20);
+  assert.equal(safetyMigration?.filename, "0020_roommate_ai_safety_analyses.sql");
   const sql = await readFile(path.join(migrationsDirectory, "0020_roommate_ai_safety_analyses.sql"), "utf8");
   for (const required of [
     "CREATE TABLE roommate_message_ai_safety_analyses",

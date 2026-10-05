@@ -6,15 +6,15 @@
     "node": ">=22.15.1 <23"
   },
   "scripts": {
-    "dev": "tsx watch src/server.ts",
-    "start": "tsx src/server.ts",
+    "dev": "tsx --import ../shared/observability/register.mjs watch src/server.ts",
+    "start": "tsx --import ../shared/observability/register.mjs src/server.ts",
     "test": "node --import tsx --test test/*.test.ts",
     "migrate": "tsx migrate.ts",
     "backfill": "tsx backfill.ts"
   },
   "dependencies": {
     "@rentmate/service-shared": "file:../shared",
-    "multer": "^2.2.0",
+    "multer": "2.4.0",
     "rentmate": "file:../..",
     "tsx": "4.19.4"
   },

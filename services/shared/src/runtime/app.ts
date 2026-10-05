@@ -7,6 +7,7 @@ import { unexpectedErrorHandler } from "./shared/middleware/error-handler.js";
 import { createOriginGuard } from "./shared/middleware/origin-guard.js";
 import { requestIdMiddleware } from "./shared/middleware/request-id.js";
 import { requestLoggerMiddleware } from "./shared/middleware/request-logger.js";
+import { httpMetricsMiddleware } from "./observability/http-metrics.js";
 
 export interface AppDependencies {
   readonly frontendOrigin: string;
@@ -20,6 +21,7 @@ export function createApp(dependencies: AppDependencies): express.Express {
   const app = express();
 
   app.use(requestIdMiddleware);
+  app.use(httpMetricsMiddleware());
   app.use(requestLoggerMiddleware(dependencies.logger));
   app.use(createCorsMiddleware(dependencies.frontendOrigin));
   app.use(createOriginGuard(dependencies.frontendOrigin));

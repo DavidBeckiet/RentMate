@@ -12,12 +12,6 @@ const frontendProcess = [
 
 const localServiceProcesses = [
   [
-    "backend",
-    "npm.cmd",
-    ["--prefix", "backend", "run", "dev"],
-    { ...process.env, FRONTEND_ORIGIN: localFrontendOrigin }
-  ],
-  [
     "identity",
     "npm.cmd",
     ["--prefix", "services/identity-service", "run", "dev"],

@@ -89,7 +89,7 @@ npm.cmd --prefix frontend ci
 Xác thực cấu hình sản xuất mà không cần kết nối với PostgreSQL hoặc nhà cung cấp:
 
 ```powershell
-npm.cmd run deploy:validate
+npm.cmd run legacy:deploy:validate
 ```
 
 Điều này chỉ kiểm tra cấu hình. Nó không chứng minh tính khả dụng của DNS, TLS, cơ sở dữ liệu, nhà cung cấp hoặc ứng dụng.
@@ -134,14 +134,14 @@ Luôn tạo và ghi lại bản sao lưu đã được xác minh trước khi á
 Xác minh rằng cơ sở dữ liệu đích là mới và trống, sau đó xem trước gói kho lưu trữ:
 
 ```powershell
-npm.cmd run migrate:clean -- --plan-only
+npm.cmd run legacy:migrate:clean -- --plan-only
 ```
 
 Khởi động lại cơ sở dữ liệu sạch bằng cách sử dụng các giá trị môi trường cơ sở dữ liệu/quản trị viên được bảo vệ:
 
 ```powershell
-npm.cmd run db:bootstrap
-npm.cmd run db:verify
+npm.cmd run legacy:db:bootstrap
+npm.cmd run legacy:db:verify
 ```
 
 `db:bootstrap` áp dụng di chuyển `0001`–`0012`, điều chỉnh năm loại thuộc tính và mười hai tiện nghi, xác minh
@@ -150,7 +150,7 @@ chính xác lược đồ hai enum/tám bảng và cung cấp cho quản trị v
 Nếu việc cung cấp quản trị viên phải được lặp lại một cách độc lập:
 
 ```powershell
-npm.cmd run admin:provision
+npm.cmd run legacy:admin:provision
 ```
 
 Quản trị viên đang hoạt động tương tự là người không hoạt động; quản trị viên không hoạt động hoặc email của người thuê nhà/chủ nhà là một lỗi an toàn. Không có đăng ký công khai
@@ -161,14 +161,14 @@ admin. Không bao giờ đăng nhập hoặc đặt `RENTMATE_ADMIN_PASSWORD` tr
 Ghi lại phiên bản di chuyển hiện được áp dụng trong tệp kê khai JSON do nhà điều hành sở hữu bên ngoài giản đồ sản phẩm. Xem trước:
 
 ```powershell
-npm.cmd run migrate:existing -- --manifest <external-version-record.json> --plan-only
+npm.cmd run legacy:migrate:existing -- --manifest <external-version-record.json> --plan-only
 ```
 
 Sau khi phê duyệt bản sao lưu, chỉ áp dụng các lần di chuyển mới hơn:
 
 ```powershell
-npm.cmd run migrate:existing -- --manifest <external-version-record.json>
-npm.cmd run db:verify
+npm.cmd run legacy:migrate:existing -- --manifest <external-version-record.json>
+npm.cmd run legacy:db:verify
 ```
 
 Chỉ nâng cao bản ghi phiên bản bên ngoài sau khi di chuyển và xác minh lược đồ thành công. Một bảng kê khai/lược đồ
@@ -190,7 +190,7 @@ Khôi phục diễn tập và khôi phục luôn nhắm mục tiêu cơ sở d�
 ```powershell
 pg_restore --host <db-host> --port <db-port> --username <restore-user> --dbname <new-empty-db> `
   --exit-on-error --single-transaction --no-owner --no-acl <release.backup>
-npm.cmd run db:verify
+npm.cmd run legacy:db:verify
 ```
 
 Chạy kiểm tra đọc/khói đại diện đối với việc thay thế. Không chuyển đổi lưu lượng truy cập sản xuất cho đến khi lược đồ và read
@@ -201,7 +201,7 @@ pass và chủ sở hữu khôi phục chấp thuận thay đổi kết nối c�
 Kết nối nhà cung cấp là một hành động mạng rõ ràng, không bao giờ có hành vi khởi động/xây dựng/kiểm tra:
 
 ```powershell
-npm.cmd run providers:check
+npm.cmd run legacy:providers:check
 ```
 
 Cloudinary sử dụng `api.ping()` được xác thực không thay đổi. Nominatim thực hiện chính xác một mã địa lý chuyển tiếp có giới hạn với
@@ -211,7 +211,7 @@ PASS/FAIL và số lượng ứng viên, không chứa thông tin xác thực ho
 Sau khi triển khai HTTPS thực sự tồn tại, hãy chạy khói sản xuất không phá hủy:
 
 ```powershell
-npm.cmd run smoke:production
+npm.cmd run legacy:smoke:production
 ```
 
 Nó kiểm tra điểm đánh dấu giao diện người dùng, tình trạng, quyền riêng tư tìm kiếm công khai/chi tiết, đọc mục yêu thích của người thuê, đọc danh sách chủ nhà, đọc hàng đợi quản trị, thuộc tính cookie sản xuất, CORS được chứng nhận và đăng xuất. Nó không thực hiện đăng ký, liệt kê/yêu thích/

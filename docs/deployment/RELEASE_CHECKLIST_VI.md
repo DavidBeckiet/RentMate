@@ -43,7 +43,7 @@
 - [ ] `FRONTEND_ORIGIN` là nguồn gốc giao diện người dùng HTTPS chính xác.
 - [ ] `NEXT_PUBLIC_API_BASE_URL` chính xác là nguồn gốc API HTTPS không cục bộ được chọn trước khi xây dựng giao diện người dùng.
 - [ ] `COOKIE_SECURE=true`; Các hằng số chính sách JWT/hình ảnh/tìm kiếm giữ lại các giá trị cố định.
-- [ ] `npm.cmd run deploy:validate` vượt qua; tài liệu tham khảo bằng chứng: ______________________________
+- [ ] `npm.cmd run legacy:deploy:validate` vượt qua; tài liệu tham khảo bằng chứng: ______________________________
 
 ## Hỗ trợ
 
@@ -69,7 +69,7 @@
 
 ## Xác minh lược đồ
 
-- [ ] `npm.cmd run db:verify` vượt qua với hai enum, tám bảng sản phẩm, các ràng buộc/chỉ mục dự kiến ​​và hạt giống.
+- [ ] `npm.cmd run legacy:db:verify` vượt qua với hai enum, tám bảng sản phẩm, các ràng buộc/chỉ mục dự kiến ​​và hạt giống.
 - [ ] Bản ghi triển khai bên ngoài chỉ được nâng cao sau khi xác minh thành công.
 - [ ] Bằng chứng xác minh/tham khảo: ______________________________
 

@@ -1,3 +1,16 @@
+x-application-hardening: &application-hardening
+  restart: unless-stopped
+  init: true
+  read_only: true
+  tmpfs:
+    - /tmp:rw,noexec,nosuid,size=64m,mode=1777
+  cap_drop:
+    - ALL
+  security_opt:
+    - no-new-privileges:true
+  pids_limit: 256
+  stop_grace_period: 30s
+
 services:
   postgres:
     image: postgres:16-alpine
@@ -8,7 +21,7 @@ services:
       # database ownership inconsistent.
       POSTGRES_USER: rentmate
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}
-      POSTGRES_DB: rentmate
+      POSTGRES_DB: postgres
     ports:
       - "${POSTGRES_PORT:-5432}:5432"
     volumes:
@@ -21,11 +34,15 @@ services:
       retries: 12
 
   identity:
+    <<: *application-hardening
+    image: rentmate-identity:${RENTMATE_IMAGE_TAG:-local}
     build:
       context: .
       dockerfile: Dockerfile.microservices
       args:
         SERVICE: identity-service
+        RELEASE_VERSION: ${RENTMATE_RELEASE_VERSION:-development}
+        SOURCE_REVISION: ${RENTMATE_SOURCE_REVISION:-unknown}
     environment: &service-environment
       NODE_ENV: ${NODE_ENV:-production}
       FRONTEND_ORIGIN: ${FRONTEND_ORIGIN:?FRONTEND_ORIGIN is required}
@@ -54,12 +71,17 @@ services:
       NOMINATIM_USER_AGENT: ${NOMINATIM_USER_AGENT:?NOMINATIM_USER_AGENT is required}
       VERIFICATION_DELIVERY_URL: ${VERIFICATION_DELIVERY_URL:-}
       VERIFICATION_DELIVERY_TOKEN: ${VERIFICATION_DELIVERY_TOKEN:-}
+      OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector:4318
+      OTEL_METRIC_EXPORT_INTERVAL_MS: ${OTEL_METRIC_EXPORT_INTERVAL_MS:-10000}
+      DEPLOYMENT_ENVIRONMENT: ${DEPLOYMENT_ENVIRONMENT:-local}
+      RENTMATE_RELEASE_VERSION: ${RENTMATE_RELEASE_VERSION:-development}
       GOOGLE_OAUTH_CLIENT_ID: ${GOOGLE_OAUTH_CLIENT_ID:-}
       GOOGLE_OAUTH_CLIENT_SECRET: ${GOOGLE_OAUTH_CLIENT_SECRET:-}
       GOOGLE_OAUTH_REDIRECT_URI: ${GOOGLE_OAUTH_REDIRECT_URI:-http://localhost:4001/api/v1/auth/google/callback}
       SERVICE_INTERNAL_TOKEN: ${SERVICE_INTERNAL_TOKEN:?SERVICE_INTERNAL_TOKEN is required}
       IDENTITY_DB_NAME: rentmate_identity
       IDENTITY_SERVICE_PORT: 4100
+      OTEL_SERVICE_NAME: rentmate-identity
     command: ["sh", "-c", "npm --prefix services/identity-service run start"]
     healthcheck:
       test: ["CMD-SHELL", "wget -q -O - http://localhost:4100/api/health | grep -q 'status.*ok'"]
@@ -69,36 +91,26 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
-
-  backend:
-    build:
-      context: .
-      dockerfile: Dockerfile.backend
-    environment:
-      <<: *service-environment
-      DB_NAME: rentmate
-      PORT: 4000
-    healthcheck:
-      test: ["CMD-SHELL", "wget -q -O - http://localhost:4000/api/health | grep -q 'status.*ok'"]
-      interval: 5s
-      timeout: 5s
-      retries: 12
-    depends_on:
-      postgres:
-        condition: service_healthy
+      otel-collector:
+        condition: service_started
 
   listing:
+    <<: *application-hardening
+    image: rentmate-listing:${RENTMATE_IMAGE_TAG:-local}
     build:
       context: .
       dockerfile: Dockerfile.microservices
       args:
         SERVICE: listing-service
+        RELEASE_VERSION: ${RENTMATE_RELEASE_VERSION:-development}
+        SOURCE_REVISION: ${RENTMATE_SOURCE_REVISION:-unknown}
     environment:
       <<: *service-environment
       IDENTITY_SERVICE_URL: http://identity:4100
       ENGAGEMENT_SERVICE_URL: http://engagement:4300
       LISTING_DB_NAME: rentmate_listing
       LISTING_SERVICE_PORT: 4200
+      OTEL_SERVICE_NAME: rentmate-listing
       LISTING_STALE_REMINDER_DAYS: ${LISTING_STALE_REMINDER_DAYS:-30}
       LISTING_STALE_GRACE_DAYS: ${LISTING_STALE_GRACE_DAYS:-7}
       LISTING_STALE_SCAN_INTERVAL_MS: ${LISTING_STALE_SCAN_INTERVAL_MS:-30000}
@@ -114,17 +126,22 @@ services:
         condition: service_healthy
 
   engagement:
+    <<: *application-hardening
+    image: rentmate-engagement:${RENTMATE_IMAGE_TAG:-local}
     build:
       context: .
       dockerfile: Dockerfile.microservices
       args:
         SERVICE: engagement-service
+        RELEASE_VERSION: ${RENTMATE_RELEASE_VERSION:-development}
+        SOURCE_REVISION: ${RENTMATE_SOURCE_REVISION:-unknown}
     environment:
       <<: *service-environment
       IDENTITY_SERVICE_URL: http://identity:4100
       LISTING_SERVICE_URL: http://listing:4200
       ENGAGEMENT_DB_NAME: rentmate_engagement
       ENGAGEMENT_SERVICE_PORT: 4300
+      OTEL_SERVICE_NAME: rentmate-engagement
       ROOMMATE_AI_PROVIDER: ${ROOMMATE_AI_PROVIDER:-DISABLED}
       ROOMMATE_AI_ENABLED: ${ROOMMATE_AI_ENABLED:-false}
       ROOMMATE_AI_PARSER_ENABLED: ${ROOMMATE_AI_PARSER_ENABLED:-false}
@@ -153,12 +170,16 @@ services:
         condition: service_healthy
 
   verification-delivery:
+    <<: *application-hardening
     profiles: ["brevo"]
+    image: rentmate-verification-delivery:${RENTMATE_IMAGE_TAG:-local}
     build:
       context: .
       dockerfile: Dockerfile.microservices
       args:
         SERVICE: verification-delivery-adapter
+        RELEASE_VERSION: ${RENTMATE_RELEASE_VERSION:-development}
+        SOURCE_REVISION: ${RENTMATE_SOURCE_REVISION:-unknown}
     environment:
       NODE_ENV: ${NODE_ENV:-production}
       VERIFICATION_DELIVERY_ADAPTER_PORT: ${VERIFICATION_DELIVERY_ADAPTER_PORT:-4400}
@@ -194,18 +215,28 @@ services:
       retries: 12
 
   gateway:
+    <<: *application-hardening
+    image: rentmate-gateway:${RENTMATE_IMAGE_TAG:-local}
     build:
       context: .
       dockerfile: Dockerfile.gateway
+      args:
+        RELEASE_VERSION: ${RENTMATE_RELEASE_VERSION:-development}
+        SOURCE_REVISION: ${RENTMATE_SOURCE_REVISION:-unknown}
     environment:
       GATEWAY_PORT: 4001
       FRONTEND_ORIGIN: ${FRONTEND_ORIGIN:?FRONTEND_ORIGIN is required}
-      BACKEND_URL: http://backend:4000
       IDENTITY_SERVICE_URL: http://identity:4100
       LISTING_SERVICE_URL: http://listing:4200
       ENGAGEMENT_SERVICE_URL: http://engagement:4300
       SERVICE_INTERNAL_TOKEN: ${SERVICE_INTERNAL_TOKEN:?SERVICE_INTERNAL_TOKEN is required}
       GATEWAY_UPSTREAM_TIMEOUT_MS: ${GATEWAY_UPSTREAM_TIMEOUT_MS:-10000}
+      OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector:4318
+      OTEL_METRIC_EXPORT_INTERVAL_MS: ${OTEL_METRIC_EXPORT_INTERVAL_MS:-10000}
+      OTEL_SERVICE_NAME: rentmate-gateway
+      DEPLOYMENT_ENVIRONMENT: ${DEPLOYMENT_ENVIRONMENT:-local}
+      RENTMATE_RELEASE_VERSION: ${RENTMATE_RELEASE_VERSION:-development}
+    command: ["npm", "--prefix", "services/api-gateway", "run", "start"]
     ports:
       - "${GATEWAY_PORT:-4001}:4001"
     healthcheck:
@@ -214,14 +245,70 @@ services:
       timeout: 5s
       retries: 12
     depends_on:
-      backend:
-        condition: service_healthy
       identity:
         condition: service_healthy
       listing:
         condition: service_healthy
       engagement:
         condition: service_healthy
+      otel-collector:
+        condition: service_started
+
+  otel-collector:
+    image: otel/opentelemetry-collector-contrib:0.123.0
+    command: ["--config=/etc/otelcol-contrib/config.yaml"]
+    volumes:
+      - ./docker/observability/otel-collector.yaml:/etc/otelcol-contrib/config.yaml:ro
+    ports:
+      - "${OTEL_GRPC_PORT:-4317}:4317"
+      - "${OTEL_HTTP_PORT:-4318}:4318"
+    healthcheck:
+      test: ["CMD", "/otelcol-contrib", "components"]
+      interval: 10s
+      timeout: 5s
+      retries: 6
+    depends_on:
+      - jaeger
+
+  jaeger:
+    image: jaegertracing/all-in-one:1.66.0
+    environment:
+      COLLECTOR_OTLP_ENABLED: "true"
+    ports:
+      - "${JAEGER_UI_PORT:-16686}:16686"
+
+  prometheus:
+    image: prom/prometheus:v3.2.1
+    command:
+      - "--config.file=/etc/prometheus/prometheus.yml"
+      - "--storage.tsdb.path=/prometheus"
+      - "--storage.tsdb.retention.time=7d"
+    volumes:
+      - ./docker/observability/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - ./docker/observability/rentmate-alerts.yml:/etc/prometheus/rentmate-alerts.yml:ro
+      - prometheus_data:/prometheus
+    ports:
+      - "${PROMETHEUS_PORT:-9090}:9090"
+    depends_on:
+      - otel-collector
+
+  grafana:
+    image: grafana/grafana:11.5.2
+    environment:
+      GF_AUTH_ANONYMOUS_ENABLED: "true"
+      GF_AUTH_ANONYMOUS_ORG_ROLE: Viewer
+      GF_AUTH_DISABLE_LOGIN_FORM: "true"
+      GF_USERS_ALLOW_SIGN_UP: "false"
+    volumes:
+      - ./docker/observability/grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./docker/observability/grafana/dashboards:/var/lib/grafana/dashboards:ro
+      - grafana_data:/var/lib/grafana
+    ports:
+      - "${GRAFANA_PORT:-3001}:3000"
+    depends_on:
+      - prometheus
 
 volumes:
   microservices_postgres_data:
+  prometheus_data:
+  grafana_data:

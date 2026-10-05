@@ -6,8 +6,8 @@
     "node": ">=22.15.1 <23"
   },
   "scripts": {
-    "dev": "tsx watch src/server.ts",
-    "start": "tsx src/server.ts",
+    "dev": "tsx --import ../shared/observability/register.mjs watch src/server.ts",
+    "start": "tsx --import ../shared/observability/register.mjs src/server.ts",
     "test": "node --import tsx --test test/*.test.ts",
     "test:roommate-foundation:database": "node --import tsx --test test/roommate-foundation-schema.database.ts",
     "test:roommate:database": "node --import tsx --test test/roommate-lifecycle.database.ts",

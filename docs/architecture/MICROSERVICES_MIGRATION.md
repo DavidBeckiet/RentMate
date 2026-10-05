@@ -129,23 +129,21 @@ Legacy backend :4000 remains the compatibility upstream during migration.
 
 ## Local/staging container topology
 
-`docker-compose.microservices.yml` defines PostgreSQL plus the compatibility Backend, Identity, Listing, Engagement, and
-Gateway containers. It is a
+`docker-compose.microservices.yml` defines PostgreSQL plus Identity, Listing, Engagement, and Gateway containers. It is a
 staging/bootstrap topology, not a production secret store. Supply required secrets through the environment, validate the
 expanded configuration, then run each service migration as a release step before starting application traffic:
 
 ```powershell
 docker compose -f docker-compose.microservices.yml config --quiet
 docker compose -f docker-compose.microservices.yml up -d postgres
-docker compose -f docker-compose.microservices.yml run --rm backend node dist/db/bootstrap/cli.js
 docker compose -f docker-compose.microservices.yml run --rm --no-deps identity npm --prefix services/identity-service run migrate -- clean
 docker compose -f docker-compose.microservices.yml run --rm --no-deps listing npm --prefix services/listing-service run migrate -- clean
 docker compose -f docker-compose.microservices.yml run --rm --no-deps engagement npm --prefix services/engagement-service run migrate -- clean
 docker compose -f docker-compose.microservices.yml up -d --build identity listing engagement gateway
 ```
 
-The compatibility Backend is included so the gateway has a safe rollback upstream for routes that have not yet moved
-to a service. Its database is the fixed `rentmate` database; the three isolated service databases are separate owners.
+The compatibility Backend is retained in the repository as historical reference code but is not part of the active
+Compose topology. The Gateway routes only to the three isolated service boundaries and rejects unmapped API routes.
 
 Run the documented backfill commands before switching traffic when migrating an existing deployment. The compose file
 does not run migrations at application startup and does not embed production secrets.
@@ -159,9 +157,8 @@ does not run migrations at application startup and does not embed production sec
 5. Remove the corresponding monolith module only after the cutover is verified.
 
 No shared database or cross-service foreign key is introduced by this foundation. The isolated Identity, Listing, and
-Engagement schemas are independently migrated and backfilled; the compatibility backend remains available only as a
-rollback path when a service-specific database URL is not configured. The existing MVP API, cookie, privacy, listing
-lifecycle, and security contracts remain unchanged across the gateway cutover.
+Engagement schemas are independently migrated and backfilled. The existing MVP API, cookie, privacy, listing lifecycle,
+and security contracts remain unchanged across the gateway cutover.
 
 The current MVP contract contains no `inquiries` or `viewings` modules/endpoints. Those are intentionally not routed to
 Engagement until a separate product/API contract is approved.

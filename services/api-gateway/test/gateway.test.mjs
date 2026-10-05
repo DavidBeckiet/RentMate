@@ -13,9 +13,8 @@ function close(server) {
   return new Promise((resolve, reject) => server.close((error) => (error ? reject(error) : resolve())));
 }
 
-test("keeps the monolith as the default upstream and switches configured boundaries", () => {
+test("routes every active API boundary to its owning service without a legacy fallback", () => {
   const routes = createRouteTable({
-    BACKEND_URL: "http://backend:4000",
     IDENTITY_SERVICE_URL: "http://identity:4100",
     LISTING_SERVICE_URL: "http://listing:4200",
     ENGAGEMENT_SERVICE_URL: "http://engagement:4300"
@@ -65,6 +64,7 @@ test("keeps the monolith as the default upstream and switches configured boundar
   ]) {
     assert.equal(resolveUpstream(path, routes).hostname, "identity");
   }
+  assert.equal(resolveUpstream("/api/v1/unmapped", routes), null);
   assert.equal(routes.upstreamTimeoutMs, 10000);
 });
 
@@ -73,6 +73,7 @@ test("proxies API requests and preserves upstream response cookies", async () =>
     assert.equal(request.url, "/api/v1/auth/login");
     assert.equal(request.headers.origin, "http://localhost:3000");
     assert.equal(request.headers["x-rentmate-internal-token"], "test-internal-token");
+    assert.equal(request.headers["x-request-id"], "req_enterprise_test_123");
     response.writeHead(200, {
       "content-type": "application/json",
       "set-cookie": ["rentmate_session=test-cookie; HttpOnly; Path=/"]
@@ -81,7 +82,6 @@ test("proxies API requests and preserves upstream response cookies", async () =>
   });
   const upstreamPort = await listen(upstream);
   const gateway = createGatewayServer({
-    BACKEND_URL: `http://127.0.0.1:${upstreamPort}`,
     IDENTITY_SERVICE_URL: `http://127.0.0.1:${upstreamPort}`,
     SERVICE_INTERNAL_TOKEN: "test-internal-token"
   });
@@ -89,11 +89,12 @@ test("proxies API requests and preserves upstream response cookies", async () =>
 
   try {
     const result = await fetch(`http://127.0.0.1:${gatewayPort}/api/v1/auth/login`, {
-      headers: { origin: "http://localhost:3000" }
+      headers: { origin: "http://localhost:3000", "x-request-id": "req_enterprise_test_123" }
     });
     assert.equal(result.status, 200);
     assert.equal(result.headers.get("access-control-allow-origin"), "http://localhost:3000");
     assert.equal(result.headers.get("access-control-allow-credentials"), "true");
+    assert.equal(result.headers.get("x-request-id"), "req_enterprise_test_123");
     assert.deepEqual(result.headers.getSetCookie(), ["rentmate_session=test-cookie; HttpOnly; Path=/"]);
     assert.deepEqual(await result.json(), { data: { ok: true } });
   } finally {
@@ -120,7 +121,6 @@ test("forwards the Roommate AI capability route to Engagement without inspecting
   });
   const upstreamPort = await listen(upstream);
   const gateway = createGatewayServer({
-    BACKEND_URL: "http://127.0.0.1:1",
     ENGAGEMENT_SERVICE_URL: `http://127.0.0.1:${upstreamPort}`
   });
   const gatewayPort = await listen(gateway);
@@ -164,7 +164,6 @@ test("forwards a Roommate AI preference preview body and preserves upstream AI e
   });
   const upstreamPort = await listen(upstream);
   const gateway = createGatewayServer({
-    BACKEND_URL: "http://127.0.0.1:1",
     ENGAGEMENT_SERVICE_URL: `http://127.0.0.1:${upstreamPort}`,
     FRONTEND_ORIGIN: "http://localhost:3000"
   });
@@ -213,7 +212,6 @@ test("forwards a Roommate AI recommendation body and preserves its upstream resp
   });
   const upstreamPort = await listen(upstream);
   const gateway = createGatewayServer({
-    BACKEND_URL: "http://127.0.0.1:1",
     ENGAGEMENT_SERVICE_URL: `http://127.0.0.1:${upstreamPort}`,
     FRONTEND_ORIGIN: "http://localhost:3000"
   });
@@ -253,7 +251,6 @@ test("forwards a Roommate request AI explanation with requestId, cookie, Origin,
   });
   const upstreamPort = await listen(upstream);
   const gateway = createGatewayServer({
-    BACKEND_URL: "http://127.0.0.1:1",
     ENGAGEMENT_SERVICE_URL: `http://127.0.0.1:${upstreamPort}`,
     FRONTEND_ORIGIN: "http://localhost:3000"
   });
@@ -326,7 +323,6 @@ test("forwards Roommate safetyWarning and admin aiSafetySummary projections with
   });
   const upstreamPort = await listen(upstream);
   const gateway = createGatewayServer({
-    BACKEND_URL: "http://127.0.0.1:1",
     ENGAGEMENT_SERVICE_URL: `http://127.0.0.1:${upstreamPort}`,
     FRONTEND_ORIGIN: "http://localhost:3000"
   });
@@ -353,7 +349,6 @@ test("forwards Roommate safetyWarning and admin aiSafetySummary projections with
 
 test("handles allowed preflight and rejects unsafe requests from another origin", async () => {
   const gateway = createGatewayServer({
-    BACKEND_URL: "http://127.0.0.1:1",
     FRONTEND_ORIGIN: "http://localhost:3000"
   });
   const gatewayPort = await listen(gateway);
@@ -384,9 +379,27 @@ test("handles allowed preflight and rejects unsafe requests from another origin"
   }
 });
 
+test("serves gateway health locally and rejects unmapped API routes", async () => {
+  const gateway = createGatewayServer();
+  const gatewayPort = await listen(gateway);
+
+  try {
+    const health = await fetch(`http://127.0.0.1:${gatewayPort}/api/health`);
+    assert.equal(health.status, 200);
+    assert.deepEqual(await health.json(), { status: "ok" });
+
+    const unmapped = await fetch(`http://127.0.0.1:${gatewayPort}/api/v1/unmapped`);
+    assert.equal(unmapped.status, 404);
+    assert.deepEqual(await unmapped.json(), {
+      error: { code: "NOT_FOUND", message: "The requested route was not found." }
+    });
+  } finally {
+    await close(gateway);
+  }
+});
+
 test("does not expose internal service routes through the browser gateway", async () => {
   const gateway = createGatewayServer({
-    BACKEND_URL: "http://127.0.0.1:1",
     IDENTITY_SERVICE_URL: "http://identity:4100",
     SERVICE_INTERNAL_TOKEN: "test-internal-token"
   });
@@ -420,7 +433,6 @@ test("keeps an authorized inquiry event stream open beyond the ordinary upstream
   });
   const upstreamPort = await listen(upstream);
   const gateway = createGatewayServer({
-    BACKEND_URL: "http://127.0.0.1:1",
     ENGAGEMENT_SERVICE_URL: `http://127.0.0.1:${upstreamPort}`,
     SERVICE_INTERNAL_TOKEN: "test-internal-token",
     GATEWAY_UPSTREAM_TIMEOUT_MS: "100"

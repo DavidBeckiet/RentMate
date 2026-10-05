@@ -1,0 +1,19 @@
+name: rentmate-load-test
+
+services:
+  k6:
+    image: grafana/k6:0.57.0
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    environment:
+      RENTMATE_BASE_URL: ${RENTMATE_BASE_URL:-http://host.docker.internal:4001}
+      RENTMATE_FRONTEND_ORIGIN: ${FRONTEND_ORIGIN:-http://localhost:3000}
+      RENTMATE_PUBLIC_LISTING_ID: ${RENTMATE_PUBLIC_LISTING_ID:-}
+      RENTMATE_TENANT_EMAIL: ${RENTMATE_TENANT_EMAIL:-}
+      RENTMATE_TENANT_PASSWORD: ${RENTMATE_TENANT_PASSWORD:-}
+      K6_TARGET_VUS: ${K6_TARGET_VUS:-10}
+      K6_RAMP_DURATION: ${K6_RAMP_DURATION:-10s}
+      K6_HOLD_DURATION: ${K6_HOLD_DURATION:-30s}
+    volumes:
+      - ./performance/k6:/scripts:ro
+    entrypoint: ["k6"]

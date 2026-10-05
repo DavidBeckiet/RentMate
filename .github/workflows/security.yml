@@ -1,0 +1,113 @@
+name: security
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+  schedule:
+    - cron: "23 3 * * 1"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  security-events: write
+
+jobs:
+  codeql:
+    name: CodeQL
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v7
+      - uses: github/codeql-action/init@v4
+        with:
+          languages: javascript-typescript
+      - uses: github/codeql-action/analyze@v4
+
+  dependency-review:
+    name: Dependency review
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/dependency-review-action@v5
+        with:
+          fail-on-severity: high
+
+  filesystem-scan-and-sbom:
+    name: Filesystem scan and SBOM
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v7
+      - name: Scan repository for vulnerabilities and exposed secrets
+        uses: aquasecurity/trivy-action@0.36.0
+        with:
+          scan-type: fs
+          scan-ref: .
+          # The legacy monolith is retained as reference code and is not deployed.
+          skip-dirs: backend
+          scanners: vuln,secret,misconfig
+          severity: HIGH,CRITICAL
+          ignore-unfixed: true
+          exit-code: "1"
+      - name: Generate SPDX software bill of materials
+        uses: anchore/sbom-action@v0
+        with:
+          path: .
+          format: spdx-json
+          output-file: rentmate-sbom.spdx.json
+      - uses: actions/upload-artifact@v4
+        with:
+          name: rentmate-sbom
+          path: rentmate-sbom.spdx.json
+          if-no-files-found: error
+          retention-days: 30
+
+  active-image-scan:
+    name: Active image scan (${{ matrix.name }})
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: identity
+            dockerfile: Dockerfile.microservices
+            build_arguments: --build-arg SERVICE=identity-service
+          - name: listing
+            dockerfile: Dockerfile.microservices
+            build_arguments: --build-arg SERVICE=listing-service
+          - name: engagement
+            dockerfile: Dockerfile.microservices
+            build_arguments: --build-arg SERVICE=engagement-service
+          - name: verification
+            dockerfile: Dockerfile.microservices
+            build_arguments: --build-arg SERVICE=verification-delivery-adapter
+          - name: gateway
+            dockerfile: Dockerfile.gateway
+            build_arguments: ""
+    steps:
+      - uses: actions/checkout@v7
+      - name: Build active application image
+        run: >-
+          docker build
+          --file "${{ matrix.dockerfile }}"
+          --tag "rentmate-${{ matrix.name }}:ci"
+          ${{ matrix.build_arguments }}
+          .
+      - name: Verify non-root image user
+        run: test "$(docker image inspect --format '{{.Config.User}}' 'rentmate-${{ matrix.name }}:ci')" = "node"
+      - name: Scan active image vulnerabilities
+        uses: aquasecurity/trivy-action@0.36.0
+        with:
+          image-ref: rentmate-${{ matrix.name }}:ci
+          scan-type: image
+          scanners: vuln
+          vuln-type: os,library
+          severity: HIGH,CRITICAL
+          ignore-unfixed: true
+          exit-code: "1"

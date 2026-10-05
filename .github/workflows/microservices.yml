@@ -2,7 +2,7 @@ name: microservices
 
 on:
   push:
-    branches: [main]
+    branches: [master]
   pull_request:
 
 jobs:
@@ -18,49 +18,36 @@ jobs:
           cache: npm
           cache-dependency-path: |
             package-lock.json
-            backend/package-lock.json
             frontend/package-lock.json
             services/identity-service/package-lock.json
             services/listing-service/package-lock.json
             services/shared/package-lock.json
             services/engagement-service/package-lock.json
+            services/verification-delivery-adapter/package-lock.json
 
       - run: npm ci
-      - run: npm ci --prefix backend
       - run: npm ci --prefix frontend
       - run: npm ci --prefix services/identity-service
       - run: npm ci --prefix services/listing-service
       - run: npm ci --prefix services/engagement-service
+      - run: npm ci --prefix services/verification-delivery-adapter
       - run: npm ci --prefix services/shared
       - name: Audit production dependencies
         shell: bash
         run: |
           npm audit --omit=dev --audit-level=high
-          npm audit --prefix backend --omit=dev --audit-level=high
           npm audit --prefix frontend --omit=dev --audit-level=high
           npm audit --prefix services/identity-service --omit=dev --audit-level=high
           npm audit --prefix services/listing-service --omit=dev --audit-level=high
           npm audit --prefix services/engagement-service --omit=dev --audit-level=high
+          npm audit --prefix services/verification-delivery-adapter --omit=dev --audit-level=high
           npm audit --prefix services/shared --omit=dev --audit-level=high
       - run: npm run typecheck
-      - run: npm run lint:frontend
-      - run: npm run lint:backend
-      - run: npm run test:backend
-      - run: npm run test:frontend
-      - run: npm --prefix services/api-gateway test
-      - run: ./services/shared/node_modules/.bin/tsc -p services/identity-service/tsconfig.json
-      - run: ./services/shared/node_modules/.bin/tsc -p services/listing-service/tsconfig.json
-      - run: ./services/shared/node_modules/.bin/tsc -p services/engagement-service/tsconfig.json
-      - run: npm --prefix services/shared run typecheck
+      - run: npm run lint
+      - run: npm run test
       - name: Verify service domain ownership
         shell: bash
         run: test -z "$(rg -n 'backend/src/modules' services || true)"
-
-      - name: Build frontend
-        env:
-          NODE_ENV: production
-          NEXT_PUBLIC_API_BASE_URL: https://api.rentmate.example
-        run: npm run build:frontend
 
       - name: Validate compose topology
         env:
@@ -75,4 +62,106 @@ jobs:
         run: docker compose -f docker-compose.microservices.yml config --quiet
 
       - name: Build microservice images
-        run: docker compose -f docker-compose.microservices.yml build backend identity listing engagement gateway
+        env:
+          POSTGRES_PASSWORD: ci-postgres-password
+          FRONTEND_ORIGIN: https://rentmate.example
+          JWT_SECRET: ci-jwt-secret-ci-jwt-secret
+          CLOUDINARY_CLOUD_NAME: ci-cloud
+          CLOUDINARY_API_KEY: ci-key
+          CLOUDINARY_API_SECRET: ci-secret
+          NOMINATIM_USER_AGENT: RentMate/ci
+          SERVICE_INTERNAL_TOKEN: ci-internal-token
+          RENTMATE_IMAGE_TAG: ci-${{ github.sha }}
+          RENTMATE_RELEASE_VERSION: ci-${{ github.sha }}
+          RENTMATE_SOURCE_REVISION: ${{ github.sha }}
+        run: docker compose -f docker-compose.microservices.yml build identity listing engagement verification-delivery gateway
+
+      - name: Generate active release evidence
+        env:
+          RENTMATE_RELEASE_VERSION: ci-${{ github.sha }}
+          RENTMATE_SOURCE_REVISION: ${{ github.sha }}
+        run: npm run release:evidence
+
+      - name: Upload active release evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: rentmate-release-evidence-${{ github.run_id }}-${{ github.run_attempt }}
+          path: artifacts/release-evidence/ci-${{ github.sha }}/
+          if-no-files-found: error
+          retention-days: 30
+
+      - name: Build frontend
+        env:
+          NODE_ENV: production
+          NEXT_PUBLIC_API_BASE_URL: https://api.rentmate.example
+        run: npm run build:frontend
+
+  clean-database-stack-smoke:
+    name: Clean database stack smoke
+    needs: verify
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      COMPOSE_PROJECT_NAME: rentmate-ci-${{ github.run_id }}-${{ github.run_attempt }}
+      NODE_ENV: test
+      POSTGRES_PORT: "55432"
+      POSTGRES_PASSWORD: ci-postgres-password
+      FRONTEND_ORIGIN: http://localhost:3000
+      GATEWAY_PORT: "4401"
+      JWT_SECRET: ci-jwt-secret-ci-jwt-secret
+      CLOUDINARY_CLOUD_NAME: ci-cloud
+      CLOUDINARY_API_KEY: ci-key
+      CLOUDINARY_API_SECRET: ci-secret
+      NOMINATIM_USER_AGENT: RentMate/ci
+      SERVICE_INTERNAL_TOKEN: ci-internal-token
+      DEPLOYMENT_ENVIRONMENT: ci
+      RENTMATE_RELEASE_VERSION: ci-${{ github.sha }}
+      RENTMATE_IMAGE_TAG: ci-${{ github.sha }}
+      RENTMATE_SOURCE_REVISION: ${{ github.sha }}
+      IDENTITY_DB_HOST: 127.0.0.1
+      IDENTITY_DB_PORT: "55432"
+      IDENTITY_DB_NAME: rentmate_identity
+      IDENTITY_DB_USER: rentmate
+      IDENTITY_DB_PASSWORD: ci-postgres-password
+      LISTING_DB_HOST: 127.0.0.1
+      LISTING_DB_PORT: "55432"
+      LISTING_DB_NAME: rentmate_listing
+      LISTING_DB_USER: rentmate
+      LISTING_DB_PASSWORD: ci-postgres-password
+      ENGAGEMENT_DB_HOST: 127.0.0.1
+      ENGAGEMENT_DB_PORT: "55432"
+      ENGAGEMENT_DB_NAME: rentmate_engagement
+      ENGAGEMENT_DB_USER: rentmate
+      ENGAGEMENT_DB_PASSWORD: ci-postgres-password
+      RENTMATE_STACK_API_ORIGIN: http://localhost:4401
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+          cache-dependency-path: |
+            services/identity-service/package-lock.json
+            services/listing-service/package-lock.json
+            services/engagement-service/package-lock.json
+            services/shared/package-lock.json
+      - run: npm ci --prefix services/identity-service
+      - run: npm ci --prefix services/listing-service
+      - run: npm ci --prefix services/engagement-service
+      - run: npm ci --prefix services/shared
+      - name: Start disposable PostgreSQL
+        run: docker compose -f docker-compose.microservices.yml up -d --wait postgres
+      - name: Apply every active clean migration
+        run: npm run migrate:clean
+      - name: Start active application topology
+        run: docker compose -f docker-compose.microservices.yml up -d --build --wait identity listing engagement gateway
+      - name: Verify active Gateway reads
+        run: npm run verify:active-stack
+      - name: Capture diagnostics on failure
+        if: failure()
+        run: |
+          docker compose -f docker-compose.microservices.yml ps
+          docker compose -f docker-compose.microservices.yml logs --no-color --tail 200 identity listing engagement gateway
+      - name: Remove disposable stack and volumes
+        if: always()
+        run: docker compose -f docker-compose.microservices.yml down --volumes --remove-orphans

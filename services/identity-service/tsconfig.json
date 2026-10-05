@@ -11,6 +11,7 @@
   },
   "include": [
     "src/**/*.ts",
+    "admin-provision.ts",
     "migrate.ts",
     "backfill.ts",
     "../shared/database-overrides.ts",

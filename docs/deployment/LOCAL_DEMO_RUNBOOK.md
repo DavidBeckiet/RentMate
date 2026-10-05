@@ -22,8 +22,8 @@ not commit `.env`. The Compose file itself selects the three local `rentmate_*` 
 service-specific Identity, Listing, and Engagement database settings from `.env.microservices.example` only when using
 the all-local-node route.
 
-`NEXT_PUBLIC_API_BASE_URL` must be exactly `http://localhost:4001`. Port 4000 is the compatibility backend service,
-not the browser API for the microservice/Roommate demo.
+`NEXT_PUBLIC_API_BASE_URL` must be exactly `http://localhost:4001`. The retained compatibility backend is not started
+for the microservice/Roommate demo.
 
 ## 2. Gemini is optional
 

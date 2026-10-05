@@ -92,7 +92,7 @@ npm.cmd --prefix frontend ci
 Validate production configuration without connecting to PostgreSQL or providers:
 
 ```powershell
-npm.cmd run deploy:validate
+npm.cmd run legacy:deploy:validate
 ```
 
 This checks configuration only. It does not prove DNS, TLS, database, provider, or application availability.
@@ -138,14 +138,14 @@ Always create and record a verified backup before applying migration SQL.
 Verify that the target database is new and empty, then preview the repository plan:
 
 ```powershell
-npm.cmd run migrate:clean -- --plan-only
+npm.cmd run legacy:migrate:clean -- --plan-only
 ```
 
 Bootstrap the clean database using protected database/admin environment values:
 
 ```powershell
-npm.cmd run db:bootstrap
-npm.cmd run db:verify
+npm.cmd run legacy:db:bootstrap
+npm.cmd run legacy:db:verify
 ```
 
 `db:bootstrap` applies migrations `0001`–`0012`, reconciles the five property types and twelve amenities, verifies the
@@ -154,7 +154,7 @@ exact two-enum/eight-table schema, and provisions the controlled admin. There is
 If admin provisioning must be repeated independently:
 
 ```powershell
-npm.cmd run admin:provision
+npm.cmd run legacy:admin:provision
 ```
 
 The same active admin is a no-op; an inactive admin or a tenant/landlord email is a safe failure. There is no public
@@ -165,14 +165,14 @@ admin registration. Never log or place `RENTMATE_ADMIN_PASSWORD` on a command li
 Record the currently applied migration version in an operator-owned JSON manifest outside the product schema. Preview:
 
 ```powershell
-npm.cmd run migrate:existing -- --manifest <external-version-record.json> --plan-only
+npm.cmd run legacy:migrate:existing -- --manifest <external-version-record.json> --plan-only
 ```
 
 After backup approval, apply only newer migrations:
 
 ```powershell
-npm.cmd run migrate:existing -- --manifest <external-version-record.json>
-npm.cmd run db:verify
+npm.cmd run legacy:migrate:existing -- --manifest <external-version-record.json>
+npm.cmd run legacy:db:verify
 ```
 
 Advance the external version record only after migration and schema verification succeed. A manifest/schema
@@ -196,7 +196,7 @@ Restore rehearsal and recovery always target a new empty replacement database, n
 ```powershell
 pg_restore --host <db-host> --port <db-port> --username <restore-user> --dbname <new-empty-db> `
   --exit-on-error --single-transaction --no-owner --no-acl <release.backup>
-npm.cmd run db:verify
+npm.cmd run legacy:db:verify
 ```
 
 Run representative read/smoke checks against the replacement. Do not switch production traffic until schema and reads
@@ -207,7 +207,7 @@ pass and the rollback owner approves the deliberate connection change.
 Provider connectivity is an explicit network action, never startup/build/test behavior:
 
 ```powershell
-npm.cmd run providers:check
+npm.cmd run legacy:providers:check
 ```
 
 Cloudinary uses authenticated non-mutating `api.ping()`. Nominatim performs exactly one bounded forward-geocode with
@@ -217,7 +217,7 @@ PASS/FAIL and candidate count, not credentials or raw provider payload.
 After an actual HTTPS deployment exists, run the non-destructive production smoke:
 
 ```powershell
-npm.cmd run smoke:production
+npm.cmd run legacy:smoke:production
 ```
 
 It checks the frontend marker, health, public search/detail privacy, tenant favorites read, landlord listing read, admin
