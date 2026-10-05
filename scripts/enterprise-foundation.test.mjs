@@ -390,6 +390,7 @@ test("security CI scans every active application image without building the comp
   }
   assert.match(workflow, /image-ref:/);
   assert.match(workflow, /scan-type: image/);
+  assert.equal((workflow.match(/aquasecurity\/trivy-action@v0\.36\.0/g) ?? []).length, 2);
   assert.doesNotMatch(workflow, /SERVICE=backend|Dockerfile\.backend|rentmate-backend/);
 });
 

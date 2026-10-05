@@ -44,7 +44,7 @@ jobs:
     steps:
       - uses: actions/checkout@v7
       - name: Scan repository for vulnerabilities and exposed secrets
-        uses: aquasecurity/trivy-action@0.36.0
+        uses: aquasecurity/trivy-action@v0.36.0
         with:
           scan-type: fs
           scan-ref: .
@@ -102,7 +102,7 @@ jobs:
       - name: Verify non-root image user
         run: test "$(docker image inspect --format '{{.Config.User}}' 'rentmate-${{ matrix.name }}:ci')" = "node"
       - name: Scan active image vulnerabilities
-        uses: aquasecurity/trivy-action@0.36.0
+        uses: aquasecurity/trivy-action@v0.36.0
         with:
           image-ref: rentmate-${{ matrix.name }}:ci
           scan-type: image
